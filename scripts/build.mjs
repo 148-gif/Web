@@ -37,6 +37,7 @@ const yeshiva = read('yeshiva.json');
 const site = read('site.json');
 const yv = read('yavniel.json');
 const mk = read('mikveh.json');
+const mo = read('moharash.json');
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
@@ -63,7 +64,7 @@ const CSP = [
   'upgrade-insecure-requests',
 ].join('; ');
 
-const nav = [['/', 'בית', 'home'], ['/print/', 'הדפסת אשר בנחל', 'print'], ['/yeshiva/', 'ישיבת בית מנחם', 'school'], ['/shut/', 'שו״ת ברסלב', 'book'], ['/letters/', 'מכתבים', 'letter'], ['/halacha/', 'שו״ת הלכתי', 'scale'], ['/yavniel/', 'יבנאל', 'pin'], ...(institutions.length ? [['/institutions/', 'מוסדות הקהילה', 'heart']] : []), ['/search/', 'חיפוש', 'search']];
+const nav = [['/', 'בית', 'home'], ['/print/', 'הדפסת אשר בנחל', 'print'], ['/yeshiva/', 'ישיבת בית מנחם', 'school'], ['/shut/', 'שו״ת ברסלב', 'book'], ['/letters/', 'מכתבים', 'letter'], ['/halacha/', 'שו״ת הלכתי', 'scale'], ['/moharash/', 'הצדיק מיבנאל', 'flame'], ['/yavniel/', 'יבנאל', 'pin'], ...(institutions.length ? [['/institutions/', 'מוסדות הקהילה', 'heart']] : []), ['/search/', 'חיפוש', 'search']];
 // Organisation and contact details come from data/site.json; empty fields are simply left out.
 const org = site.org || {}, sc = site.contact || {};
 const orgLine = org.name ? esc(org.name) + (org.number ? ` · ע״ר ${esc(org.number)}` : '') + (org.section46 ? ' · התרומות מוכרות לצורכי מס לפי סעיף 46' : '') : '';
@@ -125,7 +126,7 @@ ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 <footer class="foot"><div class="wrap"><div class="fbrand"><span class="mark">${icon('flame')}</span><div><b>${SITE}</b><span>אור הצדיק לכל נפש</span></div></div>
 <nav aria-label="ניווט תחתון">${nav.slice(1, -1).map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>
 <nav class="finfo" aria-label="מידע על האתר">${infoNav.map(([h, t]) => `<a href="${h}"${h === self ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</nav>
-<p>שו״ת ברסלב נכתב על ידי הצדיק מיבניאל זצ״ל, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script></body></html>`;
+<p>שו״ת ברסלב נכתב על ידי <a href="/moharash/">הצדיק מיבניאל זצ״ל</a>, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script></body></html>`;
 
 const sr = (t) => `<h2 class="sr">${t}</h2>`;
 const card = (x, base = '/shut/') => `<a class="card qcard" href="${base}${x.id}/"><h3>${esc(x.title)}</h3><p>${esc((x.a.find((p) => p.length > 60) || x.a[0]).slice(0, 150))}…</p><span class="go">לקריאת התשובה ←</span></a>`;
@@ -191,7 +192,7 @@ ${ysect('history', '', 'על היישוב', '', `<div class="about lead1">${ps(y
 ${ysect('community', '', 'קהילת ברסלב ביבנאל', '', `<div class="about">${ps(yv.community)}</div>`)}
 <section class="band soft"><div class="wrap"><h2 class="sh">מוסדות וחסד</h2><p class="shsub">מה שהקים מוהרא״ש ביבנאל</p><ul class="inst-list">${yv.institutions.map(([n, d]) => `<li>${icon('school', 'ico')}<span><b>${esc(n)}</b>${d ? `<small>${esc(d)}</small>` : ''}</span></li>`).join('')}</ul><div class="svc">${yv.chesed.map(([ic, t, d]) => `<div class="card">${icon(ic, 'ico lg')}<h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div></div></section>
 ${ysect('city', '', esc(yv.cityTitle), '', `<div class="about">${ps(yv.city)}</div>${yv.quotes.map(([q, by]) => `<figure class="letterq"><blockquote>${esc(q)}</blockquote><figcaption>${esc(by)}</figcaption></figure>`).join('')}`)}
-<section class="band soft" id="zion"><div class="wrap narrow"><h2 class="sh">ציון הצדיק</h2>${orn}<div class="about">${ps(yv.zion)}</div><div class="vow"><span class="kicker2">${esc(yv.promiseNote.replace(/:$/, ''))}</span><p>${esc(yv.promise)}</p></div></div></section>
+<section class="band soft" id="zion"><div class="wrap narrow"><h2 class="sh">ציון הצדיק</h2>${orn}<div class="about">${ps(yv.zion)}</div><p class="navbtns"><a class="btn" href="/moharash/tziyun/">${icon('flame', 'ico sm')}לדף ציון מוהרא״ש</a><a class="btn ghost" href="/moharash/">על הצדיק מיבנאל</a></p><div class="vow"><span class="kicker2">${esc(yv.promiseNote.replace(/:$/, ''))}</span><p>${esc(yv.promise)}</p></div></div></section>
 <section class="band" id="letters"><div class="wrap"><h2 class="sh">${esc(yv.fromShutTitle)}</h2><p class="shsub">${esc(yv.fromShutLead)}</p><div class="grid notes">${yv.fromShut.map(([t, ids]) => `<div class="card"><p>${esc(t)}</p><span class="go">${ids.map((i, n) => `<a href="/shut/${i}/">${ids.length > 1 ? `תשובה ${'אבג'[n]}׳` : 'לתשובה'} ←</a>`).join('')}</span></div>`).join('')}</div></div></section>
 <section class="band soft" id="prayer"><div class="wrap"><h2 class="sh">זמני תפילה</h2><p class="shsub">${esc(yv.prayerNote)}</p><h3 class="subh">${icon('clock', 'ico')}ימי חול</h3>${sched(yv.weekday)}<p class="snote c">${esc(yv.weekdayNote)}</p><h3 class="subh">${icon('flame', 'ico')}שבת קודש</h3>${sched(yv.shabbat)}<p class="snote c">${esc(yv.shabbatNote)}</p></div></section>
 <section class="band" id="lessons"><div class="wrap"><h2 class="sh">שיעורי תורה</h2><p class="shsub">שיעורים קבועים בבתי המדרש ובכוללים</p>${sched(yv.lessons)}<div class="card wide">${icon('users', 'ico lg')}<h3>אבות ובנים</h3><p>${esc(yv.fathers)}</p></div></div></section>
@@ -222,6 +223,45 @@ ${mk.attendants.map(([n, ts]) => `<li>${icon('users', 'ico')}<span><b>בלנית
 <section class="band final" id="visit"><div class="wrap narrow"><h2>הגעה למקווה</h2><p>${esc(mk.address)}</p>${navBtns(mk.navQuery)}<p class="small"><a href="/yavniel/">← עוד על יבנאל: זמני תפילה, מקוואות ושירותים</a></p></div></section>
 <div class="stickcta duo"><a class="btn" href="tel:${tel(mk.phone)}">${icon('phone', 'ico sm')}התקשרו</a><a class="btn ghost" href="#visit">${icon('nav', 'ico sm')}ניווט</a></div>`,
   { desc: 'מקווה מלכה ביבנאל: מקווה טהרה לנשים, הבטחת הצדיק מיבנאל, שעות פעילות, טלפונים וניווט', path: '/mikveh-malka/', full: true, head: phead('יבנאל · מקווה טהרה לנשים', 'מקווה מלכה', esc(mk.lead), `<div class="navbtns hcta"><a class="btn" href="tel:${tel(mk.phone)}">${icon('phone', 'ico sm')}התקשרו למקווה</a><a class="btn ghost light" href="#visit">${icon('nav', 'ico sm')}ניווט</a></div>`) }));
+
+// The Tzaddik of Yavniel: biography and tziyun (grave) pages, with structured data for search and AI engines
+const ld = (o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
+const absu = (p) => (ORIGIN ? ORIGIN + BASE + p : undefined);
+const crumbs = (xs) => ({ '@type': 'BreadcrumbList', itemListElement: xs.map(([n, p], i) => ({ '@type': 'ListItem', position: i + 1, name: n, ...(absu(p) ? { item: absu(p) } : {}) })) });
+const faqLd = (xs) => ({ '@type': 'FAQPage', mainEntity: xs.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) });
+const faqHtml = (xs) => `<div class="faqs">${xs.map(([q, a], n) => `<details class="faq"${n ? '' : ' open'}><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</div>`;
+const facts = (xs) => `<dl class="facts">${xs.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
+const srcList = (xs) => `<section class="band srcs"><div class="wrap narrow"><h2>מקורות</h2>${ul(xs.map(([t, u]) => `<a href="${url(u)}" rel="noopener">${esc(t)}</a>`))}</div></section>`;
+const person = { '@type': 'Person', ...(absu('/moharash/') ? { '@id': absu('/moharash/') + '#person', url: absu('/moharash/') } : {}), name: 'רבי אליעזר שלמה שיק', alternateName: ['מוהרא״ש', 'מוהרא"ש', 'הצדיק מיבנאל', 'הצדיק מיבניאל', 'Rabbi Eliezer Shlomo Schick', 'Moharash'], birthDate: '1940-05-29', deathDate: '2015-02-06', birthPlace: { '@type': 'Place', name: 'תל אביב' }, deathPlace: { '@type': 'Place', name: 'ניו יורק' }, description: mo.lead, knowsAbout: ['חסידות ברסלב', 'רבי נחמן מברסלב'], sameAs: mo.sources.slice(0, 2).map(([, u]) => u) };
+
+write('moharash/index.html', layout(mo.title, `<section class="band"><div class="wrap"><div class="bio-top"><div class="about lead1">${ps(mo.summary)}<p class="small">${esc(mo.acronym)}</p></div><aside class="factbox" aria-label="פרטים עיקריים"><h2>${esc(mo.name)}</h2>${facts(mo.facts)}</aside></div></div></section>
+<section class="band soft" id="life"><div class="wrap narrow"><h2 class="sh">תולדות חייו</h2><p class="shsub">מתל אביב וירושלים, דרך ניו יורק, ועד יבנאל</p><ol class="tline">${mo.life.map(([t, d]) => `<li><b>${esc(t)}</b><p>${esc(d)}</p></li>`).join('')}</ol><p class="tnote">${esc(mo.community)}</p></div></section>
+<section class="band" id="teachings"><div class="wrap"><h2 class="sh">דרכו והדרכותיו</h2><p class="shsub">הנקודות שעליהן העמיד את תלמידיו, בדרכו של רבי נחמן מברסלב</p><div class="grid notes tch">${mo.teachings.map(([t, d, src]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p>${src ? `<span class="go">${esc(src)}</span>` : ''}</div>`).join('')}</div>
+<div class="card wide"><h3>סדר הלימוד היומי: חמישה־עשר מקורות</h3><ul class="chips2">${mo.sources15.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div></section>
+<section class="band quoteband"><div class="wrap"><blockquote class="pq small"><p>${esc(mo.legacyQuote)}</p><cite>${esc(mo.legacyBy)}</cite></blockquote></div></section>
+<section class="band" id="books"><div class="wrap"><h2 class="sh">ספריו</h2><p class="shsub">ירושתו העיקרית: אלפי מכתבים ועשרות ספרים</p><ul class="inst-list books">${mo.books.map(([n, d]) => `<li>${icon('book', 'ico')}<span><b>${esc(n)}</b><small>${esc(d)}</small></span></li>`).join('')}</ul>
+<div class="svc two"><a class="card hl" href="/shut/">${icon('book', 'ico lg')}<h3>שו״ת ברסלב באתר</h3><p>${shut.length.toLocaleString('he-IL')} שאלות ותשובות שכתב מוהרא״ש, בעבודת ה׳, באמונה, בתפילה ובהתבודדות.</p><span class="go">לשאלות ולתשובות ←</span></a><a class="card" href="/print/">${icon('print', 'ico lg')}<h3>הדפסת ״אשר בנחל״</h3><p>שותפות בהדפסת ספרי הצדיק והפצתם, כבקשתו לפני פטירתו.</p><span class="go">להצטרפות ←</span></a></div></div></section>
+${ysect('passing', 'soft', 'פטירתו', '', `<div class="about">${ps(mo.passing)}</div>`)}
+<section class="band" id="tziyun-cta"><div class="wrap"><a class="feature" href="/moharash/tziyun/"><span class="fic">${icon('flame', 'ico lg')}</span><span class="ftxt"><em>ציון הצדיק ביבנאל</em><b>ציון מוהרא״ש</b><span>ההבטחות לבאים אל קברו, ההילולה בי״ז בשבט ודרכי הגעה.</span></span><span class="btn">לדף הציון ←</span></a></div></section>
+<section class="band soft" id="faq"><div class="wrap narrow"><h2 class="sh">שאלות נפוצות</h2><p class="shsub">בקצרה, על הצדיק מיבנאל</p>${faqHtml(mo.faq)}</div></section>
+${srcList(mo.sources)}`,
+  { desc: 'מוהרא״ש, הצדיק מיבנאל: רבי אליעזר שלמה שיק (1940–2015), מנהיג בחסידות ברסלב, מייסד היכל הקודש ומחבר אשר בנחל. תולדות חייו, דרכו, ספריו וציונו ביבנאל.', path: '/moharash/', full: true,
+    head: phead('רבי אליעזר שלמה שיק זצ״ל', esc(mo.title), esc(mo.lead), `${anchors([['life', 'תולדות חייו'], ['teachings', 'דרכו'], ['books', 'ספריו'], ['passing', 'פטירתו'], ['faq', 'שאלות נפוצות']])}<div class="navbtns hcta"><a class="btn" href="/moharash/tziyun/">${icon('flame', 'ico sm')}לציון הצדיק</a><a class="btn ghost" href="/shut/">${icon('book', 'ico sm')}שו״ת ברסלב</a></div>`),
+    head_extra: ld({ '@context': 'https://schema.org', '@graph': [person, crumbs([['בית', '/'], [mo.title, '/moharash/']]), faqLd(mo.faq)] }) }));
+
+const tz = mo.tziyun;
+write('moharash/tziyun/index.html', layout(tz.title, `<section class="band"><div class="wrap"><ul class="clist quick">${tz.quick.map(([ic, k, v]) => `<li>${icon(ic, 'ico')}<span><b>${esc(k)}</b>${esc(v)}</span></li>`).join('')}</ul><div class="wrap narrow about lead1 pad">${ps(tz.summary)}<p>על חייו ופועלו: <a href="/moharash/">מוהרא״ש, הצדיק מיבנאל ←</a></p></div></div></section>
+<section class="band quoteband" id="vow"><div class="wrap"><p class="kicker2">ההבטחה שעל המצבה</p><blockquote class="pq small"><p>${esc(tz.vow)}</p><cite>${esc(tz.vowNote)}</cite></blockquote></div></section>
+<section class="band" id="promises"><div class="wrap narrow"><h2 class="sh">הבטחות לבאים אל קברו</h2>${orn}<div class="about"><p>${esc(tz.promisesLead)}</p></div>${tz.promises.map(([q, by]) => `<figure class="letterq"><blockquote>${esc(q)}</blockquote><figcaption>${esc(by)}</figcaption></figure>`).join('')}<div class="vow"><span class="kicker2">ולצד זה: אומן</span><p>${esc(tz.uman)}</p></div></div></section>
+${ysect('hillula', 'soft', 'הילולת הצדיק מיבנאל', '', `<div class="about"><p>${esc(tz.hillula)}</p></div>`)}
+<section class="band" id="directions"><div class="wrap"><h2 class="sh">דרכי הגעה</h2><p class="shsub">הציון נמצא ביבנאל, בגליל התחתון, כעשרים דקות מטבריה</p><div class="steps3">${tz.routes.map(([t, d], i) => `<div class="card"><span class="num">${i + 1}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div><p class="snote c">${esc(tz.transit)}</p></div></section>
+<section class="band final" id="visit"><div class="wrap narrow"><h2>ניווט לציון</h2><p>בוויז מחפשים ״${esc(tz.nav)}״</p>${navBtns(tz.nav)}<p class="small"><a href="/yavniel/">← ביבנאל: זמני תפילה, מקוואות ובית התבשיל</a></p></div></section>
+<section class="band soft" id="faq"><div class="wrap narrow"><h2 class="sh">שאלות נפוצות</h2><p class="shsub">על ציון מוהרא״ש</p>${faqHtml(tz.faq)}</div></section>
+${srcList(mo.sources.slice(0, 2))}
+<div class="stickcta duo"><a class="btn" href="${url(`https://www.waze.com/ul?q=${encodeURIComponent(tz.nav)}&navigate=yes`)}" rel="noopener">${icon('nav', 'ico sm')}ניווט ב־Waze</a><a class="btn ghost" href="#directions">${icon('pin', 'ico sm')}דרכי הגעה</a></div>`,
+  { desc: 'ציון מוהרא״ש, קבר הצדיק מיבנאל: היכן נמצא, ההבטחה לרווקים ורווקות החרוטה על המצבה, ההילולה בי״ז בשבט ודרכי הגעה ליבנאל.', path: '/moharash/', self: '/moharash/tziyun/', full: true,
+    head: phead('יבנאל · הגליל התחתון', esc(tz.title), esc(tz.lead), `<div class="navbtns hcta"><a class="btn" href="#visit">${icon('nav', 'ico sm')}ניווט לציון</a><a class="btn ghost" href="#vow">${icon('star', 'ico sm')}ההבטחה</a></div>`),
+    head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': ['Cemetery', 'TouristAttraction'], name: tz.title, alternateName: ['קבר מוהרא״ש', 'ציון הצדיק מיבנאל', 'קבר הצדיק מיבנאל'], description: tz.summary[0], address: { '@type': 'PostalAddress', addressLocality: 'יבנאל', addressCountry: 'IL' }, containedInPlace: { '@type': 'Place', name: 'יבנאל' }, ...(absu('/moharash/tziyun/') ? { url: absu('/moharash/tziyun/') } : {}), subjectOf: person }, crumbs([['בית', '/'], [mo.title, '/moharash/'], ['ציון מוהרא״ש', '/moharash/tziyun/']]), faqLd(tz.faq)] }) }));
 
 // Halacha
 write('halacha/index.html', layout('שו״ת הלכתי', `${halacha.length ? `${sr('רשימת השאלות')}<div class="grid">${halacha.map((x) => card(x, '/halacha/')).join('')}</div>` : `<div class="empty">${icon('scale', 'ico lg')}<h2>המדור בבנייה</h2><p>השאלות וההלכות יתווספו בקרוב.</p><p><a class="btn" href="/shut/">בינתיים, לשו״ת ברסלב</a></p></div>`}`, { path: '/halacha/', head: phead('הלכה למעשה', 'שו״ת הלכתי', 'שאלות ותשובות בהלכה, בבירור ובפשטות.') }));
@@ -306,6 +346,8 @@ write('about/index.html', layout('אודות', doc([
     `<a href="/halacha/">שו״ת הלכתי</a>: שאלות ותשובות בהלכה.`,
     `<a href="/yeshiva/">ישיבת בית מנחם</a>: ישיבה חסידית בדרך רבינו.`,
     `<a href="/print/">הדפסת ״אשר בנחל״</a>: שותפות בהדפסת ספרי הצדיק והפצתם.`,
+    `<a href="/moharash/">הצדיק מיבנאל</a>: תולדות חייו של מוהרא״ש, דרכו וספריו, ו<a href="/moharash/tziyun/">ציונו ביבנאל</a>.`,
+    `<a href="/yavniel/">יבנאל</a> ו<a href="/mikveh-malka/">מקווה מלכה</a>: מידע על המקום, זמני תפילה ושירותים.`,
   ])],
   ['על התוכן', P('שו״ת ברסלב נכתב על ידי הצדיק מיבניאל זצ״ל, ופורסם ברשות להעתקה והפצה, והשאלות והתשובות מובאות כפי שנכתבו. שאר התכנים באתר אינם מאת הצדיק מיבניאל, ובחלקם הוא מוזכר.'), P(`מצאתם טעות, או שאלה שלכם מופיעה ואתם מבקשים להסיר פרט מזהה? כתבו לנו ${contactLink}.`)],
   ['שימוש בתשובות', P('התשובות נכתבו לשואלים מסוימים, לפי מצבם ושאלתם. בשאלה הלכתית או אישית למעשה, יש להתייעץ עם רב מורה הוראה.')],
@@ -367,7 +409,27 @@ write('privacy/index.html', layout('מדיניות פרטיות ותנאי שי�
 write('404.html', layout('הדף לא נמצא', `<div class="empty">${icon('search', 'ico lg')}<h2>הדף שחיפשתם לא נמצא</h2><p>ייתכן שהקישור שגוי, או שהדף הועבר. נסו לחפש:</p>${searchForm.replace('class="hsearch"', 'class="hsearch light"')}<p><a class="btn" href="/">לדף הבית</a> <a class="btn ghost" href="/shut/">לשו״ת ברסלב</a></p></div>`, { path: '', self: '/404.html', index: false, head: phead('שגיאה 404', 'הדף לא נמצא') }));
 
 write('site.webmanifest', JSON.stringify({ name: SITE, short_name: SITE, description: DESC, lang: 'he', dir: 'rtl', start_url: `${BASE}/`, scope: `${BASE}/`, display: 'standalone', background_color: '#0b1d50', theme_color: '#0b1d50', icons: [192, 512].map((n) => ({ src: `${BASE}/img/icon-${n}.png`, sizes: `${n}x${n}`, type: 'image/png', purpose: 'any maskable' })) }));
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
+// llms.txt: a plain summary of the site for AI engines (https://llmstxt.org)
+write('llms.txt', `# ${SITE}
+
+> אתר חסידות ברסלב של קהילת "היכל הקודש": שו״ת ברסלב מאת מוהרא״ש, רבי אליעזר שלמה שיק זצ״ל (הצדיק מיבנאל), מכתבים, ומידע על יבנאל ועל הקהילה.
+
+## הצדיק מיבנאל
+- [מוהרא״ש – הצדיק מיבנאל](${ORIGIN + BASE}/moharash/): ${nik(mo.lead)}
+- [ציון מוהרא״ש – קבר הצדיק מיבנאל](${ORIGIN + BASE}/moharash/tziyun/): ${nik(mo.tziyun.lead)}
+
+## יבנאל
+- [יבנאל](${ORIGIN + BASE}/yavniel/): ${nik(yv.lead)} תולדות, קהילה, זמני תפילה, שיעורים ומקוואות.
+- [מקווה מלכה](${ORIGIN + BASE}/mikveh-malka/): ${nik(mk.lead)}
+
+## תוכן
+- [שו״ת ברסלב](${ORIGIN + BASE}/shut/): ${shut.length} שאלות ותשובות שכתב מוהרא״ש בעבודת ה׳, אמונה, תפילה והתבודדות.
+- [מכתבים](${ORIGIN + BASE}/letters/): מכתבים כלליים לאנשי שלומנו.
+- [הדפסת אשר בנחל](${ORIGIN + BASE}/print/): שותפות בהדפסת ספרי הצדיק.
+- [ישיבת בית מנחם](${ORIGIN + BASE}/yeshiva/)
+- [אודות](${ORIGIN + BASE}/about/)
+`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/moharash/', '/moharash/tziyun/', '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
 write('robots.txt', `User-agent: *\nAllow: /\n${ORIGIN ? `Sitemap: ${ORIGIN}${BASE}/sitemap.xml\n` : ''}`);
 // HTTP security headers (honoured by Netlify; GitHub Pages ignores this file and relies on the meta CSP).
 write('_headers', `/*
