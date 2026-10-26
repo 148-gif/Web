@@ -235,11 +235,11 @@ const srcList = (xs) => `<section class="band srcs"><div class="wrap narrow"><h2
 const person = { '@type': 'Person', ...(absu('/moharash/') ? { '@id': absu('/moharash/') + '#person', url: absu('/moharash/') } : {}), name: 'רבי אליעזר שלמה שיק', alternateName: ['מוהרא״ש', 'מוהרא"ש', 'הצדיק מיבנאל', 'הצדיק מיבניאל', 'Rabbi Eliezer Shlomo Schick', 'Moharash'], birthDate: '1940-05-29', deathDate: '2015-02-06', birthPlace: { '@type': 'Place', name: 'תל אביב' }, deathPlace: { '@type': 'Place', name: 'ניו יורק' }, description: mo.lead, knowsAbout: ['חסידות ברסלב', 'רבי נחמן מברסלב'], sameAs: mo.sources.slice(0, 2).map(([, u]) => u) };
 
 write('moharash/index.html', layout(mo.title, `<section class="band"><div class="wrap"><div class="bio-top"><div class="about lead1">${ps(mo.summary)}<p class="small">${esc(mo.acronym)}</p></div><aside class="factbox" aria-label="פרטים עיקריים"><h2>${esc(mo.name)}</h2>${facts(mo.facts)}</aside></div></div></section>
-<section class="band soft" id="life"><div class="wrap narrow"><h2 class="sh">תולדות חייו</h2><p class="shsub">מתל אביב וירושלים, דרך ניו יורק, ועד יבנאל</p><ol class="tline">${mo.life.map(([t, d]) => `<li><b>${esc(t)}</b><p>${esc(d)}</p></li>`).join('')}</ol><p class="tnote">${esc(mo.community)}</p></div></section>
+<section class="band soft" id="life"><div class="wrap narrow"><h2 class="sh">תולדות חייו</h2><p class="shsub">מתל אביב וירושלים, דרך ניו יורק, ועד יבנאל</p><p class="snote c">${esc(mo.lifeLead)} <a href="/library/regey-moharash/">לספר ←</a></p><ol class="tline">${mo.life.map(([t, d]) => `<li><b>${esc(t)}</b><p>${esc(d)}</p></li>`).join('')}</ol><p class="tnote">${esc(mo.community)}</p></div></section>
 <section class="band" id="teachings"><div class="wrap"><h2 class="sh">דרכו והדרכותיו</h2><p class="shsub">הנקודות שעליהן העמיד את תלמידיו, בדרכו של רבי נחמן מברסלב</p><div class="grid notes tch">${mo.teachings.map(([t, d, src]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p>${src ? `<span class="go">${esc(src)}</span>` : ''}</div>`).join('')}</div>
 <div class="card wide"><h3>סדר הלימוד היומי: חמישה־עשר מקורות</h3><ul class="chips2">${mo.sources15.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div></section>
 <section class="band quoteband"><div class="wrap"><blockquote class="pq small"><p>${esc(mo.legacyQuote)}</p><cite>${esc(mo.legacyBy)}</cite></blockquote></div></section>
-<section class="band" id="books"><div class="wrap"><h2 class="sh">ספריו</h2><p class="shsub">ירושתו העיקרית: אלפי מכתבים ועשרות ספרים</p><ul class="inst-list books">${mo.books.map(([n, d]) => `<li>${icon('book', 'ico')}<span><b>${esc(n)}</b><small>${esc(d)}</small></span></li>`).join('')}</ul>
+<section class="band" id="books"><div class="wrap"><h2 class="sh">ספריו</h2><p class="shsub">ירושתו העיקרית: אלפי מכתבים ועשרות ספרים</p><ul class="inst-list books">${mo.books.map(([n, d]) => `<li>${icon('book', 'ico')}<span><b>${n === mo.regey.title ? `<a href="/library/${mo.regey.slug}/">${esc(n)}</a>` : esc(n)}</b><small>${esc(d)}</small></span></li>`).join('')}</ul>
 <div class="svc two"><a class="card hl" href="/shut/">${icon('book', 'ico lg')}<h3>שו״ת ברסלב באתר</h3><p>${shut.length.toLocaleString('he-IL')} שאלות ותשובות שכתב מוהרא״ש, בעבודת ה׳, באמונה, בתפילה ובהתבודדות.</p><span class="go">לשאלות ולתשובות ←</span></a><a class="card" href="/print/">${icon('print', 'ico lg')}<h3>הדפסת ״אשר בנחל״</h3><p>שותפות בהדפסת ספרי הצדיק והפצתם, כבקשתו לפני פטירתו.</p><span class="go">להצטרפות ←</span></a></div></div></section>
 ${ysect('passing', 'soft', 'פטירתו', '', `<div class="about">${ps(mo.passing)}</div>`)}
 <section class="band" id="tziyun-cta"><div class="wrap"><a class="feature" href="/moharash/tziyun/"><span class="fic">${icon('flame', 'ico lg')}</span><span class="ftxt"><em>ציון הצדיק ביבנאל</em><b>ציון מוהרא״ש</b><span>ההבטחות לבאים אל קברו, ההילולה בי״ז בשבט ודרכי הגעה.</span></span><span class="btn">לדף הציון ←</span></a></div></section>
@@ -262,6 +262,24 @@ ${srcList(mo.sources.slice(0, 2))}
   { desc: 'ציון מוהרא״ש, קבר הצדיק מיבנאל: היכן נמצא, ההבטחה לרווקים ורווקות החרוטה על המצבה, ההילולה בי״ז בשבט ודרכי הגעה ליבנאל.', path: '/moharash/', self: '/moharash/tziyun/', full: true,
     head: phead('יבנאל · הגליל התחתון', esc(tz.title), esc(tz.lead), `<div class="navbtns hcta"><a class="btn" href="#visit">${icon('nav', 'ico sm')}ניווט לציון</a><a class="btn ghost" href="#vow">${icon('star', 'ico sm')}ההבטחה</a></div>`),
     head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': ['Cemetery', 'TouristAttraction'], name: tz.title, alternateName: ['קבר מוהרא״ש', 'ציון הצדיק מיבנאל', 'קבר הצדיק מיבנאל'], description: tz.summary[0], address: { '@type': 'PostalAddress', addressLocality: 'יבנאל', addressCountry: 'IL' }, containedInPlace: { '@type': 'Place', name: 'יבנאל' }, ...(absu('/moharash/tziyun/') ? { url: absu('/moharash/tziyun/') } : {}), subjectOf: person }, crumbs([['בית', '/'], [mo.title, '/moharash/'], ['ציון מוהרא״ש', '/moharash/tziyun/']]), faqLd(tz.faq)] }) }));
+
+// Library: book pages (first: Regey Moharash) and an index
+const rg = mo.regey;
+const bookUrl = `/library/${rg.slug}/`;
+const pdfBtns = `<div class="navbtns"><a class="btn" href="${rg.pdf}" target="_blank" rel="noopener">${icon('book', 'ico sm')}קריאה בספר</a><a class="btn ghost" href="${rg.pdf}" download>${icon('print', 'ico sm')}הורדה (PDF, ${rg.pdfSize})</a></div>`;
+write(`library/${rg.slug}/index.html`, layout(rg.title, `<section class="band"><div class="wrap"><div class="bio-top"><div class="about lead1">${ps(rg.about)}</div><aside class="factbox" aria-label="פרטי הספר"><h2>${esc(rg.title)}</h2>${facts(rg.facts)}<div class="fbtns">${pdfBtns}</div></aside></div></div></section>
+<section class="band soft" id="contents"><div class="wrap"><h2 class="sh">מה בספר</h2><p class="shsub">שישה פרקי חיים, מלידתו ועד ״ארך אפיים״</p><div class="steps3 six">${rg.parts.map(([t, x], i) => `<div class="card"><span class="num">${i + 1}</span><h3>${esc(t)}</h3><p>${esc(x)}</p></div>`).join('')}</div></div></section>
+<section class="band quoteband"><div class="wrap"><p class="kicker2">על הדפסת ספריו</p><blockquote class="pq small"><p>${esc(rg.noCopyright)}</p><cite>${esc(rg.noCopyrightBy)}</cite></blockquote></div></section>
+<section class="band final" id="read"><div class="wrap narrow"><h2>לקריאה ולהורדה</h2><p>הספר המלא, מנוקד, כפי שיצא לאור.</p>${pdfBtns}<p class="small"><a href="/moharash/">← על מוהרא״ש, הצדיק מיבנאל</a></p></div></section>`,
+  { desc: `${rg.title}: ${rg.lead}`, path: '/library/', self: bookUrl, full: true,
+    head: phead('ספרי הצדיק', esc(rg.title), esc(rg.lead), `<div class="navbtns hcta"><a class="btn" href="${rg.pdf}" target="_blank" rel="noopener">${icon('book', 'ico sm')}קריאה בספר</a><a class="btn ghost" href="#contents">מה בספר</a></div>`),
+    head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'Book', name: rg.title, author: person, inLanguage: 'he', description: rg.lead, about: person, bookFormat: 'https://schema.org/EBook', numberOfPages: 115, isAccessibleForFree: true, ...(absu(rg.pdf) ? { url: absu(bookUrl), workExample: { '@type': 'Book', bookFormat: 'https://schema.org/EBook', encodingFormat: 'application/pdf', url: absu(rg.pdf) } } : {}) }, crumbs([['בית', '/'], ['ספרייה', '/library/'], [rg.title, bookUrl]])] }) }));
+
+write('library/index.html', layout('ספרי הצדיק', `<div class="grid">
+<a class="card book" href="${bookUrl}">${icon('book', 'ico lg')}<h3>${esc(rg.title)}</h3><p>${esc(rg.sub)}</p><span class="go">לספר ←</span></a>
+<a class="card book" href="/shut/">${icon('book', 'ico lg')}<h3>שו״ת ברסלב</h3><p>${shut.length.toLocaleString('he-IL')} שאלות ותשובות, לקריאה באתר</p><span class="go">לשאלות ולתשובות ←</span></a>
+</div><div class="empty soonbox">${icon('book', 'ico lg')}<h2>ספרים נוספים בדרך</h2><p>ספריו של מוהרא״ש יתווספו לספרייה בהדרגה.</p></div>`,
+  { desc: 'ספרייה: ספריו של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה', path: '/library/', head: phead('מוהרא״ש · הצדיק מיבנאל', 'ספרי הצדיק', 'ספרי מוהרא״ש לקריאה ולהורדה.') }));
 
 // Halacha
 write('halacha/index.html', layout('שו״ת הלכתי', `${halacha.length ? `${sr('רשימת השאלות')}<div class="grid">${halacha.map((x) => card(x, '/halacha/')).join('')}</div>` : `<div class="empty">${icon('scale', 'ico lg')}<h2>המדור בבנייה</h2><p>השאלות וההלכות יתווספו בקרוב.</p><p><a class="btn" href="/shut/">בינתיים, לשו״ת ברסלב</a></p></div>`}`, { path: '/halacha/', head: phead('הלכה למעשה', 'שו״ת הלכתי', 'שאלות ותשובות בהלכה, בבירור ובפשטות.') }));
@@ -417,6 +435,7 @@ write('llms.txt', `# ${SITE}
 ## הצדיק מיבנאל
 - [מוהרא״ש – הצדיק מיבנאל](${ORIGIN + BASE}/moharash/): ${nik(mo.lead)}
 - [ציון מוהרא״ש – קבר הצדיק מיבנאל](${ORIGIN + BASE}/moharash/tziyun/): ${nik(mo.tziyun.lead)}
+- [רגעי מוהרא״ש](${ORIGIN + BASE}/library/regey-moharash/): ${nik(mo.regey.lead)} PDF מלא: ${ORIGIN + BASE}${mo.regey.pdf}
 
 ## יבנאל
 - [יבנאל](${ORIGIN + BASE}/yavniel/): ${nik(yv.lead)} תולדות, קהילה, זמני תפילה, שיעורים ומקוואות.
@@ -429,7 +448,7 @@ write('llms.txt', `# ${SITE}
 - [ישיבת בית מנחם](${ORIGIN + BASE}/yeshiva/)
 - [אודות](${ORIGIN + BASE}/about/)
 `);
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/moharash/', '/moharash/tziyun/', '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/moharash/', '/moharash/tziyun/', '/library/', '/library/regey-moharash/', '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
 write('robots.txt', `User-agent: *\nAllow: /\n${ORIGIN ? `Sitemap: ${ORIGIN}${BASE}/sitemap.xml\n` : ''}`);
 // HTTP security headers (honoured by Netlify; GitHub Pages ignores this file and relies on the meta CSP).
 write('_headers', `/*
