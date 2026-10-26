@@ -50,4 +50,29 @@ if (stick && 'IntersectionObserver' in window) {
   const io = new IntersectionObserver((es) => { es.forEach((e) => (e.isIntersecting ? seen.add(e.target) : seen.delete(e.target))); stick.classList.toggle('show', !seen.size); });
   document.querySelectorAll('.phero2 .btn, .phead .btn, .final .btn, #donate').forEach((el) => io.observe(el));
 } else if (stick) stick.classList.add('show');
+
+// Book reader: hide/show vowel marks (remembered), and remember the last section read per book.
+const sheetEl = document.querySelector('.book-sheet'), nikBtn = document.querySelector('[data-nikud]');
+if (sheetEl && nikBtn) {
+  const orig = new Map(), nodes = [];
+  const walk = document.createTreeWalker(sheetEl, NodeFilter.SHOW_TEXT);
+  while (walk.nextNode()) nodes.push(walk.currentNode);
+  const setNik = (off) => {
+    nodes.forEach((n) => { if (!orig.has(n)) orig.set(n, n.nodeValue); n.nodeValue = off ? orig.get(n).replace(/[֑-ׇ]/g, '') : orig.get(n); });
+    nikBtn.setAttribute('aria-pressed', String(off)); nikBtn.textContent = off ? 'עם ניקוד' : 'בלי ניקוד';
+  };
+  let off = false;
+  try { off = localStorage.getItem('nikud') === '0'; } catch (e) {}
+  setNik(off);
+  nikBtn.addEventListener('click', () => { off = !off; setNik(off); try { localStorage.setItem('nikud', off ? '0' : '1'); } catch (e) {} });
+}
+const art = document.querySelector('article[data-book]');
+if (art) try { localStorage.setItem(`book:${art.dataset.book}`, JSON.stringify({ u: location.pathname, c: art.dataset.ch })); } catch (e) {}
+document.querySelectorAll('[data-continue]').forEach((el) => {
+  let v = null;
+  try { v = JSON.parse(localStorage.getItem(`book:${el.dataset.continue}`)); } catch (e) {}
+  if (!v || !v.u) return;
+  const a = document.createElement('a'); a.className = 'btn'; a.href = v.u; a.textContent = `להמשיך מהמקום שעצרתם: ${v.c} ←`;
+  el.append(a); el.hidden = false;
+});
 }
