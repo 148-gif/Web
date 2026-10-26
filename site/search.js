@@ -14,7 +14,7 @@ const run = () => {
   count.textContent = (hits.length ? `נמצאו ${hits.length} תוצאות${hits.length > 50 ? ' (מוצגות 50 הראשונות)' : ''}` : shards < total ? 'מחפש…' : 'לא נמצאו תוצאות') + (hits.length ? more : '');
   const frag = document.createDocumentFragment();
   for (const r of hits.slice(0, 50)) {
-    const a = document.createElement('a'); a.className = 'card qcard'; a.href = `${root}shut/${r.id}/`;
+    const a = document.createElement('a'); a.className = 'card qcard'; a.href = `${root}${r.id}/`;
     const h = document.createElement('h3'); h.textContent = r.title; a.append(h); frag.append(a);
   }
   out.append(frag);

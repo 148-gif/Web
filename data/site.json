@@ -1,0 +1,20 @@
+{
+  "contact": {
+    "phone": "",
+    "whatsapp": "",
+    "email": "",
+    "address": "",
+    "hours": ""
+  },
+  "org": {
+    "name": "",
+    "number": "",
+    "section46": false
+  },
+  "accessibility": {
+    "coordinator": "",
+    "phone": "",
+    "email": "",
+    "updated": "26.10.2026"
+  }
+}
