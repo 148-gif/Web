@@ -94,6 +94,13 @@ const ICON = {
   pin: '<path d="M12 21s-7-6.1-7-11.5a7 7 0 0 1 14 0C19 14.9 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>',
   chat: '<path d="M4 19.5 5.3 15A8 8 0 1 1 8.6 18.4Z"/><path d="M9 10h6M9 13h4"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  drop: '<path d="M12 3s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11Z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/>',
+  nav: '<path d="M3 11 21 3l-8 18-2-8z"/>',
+  meal: '<path d="M5 3v7a3 3 0 0 0 6 0V3M8 3v18"/><path d="M18 21V3c-2.2 1.4-3.5 4-3.5 7.5S15.8 14 18 14"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.3A5 5 0 0 1 21.5 19"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  mountain: '<path d="m2 20 7-12 4 6.5 3-4.5 6 10z"/><circle cx="17" cy="6" r="1.8"/>',
 };
 const icon = (n, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
 const orn = `<div class="orn-rule" aria-hidden="true"><i></i>${icon('flame')}<i></i></div>`;
@@ -166,31 +173,54 @@ ${y.photos.length ? `<section class="band"><div class="wrap"><h2 class="sh">גל
   { desc: 'בית מנחם, ישיבה חסידית. בחורים הלומדים בהתמדה בדרך הצדיק', path: '/yeshiva/', full: true, head: `<section class="phead yhero"><div class="wrap"><div class="emblem"><img src="/img/logo.webp" width="760" height="636" fetchpriority="high" decoding="async" alt="${esc(y.name)} - ${esc(y.subtitle)}"></div><p class="kicker2">${esc(y.banner)}</p><h1>ישיבת ${esc(y.name)}</h1><p class="sub">${esc(y.subtitle)} בדרך רבינו הקדוש רבי נחמן מברסלב</p></div></section>` }));
 
 
-// Yavniel
+// Yavniel and Malka mikveh pages
 const ul = (xs) => `<ul>${xs.map((x) => `<li>${x}</li>`).join('')}</ul>`;
-const navBtns = (q) => `<p class="ctarow"><a class="btn" href="${url(`https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`)}" rel="noopener">ניווט ב־Waze</a> <a class="btn ghost" href="${url(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`)}" rel="noopener">ניווט ב־Google Maps</a></p>`;
 const ps = (xs) => xs.map((p) => `<p>${esc(p)}</p>`).join('');
-const groups = (gs) => gs.map(([t, n, xs]) => `<h3>${esc(t)}</h3>${n ? `<p>${esc(n)}</p>` : ''}${ul(xs.map(esc))}`).join('');
-write('yavniel/index.html', layout('יבנאל', `<section class="band"><div class="wrap narrow"><h2 class="sh">על היישוב</h2>${orn}<div class="about">${ps(yv.intro)}</div></div></section>
-<section class="band soft"><div class="wrap"><h2 class="sh">מסע בזמן</h2><p class="shsub">תחנות בתולדות המושבה</p><div class="needs values">${yv.timeline.map(([t, d]) => `<div class="need"><span class="orn">✦</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div><p class="shsub">${esc(yv.livelihood)}</p></div></section>
-<section class="band"><div class="wrap narrow"><h2 class="sh">קהילת ברסלב ביבנאל</h2>${orn}<div class="about">${ps(yv.community)}</div></div></section>
-<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(yv.cityTitle)}</h2><div class="about">${ps(yv.city)}${yv.quotes.map(([q, by]) => `<blockquote><p>${esc(q)}</p><footer>${esc(by)}</footer></blockquote>`).join('')}</div></div></section>
-<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(yv.fromShutTitle)}</h2><p class="shsub">${esc(yv.fromShutLead)}</p><div class="about">${yv.fromShut.map(([t, ids]) => `<p>${esc(t)} ${ids.map((i) => `<a href="/shut/${i}/">לתשובה ←</a>`).join(' · ')}</p>`).join('')}</div></div></section>
-<section class="band"><div class="wrap narrow"><h2 class="sh">ציון הצדיק</h2>${orn}<div class="about">${ps(yv.zion)}<p>${esc(yv.promiseNote)}</p><blockquote><p>${esc(yv.promise)}</p></blockquote></div></div></section>
-<section class="band soft"><div class="wrap narrow"><h2 class="sh">זמני תפילה בימי חול</h2><div class="about">${groups(yv.weekday)}<p>${esc(yv.weekdayNote)}</p><p>${esc(yv.prayerNote)}</p></div></div></section>
-<section class="band"><div class="wrap narrow"><h2 class="sh">זמני תפילה בשבת</h2><div class="about">${groups(yv.shabbat)}<p>${esc(yv.shabbatNote)}</p></div></div></section>
-<section class="band soft"><div class="wrap narrow"><h2 class="sh">שיעורי תורה</h2><div class="about">${groups(yv.lessons.map(([t, xs]) => [t, '', xs]))}<h3>אבות ובנים</h3><p>${esc(yv.fathers)}</p></div></div></section>
-<section class="band"><div class="wrap narrow"><h2 class="sh">מקוואות</h2><div class="about"><h3>מקווה גברים</h3>${ul(yv.mikvehMen.map(esc))}<p>${esc(yv.mikvehMenNote)}</p><h3>מקווה נשים: מקווה מלכה</h3>${ul(yv.mikvehWomen.map(esc))}<p>${esc(yv.mikvehWomenNote)} <a href="/mikveh-malka/">לדף מקווה מלכה ←</a></p><p>לתיאום הגעה ולפרטים נוספים: <a href="tel:${tel(yv.mikvehWomenPhone)}">${esc(yv.mikvehWomenPhone)}</a></p></div></div></section>
-<section class="band soft"><div class="wrap narrow"><h2 class="sh">בית התבשיל וערב שמחה לנשים</h2><div class="about">${ps(yv.kitchen)}<p>${esc(yv.womenEvening)}</p></div></div></section>
-<section class="band"><div class="wrap narrow"><h2 class="sh">הגעה</h2><div class="about"><p>${esc(yv.directions)}</p>${navBtns(yv.navQuery)}</div><h2 class="sh">מקורות</h2>${ul(yv.sources.map(([t, u]) => `<a href="${url(u)}" rel="noopener">${esc(t)}</a>`))}</div></section>`,
-  { desc: 'יבנאל עיר ברסלב: תולדות המושבה, קהילת חסידי ברסלב, ציון מוהרא״ש, זמני תפילה, מקוואות ושיעורים', path: '/yavniel/', full: true, head: phead('הגליל התחתון', 'יבנאל', esc(yv.lead)) }));
+const navBtns = (q, cls = '') => `<div class="navbtns${cls}"><a class="btn" href="${url(`https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`)}" rel="noopener">${icon('nav', 'ico sm')}ניווט ב־Waze</a><a class="btn ghost" href="${url(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`)}" rel="noopener">${icon('pin', 'ico sm')}Google Maps</a></div>`;
+const anchors = (xs) => `<nav class="chips" aria-label="בעמוד זה">${xs.map(([h, t]) => `<a href="#${h}">${t}</a>`).join('')}</nav>`;
+const ysect = (id, cls, title, sub, body, narrow = true) => `<section class="band${cls ? ' ' + cls : ''}" id="${id}"><div class="wrap${narrow ? ' narrow' : ''}"><h2 class="sh">${title}</h2>${sub ? `<p class="shsub">${sub}</p>` : orn}${body}</div></section>`;
+const sched = (gs) => `<div class="sgrid">${gs.map((g) => `<div class="scard"><h3>${esc(g.title)}</h3>${g.note ? `<p class="snote">${esc(g.note)}</p>` : ''}<dl>${g.rows.map(([t, p]) => `<div><dt>${esc(t)}</dt><dd>${esc(p)}</dd></div>`).join('')}</dl></div>`).join('')}</div>`;
+const hours = (rows) => `<dl class="hrs">${rows.map(([t, v]) => `<div><dt>${esc(t)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
+const statrow = (xs) => `<div class="statrow"><div class="wrap">${xs.map(([b, s]) => `<div><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join('')}</div></div>`;
+const telA = (n) => `<a href="tel:${tel(n)}">${esc(n)}</a>`;
 
-// Malka mikveh
-write('mikveh-malka/index.html', layout('מקווה מלכה', `<section class="band"><div class="wrap narrow"><h2 class="sh">על המקווה</h2>${orn}<div class="about">${ps(mk.about)}</div></div></section>
-<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(mk.storyTitle)}</h2><div class="about">${ps(mk.story)}</div></div></section>
-<section class="band"><div class="wrap narrow"><h2 class="sh">${esc(mk.promiseTitle)}</h2>${orn}<div class="about"><blockquote><p>${esc(mk.promise)}</p></blockquote>${ps(mk.promiseAfter)}</div></div></section>
-<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(mk.hoursTitle)}</h2><div class="about">${ul(mk.hours.map(esc))}<p>${esc(mk.phoneNote)} <a href="tel:${tel(mk.phone)}">${esc(mk.phone)}</a></p><h3>${esc(mk.attendantsTitle)}</h3>${ul(mk.attendants.map(([n, ts]) => `${esc(n)}: ${ts.map((t) => `<a href="tel:${tel(t)}">${esc(t)}</a>`).join(' · ')}`))}<p>כתובת: ${esc(mk.address)}</p>${navBtns(mk.navQuery)}<p><a href="/yavniel/">← לדף יבנאל</a></p></div></div></section>`,
-  { desc: 'מקווה מלכה ביבנאל: מקווה טהרה לנשים, סיפור בנייתו, הבטחת הצדיק מיבנאל, שעות פעילות וטלפון', path: '/mikveh-malka/', full: true, head: phead('יבנאל', 'מקווה מלכה', esc(mk.lead)) }));
+write('yavniel/index.html', layout('יבנאל', `${statrow(yv.stats)}
+${ysect('history', '', 'על היישוב', '', `<div class="about lead1">${ps(yv.intro)}</div>`)}
+<section class="band soft" id="timeline"><div class="wrap narrow"><h2 class="sh">מסע בזמן</h2><p class="shsub">תחנות בתולדות המושבה</p><ol class="tline">${yv.timeline.map(([t, d]) => `<li><b>${esc(t)}</b><p>${esc(d)}</p></li>`).join('')}</ol><p class="tnote">${esc(yv.livelihood)}</p></div></section>
+<section class="band quoteband"><div class="wrap"><blockquote class="pq"><p>${esc(yv.nachman)}</p><cite>${esc(yv.nachmanBy)}</cite></blockquote></div></section>
+${ysect('community', '', 'קהילת ברסלב ביבנאל', '', `<div class="about">${ps(yv.community)}</div>`)}
+<section class="band soft"><div class="wrap"><h2 class="sh">מוסדות וחסד</h2><p class="shsub">מה שהקים מוהרא״ש ביבנאל</p><ul class="inst-list">${yv.institutions.map(([n, d]) => `<li>${icon('school', 'ico')}<span><b>${esc(n)}</b>${d ? `<small>${esc(d)}</small>` : ''}</span></li>`).join('')}</ul><div class="svc">${yv.chesed.map(([ic, t, d]) => `<div class="card">${icon(ic, 'ico lg')}<h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div></div></section>
+${ysect('city', '', esc(yv.cityTitle), '', `<div class="about">${ps(yv.city)}</div>${yv.quotes.map(([q, by]) => `<figure class="letterq"><blockquote>${esc(q)}</blockquote><figcaption>${esc(by)}</figcaption></figure>`).join('')}`)}
+<section class="band soft" id="zion"><div class="wrap narrow"><h2 class="sh">ציון הצדיק</h2>${orn}<div class="about">${ps(yv.zion)}</div><div class="vow"><span class="kicker2">${esc(yv.promiseNote.replace(/:$/, ''))}</span><p>${esc(yv.promise)}</p></div></div></section>
+<section class="band" id="letters"><div class="wrap"><h2 class="sh">${esc(yv.fromShutTitle)}</h2><p class="shsub">${esc(yv.fromShutLead)}</p><div class="grid notes">${yv.fromShut.map(([t, ids]) => `<div class="card"><p>${esc(t)}</p><span class="go">${ids.map((i, n) => `<a href="/shut/${i}/">${ids.length > 1 ? `תשובה ${'אבג'[n]}׳` : 'לתשובה'} ←</a>`).join('')}</span></div>`).join('')}</div></div></section>
+<section class="band soft" id="prayer"><div class="wrap"><h2 class="sh">זמני תפילה</h2><p class="shsub">${esc(yv.prayerNote)}</p><h3 class="subh">${icon('clock', 'ico')}ימי חול</h3>${sched(yv.weekday)}<p class="snote c">${esc(yv.weekdayNote)}</p><h3 class="subh">${icon('flame', 'ico')}שבת קודש</h3>${sched(yv.shabbat)}<p class="snote c">${esc(yv.shabbatNote)}</p></div></section>
+<section class="band" id="lessons"><div class="wrap"><h2 class="sh">שיעורי תורה</h2><p class="shsub">שיעורים קבועים בבתי המדרש ובכוללים</p>${sched(yv.lessons)}<div class="card wide">${icon('users', 'ico lg')}<h3>אבות ובנים</h3><p>${esc(yv.fathers)}</p></div></div></section>
+<section class="band soft" id="services"><div class="wrap"><h2 class="sh">מקוואות ושירותים</h2><p class="shsub">מה שכדאי לדעת לפני שמגיעים</p><div class="svc two">
+<div class="card">${icon('drop', 'ico lg')}<h3>מקווה גברים</h3>${hours(yv.mikvehMen)}<p>${esc(yv.mikvehMenNote)}</p></div>
+<a class="card hl" href="/mikveh-malka/">${icon('drop', 'ico lg')}<h3>מקווה נשים: מקווה מלכה</h3>${hours(yv.mikvehWomen)}<p>${esc(yv.mikvehWomenNote)}</p><span class="go">לדף המקווה, טלפונים וניווט ←</span></a>
+<div class="card">${icon('meal', 'ico lg')}<h3>בית התבשיל ״אהל אברהם״</h3>${ps(yv.kitchen)}</div>
+<div class="card">${icon('heart', 'ico lg')}<h3>ערב שמחה לנשים</h3><p>${esc(yv.womenEvening)}</p></div>
+</div></div></section>
+<section class="band final" id="visit"><div class="wrap narrow"><h2>מגיעים ליבנאל</h2><p>${esc(yv.directions)}</p>${navBtns(yv.navQuery)}</div></section>
+<section class="band srcs"><div class="wrap narrow"><h2>מקורות</h2>${ul(yv.sources.map(([t, u]) => `<a href="${url(u)}" rel="noopener">${esc(t)}</a>`))}</div></section>`,
+  { desc: 'יבנאל עיר ברסלב: תולדות המושבה, קהילת חסידי ברסלב, ציון מוהרא״ש, זמני תפילה, מקוואות ושיעורים', path: '/yavniel/', full: true, head: phead('הגליל התחתון · עיר ברסלב', 'יבנאל', esc(yv.lead), anchors([['history', 'היסטוריה'], ['community', 'הקהילה'], ['zion', 'הציון'], ['prayer', 'זמני תפילה'], ['services', 'מקוואות ושירותים'], ['visit', 'הגעה']])) }));
+
+write('mikveh-malka/index.html', layout('מקווה מלכה', `<section class="band"><div class="wrap"><ul class="clist quick">
+<li>${icon('phone', 'ico')}<span><b>טלפון במקווה</b>${telA(mk.phone)}</span></li>
+<li>${icon('clock', 'ico')}<span><b>שעות פתיחה</b><a href="#hours">משקיעת החמה, בכל ערב</a></span></li>
+<li>${icon('pin', 'ico')}<span><b>כתובת</b><a href="#visit">${esc(mk.address)}</a></span></li></ul>
+<div class="wrap narrow about lead1 pad">${ps(mk.about)}</div>
+<div class="feats">${mk.features.map(([ic, t, d]) => `<div>${icon(ic, 'ico lg')}<b>${esc(t)}</b><span>${esc(d)}</span></div>`).join('')}</div></div></section>
+<section class="band quoteband" id="promise"><div class="wrap"><p class="kicker2">${esc(mk.promiseTitle)}</p><blockquote class="pq small"><p>${esc(mk.promise)}</p><cite>מוהרא״ש זי״ע</cite></blockquote></div></section>
+<section class="band"><div class="wrap"><h2 class="sh">ישועות</h2><p class="shsub">${esc(mk.promiseAfter)}</p><div class="svc tst">${mk.testimonials.map((t) => `<figure class="card"><span class="qm" aria-hidden="true">״</span><blockquote>${esc(t)}</blockquote></figure>`).join('')}</div></div></section>
+${ysect('story', 'soft', esc(mk.storyTitle), '', `<div class="about">${ps(mk.story)}</div>`)}
+<section class="band" id="hours"><div class="wrap narrow"><h2 class="sh">${esc(mk.hoursTitle)}</h2><p class="shsub">${esc(mk.hoursNote)}</p><div class="card">${hours(mk.hours)}</div></div></section>
+<section class="band soft" id="contact"><div class="wrap narrow"><h2 class="sh">טלפונים</h2><p class="shsub">${esc(mk.phoneNote.replace(/:$/, ''))}</p><ul class="clist">
+<li>${icon('phone', 'ico')}<span><b>טלפון במקווה</b>${telA(mk.phone)}</span></li>
+${mk.attendants.map(([n, ts]) => `<li>${icon('users', 'ico')}<span><b>בלנית: ${esc(n)}</b>${ts.map(telA).join('<br>')}</span></li>`).join('')}</ul></div></section>
+<section class="band final" id="visit"><div class="wrap narrow"><h2>הגעה למקווה</h2><p>${esc(mk.address)}</p>${navBtns(mk.navQuery)}<p class="small"><a href="/yavniel/">← עוד על יבנאל: זמני תפילה, מקוואות ושירותים</a></p></div></section>
+<div class="stickcta duo"><a class="btn" href="tel:${tel(mk.phone)}">${icon('phone', 'ico sm')}התקשרו</a><a class="btn ghost" href="#visit">${icon('nav', 'ico sm')}ניווט</a></div>`,
+  { desc: 'מקווה מלכה ביבנאל: מקווה טהרה לנשים, הבטחת הצדיק מיבנאל, שעות פעילות, טלפונים וניווט', path: '/mikveh-malka/', full: true, head: phead('יבנאל · מקווה טהרה לנשים', 'מקווה מלכה', esc(mk.lead), `<div class="navbtns hcta"><a class="btn" href="tel:${tel(mk.phone)}">${icon('phone', 'ico sm')}התקשרו למקווה</a><a class="btn ghost light" href="#visit">${icon('nav', 'ico sm')}ניווט</a></div>`) }));
 
 // Halacha
 write('halacha/index.html', layout('שו״ת הלכתי', `${halacha.length ? `${sr('רשימת השאלות')}<div class="grid">${halacha.map((x) => card(x, '/halacha/')).join('')}</div>` : `<div class="empty">${icon('scale', 'ico lg')}<h2>המדור בבנייה</h2><p>השאלות וההלכות יתווספו בקרוב.</p><p><a class="btn" href="/shut/">בינתיים, לשו״ת ברסלב</a></p></div>`}`, { path: '/halacha/', head: phead('הלכה למעשה', 'שו״ת הלכתי', 'שאלות ותשובות בהלכה, בבירור ובפשטות.') }));
@@ -256,7 +286,7 @@ write('search/index.html', layout('חיפוש', `${sr('תוצאות החיפוש
 // Home
 const tile = (href, ic, t, d) => `<a class="tile" href="${href}">${icon(ic, 'ico lg')}<b>${t}</b><span>${d}</span><i class="arr">${icon('arrow', 'ico sm')}</i></a>`;
 write('index.html', layout(SITE, `<section class="band"><div class="wrap"><div class="tiles">
-${tile('/shut/', 'book', 'שו״ת ברסלב', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות`)}${tile('/letters/', 'letter', 'מכתבים', `${letters.length} מכתבים כלליים`)}${tile('/yeshiva/', 'school', 'ישיבת בית מנחם', 'ישיבה חסידית')}${tile('/halacha/', 'scale', 'שו״ת הלכתי', 'שאלות בהלכה')}${institutions.length ? tile('/institutions/', 'heart', 'מוסדות הקהילה', 'תמיכה ותרומות') : ''}</div>
+${tile('/shut/', 'book', 'שו״ת ברסלב', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות`)}${tile('/letters/', 'letter', 'מכתבים', `${letters.length} מכתבים כלליים`)}${tile('/yeshiva/', 'school', 'ישיבת בית מנחם', 'ישיבה חסידית')}${tile('/halacha/', 'scale', 'שו״ת הלכתי', 'שאלות בהלכה')}${tile('/yavniel/', 'mountain', 'יבנאל', 'עיר ברסלב: קהילה, תפילות ומידע')}${tile('/mikveh-malka/', 'drop', 'מקווה מלכה', 'מקווה טהרה לנשים ביבנאל')}${institutions.length ? tile('/institutions/', 'heart', 'מוסדות הקהילה', 'תמיכה ותרומות') : ''}</div>
 <a class="feature" href="/print/"><span class="fic">${icon('print', 'ico lg')}</span><span class="ftxt"><em>${esc(pr.hero.kicker)}</em><b>הדפסת ״אשר בנחל״</b><span>הצטרפו להדפסת ספרי הצדיק, והיו שותפים בכל עותק שמחזק עוד נפש.</span></span><span class="btn">להצטרפות ←</span></a></div></section>
 <section class="band quoteband"><div class="wrap"><blockquote class="pq"><p>מצוה גדולה להיות בשמחה תמיד</p><cite>ליקוטי מוהר״ן תנינא, סימן כ״ד</cite></blockquote></div></section>
 <section class="band soft"><div class="wrap"><h2 class="sh">מתוך השו״ת</h2><p class="shsub">שאלות שנשאלו ותשובות שנכתבו, מלב אל לב</p><div class="grid">${shut.slice(0, 6).map((x) => card(x)).join('')}</div><p class="ctarow"><a class="btn ghost" href="/shut/">לכל השאלות והתשובות ←</a></p></div></section>`,
