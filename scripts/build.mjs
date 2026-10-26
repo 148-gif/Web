@@ -242,7 +242,7 @@ write('moharash/index.html', layout(mo.title, `<section class="band"><div class=
 <section class="band" id="teachings"><div class="wrap"><h2 class="sh">דרכו והדרכותיו</h2><p class="shsub">הנקודות שעליהן העמיד את תלמידיו, בדרכו של רבי נחמן מברסלב</p><div class="grid notes tch">${mo.teachings.map(([t, d, src]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p>${src ? `<span class="go">${esc(src)}</span>` : ''}</div>`).join('')}</div>
 <div class="card wide"><h3>סדר הלימוד היומי: חמישה־עשר מקורות</h3><ul class="chips2">${mo.sources15.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div></section>
 <section class="band quoteband"><div class="wrap"><blockquote class="pq small"><p>${esc(mo.legacyQuote)}</p><cite>${esc(mo.legacyBy)}</cite></blockquote></div></section>
-<section class="band" id="books"><div class="wrap"><h2 class="sh">ספריו</h2><p class="shsub">ירושתו העיקרית: אלפי מכתבים ועשרות ספרים</p><ul class="inst-list books">${mo.books.map(([n, d]) => `<li>${icon('book', 'ico')}<span><b>${n === regey.title ? `<a href="/library/${regey.slug}/">${esc(n)}</a>` : esc(n)}</b><small>${esc(d)}</small></span></li>`).join('')}</ul>
+<section class="band" id="books"><div class="wrap"><h2 class="sh">ספריו</h2><p class="shsub">ירושתו העיקרית: אלפי מכתבים ועשרות ספרים</p><ul class="inst-list books">${mo.books.map(([n, d]) => `<li>${icon('book', 'ico')}<span><b>${(lib.books.find((x) => x.title === n)) ? `<a href="/library/${lib.books.find((x) => x.title === n).slug}/">${esc(n)}</a>` : esc(n)}</b><small>${esc(d)}</small></span></li>`).join('')}</ul>
 <div class="svc two"><a class="card hl" href="/shut/">${icon('book', 'ico lg')}<h3>שו״ת ברסלב באתר</h3><p>${shut.length.toLocaleString('he-IL')} שאלות ותשובות שכתב מוהרא״ש, בעבודת ה׳, באמונה, בתפילה ובהתבודדות.</p><span class="go">לשאלות ולתשובות ←</span></a><a class="card" href="/print/">${icon('print', 'ico lg')}<h3>הדפסת ״אשר בנחל״</h3><p>שותפות בהדפסת ספרי הצדיק והפצתם, כבקשתו לפני פטירתו.</p><span class="go">להצטרפות ←</span></a></div></div></section>
 ${ysect('passing', 'soft', 'פטירתו', '', `<div class="about">${ps(mo.passing)}</div>`)}
 <section class="band" id="tziyun-cta"><div class="wrap"><a class="feature" href="/moharash/tziyun/"><span class="fic">${icon('flame', 'ico lg')}</span><span class="ftxt"><em>ציון הצדיק ביבנאל</em><b>ציון מוהרא״ש</b><span>ההבטחות לבאים אל קברו, ההילולה בי״ז בשבט ודרכי הגעה.</span></span><span class="btn">לדף הציון ←</span></a></div></section>
@@ -475,7 +475,7 @@ write('llms.txt', `# ${SITE}
 ## הצדיק מיבנאל
 - [מוהרא״ש – הצדיק מיבנאל](${ORIGIN + BASE}/moharash/): ${nik(mo.lead)}
 - [ציון מוהרא״ש – קבר הצדיק מיבנאל](${ORIGIN + BASE}/moharash/tziyun/): ${nik(mo.tziyun.lead)}
-- [רגעי מוהרא״ש](${ORIGIN + BASE}/library/regey-moharash/): ${nik(regey.lead)} PDF מלא: ${ORIGIN + BASE}${regey.pdf}
+${lib.books.map((b) => `- [${b.title}](${ORIGIN + BASE}/library/${b.slug}/): ${nik(b.lead)} PDF: ${ORIGIN + BASE}${b.pdf}`).join('\n')}
 
 ## יבנאל
 - [יבנאל](${ORIGIN + BASE}/yavniel/): ${nik(yv.lead)} תולדות, קהילה, זמני תפילה, שיעורים ומקוואות.
