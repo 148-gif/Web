@@ -1,5 +1,5 @@
 const input = document.getElementById('q'), out = document.getElementById('results'), count = document.getElementById('count');
-const strip = (s) => s.replace(/[֑-ׇ]/g, '');
+const strip = (s) => s.replace(/[֑-ׇ]/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ');
 let index = null, timer;
 const run = () => {
   const terms = strip(input.value).trim().split(/\s+/).filter(Boolean);
@@ -14,4 +14,4 @@ const run = () => {
 };
 input.value = new URLSearchParams(location.search).get('q') || '';
 input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 150); });
-fetch('/search-index.json').then((r) => r.json()).then((d) => { index = d; run(); });
+fetch('/search-index.json', { cache: 'force-cache' }).then((r) => r.json()).then((d) => { index = d; run(); });
