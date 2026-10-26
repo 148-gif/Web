@@ -74,7 +74,7 @@ data = {
   'slug': 'regey-moharash', 'title': 'רגעי מוהרא״ש',
   'intro': {'title': 'הקדמה', 'heading': fix(L[i_intro1]), 'heading2': fix(L[i_intro2]), 'paras': intro_paras, 'notes': intro_notes},
   'sections': sections,
-  'tikkun': {'title': 'תיקון הכללי', 'paras': tik_paras, 'notes': tik_notes},
+  # התיקון הכללי לא נכנס לספר (יש לו דף באתר); tik_paras לבדיקה בלבד
 }
 json.dump(data, open(out, 'w', encoding='utf8'), ensure_ascii=False, indent=1)
 print('sections', len(sections), 'toc', len(toc), 'intro paras', len(intro_paras), 'tikkun paras', len(tik_paras), 'notes', sum(len(s['notes']) for s in sections), 'holam fixes', fixes)
