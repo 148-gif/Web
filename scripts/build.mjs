@@ -50,7 +50,7 @@ for (let p = 1; p <= pages; p++) {
 const y = yeshiva, c = y.contact;
 write('yeshiva/index.html', layout('ישיבת בית מנחם', `<section class="yhero"><img src="/img/logo.jpg" alt="${esc(y.name)} - ${esc(y.subtitle)}"><p class="banner">${esc(y.banner)}</p></section>
 <h1>על הישיבה</h1><div class="about">${y.about.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
-<h2>הדרך שלנו</h2><div class="grid">${y.values.map(([t, d]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+<h2>הדרך שלנו</h2><div class="grid values">${y.values.map(([t, d]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
 <h2>גלריה</h2>${y.photos.length ? `<div class="gallery">${y.photos.map((f) => `<img loading="lazy" src="${esc(f)}" alt="">`).join('')}</div>` : '<div class="empty"><p>התמונות יתווספו בקרוב.</p></div>'}
 <h2>יצירת קשר ותמיכה</h2><div class="card contact">${[c.phone && `<p>טלפון: <a href="tel:${esc(c.phone)}">${esc(c.phone)}</a></p>`, c.email && `<p>דוא״ל: <a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>`, c.address && `<p>כתובת: ${esc(c.address)}</p>`, c.donate && `<p><a class="btn" href="${esc(c.donate)}" rel="noopener">לתרומה לישיבה</a></p>`].filter(Boolean).join('') || '<p>פרטי הקשר יתווספו בקרוב.</p>'}</div>`, { desc: 'בית מנחם, ישיבה חסידית. בחורים הלומדים בהתמדה בדרך הצדיק', path: '/yeshiva/' }));
 

@@ -22,3 +22,26 @@ footer{color:var(--mute);font-size:.85rem;text-align:center;padding-block:32px}
 .gallery{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}.gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;border:2px solid var(--gold)}
 .contact p{margin:.3em 0;color:var(--ink)}
 .kicker{color:var(--gold);font-size:1.3rem;font-weight:700;margin:-.4em 0 .6em;letter-spacing:.04em}.brand{font-size:1.9rem}
+
+/* Mobile */
+html{-webkit-text-size-adjust:100%}
+@media (max-width:640px){
+body{font-size:17px;line-height:1.75}
+header.top{position:sticky;top:0;z-index:10;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:2px;padding:8px 14px 0}
+.brand{font-size:1.5rem;justify-content:center}.brand small{text-align:center}
+nav{flex-wrap:nowrap;overflow-x:auto;gap:2px;margin:0 -14px;padding:0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+nav::-webkit-scrollbar{display:none}nav,.brand{min-width:0}
+nav a{white-space:nowrap;padding:10px 10px 8px;font-size:.98rem}
+main{padding:0 14px}
+h1{font-size:1.6rem;margin-top:.9em}.hero{padding:22px 0 8px}.hero h1{font-size:2rem}.kicker{font-size:1.1rem}
+.tiles{grid-template-columns:1fr 1fr;gap:10px}.tiles a{padding:16px 14px;min-height:92px;justify-content:center}.tiles b{font-size:1.1rem}.tiles span{font-size:.85rem;line-height:1.4}
+.grid{grid-template-columns:1fr;gap:10px}
+.yhero img{width:min(300px,78%)}.banner{font-size:.95rem}
+.about p{margin:.7em 0}
+.values{grid-template-columns:1fr 1fr}
+.hsearch{flex-direction:row}input[type=search]{font-size:16px;padding:12px 14px}button,.btn{padding:12px 18px}
+.qa{font-size:1.05rem}.qa h1{font-size:1.45rem}.q{padding:2px 14px}
+.pager{gap:8px;font-size:.95rem}.pager a{padding:10px 8px}
+.contact .btn{display:block;text-align:center}
+footer{padding-inline:14px}
+}
