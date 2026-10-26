@@ -5,18 +5,19 @@ const SITE = 'היכל הקודש';
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when served from a sub-path
 const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`) : h);
 const PER_PAGE = 40;
+const FONTS = 'https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@400;700;900&display=swap';
 const BUILD = Date.now().toString(36);
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const nik = (s) => s.replace(/[֑-ׇ]/g, '');
 const read = (f) => JSON.parse(readFileSync(new URL(`../data/${f}`, import.meta.url), 'utf8'));
 const write = (p, c) => { mkdirSync(`dist/${p.split('/').slice(0, -1).join('/')}`, { recursive: true }); writeFileSync(`dist/${p}`, p.endsWith('.html') ? rebase(c) : c); };
 
-const shut = read('shut.json').filter((x) => x.kind === 'shut');
-const letters = read('shut.json').filter((x) => x.kind === 'letters');
+const all = read('shut.json');
+const shut = all.filter((x) => x.kind === 'shut');
 const halacha = read('halacha.json');
 const institutions = read('institutions.json');
 const pr = read('print.json');
-const yeshiva = JSON.parse(readFileSync(new URL('../data/yeshiva.json', import.meta.url), 'utf8'));
+const yeshiva = read('yeshiva.json');
 
 const nav = [['/', 'בית', 'home'], ['/print/', 'הדפסת אשר בנחל', 'print'], ['/yeshiva/', 'ישיבת בית מנחם', 'school'], ['/shut/', 'שו״ת ברסלב', 'book'], ['/halacha/', 'שו״ת הלכתי', 'scale'], ['/institutions/', 'מוסדות הקהילה', 'heart'], ['/search/', 'חיפוש', 'search']];
 const ICON = {
@@ -36,13 +37,13 @@ const ICON = {
 const icon = (n, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
 const orn = `<div class="orn-rule" aria-hidden="true"><i></i>${icon('flame')}<i></i></div>`;
 const phead = (kicker, title, lead = '', extra = '') => `<section class="phead"><div class="wrap">${kicker ? `<p class="kicker2">${kicker}</p>` : ''}<h1>${title}</h1>${lead ? `<p class="sub">${lead}</p>` : ''}${extra}</div></section>`;
-const layout = (title, body, { desc = '', path = '/', head = '', full = false, reading = false } = {}) => `<!doctype html>
+const layout = (title, body, { desc = '', path = '/', head = '', full = false, reading = false, head_extra = '' } = {}) => `<!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><script>document.documentElement.classList.add('js');try{var rs=localStorage.getItem('rs');if(rs)document.documentElement.style.setProperty('--rs',rs)}catch(e){}</script>
 <title>${esc(title)}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${esc(desc || 'היכל הקודש: חסידות ברסלב, שאלות ותשובות, הלכה ומוסדות הקהילה')}">
-<meta name="theme-color" content="#0b1d50"><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0b1d50"/><g fill="none" stroke="#e6c466" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON.flame}</g></svg>`)}">
+<meta name="theme-color" content="#0b1d50"><meta property="og:title" content="${esc(title)}"><meta property="og:locale" content="he_IL"><meta property="og:type" content="website"><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0b1d50"/><g fill="none" stroke="#e6c466" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON.flame}</g></svg>`)}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@400;500;700;900&display=swap">
-<link rel="stylesheet" href="/style.css?v=${BUILD}"></head><body>
+<link rel="stylesheet" href="/style.css?v=${BUILD}">
+<link rel="stylesheet" href="${FONTS}" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="${FONTS}"></noscript>${head_extra}</head><body>
 <a class="skip" href="#main">דלגו לתוכן</a>
 <header class="top"><div class="bar"><a class="brand" href="/"><span class="mark">${icon('flame')}</span><span>${SITE}<small>חסידות ברסלב</small></span></a><div class="hacts"><a class="iconbtn" href="/search/" aria-label="חיפוש">${icon('search')}</a><button class="iconbtn mbtn" type="button" aria-expanded="false" aria-controls="mainnav" aria-label="תפריט">${icon('menu', 'ico i-open')}${icon('close', 'ico i-close')}</button></div><nav id="mainnav" aria-label="ניווט ראשי">${nav.map(([h, t, ic]) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${icon(ic, `ico sm${ic === 'search' ? ' keep' : ''}`)}${t}</a>`).join('')}</nav></div>${reading ? '<div class="readbar" aria-hidden="true"><i></i></div>' : ''}</header>
 ${head}${full ? `<div id="main">${body}</div>` : `<main id="main">${body}</main>`}
@@ -86,9 +87,9 @@ for (let p = 1; p <= pages; p++) {
 const y = yeshiva, c = y.contact;
 write('yeshiva/index.html', layout('ישיבת בית מנחם', `<section class="band"><div class="wrap narrow"><h2 class="sh">על הישיבה</h2>${orn}<div class="about">${y.about.map((p) => `<p>${esc(p)}</p>`).join('')}</div></div></section>
 <section class="band soft"><div class="wrap"><h2 class="sh">הדרך שלנו</h2><p class="shsub">ארבעה יסודות שעליהם עומד יום הלימוד בישיבה</p><div class="needs values">${y.values.map(([t, d]) => `<div class="need"><span class="orn">✦</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div></div></section>
-<section class="band"><div class="wrap"><h2 class="sh">גלריה</h2>${y.photos.length ? `<div class="gallery">${y.photos.map((f) => `<img loading="lazy" src="${esc(f)}" alt="">`).join('')}</div>` : '<div class="empty"><p>התמונות יתווספו בקרוב.</p></div>'}</div></section>
+<section class="band"><div class="wrap"><h2 class="sh">גלריה</h2>${y.photos.length ? `<div class="gallery">${y.photos.map((f) => `<img loading="lazy" decoding="async" src="${esc(f)}" alt="">`).join('')}</div>` : '<div class="empty"><p>התמונות יתווספו בקרוב.</p></div>'}</div></section>
 <section class="band final"><div class="wrap"><h2>יצירת קשר ותמיכה</h2><p>שותפות בהחזקת הישיבה היא שותפות בכל דף שנלמד בה.</p><div class="contact">${[c.phone && `<p>טלפון: <a href="tel:${esc(c.phone)}">${esc(c.phone)}</a></p>`, c.email && `<p>דוא״ל: <a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>`, c.address && `<p>כתובת: ${esc(c.address)}</p>`, c.donate && `<p class="ctarow"><a class="btn big" href="${esc(c.donate)}" rel="noopener">לתרומה לישיבה</a></p>`].filter(Boolean).join('') || '<p class="small">פרטי הקשר יתווספו בקרוב.</p>'}</div></div></section>`,
-  { desc: 'בית מנחם, ישיבה חסידית. בחורים הלומדים בהתמדה בדרך הצדיק', path: '/yeshiva/', full: true, head: `<section class="phead yhero"><div class="wrap"><div class="emblem"><img src="/img/logo.jpg" width="760" height="636" alt="${esc(y.name)} - ${esc(y.subtitle)}"></div><p class="kicker2">${esc(y.banner)}</p><h1>ישיבת ${esc(y.name)}</h1><p class="sub">${esc(y.subtitle)} בדרך רבינו הקדוש רבי נחמן מברסלב</p></div></section>` }));
+  { desc: 'בית מנחם, ישיבה חסידית. בחורים הלומדים בהתמדה בדרך הצדיק', path: '/yeshiva/', full: true, head: `<section class="phead yhero"><div class="wrap"><div class="emblem"><img src="/img/logo.webp" width="760" height="636" fetchpriority="high" decoding="async" alt="${esc(y.name)} - ${esc(y.subtitle)}"></div><p class="kicker2">${esc(y.banner)}</p><h1>ישיבת ${esc(y.name)}</h1><p class="sub">${esc(y.subtitle)} בדרך רבינו הקדוש רבי נחמן מברסלב</p></div></section>` }));
 
 // Halacha
 write('halacha/index.html', layout('שו״ת הלכתי', `${halacha.length ? `<div class="grid">${halacha.map((x) => `<a class="card" href="/halacha/"><h3>${esc(x.title)}</h3></a>`).join('')}</div>` : `<div class="empty">${icon('scale', 'ico lg')}<h2>המדור בבנייה</h2><p>השאלות וההלכות יתווספו בקרוב.</p><p class="small">להוספת תוכן: ערכו את הקובץ <code>data/halacha.json</code>.</p><p><a class="btn" href="/shut/">בינתיים, לשו״ת ברסלב</a></p></div>`}`, { path: '/halacha/', head: phead('הלכה למעשה', 'שו״ת הלכתי', 'שאלות ותשובות בהלכה, בבירור ובפשטות.') }));
@@ -135,8 +136,10 @@ write('print/donate/index.html', layout('תרומה להדפסת אשר בנחל
 ${sect('', `${goal}${tierCards('#donate')}${donateBox()}<p class="small center">התרומה היא להדפסת ספרי הצדיק והפצתם. אין בה התחייבות לתוצאה מסוימת.</p>`)}`, { full: true, desc: 'תרומה באשראי להדפסת אשר בנחל', path: '/print/' }));
 
 // Search
-write('search/index.html', layout('חיפוש', `<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid"></div><script src="/search.js"></script>`, { path: '/search/', head: phead('בכל אלפי השאלות', 'חיפוש בשו״ת', '', `<div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" aria-label="חיפוש" autofocus></div><div class="chips">${chips}</div>`) }));
-write('search-index.json', JSON.stringify(shut.map((x) => [x.id, x.title, nik((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600))])));
+write('search/index.html', layout('חיפוש', `<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid"></div><script src="/search.js?v=${BUILD}" defer></script>`, { path: '/search/', head_extra: `<link rel="preload" href="/search-index.json" as="fetch" crossorigin>`, head: phead('בכל אלפי השאלות', 'חיפוש בשו״ת', '', `<div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" aria-label="חיפוש" autofocus></div><div class="chips">${chips}</div>`) }));
+// Unique, punctuation-free words only: term matching is unchanged, the file is much smaller.
+const words = (t) => [...new Set(nik(t).replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean))].join(' ');
+write('search-index.json', JSON.stringify(shut.map((x) => [x.id, x.title, words((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600))])));
 
 // Home
 const tile = (href, ic, t, d) => `<a class="tile" href="${href}">${icon(ic, 'ico lg')}<b>${t}</b><span>${d}</span><i class="arr">${icon('arrow', 'ico sm')}</i></a>`;
@@ -147,7 +150,8 @@ ${tile('/shut/', 'book', 'שו״ת ברסלב', `${shut.length.toLocaleString('h
 <section class="band soft"><div class="wrap"><h2 class="sh">מתוך השו״ת</h2><p class="shsub">שאלות שנשאלו ותשובות שנכתבו, מלב אל לב</p><div class="grid">${shut.slice(0, 6).map(card).join('')}</div><p class="ctarow"><a class="btn ghost" href="/shut/">לכל השאלות והתשובות ←</a></p></div></section>`,
 { path: '/', full: true, head: `<section class="phead hero"><div class="wrap"><span class="mark big">${icon('flame')}</span><p class="kicker2">חסידות ברסלב</p><h1>${SITE}</h1><p class="sub">שאלות ותשובות בדרכו של רבינו הקדוש רבי נחמן מברסלב: אמונה, תפילה, התבודדות ושמחה.</p>${searchForm}<div class="chips">${chips}</div></div></section>` }));
 
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/halacha/', '/institutions/', ...shut.map((x) => `/shut/${x.id}/`)].map((u) => `<url><loc>${u}</loc></url>`).join('')}</urlset>`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/halacha/', '/institutions/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...shut.map((x) => `/shut/${x.id}/`)].map((u) => `<url><loc>${u}</loc></url>`).join('')}</urlset>`);
+write('robots.txt', 'User-agent: *\nAllow: /\n');
 if (BASE) {
   const f = 'dist/search.js';
   writeFileSync(f, readFileSync(f, 'utf8').replace("'/search-index.json'", `'${BASE}/search-index.json'`).replace('`/shut/${id}/`', `\`${BASE}/shut/\${id}/\``));

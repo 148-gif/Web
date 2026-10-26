@@ -6,14 +6,16 @@ btn.addEventListener('click', () => setMenu(!hdr.classList.contains('open')));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && hdr.classList.contains('open')) { setMenu(false); btn.focus(); } });
 document.addEventListener('click', (e) => { if (hdr.classList.contains('open') && !hdr.contains(e.target)) setMenu(false); });
 
-let lastY = scrollY;
+let lastY = scrollY, tick = false;
 const bar = document.querySelector('.readbar i'), sheet = document.querySelector('.sheet');
-addEventListener('scroll', () => {
+const onScroll = () => {
+  tick = false;
   const y = scrollY;
   if (!hdr.classList.contains('open')) hdr.classList.toggle('hide', y > 160 && y > lastY + 4 ? true : y < lastY - 4 ? false : hdr.classList.contains('hide'));
   lastY = y;
   if (bar && sheet) { const r = sheet.getBoundingClientRect(); bar.style.transform = `scaleX(${Math.min(1, Math.max(0, -r.top / (r.height - innerHeight * 0.6)))})`; }
-}, { passive: true });
+};
+addEventListener('scroll', () => { if (!tick) { tick = true; requestAnimationFrame(onScroll); } }, { passive: true });
 
 const root = document.documentElement;
 document.querySelectorAll('[data-fs]').forEach((b) => b.addEventListener('click', () => {
