@@ -5,6 +5,7 @@ const SITE = 'היכל הקודש';
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when served from a sub-path
 const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`) : h);
 const PER_PAGE = 40;
+const BUILD = Date.now().toString(36);
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const nik = (s) => s.replace(/[֑-ׇ]/g, '');
 const read = (f) => JSON.parse(readFileSync(new URL(`../data/${f}`, import.meta.url), 'utf8'));
@@ -21,7 +22,7 @@ const nav = [['/', 'בית'], ['/print/', 'הדפסת אשר בנחל'], ['/yesh
 const layout = (title, body, { desc = '', path = '/' } = {}) => `<!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${esc(desc || 'היכל הקודש: חסידות ברסלב, שאלות ותשובות, הלכה ומוסדות הקהילה')}">
-<link rel="stylesheet" href="/style.css"></head><body>
+<link rel="stylesheet" href="/style.css?v=${BUILD}"></head><body>
 <header class="top"><a class="brand" href="/"><span>${SITE}<small>חסידות ברסלב</small></span></a><nav>${nav.map(([h, t]) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</nav></header>
 <main>${body}</main>
 <footer><p>התוכן נכתב על ידי הצדיק מיבניאל זצ״ל, ופורסם ברשות להעתקה והפצה.</p></footer></body></html>`;
@@ -67,12 +68,12 @@ write('institutions/index.html', layout('מוסדות הקהילה', `<h1>מוס
 // Print campaign: Asher BaNachal
 const pd = pr.donate;
 const donateBox = () => pd.iframeUrl
-  ? `<div class="donbox"><iframe title="תרומה באשראי" src="${esc(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer"></iframe>${pd.fallbackUrl ? `<p class="small">הטופס לא נטען? <a href="${esc(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו אותו בחלון נפרד</a></p>` : ''}</div>`
+  ? `<div class="donbox"><h2 class="donhead">תרומה באשראי</h2><iframe title="תרומה באשראי" src="${esc(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer" style="width:100%;height:900px;min-height:80vh;border:1px solid #eadfc4;border-radius:12px;background:#fff"></iframe>${pd.fallbackUrl ? `<p class="ctarow"><a class="btn big" href="${esc(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו את טופס התרומה במסך מלא</a></p>` : ''}</div>`
   : pd.fallbackUrl
     ? `<div class="donbox soon"><p>התרומה מתבצעת בדף תשלום מאובטח.</p><p><a class="btn big" href="${esc(pd.fallbackUrl)}" rel="noopener">לתרומה באשראי</a></p></div>`
     : `<div class="donbox soon"><p>טופס התרומה באשראי יופעל בקרוב.</p>${pd.phone ? `<p>לתרומה טלפונית: <a href="tel:${esc(pd.phone)}">${esc(pd.phone)}</a></p>` : ''}${pd.email ? `<p><a href="mailto:${esc(pd.email)}">${esc(pd.email)}</a></p>` : ''}</div>`;
 const cta = `<p class="ctarow"><a class="btn big" href="/print/donate/">אני רוצה לתרום להדפסה</a></p>`;
-const printNav = (cur) => `<p class="subnav">${[['/print/', 'ההדפסה'], ['/print/promise/', 'ההבטחה'], ['/print/donate/', 'תרומה']].map(([h, t]) => `<a href="${h}"${h === cur ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</p>`;
+const printNav = (cur) => `<p class="subnav" style="display:flex;justify-content:center;gap:20px;flex-wrap:wrap">${[['/print/', 'ההדפסה'], ['/print/promise/', 'ההבטחה'], ['/print/donate/', 'תרומה']].map(([h, t]) => `<a href="${h}"${h === cur ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</p>`;
 const h = pr.hero;
 const tiers = (pr.tiers || []).length ? `<h2>דרכי השתתפות</h2><div class="grid tiers">${pr.tiers.map((t) => `<div class="card tier"><b class="amt">${Number(t.amount).toLocaleString('he-IL')} ₪</b><h3>${esc(t.name)}</h3><p>${esc(t.desc)}</p></div>`).join('')}</div><p class="small">אפשר לתרום גם סכום אחר. כל תרומה נחשבת.</p>` : '';
 
