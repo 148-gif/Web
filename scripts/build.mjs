@@ -37,19 +37,22 @@ const ICON = {
 const icon = (n, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
 const orn = `<div class="orn-rule" aria-hidden="true"><i></i>${icon('flame')}<i></i></div>`;
 const phead = (kicker, title, lead = '', extra = '') => `<section class="phead"><div class="wrap">${kicker ? `<p class="kicker2">${kicker}</p>` : ''}<h1>${title}</h1>${lead ? `<p class="sub">${lead}</p>` : ''}${extra}</div></section>`;
+// First visit only: the stylesheet loads without blocking paint, and a branded splash shows until it is in.
+const SPLASH_CSS = '#splash{display:none}.splash #splash{display:flex;position:fixed;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(120% 90% at 50% 0,#1a46a3,#0b1d50 55%,#071338);color:#e6c466;font:900 1.7rem/1.2 "Frank Ruhl Libre",David,serif;transition:opacity .45s;animation:spout .4s 6s forwards}#splash small{font:600 .8rem Assistant,Arial,sans-serif;letter-spacing:.14em;color:#c9d3ef}#splash .spm{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;border:1.5px solid #e6c466;background:radial-gradient(circle at 50% 35%,#2a5bc4,#0d2466 70%);animation:spp 1.6s infinite}#splash svg{width:46px;height:46px}#splash i{width:140px;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#e6c466,transparent) 0 0/50% 100% no-repeat;animation:sps 1.1s ease-in-out infinite alternate}html.ready #splash{opacity:0;visibility:hidden;transition:opacity .45s,visibility 0s .45s}@keyframes spp{0%{box-shadow:0 0 0 0 rgba(230,196,102,.55)}70%,100%{box-shadow:0 0 0 20px rgba(230,196,102,0)}}@keyframes sps{to{background-position:100% 0}}@keyframes spout{to{opacity:0;visibility:hidden}}@media (prefers-reduced-motion:reduce){#splash,#splash *{animation:none!important}}';
+const splash = `<div id="splash" aria-hidden="true"><span class="spm">${icon('flame')}</span><span>${SITE}</span><small>חסידות ברסלב</small><i></i></div>`;
 const layout = (title, body, { desc = '', path = '/', head = '', full = false, reading = false, head_extra = '' } = {}) => `<!doctype html>
-<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><script>document.documentElement.classList.add('js');try{var rs=localStorage.getItem('rs');if(rs)document.documentElement.style.setProperty('--rs',rs)}catch(e){}</script>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><script>var d=document.documentElement;d.classList.add('js');try{var rs=localStorage.getItem('rs');if(rs)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){d.classList.add('splash');sessionStorage.setItem('seen',1)}}catch(e){}var sp=d.classList.contains('splash');document.write('<link rel="stylesheet" href="/style.css?v=${BUILD}"'+(sp?' media="print" onload="this.media=\\'all\\';document.documentElement.classList.add(\\'ready\\')"':'')+'>')</script><noscript><link rel="stylesheet" href="/style.css?v=${BUILD}"></noscript><style>${SPLASH_CSS}</style>
 <title>${esc(title)}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${esc(desc || 'היכל הקודש: חסידות ברסלב, שאלות ותשובות, הלכה ומוסדות הקהילה')}">
 <meta name="theme-color" content="#0b1d50"><meta property="og:title" content="${esc(title)}"><meta property="og:locale" content="he_IL"><meta property="og:type" content="website"><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0b1d50"/><g fill="none" stroke="#e6c466" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON.flame}</g></svg>`)}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="/style.css?v=${BUILD}">
+
 <link rel="stylesheet" href="${FONTS}" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="${FONTS}"></noscript>${head_extra}</head><body>
-<a class="skip" href="#main">דלגו לתוכן</a>
+${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 <header class="top"><div class="bar"><a class="brand" href="/"><span class="mark">${icon('flame')}</span><span>${SITE}<small>חסידות ברסלב</small></span></a><div class="hacts"><a class="iconbtn" href="/search/" aria-label="חיפוש">${icon('search')}</a><button class="iconbtn mbtn" type="button" aria-expanded="false" aria-controls="mainnav" aria-label="תפריט">${icon('menu', 'ico i-open')}${icon('close', 'ico i-close')}</button></div><nav id="mainnav" aria-label="ניווט ראשי">${nav.map(([h, t, ic]) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${icon(ic, `ico sm${ic === 'search' ? ' keep' : ''}`)}${t}</a>`).join('')}</nav></div>${reading ? '<div class="readbar" aria-hidden="true"><i></i></div>' : ''}</header>
 ${head}${full ? `<div id="main">${body}</div>` : `<main id="main">${body}</main>`}
 <footer class="foot"><div class="wrap"><div class="fbrand"><span class="mark">${icon('flame')}</span><div><b>${SITE}</b><span>אור הצדיק לכל נפש</span></div></div>
 <nav aria-label="ניווט תחתון">${nav.slice(1).map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>
-<p>התוכן נכתב על ידי הצדיק מיבניאל זצ״ל, ופורסם ברשות להעתקה והפצה.</p></div></footer><script src="/app.js?v=${BUILD}" defer></script></body></html>`;
+<p>התוכן נכתב על ידי הצדיק מיבניאל זצ״ל, ופורסם ברשות להעתקה והפצה.</p></div></footer><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script></body></html>`;
 
 const card = (x) => `<a class="card qcard" href="/shut/${x.id}/"><h3>${esc(x.title)}</h3><p>${esc((x.a.find((p) => p.length > 60) || x.a[0]).slice(0, 150))}…</p><span class="go">לקריאת התשובה ←</span></a>`;
 
@@ -136,10 +139,15 @@ write('print/donate/index.html', layout('תרומה להדפסת אשר בנחל
 ${sect('', `${goal}${tierCards('#donate')}${donateBox()}<p class="small center">התרומה היא להדפסת ספרי הצדיק והפצתם. אין בה התחייבות לתוצאה מסוימת.</p>`)}`, { full: true, desc: 'תרומה באשראי להדפסת אשר בנחל', path: '/print/' }));
 
 // Search
-write('search/index.html', layout('חיפוש', `<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid"></div><script src="/search.js?v=${BUILD}" defer></script>`, { path: '/search/', head_extra: `<link rel="preload" href="/search-index.json" as="fetch" crossorigin>`, head: phead('בכל אלפי השאלות', 'חיפוש בשו״ת', '', `<div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" aria-label="חיפוש" autofocus></div><div class="chips">${chips}</div>`) }));
-// Unique, punctuation-free words only: term matching is unchanged, the file is much smaller.
-const words = (t) => [...new Set(nik(t).replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean))].join(' ');
-write('search-index.json', JSON.stringify(shut.map((x) => [x.id, x.title, words((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600))])));
+// Search index: a small titles file for instant results, then full text split into shards fetched in parallel.
+// Unique, punctuation-free words only: term matching is unchanged, the files are much smaller.
+const SHARDS = 8;
+const words = (t, skip = new Set()) => [...new Set(nik(t).replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter((w) => w && !skip.has(w)))].join(' ');
+const shardSize = Math.ceil(shut.length / SHARDS);
+write('idx/titles.json', JSON.stringify({ n: SHARDS, size: shardSize, t: shut.map((x) => [x.id, x.title]) }));
+for (let k = 0; k < SHARDS; k++) write(`idx/${k}.json`, JSON.stringify(shut.slice(k * shardSize, (k + 1) * shardSize).map((x) => words((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600), new Set(words(x.title).split(' '))))));
+const preloads = ['titles', ...Array.from({ length: SHARDS }, (_, k) => k)].map((f) => `<link rel="preload" href="/idx/${f}.json?v=${BUILD}" as="fetch" crossorigin>`).join('');
+write('search/index.html', layout('חיפוש', `<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid"></div><script src="/search.js?v=${BUILD}" defer></script>`, { path: '/search/', head_extra: preloads, head: phead('בכל אלפי השאלות', 'חיפוש בשו״ת', '', `<div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" aria-label="חיפוש" autofocus></div><div class="chips">${chips}</div>`) }));
 
 // Home
 const tile = (href, ic, t, d) => `<a class="tile" href="${href}">${icon(ic, 'ico lg')}<b>${t}</b><span>${d}</span><i class="arr">${icon('arrow', 'ico sm')}</i></a>`;
@@ -152,8 +160,4 @@ ${tile('/shut/', 'book', 'שו״ת ברסלב', `${shut.length.toLocaleString('h
 
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/halacha/', '/institutions/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...shut.map((x) => `/shut/${x.id}/`)].map((u) => `<url><loc>${u}</loc></url>`).join('')}</urlset>`);
 write('robots.txt', 'User-agent: *\nAllow: /\n');
-if (BASE) {
-  const f = 'dist/search.js';
-  writeFileSync(f, readFileSync(f, 'utf8').replace("'/search-index.json'", `'${BASE}/search-index.json'`).replace('`/shut/${id}/`', `\`${BASE}/shut/\${id}/\``));
-}
 console.log(`built ${shut.length} Q&A pages, ${pages} list pages`);
