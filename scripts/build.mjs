@@ -117,7 +117,7 @@ ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 <footer class="foot"><div class="wrap"><div class="fbrand"><span class="mark">${icon('flame')}</span><div><b>${SITE}</b><span>אור הצדיק לכל נפש</span></div></div>
 <nav aria-label="ניווט תחתון">${nav.slice(1, -1).map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>
 <nav class="finfo" aria-label="מידע על האתר">${infoNav.map(([h, t]) => `<a href="${h}"${h === self ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</nav>
-<p>התוכן נכתב על ידי הצדיק מיבניאל זצ״ל, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script></body></html>`;
+<p>שו״ת ברסלב נכתב על ידי הצדיק מיבניאל זצ״ל, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script></body></html>`;
 
 const sr = (t) => `<h2 class="sr">${t}</h2>`;
 const card = (x, base = '/shut/') => `<a class="card qcard" href="${base}${x.id}/"><h3>${esc(x.title)}</h3><p>${esc((x.a.find((p) => p.length > 60) || x.a[0]).slice(0, 150))}…</p><span class="go">לקריאת התשובה ←</span></a>`;
@@ -167,12 +167,20 @@ ${y.photos.length ? `<section class="band"><div class="wrap"><h2 class="sh">גל
 
 // Yavniel
 const ul = (xs) => `<ul>${xs.map((x) => `<li>${x}</li>`).join('')}</ul>`;
-write('yavniel/index.html', layout('יבנאל', `<section class="band"><div class="wrap narrow"><h2 class="sh">על היישוב</h2>${orn}<div class="about">${yv.intro.map((p) => `<p>${esc(p)}</p>`).join('')}<p>${esc(yv.founding)}</p></div></div></section>
+const ps = (xs) => xs.map((p) => `<p>${esc(p)}</p>`).join('');
+const groups = (gs) => gs.map(([t, n, xs]) => `<h3>${esc(t)}</h3>${n ? `<p>${esc(n)}</p>` : ''}${ul(xs.map(esc))}`).join('');
+write('yavniel/index.html', layout('יבנאל', `<section class="band"><div class="wrap narrow"><h2 class="sh">על היישוב</h2>${orn}<div class="about">${ps(yv.intro)}</div></div></section>
 <section class="band soft"><div class="wrap"><h2 class="sh">מסע בזמן</h2><p class="shsub">תחנות בתולדות המושבה</p><div class="needs values">${yv.timeline.map(([t, d]) => `<div class="need"><span class="orn">✦</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div><p class="shsub">${esc(yv.livelihood)}</p></div></section>
-<section class="band"><div class="wrap narrow"><h2 class="sh">קהילת ברסלב ביבנאל</h2>${orn}<div class="about">${yv.community.map((p) => `<p>${esc(p)}</p>`).join('')}</div></div></section>
-<section class="band soft"><div class="wrap narrow"><h2 class="sh">תפילה, לימוד ומקוואות</h2><div class="about">${yv.prayer.map((p) => `<p>${esc(p)}</p>`).join('')}<p><b>מקוואות:</b></p>${ul(yv.mikveh.map(esc))}<p>${esc(yv.directions)}</p><p>שעות התפילה ופתיחת המקוואות משתנות, ולכן כדאי לברר לפני ההגעה.</p></div></div></section>
-<section class="band"><div class="wrap narrow"><h2 class="sh">מקורות</h2>${ul(yv.sources.map(([t, u]) => `<a href="${url(u)}" rel="noopener">${esc(t)}</a>`))}</div></section>`,
-  { desc: 'יבנאל: המושבה הראשונה בגליל התחתון, תולדותיה וקהילת ברסלב שבה', path: '/yavniel/', full: true, head: phead('הגליל התחתון', 'יבנאל', esc(yv.lead)) }));
+<section class="band"><div class="wrap narrow"><h2 class="sh">קהילת ברסלב ביבנאל</h2>${orn}<div class="about">${ps(yv.community)}</div></div></section>
+<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(yv.cityTitle)}</h2><div class="about">${ps(yv.city)}${yv.quotes.map(([q, by]) => `<blockquote><p>${esc(q)}</p><footer>${esc(by)}</footer></blockquote>`).join('')}</div></div></section>
+<section class="band"><div class="wrap narrow"><h2 class="sh">ציון הצדיק</h2>${orn}<div class="about">${ps(yv.zion)}<p>${esc(yv.promiseNote)}</p><blockquote><p>${esc(yv.promise)}</p></blockquote></div></div></section>
+<section class="band soft"><div class="wrap narrow"><h2 class="sh">זמני תפילה בימי חול</h2><div class="about">${groups(yv.weekday)}<p>${esc(yv.weekdayNote)}</p><p>${esc(yv.prayerNote)}</p></div></div></section>
+<section class="band"><div class="wrap narrow"><h2 class="sh">זמני תפילה בשבת</h2><div class="about">${groups(yv.shabbat)}<p>${esc(yv.shabbatNote)}</p></div></div></section>
+<section class="band soft"><div class="wrap narrow"><h2 class="sh">שיעורי תורה</h2><div class="about">${groups(yv.lessons.map(([t, xs]) => [t, '', xs]))}<h3>אבות ובנים</h3><p>${esc(yv.fathers)}</p></div></div></section>
+<section class="band"><div class="wrap narrow"><h2 class="sh">מקוואות</h2><div class="about"><h3>מקווה גברים</h3>${ul(yv.mikvehMen.map(esc))}<p>${esc(yv.mikvehMenNote)}</p><h3>מקווה נשים: מקווה מלכה</h3>${ul(yv.mikvehWomen.map(esc))}<p>${esc(yv.mikvehWomenNote)}</p></div></div></section>
+<section class="band soft"><div class="wrap narrow"><h2 class="sh">בית התבשיל וערב שמחה לנשים</h2><div class="about">${ps(yv.kitchen)}<p>${esc(yv.womenEvening)}</p></div></div></section>
+<section class="band"><div class="wrap narrow"><h2 class="sh">הגעה</h2><div class="about"><p>${esc(yv.directions)}</p></div><h2 class="sh">מקורות</h2>${ul(yv.sources.map(([t, u]) => `<a href="${url(u)}" rel="noopener">${esc(t)}</a>`))}</div></section>`,
+  { desc: 'יבנאל עיר ברסלב: תולדות המושבה, קהילת חסידי ברסלב, ציון מוהרא״ש, זמני תפילה, מקוואות ושיעורים', path: '/yavniel/', full: true, head: phead('הגליל התחתון', 'יבנאל', esc(yv.lead)) }));
 
 // Halacha
 write('halacha/index.html', layout('שו״ת הלכתי', `${halacha.length ? `${sr('רשימת השאלות')}<div class="grid">${halacha.map((x) => card(x, '/halacha/')).join('')}</div>` : `<div class="empty">${icon('scale', 'ico lg')}<h2>המדור בבנייה</h2><p>השאלות וההלכות יתווספו בקרוב.</p><p><a class="btn" href="/shut/">בינתיים, לשו״ת ברסלב</a></p></div>`}`, { path: '/halacha/', head: phead('הלכה למעשה', 'שו״ת הלכתי', 'שאלות ותשובות בהלכה, בבירור ובפשטות.') }));
@@ -251,16 +259,16 @@ const clist = (items) => `<ul class="clist">${items.map(([ic, l, v]) => `<li>${i
 const contactLink = '<a href="/contact/">בעמוד צור קשר</a>';
 
 write('about/index.html', layout('אודות', doc([
-  ['מה יש באתר', P(`${SITE} מרכז במקום אחד את תורתו ומכתביו של הצדיק מיבניאל זצ״ל, בדרכו של רבינו הקדוש רבי נחמן מברסלב, ואת מוסדות הקהילה ההולכים בדרכו.`), UL([
+  ['מה יש באתר', P(`${SITE} מרכז במקום אחד את שו״ת ברסלב של הצדיק מיבניאל זצ״ל, בדרכו של רבינו הקדוש רבי נחמן מברסלב, וכן מכתבים, הלכה ומידע על יבנאל ועל הקהילה.`), UL([
     `<a href="/shut/">שו״ת ברסלב</a>: ${shut.length.toLocaleString('he-IL')} שאלות ותשובות בעבודת ה׳, באמונה, בתפילה ובהתבודדות.`,
     `<a href="/letters/">מכתבים</a>: מכתבים כלליים לאנשי שלומנו.`,
     `<a href="/halacha/">שו״ת הלכתי</a>: שאלות ותשובות בהלכה.`,
     `<a href="/yeshiva/">ישיבת בית מנחם</a>: ישיבה חסידית בדרך רבינו.`,
     `<a href="/print/">הדפסת ״אשר בנחל״</a>: שותפות בהדפסת ספרי הצדיק והפצתם.`,
   ])],
-  ['על התוכן', P('התוכן נכתב על ידי הצדיק מיבניאל זצ״ל, ופורסם ברשות להעתקה והפצה. השאלות והמכתבים מובאים כפי שנכתבו.'), P(`מצאתם טעות, או שאלה שלכם מופיעה ואתם מבקשים להסיר פרט מזהה? כתבו לנו ${contactLink}.`)],
+  ['על התוכן', P('שו״ת ברסלב נכתב על ידי הצדיק מיבניאל זצ״ל, ופורסם ברשות להעתקה והפצה, והשאלות והתשובות מובאות כפי שנכתבו. שאר התכנים באתר אינם מאת הצדיק מיבניאל, ובחלקם הוא מוזכר.'), P(`מצאתם טעות, או שאלה שלכם מופיעה ואתם מבקשים להסיר פרט מזהה? כתבו לנו ${contactLink}.`)],
   ['שימוש בתשובות', P('התשובות נכתבו לשואלים מסוימים, לפי מצבם ושאלתם. בשאלה הלכתית או אישית למעשה, יש להתייעץ עם רב מורה הוראה.')],
-]), { path: '', self: '/about/', desc: `על ${SITE}: שו״ת ומכתבי הצדיק מיבניאל זצ״ל ומוסדות הקהילה`, head: phead('אור הצדיק לכל נפש', 'אודות האתר') }));
+]), { path: '', self: '/about/', desc: `על ${SITE}: שו״ת ברסלב של הצדיק מיבניאל זצ״ל, מכתבים ומידע על הקהילה`, head: phead('אור הצדיק לכל נפש', 'אודות האתר') }));
 
 const ci = contactList(sc);
 write('contact/index.html', layout('צור קשר', `${ci.length ? clist(ci) : `<div class="empty">${icon('letter', 'ico lg')}<h2>פרטי הקשר יעודכנו בקרוב</h2><p>בינתיים, שאלות על תרומה להדפסה אפשר לשאול בטופס התרומה עצמו.</p></div>`}
@@ -306,7 +314,7 @@ write('privacy/index.html', layout('מדיניות פרטיות ותנאי שי�
   ])],
   ['פניות אלינו', P(`פרטים שתשלחו לנו בפנייה (טלפון, דוא״ל או וואטסאפ) ישמשו רק כדי לטפל בפנייה, ולא יימסרו לאחרים. לפי חוק הגנת הפרטיות, התשמ״א-1981, אתם רשאים לבקש לעיין במידע עליכם ולתקן או למחוק אותו. פנו אלינו ${contactLink}.`)],
   ['תנאי שימוש', UL([
-    'התוכן נכתב על ידי הצדיק מיבניאל זצ״ל ופורסם ברשות להעתקה והפצה. נשמח שתפיצו אותו, בתנאי שלא ישונה ושיצוין מקורו.',
+    'שו״ת ברסלב נכתב על ידי הצדיק מיבניאל זצ״ל ופורסם ברשות להעתקה והפצה. נשמח שתפיצו אותו, בתנאי שלא ישונה ושיצוין מקורו.',
     'התשובות נכתבו לשואלים מסוימים לפי מצבם. אין הן תחליף להתייעצות אישית עם רב, ובשאלה הלכתית למעשה יש לשאול רב מורה הוראה.',
     'תרומה להדפסה היא תרומה לצורך הדפסת ספרי הצדיק והפצתם, ואין בה התחייבות לתוצאה מסוימת.',
     'אנו משתדלים שהמידע באתר יהיה מדויק ועדכני, אך ייתכנו טעויות. האתר עשוי לקשר לאתרים חיצוניים, שאינם באחריותנו.',

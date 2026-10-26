@@ -210,3 +210,4 @@ body:has(.stickcta){padding-bottom:76px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}html{scroll-behavior:auto}}
 @media (hover:none){a.card:hover,.tile:hover,.tier2:hover,button:hover,.btn:hover{transform:none}a.card:active,.tile:active,.tier2:active,.qnav a:active{transform:scale(.985);transition-duration:.08s}}
 @media (min-width:861px){header.top.hide{transform:none}}
+.about h3{font-family:"Frank Ruhl Libre",David,serif;font-size:1.25rem;margin:1.6em 0 .3em}.about ul{margin:.6em 0;padding-inline-start:1.3em}.about li{margin:.35em 0}.about blockquote{margin:1.2em 0;padding:.2em 1.1em;border-inline-start:3px solid var(--gold,#e6c466);background:rgba(0,0,0,.03)}.about blockquote p{margin:.5em 0;font-size:1.05rem;font-weight:400}.about blockquote footer{font-size:.9rem;opacity:.75;margin:.4em 0 .6em}
