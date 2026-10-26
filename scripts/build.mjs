@@ -1,5 +1,6 @@
 // Static site generator: data/*.json -> dist/
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 const SITE = 'היכל הקודש';
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when served from a sub-path
@@ -7,7 +8,18 @@ const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`
 const PER_PAGE = 40;
 const FONTS = 'https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@400;700;900&display=swap';
 const BUILD = Date.now().toString(36);
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+// Links from data/*.json must be https, tel, mailto or a site-relative path; anything else (javascript:, data:, http:) fails the build.
+const url = (u, schemes = ['https:']) => {
+  if (!u) return '';
+  const s = String(u).trim();
+  if (/^\/(?!\/)/.test(s) && !s.includes('\\')) return esc(s);
+  let p;
+  try { p = new URL(s); } catch { throw new Error(`Invalid URL in data: ${s}`); }
+  if (!schemes.includes(p.protocol)) throw new Error(`Disallowed URL scheme in data: ${s}`);
+  return esc(s);
+};
+const tel = (n) => { if (!/^[+\d][\d\s-]*$/.test(n)) throw new Error(`Invalid phone in data: ${n}`); return esc(n.replace(/[\s-]/g, '')); };
 const nik = (s) => s.replace(/[֑-ׇ]/g, '');
 const read = (f) => JSON.parse(readFileSync(new URL(`../data/${f}`, import.meta.url), 'utf8'));
 const write = (p, c) => { mkdirSync(`dist/${p.split('/').slice(0, -1).join('/')}`, { recursive: true }); writeFileSync(`dist/${p}`, p.endsWith('.html') ? rebase(c) : c); };
@@ -18,6 +30,31 @@ const halacha = read('halacha.json');
 const institutions = read('institutions.json');
 const pr = read('print.json');
 const yeshiva = read('yeshiva.json');
+// Ids become directory names and URLs, so only plain slugs are allowed.
+for (const x of shut) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in shut.json: ${x.id}`);
+
+// Security policy. Inline scripts (head bootstrap, speculation rules) are allowed by hash.
+// It also adds the stylesheet: normally parser-blocking, but on a first visit it loads without blocking paint
+// behind the splash, which fades once the styles are in (class "ready").
+const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
+const HEAD_JS = `var d=document.documentElement,u='${CSS_URL}',sp=0;d.classList.add('js');try{var rs=parseFloat(localStorage.getItem('rs'));if(rs>=0.85&&rs<=1.5)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){sp=1;sessionStorage.setItem('seen',1)}}catch(e){}if(sp){d.classList.add('splash');var l=document.createElement('link');l.rel='stylesheet';l.href=u;l.onload=l.onerror=function(){d.classList.add('ready')};document.head.appendChild(l)}else document.write('<link rel="stylesheet" href="'+u+'">')`;
+// Prefetch same-site pages on hover/touch so navigation feels instant.
+const SPEC = '{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}';
+const sha = (t) => `'sha256-${createHash('sha256').update(t).digest('base64')}'`;
+const frames = [pr.donate.iframeUrl].filter(Boolean).map((u) => new URL(u).origin);
+const CSP = [
+  "default-src 'self'",
+  `script-src 'self' ${sha(HEAD_JS)} ${sha(SPEC)}`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  'font-src https://fonts.gstatic.com',
+  "img-src 'self' data: https:",
+  "connect-src 'self'",
+  `frame-src ${frames.join(' ') || "'none'"}`,
+  "form-action 'self'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  'upgrade-insecure-requests',
+].join('; ');
 
 const nav = [['/', 'בית', 'home'], ['/print/', 'הדפסת אשר בנחל', 'print'], ['/yeshiva/', 'ישיבת בית מנחם', 'school'], ['/shut/', 'שו״ת ברסלב', 'book'], ['/halacha/', 'שו״ת הלכתי', 'scale'], ['/institutions/', 'מוסדות הקהילה', 'heart'], ['/search/', 'חיפוש', 'search']];
 const ICON = {
@@ -41,12 +78,12 @@ const phead = (kicker, title, lead = '', extra = '') => `<section class="phead">
 const SPLASH_CSS = '#splash{display:none}.splash #splash{display:flex;position:fixed;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(120% 90% at 50% 0,#1a46a3,#0b1d50 55%,#071338);color:#e6c466;font:900 1.7rem/1.2 "Frank Ruhl Libre",David,serif;transition:opacity .45s;animation:spout .4s 6s forwards}#splash small{font:600 .8rem Assistant,Arial,sans-serif;letter-spacing:.14em;color:#c9d3ef}#splash .spm{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;border:1.5px solid #e6c466;background:radial-gradient(circle at 50% 35%,#2a5bc4,#0d2466 70%);animation:spp 1.6s infinite}#splash svg{width:46px;height:46px}#splash i{width:140px;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#e6c466,transparent) 0 0/50% 100% no-repeat;animation:sps 1.1s ease-in-out infinite alternate}html.ready #splash{opacity:0;visibility:hidden;transition:opacity .45s,visibility 0s .45s}@keyframes spp{0%{box-shadow:0 0 0 0 rgba(230,196,102,.55)}70%,100%{box-shadow:0 0 0 20px rgba(230,196,102,0)}}@keyframes sps{to{background-position:100% 0}}@keyframes spout{to{opacity:0;visibility:hidden}}@media (prefers-reduced-motion:reduce){#splash,#splash *{animation:none!important}}';
 const splash = `<div id="splash" aria-hidden="true"><span class="spm">${icon('flame')}</span><span>${SITE}</span><small>חסידות ברסלב</small><i></i></div>`;
 const layout = (title, body, { desc = '', path = '/', head = '', full = false, reading = false, head_extra = '' } = {}) => `<!doctype html>
-<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><script>var d=document.documentElement;d.classList.add('js');try{var rs=localStorage.getItem('rs');if(rs)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){d.classList.add('splash');sessionStorage.setItem('seen',1)}}catch(e){}var sp=d.classList.contains('splash');document.write('<link rel="stylesheet" href="/style.css?v=${BUILD}"'+(sp?' media="print" onload="this.media=\\'all\\';document.documentElement.classList.add(\\'ready\\')"':'')+'>')</script><noscript><link rel="stylesheet" href="/style.css?v=${BUILD}"></noscript><style>${SPLASH_CSS}</style>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="strict-origin-when-cross-origin"><script>${HEAD_JS}</script>
 <title>${esc(title)}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${esc(desc || 'היכל הקודש: חסידות ברסלב, שאלות ותשובות, הלכה ומוסדות הקהילה')}">
 <meta name="theme-color" content="#0b1d50"><meta property="og:title" content="${esc(title)}"><meta property="og:locale" content="he_IL"><meta property="og:type" content="website"><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0b1d50"/><g fill="none" stroke="#e6c466" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON.flame}</g></svg>`)}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-<link rel="stylesheet" href="${FONTS}" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="${FONTS}"></noscript>${head_extra}</head><body>
+<noscript><link rel="stylesheet" href="/style.css?v=${BUILD}"></noscript><style>${SPLASH_CSS}</style>
+<link rel="stylesheet" href="${FONTS}" media="print" data-fonts><noscript><link rel="stylesheet" href="${FONTS}"></noscript>${head_extra}</head><body>
 ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 <header class="top"><div class="bar"><a class="brand" href="/"><span class="mark">${icon('flame')}</span><span>${SITE}<small>חסידות ברסלב</small></span></a><div class="hacts"><a class="iconbtn" href="/search/" aria-label="חיפוש">${icon('search')}</a><button class="iconbtn mbtn" type="button" aria-expanded="false" aria-controls="mainnav" aria-label="תפריט">${icon('menu', 'ico i-open')}${icon('close', 'ico i-close')}</button></div><nav id="mainnav" aria-label="ניווט ראשי">${nav.map(([h, t, ic]) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${icon(ic, `ico sm${ic === 'search' ? ' keep' : ''}`)}${t}</a>`).join('')}</nav></div>${reading ? '<div class="readbar" aria-hidden="true"><i></i></div>' : ''}</header>
 ${head}${full ? `<div id="main">${body}</div>` : `<main id="main">${body}</main>`}
@@ -90,25 +127,25 @@ for (let p = 1; p <= pages; p++) {
 const y = yeshiva, c = y.contact;
 write('yeshiva/index.html', layout('ישיבת בית מנחם', `<section class="band"><div class="wrap narrow"><h2 class="sh">על הישיבה</h2>${orn}<div class="about">${y.about.map((p) => `<p>${esc(p)}</p>`).join('')}</div></div></section>
 <section class="band soft"><div class="wrap"><h2 class="sh">הדרך שלנו</h2><p class="shsub">ארבעה יסודות שעליהם עומד יום הלימוד בישיבה</p><div class="needs values">${y.values.map(([t, d]) => `<div class="need"><span class="orn">✦</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div></div></section>
-<section class="band"><div class="wrap"><h2 class="sh">גלריה</h2>${y.photos.length ? `<div class="gallery">${y.photos.map((f) => `<img loading="lazy" decoding="async" src="${esc(f)}" alt="">`).join('')}</div>` : '<div class="empty"><p>התמונות יתווספו בקרוב.</p></div>'}</div></section>
-<section class="band final"><div class="wrap"><h2>יצירת קשר ותמיכה</h2><p>שותפות בהחזקת הישיבה היא שותפות בכל דף שנלמד בה.</p><div class="contact">${[c.phone && `<p>טלפון: <a href="tel:${esc(c.phone)}">${esc(c.phone)}</a></p>`, c.email && `<p>דוא״ל: <a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>`, c.address && `<p>כתובת: ${esc(c.address)}</p>`, c.donate && `<p class="ctarow"><a class="btn big" href="${esc(c.donate)}" rel="noopener">לתרומה לישיבה</a></p>`].filter(Boolean).join('') || '<p class="small">פרטי הקשר יתווספו בקרוב.</p>'}</div></div></section>`,
+<section class="band"><div class="wrap"><h2 class="sh">גלריה</h2>${y.photos.length ? `<div class="gallery">${y.photos.map((f) => `<img loading="lazy" decoding="async" src="${url(f)}" alt="">`).join('')}</div>` : '<div class="empty"><p>התמונות יתווספו בקרוב.</p></div>'}</div></section>
+<section class="band final"><div class="wrap"><h2>יצירת קשר ותמיכה</h2><p>שותפות בהחזקת הישיבה היא שותפות בכל דף שנלמד בה.</p><div class="contact">${[c.phone && `<p>טלפון: <a href="tel:${tel(c.phone)}">${esc(c.phone)}</a></p>`, c.email && `<p>דוא״ל: <a href="${url('mailto:' + c.email, ['mailto:'])}">${esc(c.email)}</a></p>`, c.address && `<p>כתובת: ${esc(c.address)}</p>`, c.donate && `<p class="ctarow"><a class="btn big" href="${url(c.donate)}" rel="noopener">לתרומה לישיבה</a></p>`].filter(Boolean).join('') || '<p class="small">פרטי הקשר יתווספו בקרוב.</p>'}</div></div></section>`,
   { desc: 'בית מנחם, ישיבה חסידית. בחורים הלומדים בהתמדה בדרך הצדיק', path: '/yeshiva/', full: true, head: `<section class="phead yhero"><div class="wrap"><div class="emblem"><img src="/img/logo.webp" width="760" height="636" fetchpriority="high" decoding="async" alt="${esc(y.name)} - ${esc(y.subtitle)}"></div><p class="kicker2">${esc(y.banner)}</p><h1>ישיבת ${esc(y.name)}</h1><p class="sub">${esc(y.subtitle)} בדרך רבינו הקדוש רבי נחמן מברסלב</p></div></section>` }));
 
 // Halacha
 write('halacha/index.html', layout('שו״ת הלכתי', `${halacha.length ? `<div class="grid">${halacha.map((x) => `<a class="card" href="/halacha/"><h3>${esc(x.title)}</h3></a>`).join('')}</div>` : `<div class="empty">${icon('scale', 'ico lg')}<h2>המדור בבנייה</h2><p>השאלות וההלכות יתווספו בקרוב.</p><p class="small">להוספת תוכן: ערכו את הקובץ <code>data/halacha.json</code>.</p><p><a class="btn" href="/shut/">בינתיים, לשו״ת ברסלב</a></p></div>`}`, { path: '/halacha/', head: phead('הלכה למעשה', 'שו״ת הלכתי', 'שאלות ותשובות בהלכה, בבירור ובפשטות.') }));
 
 // Institutions
-write('institutions/index.html', layout('מוסדות הקהילה', `<div class="grid insts">${institutions.map((i) => `<div class="card inst">${icon('heart', 'ico')}<h3>${esc(i.name)}</h3><p>${esc(i.desc)}</p>${i.goal ? `<p class="goal">${esc(i.goal)}</p>` : ''}<p class="acts">${i.link ? `<a class="btn" href="${esc(i.link)}" rel="noopener">לתרומה</a>` : ''}${i.phone ? ` <a class="btn ghost" href="tel:${esc(i.phone)}">${esc(i.phone)}</a>` : ''}</p></div>`).join('')}</div>`, { path: '/institutions/', head: phead('צדקה וחסד', 'מוסדות הקהילה', 'מוסדות תורה וחסד שזקוקים לתמיכתכם.') }));
+write('institutions/index.html', layout('מוסדות הקהילה', `<div class="grid insts">${institutions.map((i) => `<div class="card inst">${icon('heart', 'ico')}<h3>${esc(i.name)}</h3><p>${esc(i.desc)}</p>${i.goal ? `<p class="goal">${esc(i.goal)}</p>` : ''}<p class="acts">${i.link ? `<a class="btn" href="${url(i.link)}" rel="noopener">לתרומה</a>` : ''}${i.phone ? ` <a class="btn ghost" href="tel:${tel(i.phone)}">${esc(i.phone)}</a>` : ''}</p></div>`).join('')}</div>`, { path: '/institutions/', head: phead('צדקה וחסד', 'מוסדות הקהילה', 'מוסדות תורה וחסד שזקוקים לתמיכתכם.') }));
 
 // Print campaign: Asher BaNachal
 const pd = pr.donate;
 const h = pr.hero;
 const money = (n) => Number(n).toLocaleString('he-IL');
 const donateBox = () => pd.iframeUrl
-  ? `<div class="donbox" id="donate"><h2 class="donhead">התרומה שלכם מתחילה כאן</h2><iframe title="תרומה באשראי" src="${esc(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer" style="width:100%;height:900px;min-height:80vh"></iframe>${pd.fallbackUrl ? `<p class="ctarow"><a class="btn big" href="${esc(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו את טופס התרומה במסך מלא</a></p>` : ''}</div>`
+  ? `<div class="donbox" id="donate"><h2 class="donhead">התרומה שלכם מתחילה כאן</h2><iframe title="תרומה באשראי" src="${url(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer" style="width:100%;height:900px;min-height:80vh"></iframe>${pd.fallbackUrl ? `<p class="ctarow"><a class="btn big" href="${url(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו את טופס התרומה במסך מלא</a></p>` : ''}</div>`
   : pd.fallbackUrl
-    ? `<div class="donbox soon" id="donate"><p><a class="btn big" href="${esc(pd.fallbackUrl)}" rel="noopener">לתרומה באשראי</a></p></div>`
-    : `<div class="donbox soon" id="donate"><p>טופס התרומה באשראי יופעל בקרוב.</p>${pd.phone ? `<p><a href="tel:${esc(pd.phone)}">${esc(pd.phone)}</a></p>` : ''}</div>`;
+    ? `<div class="donbox soon" id="donate"><p><a class="btn big" href="${url(pd.fallbackUrl)}" rel="noopener">לתרומה באשראי</a></p></div>`
+    : `<div class="donbox soon" id="donate"><p>טופס התרומה באשראי יופעל בקרוב.</p>${pd.phone ? `<p><a href="tel:${tel(pd.phone)}">${esc(pd.phone)}</a></p>` : ''}</div>`;
 const cta = (t = 'אני רוצה להצטרף להדפסה') => `<a class="btn big glow" href="/print/donate/">${t}</a>`;
 const trust = `<ul class="trust">${pr.trust.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
 const g = pr.goal || {};
@@ -160,4 +197,18 @@ ${tile('/shut/', 'book', 'שו״ת ברסלב', `${shut.length.toLocaleString('h
 
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/halacha/', '/institutions/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...shut.map((x) => `/shut/${x.id}/`)].map((u) => `<url><loc>${u}</loc></url>`).join('')}</urlset>`);
 write('robots.txt', 'User-agent: *\nAllow: /\n');
+// HTTP security headers (honoured by Netlify; GitHub Pages ignores this file and relies on the meta CSP).
+write('_headers', `/*
+  Content-Security-Policy: ${CSP}; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), usb=(), payment=(self ${frames.map((o) => `"${o}"`).join(' ')})
+`);
+if (BASE) {
+  const f = 'dist/search.js';
+  writeFileSync(f, readFileSync(f, 'utf8').replace("'/search-index.json'", `'${BASE}/search-index.json'`).replace('`/shut/${id}/`', `\`${BASE}/shut/\${id}/\``));
+}
 console.log(`built ${shut.length} Q&A pages, ${pages} list pages`);

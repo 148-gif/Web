@@ -3,21 +3,28 @@ on:
   workflow_dispatch:
   push:
     branches: [claude/greeting-2i183o]
-permissions:
-  contents: write
+permissions: {}
+concurrency:
+  group: pages
+  cancel-in-progress: true
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the built site to the gh-pages branch
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # Third-party actions are pinned to full commit SHAs so a moved tag cannot inject code.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
       - run: node scripts/build.mjs
         env:
           SITE_BASE: /${{ github.event.repository.name }}
       - run: touch dist/.nojekyll
-      - uses: peaceiris/actions-gh-pages@v4
+      - uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
