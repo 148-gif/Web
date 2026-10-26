@@ -135,8 +135,10 @@ write('print/donate/index.html', layout('תרומה להדפסת אשר בנחל
 ${sect('', `${goal}${tierCards('#donate')}${donateBox()}<p class="small center">התרומה היא להדפסת ספרי הצדיק והפצתם. אין בה התחייבות לתוצאה מסוימת.</p>`)}`, { full: true, desc: 'תרומה באשראי להדפסת אשר בנחל', path: '/print/' }));
 
 // Search
-write('search/index.html', layout('חיפוש', `<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid"></div><script src="/search.js"></script>`, { path: '/search/', head: phead('בכל אלפי השאלות', 'חיפוש בשו״ת', '', `<div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" aria-label="חיפוש" autofocus></div><div class="chips">${chips}</div>`) }));
-write('search-index.json', JSON.stringify(shut.map((x) => [x.id, x.title, nik((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600))])));
+write('search/index.html', layout('חיפוש', `<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid"></div><script src="/search.js?v=${BUILD}"></script>`, { path: '/search/', head: phead('בכל אלפי השאלות', 'חיפוש בשו״ת', '', `<div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" aria-label="חיפוש" autofocus></div><div class="chips">${chips}</div>`) }));
+const fullText = (x) => nik(x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' '));
+write('search-index.json', JSON.stringify(shut.map((x) => [x.id, x.title, fullText(x).slice(0, 600)])));
+write('search-full.json', JSON.stringify(shut.map(fullText)));
 
 // Home
 const tile = (href, ic, t, d) => `<a class="tile" href="${href}">${icon(ic, 'ico lg')}<b>${t}</b><span>${d}</span><i class="arr">${icon('arrow', 'ico sm')}</i></a>`;
@@ -150,6 +152,6 @@ ${tile('/shut/', 'book', 'שו״ת ברסלב', `${shut.length.toLocaleString('h
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/halacha/', '/institutions/', ...shut.map((x) => `/shut/${x.id}/`)].map((u) => `<url><loc>${u}</loc></url>`).join('')}</urlset>`);
 if (BASE) {
   const f = 'dist/search.js';
-  writeFileSync(f, readFileSync(f, 'utf8').replace("'/search-index.json'", `'${BASE}/search-index.json'`).replace('`/shut/${id}/`', `\`${BASE}/shut/\${id}/\``));
+  writeFileSync(f, readFileSync(f, 'utf8').replace("'/search-index.json'", `'${BASE}/search-index.json'`).replace("'/search-full.json'", `'${BASE}/search-full.json'`).replace('`/shut/${id}/`', `\`${BASE}/shut/\${id}/\``));
 }
 console.log(`built ${shut.length} Q&A pages, ${pages} list pages`);
