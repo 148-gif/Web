@@ -15,6 +15,13 @@ const warmSearch = () => {
 document.querySelectorAll('input[name=q]').forEach((el) => el.addEventListener('focus', warmSearch, { once: true }));
 document.querySelectorAll('a[href*="/search/"]').forEach((el) => ['pointerenter', 'touchstart', 'focus'].forEach((ev) => el.addEventListener(ev, warmSearch, { once: true, passive: true })));
 const hdr = document.querySelector('.top'), btn = document.querySelector('.mbtn');
+// Header dropdowns (desktop): click/Enter toggles, Escape or a click elsewhere closes.
+const dds = [...document.querySelectorAll('.dd')];
+const closeDd = (except) => dds.forEach((d) => { if (d !== except) { d.classList.remove('open'); d.querySelector('.ddb').setAttribute('aria-expanded', 'false'); } });
+dds.forEach((d) => d.querySelector('.ddb').addEventListener('click', () => { const o = !d.classList.contains('open'); closeDd(d); d.classList.toggle('open', o); d.querySelector('.ddb').setAttribute('aria-expanded', String(o)); }));
+document.addEventListener('click', (e) => { if (!e.target.closest('.dd')) closeDd(); });
+document.addEventListener('keydown', (e) => { const d = document.querySelector('.dd.open'); if (e.key === 'Escape' && d) { closeDd(); d.querySelector('.ddb').focus(); } });
+document.addEventListener('focusin', (e) => { if (!e.target.closest('.dd')) closeDd(); });
 const setMenu = (open) => { hdr.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); document.body.classList.toggle('menu-open', open); };
 btn.addEventListener('click', () => setMenu(!hdr.classList.contains('open')));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && hdr.classList.contains('open')) { setMenu(false); btn.focus(); } });

@@ -312,8 +312,8 @@ sup.fn{line-height:0;font-size:.7em;margin:0 1px}sup.fn a{text-decoration:none;f
 .continue{text-align:center;margin:0 0 18px}
 @media (max-width:640px){.toc li a{flex-direction:column;gap:2px;padding:10px 6px}.toc b{min-width:0}.book-sheet p{text-align:right}.tools{flex-wrap:wrap}}
 
-/* Hamburger menu up to 1180px: the main menu has too many items for a narrow desktop */
-@media (max-width:1180px){
+/* Hamburger menu on phones and small tablets; grouped dropdowns above that */
+@media (max-width:860px){
 .bar{position:relative;padding:6px 16px;gap:8px}.brand{font-size:1.3rem;gap:10px}.brand small{font-size:.66rem}.brand .mark{width:36px;height:36px}.brand .mark .ico{width:19px;height:19px}
 .hacts{display:flex;gap:8px}
 .top nav{position:absolute;top:calc(100% + 1px);right:0;left:0;display:grid;gap:4px;padding:10px 12px max(14px,env(safe-area-inset-bottom));background:linear-gradient(180deg,var(--navy),var(--navy2));border-bottom:2px solid var(--gold2);box-shadow:0 0 0 100vmax rgba(4,10,30,.55);clip-path:inset(0 -100vmax -100vmax -100vmax);max-height:calc(100vh - 60px);overflow:auto;visibility:hidden;opacity:0;transform:translateY(-8px);transition:opacity .2s,transform .2s,visibility .2s}
@@ -322,7 +322,32 @@ sup.fn{line-height:0;font-size:.7em;margin:0 1px}sup.fn a{text-decoration:none;f
 .top nav a:not([aria-current]){background:rgba(255,255,255,.04)}
 body.menu-open{overflow:hidden}
 }
-@media (min-width:1181px){.top nav{flex-wrap:nowrap;gap:0}.top nav a{padding:0 8px;font-size:.92rem}}
+@media (min-width:861px){
+.top nav{flex-wrap:nowrap;align-items:center;gap:2px}
+.dd{position:relative}
+.ddb{display:flex;align-items:center;gap:4px;min-height:44px;padding:0 12px;border-radius:999px;background:none;color:#e3e8f7;font:600 .98rem/1 var(--sans);box-shadow:none;white-space:nowrap}
+.ddb:hover,.dd.open .ddb{background:rgba(255,255,255,.08);color:#fff;transform:none;filter:none}
+.dd.cur>.ddb{color:var(--gold2)}.dd.cur>.ddb:after{content:"";position:absolute;inset:auto 14px 6px;height:2px;border-radius:2px;background:var(--gold2)}
+.chev{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}.dd.open .chev{transform:rotate(180deg)}
+.ddp{position:absolute;top:calc(100% + 8px);right:0;min-width:230px;display:grid;gap:2px;padding:8px;background:linear-gradient(180deg,var(--navy),var(--navy2));border:1px solid rgba(230,196,102,.5);border-radius:14px;box-shadow:0 18px 40px rgba(4,10,30,.45);visibility:hidden;opacity:0;transform:translateY(-6px);transition:opacity .15s,transform .15s,visibility .15s;z-index:40}
+.ddp:before{content:"";position:absolute;inset:-10px 0 auto;height:10px}
+.dd.open .ddp{visibility:visible;opacity:1;transform:none}
+@media (hover:hover){.dd:hover .ddp{visibility:visible;opacity:1;transform:none}.dd:hover .chev{transform:rotate(180deg)}}
+.ddp a{border-radius:10px;padding:0 12px;gap:10px}.top nav .ddp .ico{display:block;width:20px;height:20px;color:var(--gold2)}.top nav .ddp a[aria-current] .ico{color:var(--on-gold)}
+}
+@media (max-width:860px){
+.ddb{display:none}
+.dd:before{content:attr(data-label);display:block;font:700 .8rem/1 var(--sans);letter-spacing:.12em;color:var(--gold2);padding:14px 6px 8px}
+.ddp{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.top nav .ddp a{min-height:48px;font-size:1rem;padding:0 10px;gap:8px;white-space:normal;line-height:1.2}
+.top nav .ddp .ico{width:20px;height:20px}
+}
+/* Home: section tiles in labelled groups */
+.tgroup+.tgroup{margin-top:30px}
+.tgh{display:flex;align-items:center;gap:14px;margin:0 0 14px;font:700 1rem/1.2 var(--sans);letter-spacing:.06em;color:var(--gold)}
+.tgh:before,.tgh:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--line))}.tgh:before{flex:0 0 18px;background:var(--gold2)}
+.tiles.n2,.tiles.n3,.tiles.n4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:860px){.tiles.n2,.tiles.n3,.tiles.n4{grid-template-columns:1fr 1fr}.tiles.n3>.tile:last-child{grid-column:1/-1}.tgroup+.tgroup{margin-top:24px}}
 
 .psalms{justify-content:center;margin:18px 0}.tiles{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}@media (max-width:860px){.tiles{grid-template-columns:1fr 1fr}}
 

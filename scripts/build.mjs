@@ -71,7 +71,17 @@ const CSP = [
   'upgrade-insecure-requests',
 ].join('; ');
 
-const nav = [['/', 'בית', 'home'], ['/print/', 'הדפסת אשר בנחל', 'print'], ['/yeshiva/', 'ישיבת בית מנחם', 'school'], ['/shut/', 'שו״ת ברסלב', 'book'], ['/letters/', 'מכתבים', 'letter'], ['/halacha/', 'שו״ת הלכתי', 'scale'], ['/rabbi-nachman/', 'רבי נחמן', 'flame'], ['/uman/', 'אומן', 'pin'], ['/moharash/', 'הצדיק מיבנאל', 'flame'], ['/library/', 'ספרייה', 'book'], ['/yavniel/', 'יבנאל', 'pin'], ...(institutions.length ? [['/institutions/', 'מוסדות הקהילה', 'heart']] : []), ['/search/', 'חיפוש', 'search']];
+// Site sections in four groups: drives the header dropdowns, the mobile menu, the home tiles and the footer.
+const groups = [
+  ['לימוד', [['/shut/', 'שו״ת ברסלב', 'chat', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות`], ['/letters/', 'מכתבים', 'letter', `${letters.length} מכתבים כלליים`], ['/library/', 'ספרייה', 'books', 'ספרי הצדיק לקריאה ולהורדה'], ['/halacha/', 'שו״ת הלכתי', 'scale', 'שאלות בהלכה']]],
+  ['רבי נחמן מברסלב', [['/rabbi-nachman/', 'רבי נחמן', 'crown', 'רבינו, חייו, תורתו ודרכו'], ['/uman/', 'אומן', 'pin', 'ציון רבינו וקיבוץ ראש השנה'], ['/tikkun-haklali/', 'התיקון הכללי', 'lyre', 'עשרה מזמורי תהלים']]],
+  ['הצדיק מיבנאל', [['/moharash/', 'הצדיק מיבנאל', 'flame', 'מוהרא״ש: חייו ודרכו'], ['/moharash/tziyun/', 'ציון הצדיק', 'candle', 'ההבטחות ודרכי הגעה'], ['/yeshiva/', 'ישיבת בית מנחם', 'school', 'ישיבה חסידית בנשיאותו'], ['/print/', 'הדפסת אשר בנחל', 'print', 'שותפות בהדפסת ספריו']]],
+  ['יבנאל עיר ברסלב', [['/yavniel/', 'יבנאל', 'mountain', 'קהילה, תפילות ומידע'], ['/mikveh-malka/', 'מקווה מלכה', 'drop', 'מקווה טהרה לנשים'], ...(institutions.length ? [['/institutions/', 'מוסדות הקהילה', 'heart', 'תמיכה ותרומות']] : [])]],
+];
+const nav = [['/', 'בית', 'home'], ...groups.flatMap(([, xs]) => xs), ['/search/', 'חיפוש', 'search']];
+const inGroup = (xs, path) => xs.some(([h]) => h === path || (h !== '/' && path.startsWith(h)));
+const menuLink = ([h, t, ic], path) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${icon(ic, 'ico sm')}${t}</a>`;
+const mainMenu = (path) => `<a class="solo" href="/"${path === '/' ? ' aria-current="page"' : ''}>${icon('home', 'ico sm')}בית</a>${groups.map(([g, xs], k) => `<div class="dd${inGroup(xs, path) ? ' cur' : ''}" data-label="${g}"><button type="button" class="ddb" aria-expanded="false" aria-controls="dd${k}">${g}<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div class="ddp" id="dd${k}">${xs.map((x) => menuLink(x, path)).join('')}</div></div>`).join('')}<a class="solo" href="/search/"${path === '/search/' ? ' aria-current="page"' : ''}>${icon('search', 'ico sm keep')}חיפוש</a>`;
 // Organisation and contact details come from data/site.json; empty fields are simply left out.
 const org = site.org || {}, sc = site.contact || {};
 const orgLine = org.name ? esc(org.name) + (org.number ? ` · ע״ר ${esc(org.number)}` : '') + (org.section46 ? ' · התרומות מוכרות לצורכי מס לפי סעיף 46' : '') : '';
@@ -94,6 +104,10 @@ const ICON = {
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
+  crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/><path d="M5 19h14"/>',
+  lyre: '<path d="M7 3c-3 3-3 8 0 11M17 3c3 3 3 8 0 11"/><path d="M7 14h10v3a5 5 0 0 1-10 0z"/><path d="M10 6v8M14 6v8"/>',
+  candle: '<path d="M12 2c1.5 2 2 3.2 2 4.2a2 2 0 0 1-4 0C10 5.2 10.5 4 12 2Z"/><rect x="8.5" y="10" width="7" height="11" rx="1"/><path d="M5 21h14"/>',
+  books: '<path d="M4 4h4v16H4zM9.5 4h4v16h-4z"/><path d="m15 5.2 3.8-1 3.2 15.6-3.8 1z"/>',
   heart: '<path d="M19.5 12.6 12 20l-7.5-7.4A5 5 0 1 1 12 6a5 5 0 1 1 7.5 6.6Z"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
   arrow: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
@@ -128,7 +142,7 @@ const layout = (title, body, { desc = '', path = '/', self = path, head = '', fu
 <noscript><link rel="stylesheet" href="/style.css?v=${BUILD}"></noscript><style>${SPLASH_CSS}</style>
 <link rel="stylesheet" href="${FONTS}" media="print" data-fonts><noscript><link rel="stylesheet" href="${FONTS}"></noscript>${head_extra}</head><body>
 ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
-<header class="top"><div class="bar"><a class="brand" href="/"><span class="mark">${icon('flame')}</span><span>${SITE}<small>חסידות ברסלב</small></span></a><div class="hacts"><a class="iconbtn" href="/search/" aria-label="חיפוש">${icon('search')}</a><button class="iconbtn mbtn" type="button" aria-expanded="false" aria-controls="mainnav" aria-label="תפריט">${icon('menu', 'ico i-open')}${icon('close', 'ico i-close')}</button></div><nav id="mainnav" aria-label="ניווט ראשי">${nav.map(([h, t, ic]) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${icon(ic, `ico sm${ic === 'search' ? ' keep' : ''}`)}${t}</a>`).join('')}</nav></div>${reading ? '<div class="readbar" aria-hidden="true"><i></i></div>' : ''}</header>
+<header class="top"><div class="bar"><a class="brand" href="/"><span class="mark">${icon('flame')}</span><span>${SITE}<small>חסידות ברסלב</small></span></a><div class="hacts"><a class="iconbtn" href="/search/" aria-label="חיפוש">${icon('search')}</a><button class="iconbtn mbtn" type="button" aria-expanded="false" aria-controls="mainnav" aria-label="תפריט">${icon('menu', 'ico i-open')}${icon('close', 'ico i-close')}</button></div><nav id="mainnav" aria-label="ניווט ראשי">${mainMenu(path)}</nav></div>${reading ? '<div class="readbar" aria-hidden="true"><i></i></div>' : ''}</header>
 <main id="main">${head}${full ? body : `<div class="page">${body}</div>`}</main>
 <footer class="foot"><div class="wrap"><div class="fbrand"><span class="mark">${icon('flame')}</span><div><b>${SITE}</b><span>אור הצדיק לכל נפש</span></div></div>
 <nav aria-label="ניווט תחתון">${nav.slice(1, -1).map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>
@@ -445,8 +459,7 @@ write('search/index.html', layout('חיפוש', `${sr('תוצאות החיפוש
 
 // Home
 const tile = (href, ic, t, d) => `<a class="tile" href="${href}">${icon(ic, 'ico lg')}<b>${t}</b><span>${d}</span><i class="arr">${icon('arrow', 'ico sm')}</i></a>`;
-write('index.html', layout(SITE, `<section class="band"><div class="wrap"><div class="tiles">
-${tile('/rabbi-nachman/', 'flame', 'רבי נחמן מברסלב', 'רבינו, תורתו והתיקון הכללי')}${tile('/uman/', 'pin', 'אומן', 'ציון רבינו וקיבוץ ראש השנה')}${tile('/shut/', 'book', 'שו״ת ברסלב', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות`)}${tile('/letters/', 'letter', 'מכתבים', `${letters.length} מכתבים כלליים`)}${tile('/moharash/', 'flame', 'הצדיק מיבנאל', 'מוהרא״ש: חייו, דרכו וציונו')}${tile('/library/', 'book', 'ספרייה', 'ספרי הצדיק לקריאה ולהורדה')}${tile('/yavniel/', 'mountain', 'יבנאל', 'עיר ברסלב: קהילה, תפילות ומידע')}${tile('/mikveh-malka/', 'drop', 'מקווה מלכה', 'מקווה טהרה לנשים ביבנאל')}${tile('/yeshiva/', 'school', 'ישיבת בית מנחם', 'ישיבה חסידית')}${tile('/halacha/', 'scale', 'שו״ת הלכתי', 'שאלות בהלכה')}${institutions.length ? tile('/institutions/', 'heart', 'מוסדות הקהילה', 'תמיכה ותרומות') : ''}</div>
+write('index.html', layout(SITE, `<section class="band"><div class="wrap">${groups.map(([g, xs]) => `<section class="tgroup"><h2 class="tgh"><span>${g}</span></h2><div class="tiles n${xs.length}">${xs.map(([h, t, ic, d]) => tile(h, ic, t, d)).join('')}</div></section>`).join('')}
 <a class="feature" href="/print/"><span class="fic">${icon('print', 'ico lg')}</span><span class="ftxt"><em>${esc(pr.hero.kicker)}</em><b>הדפסת ״אשר בנחל״</b><span>הצטרפו להדפסת ספרי הצדיק, והיו שותפים בכל עותק שמחזק עוד נפש.</span></span><span class="btn">להצטרפות ←</span></a></div></section>
 <section class="band quoteband"><div class="wrap"><blockquote class="pq"><p>מצוה גדולה להיות בשמחה תמיד</p><cite>ליקוטי מוהר״ן תנינא, סימן כ״ד</cite></blockquote></div></section>
 <section class="band soft"><div class="wrap"><h2 class="sh">מתוך השו״ת</h2><p class="shsub">שאלות שנשאלו ותשובות שנכתבו, מלב אל לב</p><div class="grid">${shut.slice(0, 6).map((x) => card(x)).join('')}</div><p class="ctarow"><a class="btn ghost" href="/shut/">לכל השאלות והתשובות ←</a></p></div></section>`,
