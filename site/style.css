@@ -174,13 +174,6 @@ html.js .stickcta{transition:transform .3s ease}html.js .stickcta:not(.show){tra
 
 @media (max-width:860px){
 .tiles{grid-template-columns:1fr 1fr}.needs.values{grid-template-columns:1fr 1fr}
-.bar{position:relative;padding:6px 16px;gap:8px}.brand{font-size:1.3rem;gap:10px}.brand small{font-size:.66rem}.brand .mark{width:36px;height:36px}.brand .mark .ico{width:19px;height:19px}
-.hacts{display:flex;gap:8px}
-.top nav{position:absolute;top:calc(100% + 1px);right:0;left:0;display:grid;gap:4px;padding:10px 12px max(14px,env(safe-area-inset-bottom));background:linear-gradient(180deg,var(--navy),var(--navy2));border-bottom:2px solid var(--gold2);box-shadow:0 0 0 100vmax rgba(4,10,30,.55);clip-path:inset(0 -100vmax -100vmax -100vmax);max-height:calc(100vh - 60px);overflow:auto;visibility:hidden;opacity:0;transform:translateY(-8px);transition:opacity .2s,transform .2s,visibility .2s}
-.open nav{visibility:visible;opacity:1;transform:none}
-.top nav a{min-height:52px;padding:0 14px;border-radius:12px;font-size:1.08rem;gap:12px}.top nav .ico:not(.keep){display:block}.top nav .ico{width:22px;height:22px;color:var(--gold2)}.top nav a[aria-current] .ico{color:var(--on-gold)}
-.top nav a:not([aria-current]){background:rgba(255,255,255,.04)}
-body.menu-open{overflow:hidden}
 }
 @media (max-width:640px){
 body{font-size:17px;line-height:1.75}
@@ -209,12 +202,11 @@ body:has(.stickcta){padding-bottom:76px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}html{scroll-behavior:auto}}
 @media (hover:none){a.card:hover,.tile:hover,.tier2:hover,button:hover,.btn:hover{transform:none}a.card:active,.tile:active,.tier2:active,.qnav a:active{transform:scale(.985);transition-duration:.08s}}
-@media (min-width:861px){header.top.hide{transform:none}}
+@media (min-width:1181px){header.top.hide{transform:none}}
 .about h3{font-family:"Frank Ruhl Libre",David,serif;font-size:1.25rem;margin:1.6em 0 .3em}.about ul{margin:.6em 0;padding-inline-start:1.3em}.about li{margin:.35em 0}.about blockquote{margin:1.2em 0;padding:.2em 1.1em;border-inline-start:3px solid var(--gold,#e6c466);background:rgba(0,0,0,.03)}.about blockquote p{margin:.5em 0;font-size:1.05rem;font-weight:400}.about blockquote footer{font-size:.9rem;opacity:.75;margin:.4em 0 .6em}
 
 /* ===== Yavniel & mikveh pages ===== */
 [id]{scroll-margin-top:84px}
-.tiles{grid-template-columns:repeat(3,1fr)}
 .phead .chips{margin-top:22px}
 .phead+.statrow .wrap{padding-block:22px}
 .lead1 p:first-child{font-size:1.22rem;line-height:1.75;color:var(--ink)}
@@ -295,8 +287,6 @@ body:has(.stickcta){padding-bottom:76px}
 .steps3{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.steps3 .card{text-align:center;align-items:center;padding-top:26px}.steps3 .num{margin-bottom:10px}.steps3 .card p{display:block;-webkit-line-clamp:unset;overflow:visible}
 @media (max-width:860px){.bio-top{grid-template-columns:1fr}.factbox{position:static}.books{grid-template-columns:1fr 1fr}.steps3{grid-template-columns:1fr 1fr}}
 @media (max-width:640px){.books{grid-template-columns:1fr}.steps3{grid-template-columns:1fr}.steps3 .card{text-align:right;align-items:flex-start;display:grid;grid-template-columns:auto 1fr;column-gap:14px;padding:16px}.steps3 .num{grid-row:span 2;margin:0;width:40px;height:40px;font-size:1.1rem}.steps3 h3{margin:0}}
-@media (min-width:861px){.top nav{flex-wrap:nowrap;gap:0}.top nav a{padding:0 9px;font-size:.94rem}}
-@media (min-width:861px) and (max-width:1100px){.brand{font-size:1.3rem}.brand small{display:none}.top nav a{padding:0 7px;font-size:.9rem}}
 
 .fbtns{padding:4px 16px 16px}.fbtns .navbtns{margin:6px 0 0}.fbtns .btn{flex:1 1 100%}
 .steps3.six{grid-template-columns:repeat(3,1fr)}.card.book>.ico{color:var(--gold);margin-bottom:8px}.soonbox{margin-top:24px}
@@ -304,7 +294,6 @@ body:has(.stickcta){padding-bottom:76px}
 
 .lchips .chips,.lchips{margin:0 0 8px}.band .lchips a{color:var(--brand);border-color:var(--line);background:var(--surface)}.band .lchips a:hover{background:var(--sunk);color:var(--brand)}.libcat+.libcat{margin-top:12px}.libcat .subh{justify-content:flex-start}
 .soonlist{justify-content:center}.soonlist small{color:var(--mute);font-weight:400;margin-inline-start:4px}
-@media (min-width:861px) and (max-width:980px){.bar{padding-inline:12px;gap:8px}.brand{font-size:1.15rem;gap:8px}.brand .mark{width:34px;height:34px}.top nav a{padding:0 5px;font-size:.84rem}}
 
 /* ===== Book reader ===== */
 .tbtn.toc{display:inline-flex;align-items:center;gap:6px;text-decoration:none;min-height:44px}
@@ -322,3 +311,19 @@ sup.fn{line-height:0;font-size:.7em;margin:0 1px}sup.fn a{text-decoration:none;f
 .tocpart{display:flex;align-items:center;gap:10px;font-size:1.15rem;color:var(--brand);margin:26px 0 6px}.tocpart span{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font:900 .95rem var(--sans);color:var(--on-gold);background:linear-gradient(180deg,var(--gold3),var(--gold2))}
 .continue{text-align:center;margin:0 0 18px}
 @media (max-width:640px){.toc li a{flex-direction:column;gap:2px;padding:10px 6px}.toc b{min-width:0}.book-sheet p{text-align:right}.tools{flex-wrap:wrap}}
+
+/* Hamburger menu up to 1180px: the main menu has too many items for a narrow desktop */
+@media (max-width:1180px){
+.bar{position:relative;padding:6px 16px;gap:8px}.brand{font-size:1.3rem;gap:10px}.brand small{font-size:.66rem}.brand .mark{width:36px;height:36px}.brand .mark .ico{width:19px;height:19px}
+.hacts{display:flex;gap:8px}
+.top nav{position:absolute;top:calc(100% + 1px);right:0;left:0;display:grid;gap:4px;padding:10px 12px max(14px,env(safe-area-inset-bottom));background:linear-gradient(180deg,var(--navy),var(--navy2));border-bottom:2px solid var(--gold2);box-shadow:0 0 0 100vmax rgba(4,10,30,.55);clip-path:inset(0 -100vmax -100vmax -100vmax);max-height:calc(100vh - 60px);overflow:auto;visibility:hidden;opacity:0;transform:translateY(-8px);transition:opacity .2s,transform .2s,visibility .2s}
+.open nav{visibility:visible;opacity:1;transform:none}
+.top nav a{min-height:52px;padding:0 14px;border-radius:12px;font-size:1.08rem;gap:12px}.top nav .ico:not(.keep){display:block}.top nav .ico{width:22px;height:22px;color:var(--gold2)}.top nav a[aria-current] .ico{color:var(--on-gold)}
+.top nav a:not([aria-current]){background:rgba(255,255,255,.04)}
+body.menu-open{overflow:hidden}
+}
+@media (min-width:1181px){.top nav{flex-wrap:nowrap;gap:0}.top nav a{padding:0 8px;font-size:.92rem}}
+
+.psalms{justify-content:center;margin:18px 0}.tiles{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}@media (max-width:860px){.tiles{grid-template-columns:1fr 1fr}}
+
+@media (min-width:1000px){.tiles{grid-template-columns:repeat(5,1fr)}.tile{padding:22px 18px 20px}.tile b{font-size:1.2rem}}
