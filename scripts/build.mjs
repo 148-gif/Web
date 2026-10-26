@@ -23,7 +23,12 @@ const url = (u, schemes = ['https:']) => {
 const tel = (n) => { if (!/^[+\d][\d\s-]*$/.test(n)) throw new Error(`Invalid phone in data: ${n}`); return esc(n.replace(/[\s-]/g, '')); };
 const nik = (s) => s.replace(/[֑-ׇ]/g, '');
 const read = (f) => JSON.parse(readFileSync(new URL(`../data/${f}`, import.meta.url), 'utf8'));
-const write = (p, c) => { mkdirSync(`dist/${p.split('/').slice(0, -1).join('/')}`, { recursive: true }); writeFileSync(`dist/${p}`, p.endsWith('.html') ? rebase(c) : c); };
+const write = (p, c) => {
+  if (isHidden(`/${p}`)) return;
+  if (p.endsWith('.html')) c = rebase(unlinkHidden(c));
+  else if (/\.(xml|txt)$/.test(p)) c = c.replace(/<url><loc>[^<]*<\/loc><\/url>/g, (m) => (isHidden(m.replace(/<[^>]+>/g, '').replace(ORIGIN + BASE, '')) ? '' : m)).split('\n').filter((l) => !HIDDEN.some((h) => l.includes(`${h})`) || l.includes(`${ORIGIN + BASE}${h}`))).join('\n');
+  mkdirSync(`dist/${p.split('/').slice(0, -1).join('/')}`, { recursive: true }); writeFileSync(`dist/${p}`, c);
+};
 
 const all = read('shut.json');
 const shut = all.filter((x) => x.kind === 'shut');
@@ -35,6 +40,11 @@ const institutions = read('institutions.json').filter((i) => !/דוגמה/.test(
 const pr = read('print.json');
 const yeshiva = read('yeshiva.json');
 const site = read('site.json');
+// Sections not ready for visitors (data/site.json "hidden"): no pages are built, menu entries and cards
+// pointing at them are dropped, and inline links to them become plain text. Tracked in TODO.md.
+const HIDDEN = (site.hidden || []).map((x) => x.path);
+const isHidden = (u) => HIDDEN.some((h) => u.startsWith(h));
+const unlinkHidden = (html) => (HIDDEN.length ? html.replace(/<li>(<a href="(\/[^"]*)"[\s\S]*?)<\/li>/g, (m, inner, h) => (isHidden(h) && !inner.includes('<li') ? '' : m)).replace(/<a\b([^>]*)\bhref="(\/[^"#?]*)[^"]*"[^>]*>([\s\S]*?)<\/a>/g, (m, pre, h, inner) => (!isHidden(h) ? m : /class="[^"]*\b(card|tile|btn|tbtn|feature)\b/.test(m) ? '' : inner)) : html);
 const yv = read('yavniel.json');
 const mk = read('mikveh.json');
 const mo = read('moharash.json');
@@ -77,7 +87,7 @@ const groups = [
   ['רבי נחמן מברסלב', [['/rabbi-nachman/', 'רבי נחמן', 'crown', 'רבינו, חייו, תורתו ודרכו'], ['/uman/', 'אומן', 'pin', 'ציון רבינו וקיבוץ ראש השנה'], ['/tikkun-haklali/', 'התיקון הכללי', 'lyre', 'עשרה מזמורי תהלים']]],
   ['הצדיק מיבנאל', [['/moharash/', 'הצדיק מיבנאל', 'flame', 'מוהרא״ש: חייו ודרכו'], ['/moharash/tziyun/', 'ציון הצדיק', 'candle', 'ההבטחות ודרכי הגעה'], ['/yeshiva/', 'ישיבת בית מנחם', 'school', 'ישיבה חסידית בנשיאותו'], ['/print/', 'הדפסת אשר בנחל', 'print', 'שותפות בהדפסת ספריו']]],
   ['יבנאל עיר ברסלב', [['/yavniel/', 'יבנאל', 'mountain', 'קהילה, תפילות ומידע'], ['/mikveh-malka/', 'מקווה מלכה', 'drop', 'מקווה טהרה לנשים'], ...(institutions.length ? [['/institutions/', 'מוסדות הקהילה', 'heart', 'תמיכה ותרומות']] : [])]],
-];
+].map(([g, xs]) => [g, xs.filter(([h]) => !isHidden(h))]);
 const nav = [['/', 'בית', 'home'], ...groups.flatMap(([, xs]) => xs), ['/search/', 'חיפוש', 'search']];
 const inGroup = (xs, path) => xs.some(([h]) => h === path || (h !== '/' && path.startsWith(h)));
 const menuLink = ([h, t, ic], path) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${icon(ic, 'ico sm')}${t}</a>`;
@@ -126,7 +136,7 @@ const ICON = {
 };
 const icon = (n, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
 const orn = `<div class="orn-rule" aria-hidden="true"><i></i>${icon('flame')}<i></i></div>`;
-const phead = (kicker, title, lead = '', extra = '') => `<section class="phead"><div class="wrap">${kicker ? `<p class="kicker2">${kicker}</p>` : ''}<h1>${title}</h1>${lead ? `<p class="sub">${lead}</p>` : ''}${extra}</div></section>`;
+const phead = (kicker, title, lead = '', extra = '') => `<section class="phead"><div class="wrap">${kicker ? `<p class="kicker2">${kicker}</p>` : ''}<h1>${title.replace(/ ([–—]) /g, '\u00a0$1 ')}</h1>${lead ? `<p class="sub">${lead}</p>` : ''}${extra}</div></section>`;
 // First visit only: the stylesheet loads without blocking paint, and a branded splash shows until it is in.
 const SPLASH_CSS = '#splash{display:none}.splash #splash{display:flex;position:fixed;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(120% 90% at 50% 0,#1a46a3,#0b1d50 55%,#071338);color:#e6c466;font:900 1.7rem/1.2 "Frank Ruhl Libre",David,serif;transition:opacity .45s;animation:spout .4s 6s forwards}#splash small{font:600 .8rem Assistant,Arial,sans-serif;letter-spacing:.14em;color:#c9d3ef}#splash .spm{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;border:1.5px solid #e6c466;background:radial-gradient(circle at 50% 35%,#2a5bc4,#0d2466 70%);animation:spp 1.6s infinite}#splash svg{width:46px;height:46px}#splash i{width:140px;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#e6c466,transparent) 0 0/50% 100% no-repeat;animation:sps 1.1s ease-in-out infinite alternate}html.ready #splash{opacity:0;visibility:hidden;transition:opacity .45s,visibility 0s .45s}@keyframes spp{0%{box-shadow:0 0 0 0 rgba(230,196,102,.55)}70%,100%{box-shadow:0 0 0 20px rgba(230,196,102,0)}}@keyframes sps{to{background-position:100% 0}}@keyframes spout{to{opacity:0;visibility:hidden}}@media (prefers-reduced-motion:reduce){#splash,#splash *{animation:none!important}}';
 const splash = `<div id="splash" aria-hidden="true"><span class="spm">${icon('flame')}</span><span>${SITE}</span><small>חסידות ברסלב</small><i></i></div>`;
@@ -178,7 +188,7 @@ readPages(halacha, '/halacha/', 'שו״ת הלכתי', ['השאלה הקודמת
 
 // Paginated list
 const chips = ['אמונה', 'התבודדות', 'שמחה', 'תפילה', 'אומן', 'פרנסה', 'שלום בית'].map((t) => `<a href="/search/?q=${encodeURIComponent(t)}">${t}</a>`).join('');
-const searchForm = `<form action="/search/" class="hsearch" role="search"><input name="q" type="search" placeholder="מה מעסיק אתכם? למשל: שמחה, התבודדות, פרנסה" aria-label="חיפוש בשו״ת"><button>${icon('search', 'ico sm')}חיפוש</button></form>`;
+const searchForm = `<form action="/search/" class="hsearch" role="search"><input name="q" type="search" placeholder="מה מעסיק אתכם?" aria-label="חיפוש בשו״ת"><button>${icon('search', 'ico sm')}חיפוש</button></form>`;
 const pages = Math.ceil(shut.length / PER_PAGE);
 for (let p = 1; p <= pages; p++) {
   const items = shut.slice((p - 1) * PER_PAGE, p * PER_PAGE);
@@ -452,13 +462,13 @@ write('letters/index.html', layout('מכתבים', `${sr('רשימת המכתב�
 // Each entry carries its own path (shut/12, letters/5602), so results can point to any section.
 const SHARDS = 8;
 const words = (t, skip = new Set()) => [...new Set(nik(t).replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter((w) => w && !skip.has(w)))].join(' ');
-const indexed = [...shut.map((x) => ['shut', x]), ...letters.map((x) => ['letters', x]), ...halacha.map((x) => ['halacha', x]),
+const indexed = [...shut.map((x) => ['shut', x]), ...(isHidden('/letters/') ? [] : letters.map((x) => ['letters', x])), ...halacha.map((x) => ['halacha', x]),
   ...Object.entries(bookChapters).flatMap(([slug, chs]) => chs.map((c) => [`library/${slug}`, { id: c.id, title: `${lib.books.find((b) => b.slug === slug).title}: ${nik(c.title)}`, q: [], a: c.paras.map(nik) }]))];
 const shardSize = Math.ceil(indexed.length / SHARDS);
 write('idx/titles.json', JSON.stringify({ n: SHARDS, size: shardSize, t: indexed.map(([b, x]) => [`${b}/${x.id}`, x.title]) }));
 for (let k = 0; k < SHARDS; k++) write(`idx/${k}.json`, JSON.stringify(indexed.slice(k * shardSize, (k + 1) * shardSize).map(([, x]) => words((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600), new Set(words(x.title).split(' '))))));
 const preloads = ['titles', ...Array.from({ length: SHARDS }, (_, k) => k)].map((f) => `<link rel="preload" href="/idx/${f}.json?v=${BUILD}" as="fetch" crossorigin>`).join('');
-write('search/index.html', layout('חיפוש', `${sr('תוצאות החיפוש')}<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid"></div><script src="/search.js?v=${BUILD}" defer></script>`, { path: '/search/', head_extra: preloads, head: phead('בכל אלפי השאלות והמכתבים', 'חיפוש באתר', '', `<div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" aria-label="חיפוש" autofocus></div><div class="chips">${chips}</div>`) }));
+write('search/index.html', layout('חיפוש', `${sr('תוצאות החיפוש')}<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid"></div><script src="/search.js?v=${BUILD}" defer></script>`, { path: '/search/', head_extra: preloads, head: phead(isHidden('/letters/') ? 'בכל אלפי השאלות' : 'בכל אלפי השאלות והמכתבים', 'חיפוש באתר', '', `<div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" aria-label="חיפוש" autofocus></div><div class="chips">${chips}</div>`) }));
 
 // Home
 const tile = (href, ic, t, d) => `<a class="tile" href="${href}">${icon(ic, 'ico lg')}<b>${t}</b><span>${d}</span><i class="arr">${icon('arrow', 'ico sm')}</i></a>`;

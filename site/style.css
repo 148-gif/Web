@@ -409,3 +409,12 @@ sup.fn a[aria-expanded="true"]{color:var(--on-gold);background:var(--gold2);bord
 .fnx:hover{background:var(--line);transform:none}
 .fnx:after{content:"";position:absolute;inset:-4px}
 @keyframes fnin{from{opacity:0;transform:translateY(-4px)}}
+
+/* Readability floor: no text under 13px; link-style buttons get full touch height */
+.brand small{font-size:.8rem;letter-spacing:.04em}
+.soonlist small{font-size:.85rem}
+.statrow span{font-size:.88rem}
+.tier2 em{font-size:.85rem}
+a.tbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;text-decoration:none}
+.notes .go a{min-height:44px}
+@media (max-width:860px){.brand small{font-size:.82rem}}
