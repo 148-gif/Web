@@ -8,7 +8,7 @@ const run = () => {
   const hits = index.filter((r) => terms.every((t) => r[2].includes(t)));
   count.textContent = hits.length ? `נמצאו ${hits.length} תוצאות${hits.length > 50 ? ' (מוצגות 50 הראשונות)' : ''}` : 'לא נמצאו תוצאות';
   for (const [id, title] of hits.slice(0, 50)) {
-    const a = document.createElement('a'); a.className = 'card'; a.href = `/shut/${id}/`;
+    const a = document.createElement('a'); a.className = 'card qcard'; a.href = `/shut/${id}/`;
     const h = document.createElement('h3'); h.textContent = title; a.append(h); out.append(a);
   }
 };
