@@ -14,9 +14,10 @@ const shut = read('shut.json').filter((x) => x.kind === 'shut');
 const letters = read('shut.json').filter((x) => x.kind === 'letters');
 const halacha = read('halacha.json');
 const institutions = read('institutions.json');
+const pr = read('print.json');
 const yeshiva = JSON.parse(readFileSync(new URL('../data/yeshiva.json', import.meta.url), 'utf8'));
 
-const nav = [['/', 'בית'], ['/yeshiva/', 'ישיבת בית מנחם'], ['/shut/', 'שו״ת ברסלב'], ['/halacha/', 'שו״ת הלכתי'], ['/institutions/', 'מוסדות הקהילה'], ['/search/', 'חיפוש']];
+const nav = [['/', 'בית'], ['/print/', 'הדפסת אשר בנחל'], ['/yeshiva/', 'ישיבת בית מנחם'], ['/shut/', 'שו״ת ברסלב'], ['/halacha/', 'שו״ת הלכתי'], ['/institutions/', 'מוסדות הקהילה'], ['/search/', 'חיפוש']];
 const layout = (title, body, { desc = '', path = '/' } = {}) => `<!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${esc(desc || 'היכל הקודש: חסידות ברסלב, שאלות ותשובות, הלכה ומוסדות הקהילה')}">
@@ -62,6 +63,29 @@ ${halacha.length ? `<div class="grid">${halacha.map((x) => `<a class="card" href
 write('institutions/index.html', layout('מוסדות הקהילה', `<h1>מוסדות הקהילה</h1><p class="lead">מוסדות תורה וחסד שזקוקים לתמיכתכם.</p>
 <div class="grid">${institutions.map((i) => `<div class="card inst"><h3>${esc(i.name)}</h3><p>${esc(i.desc)}</p>${i.goal ? `<p class="goal">${esc(i.goal)}</p>` : ''}<p>${i.link ? `<a class="btn" href="${esc(i.link)}" rel="noopener">לתרומה</a>` : ''}${i.phone ? ` <a class="btn ghost" href="tel:${esc(i.phone)}">${esc(i.phone)}</a>` : ''}</p></div>`).join('')}</div>`, { path: '/institutions/' }));
 
+
+// Print campaign: Asher BaNachal
+const pd = pr.donate;
+const donateBox = () => pd.iframeUrl
+  ? `<div class="donbox"><iframe title="תרומה באשראי" src="${esc(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer"></iframe></div>`
+  : pd.fallbackUrl
+    ? `<div class="donbox soon"><p>התרומה מתבצעת בדף תשלום מאובטח.</p><p><a class="btn big" href="${esc(pd.fallbackUrl)}" rel="noopener">לתרומה באשראי</a></p></div>`
+    : `<div class="donbox soon"><p>טופס התרומה באשראי יופעל בקרוב.</p>${pd.phone ? `<p>לתרומה טלפונית: <a href="tel:${esc(pd.phone)}">${esc(pd.phone)}</a></p>` : ''}${pd.email ? `<p><a href="mailto:${esc(pd.email)}">${esc(pd.email)}</a></p>` : ''}</div>`;
+const cta = `<p class="ctarow"><a class="btn big" href="/print/donate/">אני רוצה לתרום להדפסה</a></p>`;
+const printNav = (cur) => `<p class="subnav">${[['/print/', 'ההדפסה'], ['/print/promise/', 'ההבטחה'], ['/print/donate/', 'תרומה']].map(([h, t]) => `<a href="${h}"${h === cur ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</p>`;
+const h = pr.hero;
+
+write('print/index.html', layout(pr.title, `<section class="phero"><p class="kicker">${esc(h.kicker)}</p><h1>${esc(h.headline)}</h1><p class="lead">${esc(h.sub)}</p>${cta}</section>${printNav('/print/')}
+<h2>על הספר</h2><div class="about">${pr.about.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
+<h2>על מה אפשר להקדיש כרך</h2><div class="grid">${pr.needs.map(([t, d]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+<h2>איך זה עובד</h2><div class="grid steps">${pr.steps.map(([t, d], i) => `<div class="card"><h3>${i + 1}. ${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+<p><a href="/print/promise/">לקריאה על ההבטחה והסגולה ←</a></p>${cta}
+<h2>שאלות נפוצות</h2>${pr.faq.map(([q, a]) => `<details class="faq"><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}`, { desc: h.sub, path: '/print/' }));
+
+write('print/promise/index.html', layout('ההבטחה והסגולה', `<h1>ההבטחה של הצדיק</h1>${printNav('/print/promise/')}<div class="about promise">${pr.promiseText.map((p) => `<p>${esc(p)}</p>`).join('')}</div>${cta}`, { desc: 'ההבטחה בשם הצדיק מיבניאל זצ״ל למשתתפים בהדפסת אשר בנחל', path: '/print/' }));
+
+write('print/donate/index.html', layout('תרומה להדפסת אשר בנחל', `<h1>תרומה להדפסת אשר בנחל</h1>${printNav('/print/donate/')}<p class="lead">כל תרומה מצטרפת להדפסת כרך נוסף. התשלום מאובטח.</p>${donateBox()}<p class="small">התרומה היא להדפסת ספרי הצדיק והפצתם. אין בה התחייבות לתוצאה מסוימת.</p>`, { desc: 'תרומה באשראי להדפסת אשר בנחל', path: '/print/' }));
+
 // Search
 write('search/index.html', layout('חיפוש', `<h1>חיפוש בשו״ת</h1><input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" autofocus><p id="count" class="small"></p><div id="results" class="grid"></div><script src="/search.js"></script>`, { path: '/search/' }));
 write('search-index.json', JSON.stringify(shut.map((x) => [x.id, x.title, nik((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600))])));
@@ -70,10 +94,10 @@ write('search-index.json', JSON.stringify(shut.map((x) => [x.id, x.title, nik((x
 const letterNote = letters.length ? '' : '';
 write('index.html', layout(SITE, `<section class="hero"><h1>היכל הקודש</h1><p class="kicker">חסידות ברסלב</p><p>${shut.length.toLocaleString('he-IL')} שאלות ותשובות בדרכה של חסידות ברסלב: אמונה, תפילה, התבודדות ושמחה.</p>
 <form action="/search/" class="hsearch"><input name="q" type="search" placeholder="מה מעסיק אתכם?"><button>חיפוש</button></form></section>
-<section class="tiles"><a href="/yeshiva/"><b>ישיבת בית מנחם</b><span>ישיבה חסידית</span></a><a href="/shut/"><b>שו״ת ברסלב</b><span>עיון בכל השאלות</span></a><a href="/halacha/"><b>שו״ת הלכתי</b><span>שאלות בהלכה</span></a><a href="/institutions/"><b>מוסדות הקהילה</b><span>תמיכה ותרומות</span></a></section>
+<section class="tiles"><a href="/yeshiva/"><b>ישיבת בית מנחם</b><span>ישיבה חסידית</span></a><a href="/shut/"><b>שו״ת ברסלב</b><span>עיון בכל השאלות</span></a><a href="/halacha/"><b>שו״ת הלכתי</b><span>שאלות בהלכה</span></a><a href="/print/"><b>הדפסת אשר בנחל</b><span>זכות והבטחה</span></a><a href="/institutions/"><b>מוסדות הקהילה</b><span>תמיכה ותרומות</span></a></section>
 <h2>שאלות אחרונות</h2><div class="grid">${shut.slice(0, 6).map(card).join('')}</div>${letterNote}`, { path: '/' }));
 
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/yeshiva/', '/shut/', '/halacha/', '/institutions/', ...shut.map((x) => `/shut/${x.id}/`)].map((u) => `<url><loc>${u}</loc></url>`).join('')}</urlset>`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/halacha/', '/institutions/', ...shut.map((x) => `/shut/${x.id}/`)].map((u) => `<url><loc>${u}</loc></url>`).join('')}</urlset>`);
 if (BASE) {
   const f = 'dist/search.js';
   writeFileSync(f, readFileSync(f, 'utf8').replace("'/search-index.json'", `'${BASE}/search-index.json'`).replace('`/shut/${id}/`', `\`${BASE}/shut/\${id}/\``));
