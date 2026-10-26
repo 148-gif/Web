@@ -301,3 +301,7 @@ body:has(.stickcta){padding-bottom:76px}
 .fbtns{padding:4px 16px 16px}.fbtns .navbtns{margin:6px 0 0}.fbtns .btn{flex:1 1 100%}
 .steps3.six{grid-template-columns:repeat(3,1fr)}.card.book>.ico{color:var(--gold);margin-bottom:8px}.soonbox{margin-top:24px}
 @media (max-width:860px){.steps3.six{grid-template-columns:1fr 1fr}}@media (max-width:640px){.steps3.six{grid-template-columns:1fr}}
+
+.lchips .chips,.lchips{margin:0 0 8px}.band .lchips a{color:var(--brand);border-color:var(--line);background:var(--surface)}.band .lchips a:hover{background:var(--sunk);color:var(--brand)}.libcat+.libcat{margin-top:12px}.libcat .subh{justify-content:flex-start}
+.soonlist{justify-content:center}.soonlist small{color:var(--mute);font-weight:400;margin-inline-start:4px}
+@media (min-width:861px) and (max-width:980px){.bar{padding-inline:12px;gap:8px}.brand{font-size:1.15rem;gap:8px}.brand .mark{width:34px;height:34px}.top nav a{padding:0 5px;font-size:.84rem}}
