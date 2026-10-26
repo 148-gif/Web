@@ -48,6 +48,6 @@ const stick = document.querySelector('.stickcta');
 if (stick && 'IntersectionObserver' in window) {
   const seen = new Set();
   const io = new IntersectionObserver((es) => { es.forEach((e) => (e.isIntersecting ? seen.add(e.target) : seen.delete(e.target))); stick.classList.toggle('show', !seen.size); });
-  document.querySelectorAll('.phero2 .btn, .final .btn, #donate').forEach((el) => io.observe(el));
+  document.querySelectorAll('.phero2 .btn, .phead .btn, .final .btn, #donate').forEach((el) => io.observe(el));
 } else if (stick) stick.classList.add('show');
 }
