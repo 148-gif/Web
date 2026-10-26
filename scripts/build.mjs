@@ -67,26 +67,46 @@ write('institutions/index.html', layout('מוסדות הקהילה', `<h1>מוס
 
 // Print campaign: Asher BaNachal
 const pd = pr.donate;
-const donateBox = () => pd.iframeUrl
-  ? `<div class="donbox"><h2 class="donhead">תרומה באשראי</h2><iframe title="תרומה באשראי" src="${esc(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer" style="width:100%;height:900px;min-height:80vh;border:1px solid #eadfc4;border-radius:12px;background:#fff"></iframe>${pd.fallbackUrl ? `<p class="ctarow"><a class="btn big" href="${esc(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו את טופס התרומה במסך מלא</a></p>` : ''}</div>`
-  : pd.fallbackUrl
-    ? `<div class="donbox soon"><p>התרומה מתבצעת בדף תשלום מאובטח.</p><p><a class="btn big" href="${esc(pd.fallbackUrl)}" rel="noopener">לתרומה באשראי</a></p></div>`
-    : `<div class="donbox soon"><p>טופס התרומה באשראי יופעל בקרוב.</p>${pd.phone ? `<p>לתרומה טלפונית: <a href="tel:${esc(pd.phone)}">${esc(pd.phone)}</a></p>` : ''}${pd.email ? `<p><a href="mailto:${esc(pd.email)}">${esc(pd.email)}</a></p>` : ''}</div>`;
-const cta = `<p class="ctarow"><a class="btn big" href="/print/donate/">אני רוצה לתרום להדפסה</a></p>`;
-const printNav = (cur) => `<p class="subnav" style="display:flex;justify-content:center;gap:20px;flex-wrap:wrap">${[['/print/', 'ההדפסה'], ['/print/promise/', 'ההבטחה'], ['/print/donate/', 'תרומה']].map(([h, t]) => `<a href="${h}"${h === cur ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</p>`;
 const h = pr.hero;
-const tiers = (pr.tiers || []).length ? `<h2>דרכי השתתפות</h2><div class="grid tiers">${pr.tiers.map((t) => `<div class="card tier"><b class="amt">${Number(t.amount).toLocaleString('he-IL')} ₪</b><h3>${esc(t.name)}</h3><p>${esc(t.desc)}</p></div>`).join('')}</div><p class="small">אפשר לתרום גם סכום אחר. כל תרומה נחשבת.</p>` : '';
+const money = (n) => Number(n).toLocaleString('he-IL');
+const donateBox = () => pd.iframeUrl
+  ? `<div class="donbox" id="donate"><h2 class="donhead">התרומה שלכם מתחילה כאן</h2><iframe title="תרומה באשראי" src="${esc(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer" style="width:100%;height:900px;min-height:80vh;border:1px solid #eadfc4;border-radius:14px;background:#fff"></iframe>${pd.fallbackUrl ? `<p class="ctarow"><a class="btn big" href="${esc(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו את טופס התרומה במסך מלא</a></p>` : ''}</div>`
+  : pd.fallbackUrl
+    ? `<div class="donbox soon" id="donate"><p><a class="btn big" href="${esc(pd.fallbackUrl)}" rel="noopener">לתרומה באשראי</a></p></div>`
+    : `<div class="donbox soon" id="donate"><p>טופס התרומה באשראי יופעל בקרוב.</p>${pd.phone ? `<p><a href="tel:${esc(pd.phone)}">${esc(pd.phone)}</a></p>` : ''}</div>`;
+const cta = (t = 'אני רוצה להצטרף להדפסה') => `<a class="btn big glow" href="/print/donate/">${t}</a>`;
+const trust = `<ul class="trust">${pr.trust.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
+const g = pr.goal || {};
+const goal = g.target ? `<div class="goal-bar"><div class="gb-top"><b>${esc(g.label || 'התקדמות ההדפסה')}</b><span>${money(g.raised)} מתוך ${money(g.target)} ₪</span></div><div class="gb-track"><i style="width:${Math.min(100, Math.round((g.raised / g.target) * 100))}%"></i></div></div>` : '';
+const tierCards = (link) => `<div class="tiers2">${pr.tiers.map((t) => `<a class="tier2${t.tag ? ' pick' : ''}" href="${link}">${t.tag ? `<em>${esc(t.tag)}</em>` : ''}<b class="amt">${t.amount ? money(t.amount) + ' ₪' : 'סכום חופשי'}</b><h3>${esc(t.name)}</h3><p>${esc(t.desc)}</p><span class="go">לתרומה ←</span></a>`).join('')}</div>`;
+const stick = `<div class="stickcta"><a class="btn big glow" href="/print/donate/">להצטרף להדפסה</a></div>`;
+const sect = (cls, inner) => `<section class="band ${cls}"><div class="wrap">${inner}</div></section>`;
+const wrapPage = (inner) => `</main>${inner}<main>`;
 
-write('print/index.html', layout(pr.title, `<section class="phero"><p class="kicker">${esc(h.kicker)}</p><h1>${esc(h.headline)}</h1><p class="lead">${esc(h.sub)}</p>${cta}</section>${printNav('/print/')}
-<h2>על הספר</h2><div class="about">${pr.about.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
-<h2>על מה אפשר להקדיש כרך</h2><div class="grid">${pr.needs.map(([t, d]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
-${tiers}<h2>איך זה עובד</h2><div class="grid steps">${pr.steps.map(([t, d], i) => `<div class="card"><h3>${i + 1}. ${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
-<p><a href="/print/promise/">לקריאה על ההבטחה והסגולה ←</a></p>${cta}
-<h2>שאלות נפוצות</h2>${pr.faq.map(([q, a]) => `<details class="faq"><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}`, { desc: h.sub, path: '/print/' }));
+const promiseBlock = `<blockquote class="pq"><p>${esc(pr.quote)}</p><cite>${esc(pr.quoteBy)}</cite></blockquote>`;
 
-write('print/promise/index.html', layout('ההבטחה והסגולה', `<h1>ההבטחה של הצדיק</h1>${printNav('/print/promise/')}<div class="about promise">${pr.promiseText.map((p) => `<p>${esc(p)}</p>`).join('')}</div>${cta}`, { desc: 'ההבטחה בשם הצדיק מיבניאל זצ״ל למשתתפים בהדפסת אשר בנחל', path: '/print/' }));
+write('print/index.html', layout(pr.title, `</main>
+<section class="phero2"><div class="wrap"><p class="kicker2">${esc(h.kicker)}</p><h1>${esc(h.headline)}</h1><p class="sub">${esc(h.sub)}</p><p class="ctarow">${cta()}</p>${trust}</div></section>
+<section class="statrow"><div class="wrap">${pr.stats.map(([n, l]) => `<div><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('')}</div></section>
+${sect('quoteband', promiseBlock + `<p class="ctarow"><a class="more" href="/print/promise/">לקריאה על ההבטחה ←</a></p>`)}
+${sect('', `<h2 class="sh">מה זה ״אשר בנחל״</h2><div class="about">${pr.about.map((p) => `<p>${esc(p)}</p>`).join('')}</div>`)}
+${sect('soft', `<h2 class="sh">על מה מקדישים</h2><p class="shsub">לכל בקשה יש מקום בכרך. בחרו מה שעל ליבכם.</p><div class="needs">${pr.needs.map(([t, d2]) => `<div class="need"><span class="orn">✦</span><h3>${esc(t)}</h3><p>${esc(d2)}</p></div>`).join('')}</div>`)}
+${sect('', `<h2 class="sh">בחרו את השותפות שלכם</h2><p class="shsub">כל סכום נחשב. כל סכום מחיה נפשות.</p>${goal}${tierCards('/print/donate/')}`)}
+${sect('soft', `<h2 class="sh">שלושה צעדים פשוטים</h2><div class="steps2">${pr.steps.map(([t, d2], i) => `<div><span class="num">${i + 1}</span><h3>${esc(t)}</h3><p>${esc(d2)}</p></div>`).join('')}</div>`)}
+${sect('final', `<h2>${esc(pr.finalCta.head)}</h2><p>${esc(pr.finalCta.sub)}</p><p class="ctarow">${cta('אני רוצה לתרום עכשיו')}</p>${trust}`)}
+${sect('', `<h2 class="sh">שאלות נפוצות</h2>${pr.faq.map(([q, a]) => `<details class="faq"><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}`)}
+${stick}<main>`, { desc: h.sub, path: '/print/' }));
 
-write('print/donate/index.html', layout('תרומה להדפסת אשר בנחל', `<h1>תרומה להדפסת אשר בנחל</h1>${printNav('/print/donate/')}<p class="lead">כל תרומה מצטרפת להדפסת כרך נוסף. התשלום מאובטח.</p>${tiers}${donateBox()}<p class="small">התרומה היא להדפסת ספרי הצדיק והפצתם. אין בה התחייבות לתוצאה מסוימת.</p>`, { desc: 'תרומה באשראי להדפסת אשר בנחל', path: '/print/' }));
+write('print/promise/index.html', layout('ההבטחה והסגולה', `</main>
+<section class="phero2 short"><div class="wrap"><p class="kicker2">ההבטחה</p><h1>מה הבטיח הצדיק</h1></div></section>
+${sect('quoteband', promiseBlock)}
+${sect('', `<div class="about promise">${pr.promiseText.map((p) => `<p>${esc(p)}</p>`).join('')}</div><p class="ctarow">${cta()}</p>${trust}`)}
+${stick}<main>`, { desc: 'ההבטחה בשם הצדיק מיבניאל זצ״ל למשתתפים בהדפסת אשר בנחל', path: '/print/' }));
+
+write('print/donate/index.html', layout('תרומה להדפסת אשר בנחל', `</main>
+<section class="phero2 short"><div class="wrap"><p class="kicker2">כמעט שם</p><h1>הצטרפו להדפסת אשר בנחל</h1><p class="sub">בחרו סכום, רשמו הקדשה, וסיימתם. התשלום מאובטח.</p>${trust}</div></section>
+${sect('', `${goal}${tierCards('#donate')}${donateBox()}<p class="small center">התרומה היא להדפסת ספרי הצדיק והפצתם. אין בה התחייבות לתוצאה מסוימת.</p>`)}
+<main>`, { desc: 'תרומה באשראי להדפסת אשר בנחל', path: '/print/' }));
 
 // Search
 write('search/index.html', layout('חיפוש', `<h1>חיפוש בשו״ת</h1><input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" autofocus><p id="count" class="small"></p><div id="results" class="grid"></div><script src="/search.js"></script>`, { path: '/search/' }));
