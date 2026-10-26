@@ -308,7 +308,7 @@ sup.fn{line-height:0;font-size:.7em;margin:0 1px}sup.fn a{text-decoration:none;f
 .fnotes li>b{flex:none;min-width:1.6em;color:var(--gold);font-family:var(--sans)}.fnotes li a{text-decoration:none}
 .toc{list-style:none;padding:0;margin:0 0 6px}.toc li a{display:flex;gap:14px;align-items:baseline;padding:11px 14px;border-bottom:1px dashed var(--line);text-decoration:none;color:var(--ink);border-radius:8px}
 .toc li a:hover{background:var(--sunk)}.toc b{flex:none;min-width:64px;font:700 .88rem var(--sans);color:var(--gold)}.toc span{font-size:1rem;line-height:1.6}
-.tocpart{display:flex;align-items:center;gap:10px;font-size:1.15rem;color:var(--brand);margin:26px 0 6px}.tocpart span{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font:900 .95rem var(--sans);color:var(--on-gold);background:linear-gradient(180deg,var(--gold3),var(--gold2))}
+h3.tocpart{display:flex;align-items:center;gap:10px;font-size:1.15rem;color:var(--brand);margin:26px 0 6px}h3.tocpart span{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font:900 .95rem var(--sans);color:var(--on-gold);background:linear-gradient(180deg,var(--gold3),var(--gold2))}
 .continue{text-align:center;margin:0 0 18px}
 @media (max-width:640px){.toc li a{flex-direction:column;gap:2px;padding:10px 6px}.toc b{min-width:0}.book-sheet p{text-align:right}.tools{flex-wrap:wrap}}
 
@@ -358,3 +358,42 @@ body.menu-open{overflow:hidden}
 .tikkun-text .verses{text-align:justify;line-height:2.1}sup.vn{font:700 .72em var(--sans);color:var(--gold);margin-inline:6px 3px;vertical-align:baseline;position:relative;top:-.15em}
 .hint{font:.8em var(--sans);color:var(--mute)}.psalms a{color:inherit;text-decoration:none}.psalms li:hover{background:var(--gold3)}
 .tikkun-text .subt,.tikkun-text .psalm{scroll-margin-top:90px}
+
+/* Long pages: sticky section bar, back-to-top button */
+.secbar{position:fixed;top:var(--hh,60px);right:0;left:0;z-index:25;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);box-shadow:0 4px 14px rgba(11,29,80,.08);transform:translateY(-120%);visibility:hidden;transition:transform .25s ease,top .25s ease,visibility .25s}
+.secbar.show{transform:none;visibility:visible}
+.sbin{max-width:1040px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;padding:6px 16px;scrollbar-width:none}.sbin::-webkit-scrollbar{display:none}
+.secbar a{flex:none;display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border-radius:999px;font:600 .92rem var(--sans);color:var(--brand);text-decoration:none;white-space:nowrap}
+.secbar a:hover{background:var(--sunk)}.secbar a.on{background:linear-gradient(180deg,var(--gold3),var(--gold2));color:var(--on-gold)}
+@media (max-width:860px){.top.hide~.secbar{top:0}}
+[id]{scroll-margin-top:calc(var(--hh,60px) + 60px)}
+.totop{position:fixed;left:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:22;width:48px;height:48px;min-height:0;padding:0;border-radius:50%;opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .2s,transform .2s,visibility .2s}
+.totop.show{opacity:1;visibility:visible;transform:none}
+body:has(.stickcta) .totop{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 76px)}
+@media (min-width:641px){body:has(.stickcta) .totop{bottom:24px}}
+.totop:hover{transform:translateY(-2px)}
+
+/* Prayer schedules fold per prayer */
+details.scard{padding:0}
+details.scard>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 18px;min-height:56px}
+details.scard>summary::-webkit-details-marker{display:none}
+details.scard>summary h3{flex:1;border:0;padding:0;margin:0}
+.sspan{font:600 .88rem var(--sans);color:var(--mute);white-space:nowrap}
+details.scard .chev,details.tocpart .chev{width:20px;height:20px;flex:none;fill:none;stroke:var(--gold);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+details[open]>summary .chev{transform:rotate(180deg)}
+details.scard[open]>summary{border-bottom:2px solid var(--gold2);margin:0 18px;padding-inline:0}
+details.scard>dl,details.scard>.snote{padding:0 18px}details.scard>dl{padding-bottom:8px}
+
+/* Book contents fold per part */
+details.tocpart{display:block;margin:10px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
+details.tocpart>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;min-height:60px}
+details.tocpart>summary::-webkit-details-marker{display:none}
+details.tocpart>summary b{flex:1;font-size:1.12rem;color:var(--brand)}
+details.tocpart>summary small{font:600 .85rem var(--sans);color:var(--mute);white-space:nowrap}
+.tn{display:inline-grid;place-items:center;width:32px;height:32px;flex:none;border-radius:50%;font:900 .95rem var(--sans);color:var(--on-gold);background:linear-gradient(180deg,var(--gold3),var(--gold2) 50%,#c99a3c)}
+details.tocpart>.toc{padding:0 10px 10px;border-top:1px solid var(--line)}
+.toc a.last{background:var(--sunk);box-shadow:inset -3px 0 0 var(--gold2)}
+
+/* Book section heading: short title, summary underneath */
+.qhead .csum{text-align:right;margin:4px 0 0;font-size:1.08rem;line-height:1.6;max-width:760px}
+@media (max-width:640px){.qhead .csum{font-size:1rem}}

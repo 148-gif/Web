@@ -82,4 +82,38 @@ document.querySelectorAll('[data-continue]').forEach((el) => {
   const a = document.createElement('a'); a.className = 'btn'; a.href = v.u; a.textContent = `להמשיך מהמקום שעצרתם: ${v.c} ←`;
   el.append(a); el.hidden = false;
 });
+
+// Long pages: a section bar that sticks under the header once the in-page chips scroll away, marking the current section.
+const anchorNav = document.querySelector('nav.anchors');
+if (anchorNav && 'IntersectionObserver' in window) {
+  const secbar = document.createElement('nav');
+  secbar.className = 'secbar'; secbar.setAttribute('aria-label', 'פרקים בעמוד');
+  const setH = () => root.style.setProperty('--hh', `${hdr.offsetHeight}px`); setH(); addEventListener('resize', setH);
+  secbar.innerHTML = `<div class="sbin">${anchorNav.innerHTML}</div>`;
+  document.body.append(secbar);
+  const links = [...secbar.querySelectorAll('a')], secs = links.map((a) => document.getElementById(a.hash.slice(1))).filter(Boolean);
+  new IntersectionObserver(([e]) => secbar.classList.toggle('show', !e.isIntersecting && e.boundingClientRect.top < 0)).observe(anchorNav);
+  const mark = () => {
+    let cur = null;
+    for (const s of secs) if (s.getBoundingClientRect().top < innerHeight * 0.35) cur = s;
+    links.forEach((a) => { const on = cur && a.hash === `#${cur.id}`; a.classList.toggle('on', on); if (on && secbar.classList.contains('show')) a.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
+  };
+  addEventListener('scroll', () => requestAnimationFrame(mark), { passive: true });
+}
+// Back-to-top button after a screen and a half of scrolling.
+const totop = document.querySelector('.totop');
+if (totop) {
+  totop.hidden = false;
+  addEventListener('scroll', () => totop.classList.toggle('show', scrollY > innerHeight * 1.5), { passive: true });
+  totop.addEventListener('click', () => { scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); hdr.classList.remove('hide'); });
+}
+// Prayer schedules: open on wide screens, folded on phones.
+if (matchMedia('(min-width: 861px)').matches) document.querySelectorAll('details.scard').forEach((d) => { d.open = true; });
+// Book contents: open the part that holds the last section read.
+document.querySelectorAll('[data-continue]').forEach((el) => {
+  let v = null;
+  try { v = JSON.parse(localStorage.getItem(`book:${el.dataset.continue}`)); } catch (e) {}
+  const a = v && v.u && document.querySelector(`details.tocpart a[href="${v.u}"]`);
+  if (a) { a.closest('details').open = true; a.classList.add('last'); }
+});
 }
