@@ -21,3 +21,4 @@ footer{color:var(--mute);font-size:.85rem;text-align:center;padding-block:32px}
 .about{max-width:720px}.about p{margin:.8em 0}h2{border-bottom:1px solid var(--line);padding-bottom:4px}
 .gallery{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}.gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;border:2px solid var(--gold)}
 .contact p{margin:.3em 0;color:var(--ink)}
+.kicker{color:var(--gold);font-size:1.3rem;font-weight:700;margin:-.4em 0 .6em;letter-spacing:.04em}.brand{font-size:1.9rem}

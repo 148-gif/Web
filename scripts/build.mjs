@@ -1,7 +1,7 @@
 // Static site generator: data/*.json -> dist/
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync } from 'node:fs';
 
-const SITE = 'בית מנחם';
+const SITE = 'היכל הקודש';
 const PER_PAGE = 40;
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const nik = (s) => s.replace(/[֑-ׇ]/g, '');
@@ -14,12 +14,12 @@ const halacha = read('halacha.json');
 const institutions = read('institutions.json');
 const yeshiva = JSON.parse(readFileSync(new URL('../data/yeshiva.json', import.meta.url), 'utf8'));
 
-const nav = [['/', 'בית'], ['/yeshiva/', 'הישיבה'], ['/shut/', 'שו״ת ברסלב'], ['/halacha/', 'שו״ת הלכתי'], ['/institutions/', 'מוסדות הקהילה'], ['/search/', 'חיפוש']];
+const nav = [['/', 'בית'], ['/yeshiva/', 'ישיבת בית מנחם'], ['/shut/', 'שו״ת ברסלב'], ['/halacha/', 'שו״ת הלכתי'], ['/institutions/', 'מוסדות הקהילה'], ['/search/', 'חיפוש']];
 const layout = (title, body, { desc = '', path = '/' } = {}) => `<!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${esc(desc || 'שאלות ותשובות בעבודת ה׳, בדרך ברסלב ובהלכה')}">
+<title>${esc(title)}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${esc(desc || 'היכל הקודש: חסידות ברסלב, שאלות ותשובות, הלכה ומוסדות הקהילה')}">
 <link rel="stylesheet" href="/style.css"></head><body>
-<header class="top"><a class="brand" href="/"><img src="/img/logo.jpg" alt="" width="56" height="56"><span>${SITE}<small>ישיבה חסידית · שו״ת ברסלב</small></span></a><nav>${nav.map(([h, t]) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</nav></header>
+<header class="top"><a class="brand" href="/"><span>${SITE}<small>חסידות ברסלב</small></span></a><nav>${nav.map(([h, t]) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</nav></header>
 <main>${body}</main>
 <footer><p>התוכן נכתב על ידי הצדיק מיבניאל זצ״ל, ופורסם ברשות להעתקה והפצה.</p></footer></body></html>`;
 
@@ -46,7 +46,7 @@ for (let p = 1; p <= pages; p++) {
 
 // Yeshiva
 const y = yeshiva, c = y.contact;
-write('yeshiva/index.html', layout('הישיבה', `<section class="yhero"><img src="/img/logo.jpg" alt="${esc(y.name)} - ${esc(y.subtitle)}"><p class="banner">${esc(y.banner)}</p></section>
+write('yeshiva/index.html', layout('ישיבת בית מנחם', `<section class="yhero"><img src="/img/logo.jpg" alt="${esc(y.name)} - ${esc(y.subtitle)}"><p class="banner">${esc(y.banner)}</p></section>
 <h1>על הישיבה</h1><div class="about">${y.about.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
 <h2>הדרך שלנו</h2><div class="grid">${y.values.map(([t, d]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
 <h2>גלריה</h2>${y.photos.length ? `<div class="gallery">${y.photos.map((f) => `<img loading="lazy" src="${esc(f)}" alt="">`).join('')}</div>` : '<div class="empty"><p>התמונות יתווספו בקרוב.</p></div>'}
@@ -66,9 +66,9 @@ write('search-index.json', JSON.stringify(shut.map((x) => [x.id, x.title, nik((x
 
 // Home
 const letterNote = letters.length ? '' : '';
-write('index.html', layout(SITE, `<section class="hero"><img class="logo" src="/img/logo.jpg" alt="בית מנחם - ישיבה חסידית"><h1>שאלות ותשובות בעבודת ה׳</h1><p>${shut.length.toLocaleString('he-IL')} תשובות בעבודת ה׳, בדרך ברסלב.</p>
+write('index.html', layout(SITE, `<section class="hero"><h1>היכל הקודש</h1><p class="kicker">חסידות ברסלב</p><p>${shut.length.toLocaleString('he-IL')} שאלות ותשובות בדרכה של חסידות ברסלב: אמונה, תפילה, התבודדות ושמחה.</p>
 <form action="/search/" class="hsearch"><input name="q" type="search" placeholder="מה מעסיק אתכם?"><button>חיפוש</button></form></section>
-<section class="tiles"><a href="/yeshiva/"><b>הישיבה</b><span>בית מנחם, ישיבה חסידית</span></a><a href="/shut/"><b>שו״ת ברסלב</b><span>עיון בכל השאלות</span></a><a href="/halacha/"><b>שו״ת הלכתי</b><span>שאלות בהלכה</span></a><a href="/institutions/"><b>מוסדות הקהילה</b><span>תמיכה ותרומות</span></a></section>
+<section class="tiles"><a href="/yeshiva/"><b>ישיבת בית מנחם</b><span>ישיבה חסידית</span></a><a href="/shut/"><b>שו״ת ברסלב</b><span>עיון בכל השאלות</span></a><a href="/halacha/"><b>שו״ת הלכתי</b><span>שאלות בהלכה</span></a><a href="/institutions/"><b>מוסדות הקהילה</b><span>תמיכה ותרומות</span></a></section>
 <h2>שאלות אחרונות</h2><div class="grid">${shut.slice(0, 6).map(card).join('')}</div>${letterNote}`, { path: '/' }));
 
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/yeshiva/', '/shut/', '/halacha/', '/institutions/', ...shut.map((x) => `/shut/${x.id}/`)].map((u) => `<url><loc>${u}</loc></url>`).join('')}</urlset>`);
