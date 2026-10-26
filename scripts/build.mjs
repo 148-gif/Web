@@ -74,17 +74,18 @@ const donateBox = () => pd.iframeUrl
 const cta = `<p class="ctarow"><a class="btn big" href="/print/donate/">אני רוצה לתרום להדפסה</a></p>`;
 const printNav = (cur) => `<p class="subnav">${[['/print/', 'ההדפסה'], ['/print/promise/', 'ההבטחה'], ['/print/donate/', 'תרומה']].map(([h, t]) => `<a href="${h}"${h === cur ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</p>`;
 const h = pr.hero;
+const tiers = (pr.tiers || []).length ? `<h2>דרכי השתתפות</h2><div class="grid tiers">${pr.tiers.map((t) => `<div class="card tier"><b class="amt">${Number(t.amount).toLocaleString('he-IL')} ₪</b><h3>${esc(t.name)}</h3><p>${esc(t.desc)}</p></div>`).join('')}</div><p class="small">אפשר לתרום גם סכום אחר. כל תרומה נחשבת.</p>` : '';
 
 write('print/index.html', layout(pr.title, `<section class="phero"><p class="kicker">${esc(h.kicker)}</p><h1>${esc(h.headline)}</h1><p class="lead">${esc(h.sub)}</p>${cta}</section>${printNav('/print/')}
 <h2>על הספר</h2><div class="about">${pr.about.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
 <h2>על מה אפשר להקדיש כרך</h2><div class="grid">${pr.needs.map(([t, d]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
-<h2>איך זה עובד</h2><div class="grid steps">${pr.steps.map(([t, d], i) => `<div class="card"><h3>${i + 1}. ${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+${tiers}<h2>איך זה עובד</h2><div class="grid steps">${pr.steps.map(([t, d], i) => `<div class="card"><h3>${i + 1}. ${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
 <p><a href="/print/promise/">לקריאה על ההבטחה והסגולה ←</a></p>${cta}
 <h2>שאלות נפוצות</h2>${pr.faq.map(([q, a]) => `<details class="faq"><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}`, { desc: h.sub, path: '/print/' }));
 
 write('print/promise/index.html', layout('ההבטחה והסגולה', `<h1>ההבטחה של הצדיק</h1>${printNav('/print/promise/')}<div class="about promise">${pr.promiseText.map((p) => `<p>${esc(p)}</p>`).join('')}</div>${cta}`, { desc: 'ההבטחה בשם הצדיק מיבניאל זצ״ל למשתתפים בהדפסת אשר בנחל', path: '/print/' }));
 
-write('print/donate/index.html', layout('תרומה להדפסת אשר בנחל', `<h1>תרומה להדפסת אשר בנחל</h1>${printNav('/print/donate/')}<p class="lead">כל תרומה מצטרפת להדפסת כרך נוסף. התשלום מאובטח.</p>${donateBox()}<p class="small">התרומה היא להדפסת ספרי הצדיק והפצתם. אין בה התחייבות לתוצאה מסוימת.</p>`, { desc: 'תרומה באשראי להדפסת אשר בנחל', path: '/print/' }));
+write('print/donate/index.html', layout('תרומה להדפסת אשר בנחל', `<h1>תרומה להדפסת אשר בנחל</h1>${printNav('/print/donate/')}<p class="lead">כל תרומה מצטרפת להדפסת כרך נוסף. התשלום מאובטח.</p>${tiers}${donateBox()}<p class="small">התרומה היא להדפסת ספרי הצדיק והפצתם. אין בה התחייבות לתוצאה מסוימת.</p>`, { desc: 'תרומה באשראי להדפסת אשר בנחל', path: '/print/' }));
 
 // Search
 write('search/index.html', layout('חיפוש', `<h1>חיפוש בשו״ת</h1><input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" autofocus><p id="count" class="small"></p><div id="results" class="grid"></div><script src="/search.js"></script>`, { path: '/search/' }));

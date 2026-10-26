@@ -53,3 +53,4 @@ footer{padding-inline:14px}
 .promise p{margin:1em 0}.promise p:first-child{font-size:1.15rem;border-right:4px solid var(--gold);padding-right:16px}
 .donbox{max-width:560px;margin:20px auto}.donbox iframe{width:100%;height:640px;border:1px solid var(--line);border-radius:12px;background:#fff}.donbox.soon{text-align:center;background:var(--card);border:1px dashed var(--gold);border-radius:12px;padding:24px}
 .faq{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:8px 0}.faq summary{cursor:pointer;font-weight:700;color:var(--brand)}.faq p{margin:.5em 0 0;color:var(--mute)}
+.tier{text-align:center}.tier .amt{display:block;font-size:1.8rem;color:var(--gold)}
