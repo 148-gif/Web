@@ -188,7 +188,7 @@ write('yavniel/index.html', layout('יבנאל', `<section class="band"><div cla
 write('mikveh-malka/index.html', layout('מקווה מלכה', `<section class="band"><div class="wrap narrow"><h2 class="sh">על המקווה</h2>${orn}<div class="about">${ps(mk.about)}</div></div></section>
 <section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(mk.storyTitle)}</h2><div class="about">${ps(mk.story)}</div></div></section>
 <section class="band"><div class="wrap narrow"><h2 class="sh">${esc(mk.promiseTitle)}</h2>${orn}<div class="about"><blockquote><p>${esc(mk.promise)}</p></blockquote>${ps(mk.promiseAfter)}</div></div></section>
-<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(mk.hoursTitle)}</h2><div class="about">${ul(mk.hours.map(esc))}<p>${esc(mk.phoneNote)} <a href="tel:${tel(mk.phone)}">${esc(mk.phone)}</a></p><p>כתובת: ${esc(mk.address)}</p><p><a href="/yavniel/">← לדף יבנאל</a></p></div></div></section>`,
+<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(mk.hoursTitle)}</h2><div class="about">${ul(mk.hours.map(esc))}<p>${esc(mk.phoneNote)} <a href="tel:${tel(mk.phone)}">${esc(mk.phone)}</a></p><h3>${esc(mk.attendantsTitle)}</h3>${ul(mk.attendants.map(([n, ts]) => `${esc(n)}: ${ts.map((t) => `<a href="tel:${tel(t)}">${esc(t)}</a>`).join(' · ')}`))}<p>כתובת: ${esc(mk.address)}</p><p><a href="/yavniel/">← לדף יבנאל</a></p></div></div></section>`,
   { desc: 'מקווה מלכה ביבנאל: מקווה טהרה לנשים, סיפור בנייתו, הבטחת הצדיק מיבנאל, שעות פעילות וטלפון', path: '/mikveh-malka/', full: true, head: phead('יבנאל', 'מקווה מלכה', esc(mk.lead)) }));
 
 // Halacha
