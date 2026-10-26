@@ -352,6 +352,7 @@ ${ysect('curtain', '', esc(um.ironCurtain.title), '', `<div class="about">${ps(u
 ${ysect('holocaust', '', esc(um.holocaust.title), '', `<div class="about">${ps(um.holocaust.text)}</div>`)}
 <section class="band soft" id="more"><div class="wrap"><div class="svc two"><div class="card">${icon('flame', 'ico lg')}<h3>גן סופיה</h3><p>${esc(um.sofia)}</p>${ps(um.sofiaStory)}</div><div class="card">${icon('pin', 'ico lg')}<h3>רבי אברהם בן רבי נחמן</h3><p>${esc(um.avraham)}</p></div></div></div></section>
 ${ysect('today', '', 'אומן היום', '', `<div class="about"><p>${esc(um.today)}</p></div>`)}
+<section class="band" id="travel"><div class="wrap narrow"><h2 class="sh">${esc(um.travel.title)}</h2><p class="shsub">${esc(um.travel.note)}</p><div class="card wide">${icon('clock', 'ico lg')}<h3>אזהרה</h3><p>${esc(um.travel.warning)}</p></div><div class="faq">${um.travel.items.map(([t, x]) => `<details><summary>${esc(t)}</summary><p>${esc(x)}</p></details>`).join('')}</div><p class="shsub">מקורות: ${um.travel.sources.map(([t, u]) => `<a href="${esc(u)}" rel="noopener nofollow" target="_blank">${esc(t)}</a>`).join(' · ')}</p></div></section>
 <section class="band soft" id="visit"><div class="wrap narrow"><div class="card wide">${icon('clock', 'ico lg')}<h3>לפני שנוסעים</h3><p>${esc(um.visit)}</p></div>${navBtns(um.nav)}</div></section>
 <section class="band" id="faq"><div class="wrap narrow"><h2 class="sh">שאלות נפוצות</h2><p class="shsub">על אומן ועל הציון</p>${faqHtml(um.faq)}</div></section>
 ${srcList(um.sources)}`,
