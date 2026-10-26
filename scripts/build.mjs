@@ -168,6 +168,7 @@ ${y.photos.length ? `<section class="band"><div class="wrap"><h2 class="sh">גל
 
 // Yavniel
 const ul = (xs) => `<ul>${xs.map((x) => `<li>${x}</li>`).join('')}</ul>`;
+const navBtns = (q) => `<p class="ctarow"><a class="btn" href="${url(`https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`)}" rel="noopener">ניווט ב־Waze</a> <a class="btn ghost" href="${url(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`)}" rel="noopener">ניווט ב־Google Maps</a></p>`;
 const ps = (xs) => xs.map((p) => `<p>${esc(p)}</p>`).join('');
 const groups = (gs) => gs.map(([t, n, xs]) => `<h3>${esc(t)}</h3>${n ? `<p>${esc(n)}</p>` : ''}${ul(xs.map(esc))}`).join('');
 write('yavniel/index.html', layout('יבנאל', `<section class="band"><div class="wrap narrow"><h2 class="sh">על היישוב</h2>${orn}<div class="about">${ps(yv.intro)}</div></div></section>
@@ -181,14 +182,14 @@ write('yavniel/index.html', layout('יבנאל', `<section class="band"><div cla
 <section class="band soft"><div class="wrap narrow"><h2 class="sh">שיעורי תורה</h2><div class="about">${groups(yv.lessons.map(([t, xs]) => [t, '', xs]))}<h3>אבות ובנים</h3><p>${esc(yv.fathers)}</p></div></div></section>
 <section class="band"><div class="wrap narrow"><h2 class="sh">מקוואות</h2><div class="about"><h3>מקווה גברים</h3>${ul(yv.mikvehMen.map(esc))}<p>${esc(yv.mikvehMenNote)}</p><h3>מקווה נשים: מקווה מלכה</h3>${ul(yv.mikvehWomen.map(esc))}<p>${esc(yv.mikvehWomenNote)} <a href="/mikveh-malka/">לדף מקווה מלכה ←</a></p><p>לתיאום הגעה ולפרטים נוספים: <a href="tel:${tel(yv.mikvehWomenPhone)}">${esc(yv.mikvehWomenPhone)}</a></p></div></div></section>
 <section class="band soft"><div class="wrap narrow"><h2 class="sh">בית התבשיל וערב שמחה לנשים</h2><div class="about">${ps(yv.kitchen)}<p>${esc(yv.womenEvening)}</p></div></div></section>
-<section class="band"><div class="wrap narrow"><h2 class="sh">הגעה</h2><div class="about"><p>${esc(yv.directions)}</p></div><h2 class="sh">מקורות</h2>${ul(yv.sources.map(([t, u]) => `<a href="${url(u)}" rel="noopener">${esc(t)}</a>`))}</div></section>`,
+<section class="band"><div class="wrap narrow"><h2 class="sh">הגעה</h2><div class="about"><p>${esc(yv.directions)}</p>${navBtns(yv.navQuery)}</div><h2 class="sh">מקורות</h2>${ul(yv.sources.map(([t, u]) => `<a href="${url(u)}" rel="noopener">${esc(t)}</a>`))}</div></section>`,
   { desc: 'יבנאל עיר ברסלב: תולדות המושבה, קהילת חסידי ברסלב, ציון מוהרא״ש, זמני תפילה, מקוואות ושיעורים', path: '/yavniel/', full: true, head: phead('הגליל התחתון', 'יבנאל', esc(yv.lead)) }));
 
 // Malka mikveh
 write('mikveh-malka/index.html', layout('מקווה מלכה', `<section class="band"><div class="wrap narrow"><h2 class="sh">על המקווה</h2>${orn}<div class="about">${ps(mk.about)}</div></div></section>
 <section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(mk.storyTitle)}</h2><div class="about">${ps(mk.story)}</div></div></section>
 <section class="band"><div class="wrap narrow"><h2 class="sh">${esc(mk.promiseTitle)}</h2>${orn}<div class="about"><blockquote><p>${esc(mk.promise)}</p></blockquote>${ps(mk.promiseAfter)}</div></div></section>
-<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(mk.hoursTitle)}</h2><div class="about">${ul(mk.hours.map(esc))}<p>${esc(mk.phoneNote)} <a href="tel:${tel(mk.phone)}">${esc(mk.phone)}</a></p><h3>${esc(mk.attendantsTitle)}</h3>${ul(mk.attendants.map(([n, ts]) => `${esc(n)}: ${ts.map((t) => `<a href="tel:${tel(t)}">${esc(t)}</a>`).join(' · ')}`))}<p>כתובת: ${esc(mk.address)}</p><p><a href="/yavniel/">← לדף יבנאל</a></p></div></div></section>`,
+<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(mk.hoursTitle)}</h2><div class="about">${ul(mk.hours.map(esc))}<p>${esc(mk.phoneNote)} <a href="tel:${tel(mk.phone)}">${esc(mk.phone)}</a></p><h3>${esc(mk.attendantsTitle)}</h3>${ul(mk.attendants.map(([n, ts]) => `${esc(n)}: ${ts.map((t) => `<a href="tel:${tel(t)}">${esc(t)}</a>`).join(' · ')}`))}<p>כתובת: ${esc(mk.address)}</p>${navBtns(mk.navQuery)}<p><a href="/yavniel/">← לדף יבנאל</a></p></div></div></section>`,
   { desc: 'מקווה מלכה ביבנאל: מקווה טהרה לנשים, סיפור בנייתו, הבטחת הצדיק מיבנאל, שעות פעילות וטלפון', path: '/mikveh-malka/', full: true, head: phead('יבנאל', 'מקווה מלכה', esc(mk.lead)) }));
 
 // Halacha
