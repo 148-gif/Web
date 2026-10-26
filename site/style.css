@@ -397,3 +397,15 @@ details.tocpart>.toc{padding:0 10px 10px;border-top:1px solid var(--line)}
 /* Book section heading: short title, summary underneath */
 .qhead .csum{text-align:right;margin:4px 0 0;font-size:1.08rem;line-height:1.6;max-width:760px}
 @media (max-width:640px){.qhead .csum{font-size:1rem}}
+
+/* Book footnotes: larger tap target, note opens under its line */
+sup.fn a{position:relative;display:inline-block;padding:0 4px}
+sup.fn a:after{content:"";position:absolute;inset:-14px -8px}
+sup.fn a[aria-expanded="true"]{color:var(--on-gold);background:var(--gold2);border-radius:4px}
+.fnpop{position:absolute;z-index:5;inset-inline:16px;max-height:min(50vh,360px);overflow:auto;margin:0;padding:12px 16px 14px;background:var(--surface);border:1px solid var(--line);border-right:4px solid var(--gold2);border-radius:12px;font-size:.92em;line-height:1.8;box-shadow:0 14px 34px rgba(11,29,80,.22);animation:fnin .18s ease}
+.fnpop:focus{outline:none}.fnpop:focus-visible{outline:3px solid var(--gold2)}
+.fnh{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.fnh b{font:700 .9rem var(--sans);color:var(--gold)}
+.fnx{position:relative;min-height:0;width:36px;height:36px;padding:0;margin:-6px -8px -6px 0;border-radius:50%;background:none;color:var(--mute);box-shadow:none;font-size:1rem}
+.fnx:hover{background:var(--line);transform:none}
+.fnx:after{content:"";position:absolute;inset:-4px}
+@keyframes fnin{from{opacity:0;transform:translateY(-4px)}}

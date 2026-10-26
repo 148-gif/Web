@@ -116,4 +116,36 @@ document.querySelectorAll('[data-continue]').forEach((el) => {
   const a = v && v.u && document.querySelector(`details.tocpart a[href="${v.u}"]`);
   if (a) { a.closest('details').open = true; a.classList.add('last'); }
 });
+
+// Book footnotes: tapping a marker opens the note under its line instead of jumping to the list at the end.
+let fnOpen = null;
+const closeFn = (refocus) => { if (!fnOpen) return; const { pop, a } = fnOpen; pop.remove(); a.setAttribute('aria-expanded', 'false'); fnOpen = null; if (refocus) a.focus(); };
+document.querySelectorAll('sup.fn a').forEach((a) => {
+  const li = document.getElementById(decodeURIComponent(a.hash.slice(1)));
+  if (!li) return;
+  a.setAttribute('aria-expanded', 'false');
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    const same = fnOpen && fnOpen.a === a;
+    closeFn(false);
+    if (same) return;
+    const pop = document.createElement('div');
+    pop.className = 'fnpop'; pop.tabIndex = -1; pop.setAttribute('role', 'note');
+    const body = li.querySelector('span').cloneNode(true);
+    body.querySelectorAll('a[href^="#fr-"]').forEach((x) => x.remove());
+    pop.innerHTML = `<div class="fnh"><b>הערה ${a.textContent}</b><button type="button" class="fnx" aria-label="סגירת ההערה">✕</button></div>`;
+    pop.append(body);
+    const host = a.closest('.sheet') || a.closest('article'), hr = host.getBoundingClientRect(), mr = a.getBoundingClientRect();
+    pop.style.top = `${mr.bottom - hr.top + 8}px`;
+    host.append(pop);
+    a.setAttribute('aria-expanded', 'true');
+    fnOpen = { pop, a };
+    pop.querySelector('.fnx').addEventListener('click', () => closeFn(true));
+    pop.focus({ preventScroll: true });
+    const r = pop.getBoundingClientRect();
+    if (r.bottom > innerHeight) scrollBy({ top: Math.min(r.bottom - innerHeight + 16, r.top - 120), behavior: 'smooth' });
+  });
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFn(true); });
+document.addEventListener('click', (e) => { if (fnOpen && !e.target.closest('.fnpop, sup.fn')) closeFn(false); });
 }
