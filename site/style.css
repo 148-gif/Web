@@ -279,3 +279,5 @@ body:has(.stickcta){padding-bottom:76px}
 .navbtns .btn{flex:1 1 140px}
 .stickcta.duo{display:flex}.stickcta.duo .btn{flex:1;box-shadow:0 6px 20px rgba(0,0,0,.25)}.stickcta.duo .btn.ghost{background:var(--surface)}
 }
+
+.faq .faqlinks{display:flex;flex-wrap:wrap;gap:8px;padding-top:0}.faqlinks a{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:999px;color:var(--gold);text-decoration:none;font:600 .85rem var(--sans)}.faqlinks a:hover{border-color:var(--gold2);background:var(--sunk)}.faq summary{min-height:44px;align-items:center}
