@@ -36,6 +36,7 @@ const pr = read('print.json');
 const yeshiva = read('yeshiva.json');
 const site = read('site.json');
 const yv = read('yavniel.json');
+const mk = read('mikveh.json');
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
@@ -178,10 +179,17 @@ write('yavniel/index.html', layout('יבנאל', `<section class="band"><div cla
 <section class="band soft"><div class="wrap narrow"><h2 class="sh">זמני תפילה בימי חול</h2><div class="about">${groups(yv.weekday)}<p>${esc(yv.weekdayNote)}</p><p>${esc(yv.prayerNote)}</p></div></div></section>
 <section class="band"><div class="wrap narrow"><h2 class="sh">זמני תפילה בשבת</h2><div class="about">${groups(yv.shabbat)}<p>${esc(yv.shabbatNote)}</p></div></div></section>
 <section class="band soft"><div class="wrap narrow"><h2 class="sh">שיעורי תורה</h2><div class="about">${groups(yv.lessons.map(([t, xs]) => [t, '', xs]))}<h3>אבות ובנים</h3><p>${esc(yv.fathers)}</p></div></div></section>
-<section class="band"><div class="wrap narrow"><h2 class="sh">מקוואות</h2><div class="about"><h3>מקווה גברים</h3>${ul(yv.mikvehMen.map(esc))}<p>${esc(yv.mikvehMenNote)}</p><h3>מקווה נשים: מקווה מלכה</h3>${ul(yv.mikvehWomen.map(esc))}<p>${esc(yv.mikvehWomenNote)}</p><p>לתיאום הגעה ולפרטים נוספים: <a href="tel:${tel(yv.mikvehWomenPhone)}">${esc(yv.mikvehWomenPhone)}</a></p></div></div></section>
+<section class="band"><div class="wrap narrow"><h2 class="sh">מקוואות</h2><div class="about"><h3>מקווה גברים</h3>${ul(yv.mikvehMen.map(esc))}<p>${esc(yv.mikvehMenNote)}</p><h3>מקווה נשים: מקווה מלכה</h3>${ul(yv.mikvehWomen.map(esc))}<p>${esc(yv.mikvehWomenNote)} <a href="/mikveh-malka/">לדף מקווה מלכה ←</a></p><p>לתיאום הגעה ולפרטים נוספים: <a href="tel:${tel(yv.mikvehWomenPhone)}">${esc(yv.mikvehWomenPhone)}</a></p></div></div></section>
 <section class="band soft"><div class="wrap narrow"><h2 class="sh">בית התבשיל וערב שמחה לנשים</h2><div class="about">${ps(yv.kitchen)}<p>${esc(yv.womenEvening)}</p></div></div></section>
 <section class="band"><div class="wrap narrow"><h2 class="sh">הגעה</h2><div class="about"><p>${esc(yv.directions)}</p></div><h2 class="sh">מקורות</h2>${ul(yv.sources.map(([t, u]) => `<a href="${url(u)}" rel="noopener">${esc(t)}</a>`))}</div></section>`,
   { desc: 'יבנאל עיר ברסלב: תולדות המושבה, קהילת חסידי ברסלב, ציון מוהרא״ש, זמני תפילה, מקוואות ושיעורים', path: '/yavniel/', full: true, head: phead('הגליל התחתון', 'יבנאל', esc(yv.lead)) }));
+
+// Malka mikveh
+write('mikveh-malka/index.html', layout('מקווה מלכה', `<section class="band"><div class="wrap narrow"><h2 class="sh">על המקווה</h2>${orn}<div class="about">${ps(mk.about)}</div></div></section>
+<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(mk.storyTitle)}</h2><div class="about">${ps(mk.story)}</div></div></section>
+<section class="band"><div class="wrap narrow"><h2 class="sh">${esc(mk.promiseTitle)}</h2>${orn}<div class="about"><blockquote><p>${esc(mk.promise)}</p></blockquote>${ps(mk.promiseAfter)}</div></div></section>
+<section class="band soft"><div class="wrap narrow"><h2 class="sh">${esc(mk.hoursTitle)}</h2><div class="about">${ul(mk.hours.map(esc))}<p>${esc(mk.phoneNote)} <a href="tel:${tel(mk.phone)}">${esc(mk.phone)}</a></p><p>כתובת: ${esc(mk.address)}</p><p><a href="/yavniel/">← לדף יבנאל</a></p></div></div></section>`,
+  { desc: 'מקווה מלכה ביבנאל: מקווה טהרה לנשים, סיפור בנייתו, הבטחת הצדיק מיבנאל, שעות פעילות וטלפון', path: '/mikveh-malka/', full: true, head: phead('יבנאל', 'מקווה מלכה', esc(mk.lead)) }));
 
 // Halacha
 write('halacha/index.html', layout('שו״ת הלכתי', `${halacha.length ? `${sr('רשימת השאלות')}<div class="grid">${halacha.map((x) => card(x, '/halacha/')).join('')}</div>` : `<div class="empty">${icon('scale', 'ico lg')}<h2>המדור בבנייה</h2><p>השאלות וההלכות יתווספו בקרוב.</p><p><a class="btn" href="/shut/">בינתיים, לשו״ת ברסלב</a></p></div>`}`, { path: '/halacha/', head: phead('הלכה למעשה', 'שו״ת הלכתי', 'שאלות ותשובות בהלכה, בבירור ובפשטות.') }));
@@ -327,7 +335,7 @@ write('privacy/index.html', layout('מדיניות פרטיות ותנאי שי�
 write('404.html', layout('הדף לא נמצא', `<div class="empty">${icon('search', 'ico lg')}<h2>הדף שחיפשתם לא נמצא</h2><p>ייתכן שהקישור שגוי, או שהדף הועבר. נסו לחפש:</p>${searchForm.replace('class="hsearch"', 'class="hsearch light"')}<p><a class="btn" href="/">לדף הבית</a> <a class="btn ghost" href="/shut/">לשו״ת ברסלב</a></p></div>`, { path: '', self: '/404.html', index: false, head: phead('שגיאה 404', 'הדף לא נמצא') }));
 
 write('site.webmanifest', JSON.stringify({ name: SITE, short_name: SITE, description: DESC, lang: 'he', dir: 'rtl', start_url: `${BASE}/`, scope: `${BASE}/`, display: 'standalone', background_color: '#0b1d50', theme_color: '#0b1d50', icons: [192, 512].map((n) => ({ src: `${BASE}/img/icon-${n}.png`, sizes: `${n}x${n}`, type: 'image/png', purpose: 'any maskable' })) }));
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/yavniel/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
 write('robots.txt', `User-agent: *\nAllow: /\n${ORIGIN ? `Sitemap: ${ORIGIN}${BASE}/sitemap.xml\n` : ''}`);
 // HTTP security headers (honoured by Netlify; GitHub Pages ignores this file and relies on the meta CSP).
 write('_headers', `/*
