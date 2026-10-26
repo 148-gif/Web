@@ -362,7 +362,7 @@ ${srcList(um.sources)}`,
 
 // Tikkun HaKlali: full text and guide
 const verses = (vs) => vs.map(([n, t]) => `<sup class="vn">${esc(n)}</sup>${esc(t).replace(/\[([^\]]+)\]/g, '<span class="hint">($1)</span>')}`).join(' ');
-const textBlock = `<div class="tools" role="group" aria-label="כלי קריאה"><button type="button" class="tbtn" data-fs="-1" aria-label="הקטנת טקסט">א־</button><button type="button" class="tbtn big" data-fs="1" aria-label="הגדלת טקסט">א+</button><button type="button" class="tbtn" data-nikud aria-pressed="false">ניקוד</button><button type="button" class="tbtn share" data-share>${icon('share', 'ico sm')}שיתוף</button></div>
+const textBlock = `<div class="tools" role="group" aria-label="כלי קריאה"><button type="button" class="tbtn" data-fs="-1" aria-label="הקטנת טקסט">א־</button><button type="button" class="tbtn big" data-fs="1" aria-label="הגדלת טקסט">א+</button><button type="button" class="tbtn" data-nikud aria-pressed="false">ניקוד</button><button type="button" class="tbtn share" data-share>${icon('share', 'ico sm')}שיתוף</button><a class="tbtn" href="/books/tikkun-haklali.pdf" download>${icon('print', 'ico sm')}PDF להורדה</a></div>
 <div class="sheet book-sheet tikkun-text"><div class="thead">${tkText.head.map((x) => `<p>${esc(x)}</p>`).join('')}</div>
 <h2 class="subt" id="t-before">תפילה קצרה לפני התיקון הכללי</h2>${tkText.pre.slice(1).map((x) => `<p>${esc(x)}</p>`).join('')}<p class="inst">${esc(tkText.pre[0].replace(/\s*$/, ''))}</p>
 <h2 class="subt" id="t-hitkashrut">התקשרות ויחוד</h2>${tkText.hitkashrut.map((x) => `<p>${esc(x)}</p>`).join('')}
@@ -378,7 +378,7 @@ ${ysect('explain', '', esc(tk.explanationTitle), esc(tk.explanationLead), `<div 
 <section class="band soft" id="text"><div class="wrap narrow"><h2 class="sh">הנוסח המלא</h2><p class="shsub">${esc(tk.textNote)}</p>${textBlock}</div></section>
 <section class="band" id="faq"><div class="wrap narrow"><h2 class="sh">שאלות נפוצות</h2><p class="shsub">על התיקון הכללי</p>${faqHtml(tk.faq)}<p class="navbtns"><a class="btn" href="/rabbi-nachman/">${icon('flame', 'ico sm')}על רבי נחמן מברסלב</a><a class="btn ghost" href="/uman/">${icon('pin', 'ico sm')}ציון רבינו באומן</a></p></div></section>`,
   { desc: 'התיקון הכללי של רבי נחמן מברסלב: נוסח מלא ומנוקד של עשרת המזמורים (טז, לב, מא, מב, נט, עז, צ, קה, קלז, קנ), התפילות שלפניו ואחריו, ההבטחה, ואיך ומתי אומרים אותו.', path: '/tikkun-haklali/', full: true,
-    head: phead('רבי נחמן מברסלב', 'התיקון הכללי', esc(tk.lead), `${anchors([['how', 'איך אומרים'], ['explain', 'הסבר מוהרא״ש'], ['text', 'הנוסח המלא'], ['faq', 'שאלות נפוצות']])}<div class="navbtns hcta"><a class="btn" href="#text">${icon('book', 'ico sm')}לנוסח המלא</a><a class="btn ghost" href="#how">איך אומרים</a></div>`),
+    head: phead('רבי נחמן מברסלב', 'התיקון הכללי', esc(tk.lead), `${anchors([['how', 'איך אומרים'], ['explain', 'הסבר מוהרא״ש'], ['text', 'הנוסח המלא'], ['faq', 'שאלות נפוצות']])}<div class="navbtns hcta"><a class="btn" href="#text">${icon('book', 'ico sm')}לנוסח המלא</a><a class="btn ghost" href="/books/tikkun-haklali.pdf" download>${icon('print', 'ico sm')}הורדה (PDF)</a><a class="btn ghost" href="#how">איך אומרים</a></div>`),
     head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'Article', headline: tk.title, inLanguage: 'he', description: tk.short, about: rnPerson, ...(absu('/tikkun-haklali/') ? { url: absu('/tikkun-haklali/') } : {}) }, crumbs([['בית', '/'], ['רבי נחמן מברסלב', '/rabbi-nachman/'], ['התיקון הכללי', '/tikkun-haklali/']]), faqLd(tk.faq)] }) }));
 
 // Halacha
@@ -536,7 +536,7 @@ write('llms.txt', `# ${SITE}
 ## רבי נחמן מברסלב ואומן
 - [רבי נחמן מברסלב](${ORIGIN + BASE}/rabbi-nachman/): ${nik(rn.short)}
 - [אומן](${ORIGIN + BASE}/uman/): ${nik(um.short)}
-- [התיקון הכללי](${ORIGIN + BASE}/tikkun-haklali/): ${nik(tk.short)}
+- [התיקון הכללי](${ORIGIN + BASE}/tikkun-haklali/): ${nik(tk.short)} PDF: ${ORIGIN + BASE}/books/tikkun-haklali.pdf
 
 ## הצדיק מיבנאל
 - [מוהרא״ש – הצדיק מיבנאל](${ORIGIN + BASE}/moharash/): ${nik(mo.lead)}
