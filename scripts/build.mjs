@@ -67,7 +67,7 @@ write('institutions/index.html', layout('מוסדות הקהילה', `<h1>מוס
 // Print campaign: Asher BaNachal
 const pd = pr.donate;
 const donateBox = () => pd.iframeUrl
-  ? `<div class="donbox"><iframe title="תרומה באשראי" src="${esc(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer"></iframe></div>`
+  ? `<div class="donbox"><iframe title="תרומה באשראי" src="${esc(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer"></iframe>${pd.fallbackUrl ? `<p class="small">הטופס לא נטען? <a href="${esc(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו אותו בחלון נפרד</a></p>` : ''}</div>`
   : pd.fallbackUrl
     ? `<div class="donbox soon"><p>התרומה מתבצעת בדף תשלום מאובטח.</p><p><a class="btn big" href="${esc(pd.fallbackUrl)}" rel="noopener">לתרומה באשראי</a></p></div>`
     : `<div class="donbox soon"><p>טופס התרומה באשראי יופעל בקרוב.</p>${pd.phone ? `<p>לתרומה טלפונית: <a href="tel:${esc(pd.phone)}">${esc(pd.phone)}</a></p>` : ''}${pd.email ? `<p><a href="mailto:${esc(pd.email)}">${esc(pd.email)}</a></p>` : ''}</div>`;
