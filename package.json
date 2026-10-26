@@ -1,1 +1,1 @@
-{"name":"shut-breslev-site","private":true,"type":"module","scripts":{"build":"node scripts/build.mjs","preview":"npx --yes serve dist"}}
+{"name":"shut-breslev-site","private":true,"type":"module","scripts":{"build":"node scripts/build.mjs","preview":"npx --yes serve@14.2.4 dist"}}
