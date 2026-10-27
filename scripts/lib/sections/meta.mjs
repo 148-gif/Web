@@ -43,4 +43,8 @@ write('_headers', `/*
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Permissions-Policy: camera=(), microphone=(), geolocation=(), usb=(), payment=(self ${frames.map((o) => `"${o}"`).join(' ')})
-`);
+${['/fonts/*', '/style.css', '/app.js', '/search.js', '/idx/*'].map((p) => `${p}
+  Cache-Control: public, max-age=31536000, immutable
+`).join('')}`);
+// Cache: the files above are always requested with ?v= (a content hash for fonts, the build stamp for the rest),
+// so a new version has a new URL and the old one can be kept for a year. Pages themselves keep the host's short default.

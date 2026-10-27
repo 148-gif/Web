@@ -1,11 +1,12 @@
 // Static site generator: data/*.json -> dist/
 // Shared code lives in scripts/lib/ (core, layout, parts); each file in scripts/lib/sections/ builds one part of the site.
-import { rmSync, mkdirSync, cpSync } from 'node:fs';
-import { shut, letters, halacha } from './lib/core.mjs';
+import { rmSync, mkdirSync, cpSync, readFileSync, writeFileSync } from 'node:fs';
+import { shut, letters, halacha, font } from './lib/core.mjs';
 
 rmSync('dist', { recursive: true, force: true });
 mkdirSync('dist');
 cpSync(new URL('../site/', import.meta.url), 'dist', { recursive: true });
+writeFileSync('dist/style.css', readFileSync('dist/style.css', 'utf8').replace(/url\(fonts\/([\w.-]+\.woff2)\)/g, (m, f) => `url(${font(f)})`));
 
 // Sections write their pages when imported, so they are loaded only after dist/ is reset.
 const { pages } = await import('./lib/sections/qa.mjs');

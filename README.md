@@ -9,7 +9,8 @@
 
 ```sh
 npm run build     # בונה את האתר לתיקייה dist/
-npm run check     # בונה, ובודק שכל קישור פנימי ועוגן (#) מוביל לדף קיים
+npm test          # בדיקות יחידה לפונקציות הבטיחות והטקסט (node --test, בלי התקנות)
+npm run check     # מריץ את הבדיקות, בונה, ובודק שכל קישור פנימי ועוגן (#) מוביל לדף קיים
 npm run preview   # מציג את dist/ בדפדפן בכתובת http://localhost:3000
 ```
 
@@ -28,6 +29,7 @@ npm run preview   # מציג את dist/ בדפדפן בכתובת http://localho
 | `scripts/lib/parts.mjs` | רכיבים קטנים שכמה מדורים משתמשים בהם, ונתונים מובנים (JSON-LD) |
 | `scripts/lib/sections/` | קובץ לכל חלק באתר: `qa` (שו״ת), `library`, `yavniel`, `print` וכו׳ |
 | `scripts/check-links.mjs` | בדיקת הקישורים |
+| `test/` | בדיקות יחידה: אימות קישורים וטלפונים, הימלטות HTML, מדורים מוסתרים |
 
 ## עריכת תוכן
 

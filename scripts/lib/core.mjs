@@ -1,5 +1,6 @@
 // Site settings, text helpers, data files and the page writer, shared by every section.
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 const SITE = 'היכל הקודש';
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when served from a sub-path
@@ -7,6 +8,11 @@ const ORIGIN = (process.env.SITE_ORIGIN || '').replace(/\/$/, ''); // e.g. https
 const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`) : h);
 const PER_PAGE = 40;
 const BUILD = Date.now().toString(36);
+// Fonts carry a hash of their content (fonts/x.woff2?v=…), so they can be cached for a year and a changed file still reaches everyone.
+// build.mjs adds it to the url()s in style.css; layout.mjs to the preloads, which must match those exactly.
+const FONT_DIR = new URL('../../site/fonts/', import.meta.url);
+const FONT_V = Object.fromEntries(readdirSync(FONT_DIR).filter((f) => f.endsWith('.woff2')).map((f) => [f, createHash('sha256').update(readFileSync(new URL(f, FONT_DIR))).digest('hex').slice(0, 10)]));
+const font = (f) => `fonts/${f}?v=${FONT_V[f]}`;
 // Text in attributes and <title> is escaped without the bidi marks: search results and share previews would show them.
 const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 // Page text: a number range (1940–2015) is isolated so it keeps its order inside Hebrew.
@@ -62,4 +68,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

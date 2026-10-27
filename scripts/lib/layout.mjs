@@ -1,12 +1,12 @@
 // Page shell: security policy, menus, icons and the layout every page is built with.
 import { createHash } from 'node:crypto';
-import { SITE, BASE, ORIGIN, BUILD, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden } from './core.mjs';
+import { SITE, BASE, ORIGIN, BUILD, font, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden } from './core.mjs';
 
 // Security policy. Inline scripts (head bootstrap, speculation rules) are allowed by hash.
 // It also adds the stylesheet: normally parser-blocking, but on a first visit it loads without blocking paint
 // behind the splash, which fades once the styles are in (class "ready").
 const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
-const HEAD_JS = `var d=document.documentElement,u='${CSS_URL}',sp=0;d.classList.add('js');try{var rs=parseFloat(localStorage.getItem('rs'));if(rs>=0.85&&rs<=1.5)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){sp=1;sessionStorage.setItem('seen',1)}}catch(e){}if(sp){d.classList.add('splash');var l=document.createElement('link');l.rel='stylesheet';l.href=u;var r=function(){d.classList.add('ready')},f=document.fonts;l.onload=l.onerror=function(){(f&&f.load?Promise.all([f.load('1em Assistant','א'),f.load('900 1em "Frank Ruhl Libre"','א')]):Promise.resolve()).then(r,r)};document.head.appendChild(l);setTimeout(function(){d.classList.add('ready')},6000)}else document.write('<link rel="stylesheet" href="'+u+'">')`;
+const HEAD_JS = `var d=document.documentElement,u='${CSS_URL}',sp=0;d.classList.add('js');try{var rs=parseFloat(localStorage.getItem('rs'));if(rs>=0.85&&rs<=1.5)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){sp=1;sessionStorage.setItem('seen',1)}}catch(e){}if(sp){d.classList.add('splash');var l=document.createElement('link');l.rel='stylesheet';l.href=u;var r=function(){d.classList.add('ready')},f=document.fonts;l.onload=l.onerror=function(){(f&&f.load?Promise.all([f.load('1em Assistant','א1'),f.load('900 1em "Frank Ruhl Libre"','א1')]):Promise.resolve()).then(r,r)};document.head.appendChild(l);setTimeout(function(){d.classList.add('ready')},6000)}else document.write('<link rel="stylesheet" href="'+u+'">')`;
 // Prefetch same-site pages on hover/touch so navigation feels instant.
 // PDFs are left out: a hover would otherwise download the whole book.
 const SPEC = '{"prefetch":[{"where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":"/*.pdf"}}]},"eagerness":"moderate"}]}';
@@ -88,7 +88,11 @@ const phead = (kicker, title, lead = '', extra = '') => `<section class="phead">
 // The page itself stays out of layout until then, so it appears once, styled, instead of jumping (CLS).
 const SPLASH_CSS = '#splash{display:none}.splash:not(.ready) body>:not(#splash){display:none}.splash #splash{display:flex;position:fixed;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(120% 90% at 50% 0,#1a46a3,#0b1d50 55%,#071338);color:#e6c466;font:900 1.7rem/1.2 "Frank Ruhl Libre",David,serif;transition:opacity .45s;animation:spout .4s 6s forwards}#splash small{font:600 .8rem Assistant,Arial,sans-serif;letter-spacing:.14em;color:#c9d3ef}#splash .spm{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;border:1.5px solid #e6c466;background:radial-gradient(circle at 50% 35%,#2a5bc4,#0d2466 70%);animation:spp 1.6s infinite}#splash svg{width:46px;height:46px}#splash i{width:140px;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#e6c466,transparent) 0 0/50% 100% no-repeat;animation:sps 1.1s ease-in-out infinite alternate}html.ready #splash{opacity:0;visibility:hidden;transition:opacity .45s,visibility 0s .45s}@keyframes spp{0%{box-shadow:0 0 0 0 rgba(230,196,102,.55)}70%,100%{box-shadow:0 0 0 20px rgba(230,196,102,0)}}@keyframes sps{to{background-position:100% 0}}@keyframes spout{to{opacity:0;visibility:hidden}}@media (prefers-reduced-motion:reduce){#splash,#splash *{animation:none!important}}';
 const splash = `<div id="splash" aria-hidden="true"><span class="spm">${icon('flame')}</span><span>${SITE}</span><small>חסידות ברסלב</small><i></i></div>`;
-const DESC = 'היכל הקודש: חסידות ברסלב, שאלות ותשובות, מכתבים, הלכה ומוסדות הקהילה';
+// Every page needs both subsets of both fonts: Hebrew for the letters, Latin for spaces, digits and punctuation.
+// Preloading all four lets them arrive together, so text is not laid out again when a late subset swaps in (CLS).
+const PRELOAD_FONTS = ['assistant-hebrew', 'assistant-latin', 'frank-ruhl-libre-hebrew', 'frank-ruhl-libre-latin'].map((f) => `${f}.woff2`);
+// Default description, used by the home page: only sections that are live (letters, halacha and institutions are hidden for now).
+const DESC = 'היכל הקודש, חסידות ברסלב: שו״ת ברסלב של מוהרא״ש, ספרי הצדיק לקריאה, רבי נחמן ואומן, התיקון הכללי, יבנאל והדפסת ״אשר בנחל״.';
 // Share previews (WhatsApp, Facebook) need absolute URLs, so canonical/og:url/og:image appear only when SITE_ORIGIN is set.
 const abs = (p) => esc(ORIGIN + BASE + p);
 const layout = (title, body, { desc = '', path = '/', self = path, head = '', full = false, reading = false, head_extra = '', index = true } = {}) => `<!doctype html>
@@ -96,7 +100,7 @@ const layout = (title, body, { desc = '', path = '/', self = path, head = '', fu
 <title>${escAttr(nik(title))}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${escAttr(nik(desc || DESC))}">${index ? '' : '<meta name="robots" content="noindex">'}
 <meta name="theme-color" content="#0b1d50"><meta property="og:title" content="${escAttr(nik(title))}"><meta property="og:description" content="${escAttr(nik(desc || DESC))}"><meta property="og:site_name" content="${SITE}"><meta property="og:locale" content="he_IL"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">${ORIGIN && index ? `<link rel="canonical" href="${abs(self)}"><meta property="og:url" content="${abs(self)}"><meta property="og:image" content="${abs('/img/og.png')}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">` : ''}
 <link rel="manifest" href="/site.webmanifest"><link rel="apple-touch-icon" href="/img/icon-180.png"><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0b1d50"/><g fill="none" stroke="#e6c466" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON.flame}</g></svg>`)}">
-${['assistant', 'frank-ruhl-libre'].map((f) => `<link rel="preload" href="/fonts/${f}-hebrew.woff2" as="font" type="font/woff2" crossorigin>`).join('')}
+${PRELOAD_FONTS.map((f) => `<link rel="preload" href="/${font(f)}" as="font" type="font/woff2" crossorigin>`).join('')}
 <noscript><link rel="stylesheet" href="/style.css?v=${BUILD}"></noscript><style>${SPLASH_CSS}</style>
 ${head_extra}</head><body>
 ${splash}<a class="skip" href="#main">דלגו לתוכן</a>

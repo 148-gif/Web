@@ -76,4 +76,4 @@ write('privacy/index.html', layout('מדיניות פרטיות ותנאי שי�
 ]), { path: '', self: '/privacy/', desc: `מדיניות הפרטיות ותנאי השימוש של ${SITE}`, head: phead('שקיפות', 'מדיניות פרטיות ותנאי שימוש') }));
 
 // 404: GitHub Pages serves this for any unknown path.
-write('404.html', layout('הדף לא נמצא', `<div class="empty">${icon('search', 'ico lg')}<h2>הדף שחיפשתם לא נמצא</h2><p>ייתכן שהקישור שגוי, או שהדף הועבר. נסו לחפש:</p>${searchForm.replace('class="hsearch"', 'class="hsearch light"')}<p><a class="btn" href="/">לדף הבית</a> <a class="btn ghost" href="/shut/">לשו״ת ברסלב</a></p></div>`, { path: '', self: '/404.html', index: false, head: phead('שגיאה 404', 'הדף לא נמצא') }));
+write('404.html', layout('הדף לא נמצא', `<div class="empty">${icon('search', 'ico lg')}<h2>הדף שחיפשתם לא נמצא</h2><p>ייתכן שהקישור שגוי, או שהדף הועבר. נסו לחפש:</p>${searchForm.replace('class="hsearch"', 'class="hsearch light"')}<p><a class="btn" href="/">לדף הבית</a> <a class="btn ghost" href="/shut/">לשו״ת ברסלב</a></p></div>`, { path: '', self: '/404.html', index: false, desc: 'הדף שחיפשתם לא נמצא. אפשר לחפש באתר או לחזור לדף הבית.', head: phead('שגיאה 404', 'הדף לא נמצא') }));
