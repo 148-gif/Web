@@ -1,0 +1,10 @@
+// Yeshiva
+import { esc, url, tel, write, yeshiva } from '../core.mjs';
+import { orn, layout } from '../layout.mjs';
+
+const y = yeshiva, c = y.contact;
+write('yeshiva/index.html', layout('ישיבת בית מנחם', `<section class="band"><div class="wrap narrow"><h2 class="sh">על הישיבה</h2>${orn}<div class="about">${y.about.map((p) => `<p>${esc(p)}</p>`).join('')}</div></div></section>
+<section class="band soft"><div class="wrap"><h2 class="sh">הדרך שלנו</h2><p class="shsub">ארבעה יסודות שעליהם עומד יום הלימוד בישיבה</p><div class="needs values">${y.values.map(([t, d]) => `<div class="need"><span class="orn">✦</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div></div></section>
+${y.photos.length ? `<section class="band"><div class="wrap"><h2 class="sh">גלריה</h2><div class="gallery">${y.photos.map((f) => `<img loading="lazy" decoding="async" src="${url(f)}" alt="תמונה מהישיבה">`).join('')}</div></div></section>` : ''}
+<section class="band final"><div class="wrap"><h2>יצירת קשר ותמיכה</h2><p>שותפות בהחזקת הישיבה היא שותפות בכל דף שנלמד בה.</p><div class="contact">${[c.phone && `<p>טלפון: <a href="tel:${tel(c.phone)}">${esc(c.phone)}</a></p>`, c.email && `<p>דוא״ל: <a href="${url('mailto:' + c.email, ['mailto:'])}">${esc(c.email)}</a></p>`, c.address && `<p>כתובת: ${esc(c.address)}</p>`, c.donate && `<p class="ctarow"><a class="btn big" href="${url(c.donate)}" rel="noopener">לתרומה לישיבה</a></p>`].filter(Boolean).join('') || '<p class="ctarow"><a class="btn big" href="/contact/">ליצירת קשר</a></p>'}</div></div></section>`,
+  { desc: 'בית מנחם, ישיבה חסידית. בחורים הלומדים בהתמדה בדרך הצדיק', path: '/yeshiva/', full: true, head: `<section class="phead yhero"><div class="wrap"><div class="emblem"><img src="/img/logo.webp" width="760" height="636" fetchpriority="high" decoding="async" alt="${esc(y.name)} - ${esc(y.subtitle)}"></div><p class="kicker2">${esc(y.banner)}</p><h1>ישיבת ${esc(y.name)}</h1><p class="sub">${esc(y.subtitle)} בדרך רבינו הקדוש רבי נחמן מברסלב</p></div></section>` }));

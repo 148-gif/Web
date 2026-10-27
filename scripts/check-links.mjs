@@ -13,7 +13,7 @@ let links = 0;
 for (const page of pages) {
   const html = readFileSync(page, 'utf8');
   const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
-  for (const [, attr, raw] of html.matchAll(/\s(href|src)="([^"]*)"/g)) {
+  for (const [, , raw] of html.matchAll(/\s(href|src)="([^"]*)"/g)) {
     if (raw.startsWith('#')) {
       links++;
       if (raw.length > 1 && !ids.has(decodeURIComponent(raw.slice(1)))) errors.push(`${page}: no element with id "${raw.slice(1)}"`);
