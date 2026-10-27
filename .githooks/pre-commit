@@ -1,0 +1,10 @@
+#!/bin/sh
+# Before every commit: unit tests and lint (a few seconds). The full build and link check run in CI on every pull request.
+# Enable once per clone with: npm run setup   (skip in an emergency with: git commit --no-verify)
+set -e
+npm test --silent
+if [ -x node_modules/.bin/eslint ]; then
+  node_modules/.bin/eslint .
+else
+  echo "pre-commit: ESLint is not installed, so lint was skipped. Run: npm run setup" >&2
+fi

@@ -5,13 +5,18 @@
 
 ## הרצה
 
-צריך Node 22 ומעלה. אין תלויות להתקנה.
+צריך Node 22 ומעלה. הבנייה עצמה לא צריכה שום תלות. כלי הבדיקה (ESLint) מותקנים כתלויות פיתוח בגרסאות נעולות.
 
 ```sh
+npm run setup     # פעם אחת אחרי clone: מתקין את כלי הבדיקה ומפעיל את הבדיקה שלפני כל commit
 npm run build     # בונה את האתר לתיקייה dist/
-npm run check     # בונה, ובודק שכל קישור פנימי ועוגן (#) מוביל לדף קיים
+npm test          # בדיקות יחידה לפונקציות הבטיחות והטקסט (node --test)
+npm run lint      # בדיקת הקוד ב־ESLint
+npm run check     # בדיקות, lint, בנייה, ובדיקה שכל קישור ועוגן (#) מוביל לדף קיים ושאין עיצוב inline
 npm run preview   # מציג את dist/ בדפדפן בכתובת http://localhost:3000
 ```
+
+לפני כל commit רצים אוטומטית `npm test` ו־ESLint (`.githooks/pre-commit`). הבנייה המלאה ובדיקת הקישורים רצות ב־CI על כל PR.
 
 כשהאתר יושב בתת־תיקייה (כמו ב־GitHub Pages), מגדירים `SITE_BASE=/Web`.
 `SITE_ORIGIN=https://148-gif.github.io` נדרש לכתובות המלאות של sitemap, canonical ותצוגת השיתוף בוואטסאפ.
@@ -21,13 +26,16 @@ npm run preview   # מציג את dist/ בדפדפן בכתובת http://localho
 | תיקייה | מה יש בה |
 |---|---|
 | `data/` | כל התוכן: קובץ JSON לכל מדור (`shut.json`, `yavniel.json`, `library.json`…), ו־`site.json` להגדרות, פרטי קשר ומדורים מוסתרים |
-| `site/` | קבצים שמועתקים כמו שהם: `style.css`, `app.js`, `search.js`, תמונות וקובצי PDF |
+| `site/` | קבצים שמועתקים כמו שהם: `app.js`, `search.js`, גופנים, תמונות וקובצי PDF |
+| `site/css/` | העיצוב, בחלקים ממוספרים לפי נושא. הבנייה מחברת אותם לפי הסדר לקובץ אחד, `dist/style.css` (הסדר קובע: כלל מאוחר גובר) |
 | `scripts/build.mjs` | נקודת הכניסה של הבנייה |
 | `scripts/lib/core.mjs` | הגדרות, פונקציות טקסט (`esc`, `url`), טעינת הנתונים וכתיבת העמודים |
 | `scripts/lib/layout.mjs` | שלד העמוד: מדיניות אבטחה (CSP), תפריטים, אייקונים, מסך פתיחה |
 | `scripts/lib/parts.mjs` | רכיבים קטנים שכמה מדורים משתמשים בהם, ונתונים מובנים (JSON-LD) |
 | `scripts/lib/sections/` | קובץ לכל חלק באתר: `qa` (שו״ת), `library`, `yavniel`, `print` וכו׳ |
+| `scripts/lib/sw.js` | ה־Service Worker (קריאה בלי חיבור). הבנייה ממלאת בו גרסה וכותבת אותו ל־`dist/sw.js` |
 | `scripts/check-links.mjs` | בדיקת הקישורים |
+| `test/` | בדיקות יחידה: אימות קישורים וטלפונים, הימלטות HTML, מדורים מוסתרים |
 
 ## עריכת תוכן
 

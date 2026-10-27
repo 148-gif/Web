@@ -1,5 +1,5 @@
 // Checks the built site in dist/: every internal link and image points to a file that exists,
-// and every in-page anchor (#id) has a matching id on its page. Run after the build: node scripts/check-links.mjs
+// every in-page anchor (#id) has a matching id on its page, and no element has an inline style attribute. Run after the build: node scripts/check-links.mjs
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -12,6 +12,8 @@ const errors = [];
 let links = 0;
 for (const page of pages) {
   const html = readFileSync(page, 'utf8');
+  // The CSP has no 'unsafe-inline' for styles, so a style attribute would be silently ignored by browsers.
+  if (/<[a-z][^>]*\sstyle="/i.test(html)) errors.push(`${page}: inline style attribute (blocked by the CSP; use a class)`);
   const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
   for (const [, , raw] of html.matchAll(/\s(href|src)="([^"]*)"/g)) {
     if (raw.startsWith('#')) {

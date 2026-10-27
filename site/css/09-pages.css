@@ -1,0 +1,68 @@
+/* Page features: home tile groups, Tikkun HaKlali text, sticky section bar, back-to-top, folding schedules and book contents, book headings, footnotes. */
+/* Home: section tiles in labelled groups */
+.tgroup+.tgroup{margin-top:32px}
+.tgh{display:flex;align-items:center;gap:16px;margin:0 0 16px;font:700 1rem/1.2 var(--sans);letter-spacing:.04em;color:var(--brand)}
+.tgh:before,.tgh:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--line))}.tgh:before{flex:0 0 18px;background:var(--gold2)}
+.tiles.n2,.tiles.n3,.tiles.n4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:860px){.tiles.n2,.tiles.n3,.tiles.n4{grid-template-columns:1fr 1fr}.tiles.n3>.tile:last-child{grid-column:1/-1}.tgroup+.tgroup{margin-top:24px}}
+
+.psalms{justify-content:center;margin:16px 0}.tiles{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}@media (max-width:860px){.tiles{grid-template-columns:1fr 1fr}}
+
+@media (min-width:1000px){.tiles{grid-template-columns:repeat(5,1fr)}.tile{padding:24px 16px 24px}.tile b{font-size:1.25rem}}
+
+/* Tikkun HaKlali text */
+.tikkun-text .thead{text-align:center;margin-bottom:1.2em}.tikkun-text .thead p{margin:.25em 0;text-align:center}.tikkun-text .thead p:first-child{font:900 1.25rem/1.5 var(--serif);color:var(--brand)}
+.tikkun-text .verses{text-align:justify;line-height:2.1}sup.vn{font:700 .72em var(--sans);color:var(--gold);margin-inline:8px 3px;vertical-align:baseline;position:relative;top:-.15em}
+.hint{font:.8em var(--sans);color:var(--mute)}.psalms a{color:inherit;text-decoration:none}.psalms li:hover{background:var(--gold3)}
+.tikkun-text .subt,.tikkun-text .psalm{scroll-margin-top:96px}
+
+/* Long pages: sticky section bar, back-to-top button */
+.secbar{position:fixed;top:var(--hh,60px);inset-inline-start:0;inset-inline-end:0;z-index:25;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);box-shadow:0 4px 14px rgba(11,29,80,.08);transform:translateY(-120%);visibility:hidden;transition:transform .25s var(--ease),top .25s var(--ease),visibility .25s var(--ease)}
+.secbar.show{transform:none;visibility:visible}
+.sbin{max-width:var(--container);margin:0 auto;display:flex;gap:8px;overflow-x:auto;padding:8px 16px;scrollbar-width:none}.sbin::-webkit-scrollbar{display:none}
+.secbar a{flex:none;display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;font:600 .875rem var(--sans);color:var(--brand);text-decoration:none;white-space:nowrap}
+.secbar a:hover{background:var(--sunk)}.secbar a.on{background:linear-gradient(180deg,var(--gold3),var(--gold2));color:var(--on-gold)}
+@media (max-width:860px){.top.hide~.secbar{top:0}}
+[id]{scroll-margin-top:calc(var(--hh,64px) + 64px)}
+.totop{position:fixed;inset-inline-end:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:22;width:48px;height:48px;min-height:0;padding:0;border-radius:50%;opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .2s var(--ease),transform .2s var(--ease),visibility .2s var(--ease)}
+.totop.show{opacity:1;visibility:visible;transform:none}
+body:has(.stickcta) .totop{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 76px)}
+@media (min-width:641px){body:has(.stickcta) .totop{bottom:24px}}
+.totop:hover{transform:translateY(-2px)}
+
+/* Prayer schedules fold per prayer */
+details.scard{padding:0}
+details.scard>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px 16px;min-height:56px}
+details.scard>summary::-webkit-details-marker{display:none}
+details.scard>summary h3{flex:1;border:0;padding:0;margin:0}
+.sspan{font:600 .875rem var(--sans);color:var(--mute);white-space:nowrap}
+details.scard .chev,details.tocpart .chev{width:20px;height:20px;flex:none;fill:none;stroke:var(--gold);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s var(--ease)}
+details[open]>summary .chev{transform:rotate(180deg)}
+details.scard[open]>summary{border-bottom:2px solid var(--gold2);margin:0 16px;padding-inline:0}
+details.scard>dl,details.scard>.snote{padding:0 16px}details.scard>dl{padding-bottom:8px}
+
+/* Book contents fold per part */
+details.tocpart{display:block;margin:12px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
+details.tocpart>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px 16px;min-height:60px}
+details.tocpart>summary::-webkit-details-marker{display:none}
+details.tocpart>summary b{flex:1;font-size:1.125rem;color:var(--brand)}
+details.tocpart>summary small{font:600 .875rem var(--sans);color:var(--mute);white-space:nowrap}
+.tn{display:inline-grid;place-items:center;width:32px;height:32px;flex:none;border-radius:50%;font:900 1rem var(--sans);color:var(--on-gold);background:linear-gradient(180deg,var(--gold3),var(--gold2) 50%,var(--gold-deep))}
+details.tocpart>.toc{padding:0 12px 12px;border-top:1px solid var(--line)}
+.toc a.last{background:var(--sunk);box-shadow:inset -3px 0 0 var(--gold2)}
+
+/* Book section heading: short title, summary underneath */
+.qhead .csum{text-align:start;margin:4px 0 0;font-size:1.125rem;line-height:1.6;max-width:var(--measure)}
+@media (max-width:640px){.qhead .csum{font-size:1rem}}
+
+/* Book footnotes: larger tap target, note opens under its line */
+sup.fn a{position:relative;display:inline-block;padding:0 4px}
+sup.fn a:after{content:"";position:absolute;inset:-14px -8px}
+sup.fn a[aria-expanded="true"]{color:var(--on-gold);background:var(--gold2);border-radius:4px}
+.fnpop{position:absolute;z-index:5;inset-inline:16px;max-height:min(50vh,360px);overflow:auto;margin:0;padding:12px 16px 16px;background:var(--surface);border:1px solid var(--line);border-inline-start:4px solid var(--gold2);border-radius:var(--r-md);font-size:.889em;line-height:1.8;box-shadow:0 14px 34px rgba(11,29,80,.22);animation:fnin .18s ease}
+.fnpop:focus{outline:none}.fnpop:focus-visible{outline:3px solid var(--gold2)}
+.fnh{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.fnh b{font:700 .875rem var(--sans);color:var(--mute)}
+.fnx{position:relative;min-height:0;width:36px;height:36px;padding:0;margin:-8px -8px -8px 0;border-radius:50%;background:none;color:var(--mute);box-shadow:none;font-size:1rem}
+.fnx:hover{background:var(--line);transform:none}
+.fnx:after{content:"";position:absolute;inset:-4px}
+@keyframes fnin{from{opacity:0;transform:translateY(-4px)}}

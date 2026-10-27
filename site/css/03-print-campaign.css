@@ -1,0 +1,34 @@
+/* Print campaign (/print/): hero, tiers, goal bar, steps, sticky call to action, donation box. */
+/* ===== Print campaign ===== */
+.phero2{text-align:center;padding:96px 0 80px;border-bottom:3px solid var(--gold2)}.phero2.short{padding:40px 0 32px}
+.ctarow{text-align:center;margin:24px 0}
+.btn.big{font-size:1.25rem;padding:16px 40px;border-radius:999px}.glow{box-shadow:0 0 0 0 rgba(230,196,102,.7),inset 0 1px 0 rgba(255,255,255,.6);animation:pulse 2.4s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 16px rgba(230,196,102,0),inset 0 1px 0 rgba(255,255,255,.6)}100%{box-shadow:0 0 0 0 rgba(230,196,102,0),inset 0 1px 0 rgba(255,255,255,.6)}}
+.trust{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:8px 24px;padding:0;margin:16px 0 0;font:600 1rem var(--sans);color:var(--on-navy2)}.trust li{display:inline-flex;align-items:center;gap:8px}.trust li:before{content:"";width:16px;height:16px;flex:none;background:var(--gold2);-webkit-mask:var(--i-check) center/contain no-repeat;mask:var(--i-check) center/contain no-repeat}
+.band:not(.final) .trust{color:var(--mute)}.band:not(.final) .trust li:before{background:var(--gold)}
+.statrow{background:var(--surface);border-bottom:1px solid var(--line)}.statrow .wrap{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;padding-block:24px}.statrow .wrap>div+div{border-inline-start:1px solid var(--line)}
+.statrow b{display:block;font-size:2rem;font-weight:900;color:var(--brand)}.statrow span{color:var(--mute);font:1rem var(--sans)}
+.quoteband,.final{text-align:center}
+.pq{margin:0 auto;padding:0;max-width:760px}.pq p{font-size:2rem;line-height:1.45;color:var(--gold3);margin:0 0 16px;font-weight:700}.pq p:before{content:"״";display:block;font-size:3.75rem;line-height:.7;color:var(--gold2);opacity:.6}
+.pq cite{font:600 1rem var(--sans);font-style:normal;color:var(--on-navy3)}.more{color:var(--gold2);font-family:var(--sans);font-weight:700;display:inline-flex;align-items:center;min-height:44px}
+.needs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.needs.values{grid-template-columns:repeat(4,1fr)}
+.need{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px 16px;text-align:center;box-shadow:var(--shadow)}.need h3{margin:4px 0;color:var(--brand)}.need p{margin:0;color:var(--mute);font-size:1rem;line-height:1.6}.orn{color:var(--gold);width:24px;height:24px;margin-inline:auto;display:block}
+.tiers2{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}
+.tier2{position:relative;display:flex;flex-direction:column;text-align:center;background:var(--surface);border:2px solid var(--line);border-radius:var(--r);padding:32px 16px 24px;text-decoration:none;color:var(--ink);box-shadow:var(--shadow);transition:transform .2s var(--ease),border-color .2s var(--ease)}.tier2:hover{transform:translateY(-4px);border-color:var(--gold2)}
+.tier2.pick{border-color:var(--gold2);box-shadow:0 12px 34px rgba(168,122,28,.28);transform:scale(1.03)}.tier2.pick:hover{transform:scale(1.03) translateY(-4px)}
+.tier2 em{position:absolute;top:-14px;inset-inline-start:50%;transform:translateX(50%);background:linear-gradient(180deg,var(--gold3),var(--gold2));color:var(--on-gold);font:700 .875rem var(--sans);font-style:normal;padding:4px 16px;border-radius:999px;white-space:nowrap}
+.tier2 .amt{font-size:2rem;font-weight:900;color:var(--gold)}.tier2 .amt.free{font-size:1.5rem}.tier2 h3{margin:4px 0;color:var(--brand)}.tier2 p{margin:0;color:var(--mute);font-size:1rem;line-height:1.6;flex:1}
+.steps2{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;text-align:center}.steps2 h3{margin:8px 0 0;color:var(--brand)}.steps2 p{margin:0;color:var(--mute)}
+.num{display:inline-grid;place-items:center;width:50px;height:50px;border-radius:50%;background:linear-gradient(180deg,var(--gold3),var(--gold2) 50%,var(--gold-deep));color:var(--on-gold);font-weight:900;font-size:1.25rem;box-shadow:0 0 0 5px var(--bg),0 0 0 6px var(--gold2)}
+.final h2{color:var(--gold3);font-size:2rem;font-weight:900;margin:0 0 8px}.final p{color:var(--on-navy2)}
+.goal-bar{max-width:560px;margin:0 auto 16px;font-family:var(--sans)}.gb-top{display:flex;justify-content:space-between;font-size:1rem}.gb-track{appearance:none;display:block;width:100%;height:14px;border:0;background:var(--line);border-radius:999px;overflow:hidden}.gb-track::-webkit-progress-bar{background:var(--line)}.gb-track::-webkit-progress-value{background:linear-gradient(90deg,var(--gold),var(--gold2))}.gb-track::-moz-progress-bar{background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.faqs{max-width:760px;margin:0 auto}
+.faq{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:0;margin:12px auto;max-width:760px}.faq summary{cursor:pointer;font-weight:700;color:var(--brand);padding:16px 16px;list-style:none;display:flex;justify-content:space-between;gap:12px}.faq summary::-webkit-details-marker{display:none}
+.faq summary:after{content:"";width:20px;height:20px;flex:none;align-self:center;background:var(--gold);-webkit-mask:var(--i-chev) center/contain no-repeat;mask:var(--i-chev) center/contain no-repeat;transition:transform .2s var(--ease)}.faq[open] summary:after{transform:rotate(180deg)}.faq p{margin:0;padding:0 16px 16px;color:var(--mute)}
+.promise{max-width:700px;margin:auto}.promise p{margin:16px 0;font-size:1.125rem}.promise p:first-child{font-size:1.25rem;border-inline-start:4px solid var(--gold2);padding-inline-start:16px}
+.donbox{max-width:620px;margin:32px auto 16px}.donhead{text-align:center;margin:8px 0 16px}
+.donbox iframe{display:block;width:100%;height:900px;min-height:80vh;border:1px solid var(--line);border-radius:var(--r);background:#fff;box-shadow:var(--shadow)}
+.donframe:not(:has(iframe)){text-align:center;background:var(--surface);border:1.5px dashed var(--gold2);border-radius:var(--r);padding:32px}html:not(.js) .donframe{display:none}
+.donbox.soon{text-align:center;background:var(--surface);border:1.5px dashed var(--gold2);border-radius:var(--r);padding:32px}
+.stickcta{display:none}
+html.js .stickcta{transition:transform .3s var(--ease)}html.js .stickcta:not(.show){transform:translateY(130%)}

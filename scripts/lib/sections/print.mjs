@@ -5,15 +5,17 @@ import { org, sc, orgLine, contactList, layout, sr, icon } from '../layout.mjs';
 const pd = pr.donate;
 const h = pr.hero;
 const money = (n) => Number(n).toLocaleString('he-IL');
+// The payment form (about 1.3MB from Nedarim Plus) is not loaded with the page: app.js puts it in place
+// when the button or a tier card is clicked. Without JS, the full-screen link below still works.
 const donateBox = () => pd.iframeUrl
-  ? `<div class="donbox" id="donate"><h2 class="donhead">התרומה שלכם מתחילה כאן</h2><iframe title="תרומה באשראי" src="${url(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer" style="width:100%;height:900px;min-height:80vh"></iframe>${pd.fallbackUrl ? `<p class="ctarow"><a class="btn big" href="${url(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו את טופס התרומה במסך מלא</a></p>` : ''}</div>`
+  ? `<div class="donbox" id="donate"><h2 class="donhead">התרומה שלכם מתחילה כאן</h2><div class="donframe" data-frame="${url(pd.iframeUrl)}"><p>טופס התרומה המאובטח של ״נדרים פלוס״ ייפתח כאן.</p><button type="button" class="btn big">לפתיחת טופס התרומה</button></div>${pd.fallbackUrl ? `<p class="ctarow"><a class="btn big" href="${url(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו את טופס התרומה במסך מלא</a></p>` : ''}</div>`
   : pd.fallbackUrl
     ? `<div class="donbox soon" id="donate"><p><a class="btn big" href="${url(pd.fallbackUrl)}" rel="noopener">לתרומה באשראי</a></p></div>`
     : `<div class="donbox soon" id="donate"><p>טופס התרומה באשראי יופעל בקרוב.</p>${pd.phone ? `<p><a href="tel:${tel(pd.phone)}">${esc(pd.phone)}</a></p>` : ''}</div>`;
 const cta = (t = 'אני רוצה להצטרף להדפסה') => `<a class="btn big glow" href="/print/donate/">${t}</a>`;
 const trust = `<ul class="trust">${pr.trust.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
 const g = pr.goal || {};
-const goal = g.target ? `<div class="goal-bar"><div class="gb-top"><b>${esc(g.label || 'התקדמות ההדפסה')}</b><span>${money(g.raised)} מתוך ${money(g.target)} ₪</span></div><div class="gb-track"><i style="width:${Math.min(100, Math.round((g.raised / g.target) * 100))}%"></i></div></div>` : '';
+const goal = g.target ? `<div class="goal-bar"><div class="gb-top"><b>${esc(g.label || 'התקדמות ההדפסה')}</b><span>${money(g.raised)} מתוך ${money(g.target)} ₪</span></div><progress class="gb-track" max="100" value="${Math.min(100, Math.round((g.raised / g.target) * 100))}" aria-label="${esc(g.label || 'התקדמות ההדפסה')}">${Math.min(100, Math.round((g.raised / g.target) * 100))}%</progress></div>` : '';
 const tierCards = (link) => `<div class="tiers2">${pr.tiers.map((t) => `<a class="tier2${t.tag ? ' pick' : ''}" href="${link}">${t.tag ? `<em>${esc(t.tag)}</em>` : ''}<b class="amt${t.amount ? '' : ' free'}">${t.amount ? money(t.amount) + ' ₪' : 'סכום חופשי'}</b><h3>${esc(t.name)}</h3><p>${esc(t.desc)}</p><span class="go">לתרומה ←</span></a>`).join('')}</div>`;
 const stick = `<div class="stickcta"><a class="btn big glow" href="/print/donate/">להצטרף להדפסה</a></div>`;
 const sect = (cls, inner) => `<section class="band ${cls}"><div class="wrap">${inner}</div></section>`;

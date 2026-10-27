@@ -1,0 +1,17 @@
+/* Book reader: sheet, table of contents, reading tools. */
+/* ===== Book reader ===== */
+.tbtn.toc{display:inline-flex;align-items:center;gap:8px;text-decoration:none;min-height:44px}
+.book-sheet{line-height:2.05}.book-sheet p{text-align:justify}
+.book-sheet .subt{font:900 1.25rem/1.5 var(--serif);color:var(--brand);text-align:center;letter-spacing:0;margin:1.6em 0 .8em}
+.book-sheet .psalm{font:900 1.125rem var(--serif);color:var(--brand);letter-spacing:0;margin:1.4em 0 .4em;text-align:center}
+.book-sheet .inst{font:600 1rem/1.6 var(--sans);color:var(--brand);text-align:center}
+.book-sheet .tnote{font:.875rem/1.6 var(--sans);color:var(--mute);background:var(--sunk);border-radius:var(--r-md);padding:8px 12px}
+sup.fn{line-height:0;font-size:.7em;margin:0 1px}sup.fn a{text-decoration:none;font:700 1em var(--sans);color:var(--gold);padding:0 2px}
+.fnotes{margin-top:2em;padding-top:1em;border-top:2px solid var(--line)}.fnotes h2{font:700 1rem var(--sans)!important;color:var(--mute)}
+.fnotes ol{list-style:none;padding:0;margin:0}.fnotes li{display:flex;gap:12px;margin:0 0 .9em;font-size:.889em;line-height:1.85}.fnotes li:target{background:var(--sunk);border-radius:var(--r-sm)}
+.fnotes li>b{flex:none;min-width:1.6em;color:var(--mute);font-family:var(--sans)}.fnotes li a{text-decoration:none}
+.toc{list-style:none;padding:0;margin:0 0 8px}.toc li a{display:flex;gap:16px;align-items:baseline;padding:12px 16px;border-bottom:1px dashed var(--line);text-decoration:none;color:var(--ink);border-radius:var(--r-sm)}
+.toc li a:hover{background:var(--sunk)}.toc b{flex:none;min-width:64px;font:700 .875rem var(--sans);color:var(--mute)}.toc span{font-size:1rem;line-height:1.6}
+h3.tocpart{display:flex;align-items:center;gap:12px;font-size:1.125rem;color:var(--brand);margin:24px 0 8px}h3.tocpart span{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font:900 1rem var(--sans);color:var(--on-gold);background:linear-gradient(180deg,var(--gold3),var(--gold2))}
+.continue{text-align:center;margin:0 0 16px}
+@media (max-width:640px){.toc li a{flex-direction:column;gap:2px;padding:12px 8px}.toc b{min-width:0}.book-sheet p{text-align:start}.tools{flex-wrap:wrap}}
