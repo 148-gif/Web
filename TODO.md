@@ -13,9 +13,8 @@
 
 ## עורך האתר
 
-- [ ] **כניסה עם Google לעורך** (`/admin/`): הקוד מוכן. נשארה הגדרה חד־פעמית של בעל האתר לפי `cms-worker/README.md`:
-  מזהה התחברות ב־Google, ושני מפתחות (Cloudflare ו־GitHub) שנשמרים ב־Secrets של המאגר.
-  אחרי זה: למלא את ה־Client ID ב־`cms-worker/wrangler.toml` וב־`site/admin/config.json`, לפרסם את השרת, ולמלא את כתובתו ב־`worker`.
+- [ ] **פרסום אפליקציית ההתחברות ב־Google** (פרויקט `heichal-cms`, Google Auth Platform → Audience): הכפתור Publish app לא נדלק,
+  ולכן האפליקציה במצב Testing. עד שתפורסם, כל עורך שנוסף ב"ניהול עורכים" צריך להיות מוסף גם ב־Test users שם (עד 100).
 
 ## עד המעבר לדומיין הפרטי
 

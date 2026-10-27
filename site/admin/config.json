@@ -1,6 +1,6 @@
 {
   "repo": "148-gif/Web",
   "branch": "claude/greeting-2i183o",
-  "worker": "",
+  "worker": "https://heichal-cms.nai148.workers.dev",
   "googleClientId": "919663714203-tli67jfhc255740ievn9she99pt019nv.apps.googleusercontent.com"
 }
