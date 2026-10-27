@@ -131,7 +131,7 @@ document.querySelectorAll('sup.fn a').forEach((a) => {
     pop.className = 'fnpop'; pop.tabIndex = -1; pop.setAttribute('role', 'note');
     const body = li.querySelector('span').cloneNode(true);
     body.querySelectorAll('a[href^="#fr-"]').forEach((x) => x.remove());
-    pop.innerHTML = `<div class="fnh"><b>הערה ${a.textContent}</b><button type="button" class="fnx" aria-label="סגירת ההערה">✕</button></div>`;
+    pop.innerHTML = `<div class="fnh"><b>הערה ${a.textContent}</b><button type="button" class="fnx" aria-label="סגירת ההערה"><svg class="ico sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
     pop.append(body);
     const host = a.closest('.sheet') || a.closest('article'), hr = host.getBoundingClientRect(), mr = a.getBoundingClientRect();
     pop.style.top = `${mr.bottom - hr.top + 8}px`;

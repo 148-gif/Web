@@ -3,7 +3,7 @@ import { BASE, ORIGIN, esc, url, tel, mo, rn } from './core.mjs';
 import { icon, orn } from './layout.mjs';
 
 const chips = ['אמונה', 'התבודדות', 'שמחה', 'תפילה', 'אומן', 'פרנסה', 'שלום בית'].map((t) => `<a href="/search/?q=${encodeURIComponent(t)}">${t}</a>`).join('');
-const searchForm = `<form action="/search/" class="hsearch" role="search"><input name="q" type="search" placeholder="מה מעסיק אתכם?" aria-label="חיפוש בשו״ת"><button>${icon('search', 'ico sm')}חיפוש</button></form>`;
+const searchForm = `<label class="slabel" for="sq">חיפוש בשאלות ובתשובות</label><form action="/search/" class="hsearch" role="search"><input id="sq" name="q" type="search" placeholder="מה מעסיק אתכם?"><button>${icon('search', 'ico sm')}חיפוש</button></form>`;
 const ul = (xs) => `<ul>${xs.map((x) => `<li>${x}</li>`).join('')}</ul>`;
 const ps = (xs) => xs.map((p) => `<p>${esc(p)}</p>`).join('');
 const navBtns = (q, cls = '') => `<div class="navbtns${cls}"><a class="btn" href="${url(`https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`)}" rel="noopener">${icon('nav', 'ico sm')}ניווט ב־Waze</a><a class="btn ghost" href="${url(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`)}" rel="noopener">${icon('pin', 'ico sm')}Google Maps</a></div>`;
