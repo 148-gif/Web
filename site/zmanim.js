@@ -33,6 +33,20 @@ fetch(new URL(`zmanim.json${me.search}`, me)).then((r) => r.json()).then(({ cols
   });
   document.querySelectorAll('.zlnote').forEach((n) => { n.hidden = !live; });
 
+  // The strip of today's sunrise, sunset and evening zman (home page and Yavne'el page).
+  const t = days[today];
+  if (t) {
+    const col = (name) => t[4 + cols.indexOf(name)];
+    const third = dow === 5 ? ['הדלקת נרות', col('הדלקת נרות')] : dow === 6 ? ['צאת השבת', col('צאת השבת')] : ['צאת הכוכבים', col('צאת הכוכבים')];
+    const vals = { netz: hm(Math.floor(t[2] / 60) * 60), shkia: hm(Math.floor(t[3] / 60) * 60), thirdname: third[0], third: third[1] };
+    document.querySelectorAll('.zstrip').forEach((z) => {
+      z.querySelectorAll('[data-zv]').forEach((e) => { e.textContent = vals[e.dataset.zv]; if (e.tagName === 'B') e.dir = 'ltr'; });
+      z.querySelector('.zc').hidden = dow !== 5; z.querySelector('.zs').hidden = dow === 5;
+      z.querySelector('.zdate').textContent = [new Date(`${today}T12:00:00Z`).toLocaleDateString('he-IL', { weekday: 'long', timeZone: 'UTC' }), t[0], t[1], 'לפי אופק יבנאל'].filter(Boolean).join(' · ');
+      z.hidden = false;
+    });
+  }
+
   const box = document.getElementById('zmanim');
   if (!box) return;
   let key = today < min ? min : today > max ? max : today;
@@ -45,7 +59,7 @@ fetch(new URL(`zmanim.json${me.search}`, me)).then((r) => r.json()).then(({ cols
     sub.textContent = [new Date(`${key}T12:00:00Z`).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }), parasha].filter(Boolean).join(' · ');
     list.replaceChildren(...cols.flatMap((c, i) => {
       if (!times[i]) return [];
-      const row = el('div'), t = el('bdi', '', times[i]);
+      const row = el('div', ['הנץ החמה', 'שקיעת החמה', 'הדלקת נרות', 'צאת השבת'].includes(c) ? 'key' : ''), t = el('bdi', '', times[i]);
       t.dir = 'ltr';
       row.append(el('dt', '', c), el('dd')); row.lastChild.append(t);
       return [row];

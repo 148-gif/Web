@@ -1,10 +1,10 @@
 // Yavniel and Malka mikveh pages, and the community institutions page.
 import { esc, url, tel, write, institutions, yv, mk, BUILD } from '../core.mjs';
 import { icon, orn, phead, layout, sr } from '../layout.mjs';
-import { ul, ps, navBtns, anchors, ysect, sched, hours, statrow, telA } from '../parts.mjs';
+import { zstrip, ul, ps, navBtns, anchors, ysect, sched, hours, statrow, telA } from '../parts.mjs';
 
 
-write('yavniel/index.html', layout('יבנאל', `${statrow(yv.stats)}
+write('yavniel/index.html', layout('יבנאל', `${zstrip()}${statrow(yv.stats)}
 ${ysect('history', '', 'על היישוב', '', `<div class="about lead1">${ps(yv.intro)}</div>`)}
 <section class="band soft" id="timeline"><div class="wrap narrow"><h2 class="sh">מסע בזמן</h2><p class="shsub">תחנות בתולדות המושבה</p><ol class="tline">${yv.timeline.map(([t, d]) => `<li><b>${esc(t)}</b><p>${esc(d)}</p></li>`).join('')}</ol><p class="tnote">${esc(yv.livelihood)}</p></div></section>
 <section class="band quoteband"><div class="wrap"><blockquote class="pq"><p>${esc(yv.nachman)}</p><cite>${esc(yv.nachmanBy)}</cite></blockquote></div></section>

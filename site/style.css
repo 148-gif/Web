@@ -476,3 +476,11 @@ header.top.hide{transition-timing-function:var(--ease-in)}
 .zbox [hidden]{display:none}
 .zl{display:block;margin-top:2px;font:800 1rem var(--sans);color:var(--gold-deep);text-align:start}.zl:empty{display:none}
 .hrs .zl{margin-top:4px}
+/* Today's sunrise, sunset and evening zman: the stat row, with an icon and a date line */
+.zstrip{background:var(--sunk)}.zstrip[hidden]{display:none}.zstrip .wrap{padding-block:24px 0}
+.zstrip .wrap>div{display:flex;flex-direction:column;align-items:center;gap:4px}.zstrip .ico{color:var(--gold-deep)}.zstrip i{font-style:normal;line-height:0}.zstrip i[hidden]{display:none}
+.zstrip b{font-variant-numeric:tabular-nums;direction:ltr}
+.zdate{margin:0;padding:0 16px 16px;text-align:center;color:var(--mute);font-family:var(--sans)}
+/* The daily box: the key times stand out in the list */
+.zlist .key dt,.zlist .key dd{color:var(--gold)}.zlist .key dt{font-weight:800}.zlist .key bdi{font-size:1.125rem}
+@media (max-width:600px){.zstrip .wrap{padding-block:16px 0}.zstrip .ico{width:24px;height:24px}}

@@ -28,6 +28,12 @@ const hoursMark = (title, v) => {
   if (/^מחצי שעה אחרי (?:ר״ת|זמן רבנו תם).*כשעתיים$/.test(v)) return [`rt:30:${day}`, `rt:150:${day}`];
   return ['', ''];
 };
+// Today's sunrise, sunset and the evening zman, in the site's stat-row look. Hidden until site/zmanim.js fills it in.
+const zstrip = () => `<div class="statrow zstrip" hidden><div class="wrap">
+<div>${icon('sunrise', 'ico lg')}<span>הנץ החמה</span><b data-zv="netz"></b></div>
+<div>${icon('sunset', 'ico lg')}<span>שקיעת החמה</span><b data-zv="shkia"></b></div>
+<div><i class="zc">${icon('candle', 'ico lg')}</i><i class="zs">${icon('star', 'ico lg')}</i><span data-zv="thirdname"></span><b data-zv="third"></b></div></div>
+<p class="zdate small"></p></div>`;
 // Prayer schedules fold into one row per prayer (opened by app.js on wide screens); the summary shows the time span.
 const span = (rows) => { const ts = rows.map(([t]) => t).filter((t) => /^\d{1,2}:\d{2}$/.test(t)); return ts.length > 1 ? `${ts[0]}–${ts[ts.length - 1]}` : ts[0] || ''; };
 const sched = (gs) => `<div class="sgrid">${gs.map((g) => `<details class="scard"><summary><h3>${esc(g.title)}</h3><span class="sspan">${rows(g.rows.length)}${span(g.rows) ? ` · <bdi>${span(g.rows)}</bdi>` : ''}</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>${g.note ? `<p class="snote">${esc(g.note)}</p>` : ''}<dl>${g.rows.map(([t, p]) => `<div><dt>${esc(t)}${live(relMark(t, groupDay(g.title)))}</dt><dd>${esc(p)}</dd></div>`).join('')}</dl></details>`).join('')}</div>`;
@@ -47,4 +53,4 @@ const person = { '@type': 'Person', ...(absu('/moharash/') ? { '@id': absu('/moh
 const tikkunUrl = '/tikkun-haklali/';
 const rnPerson = { '@type': 'Person', ...(absu('/rabbi-nachman/') ? { '@id': absu('/rabbi-nachman/') + '#person', url: absu('/rabbi-nachman/') } : {}), name: 'רבי נחמן מברסלב', alternateName: ['רבינו', 'מוהר״ן', 'מוהר"ן', 'רבי נחמן מברסלב', 'Rebbe Nachman of Breslov', 'Nachman of Breslov'], birthDate: '1772', deathDate: '1810-10', birthPlace: { '@type': 'Place', name: 'מז׳יבוז׳' }, deathPlace: { '@type': 'Place', name: 'אומן' }, description: rn.short, knowsAbout: ['חסידות ברסלב', 'ליקוטי מוהר״ן'], sameAs: rn.sources.slice(0, 2).map(([, u]) => u) };
 
-export { chips, searchForm, ul, ps, navBtns, anchors, ysect, span, sched, rows, hours, statrow, telA, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, person, tikkunUrl, rnPerson };
+export { zstrip, chips, searchForm, ul, ps, navBtns, anchors, ysect, span, sched, rows, hours, statrow, telA, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, person, tikkunUrl, rnPerson };
