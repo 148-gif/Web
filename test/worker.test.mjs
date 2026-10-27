@@ -29,6 +29,7 @@ test('route() lets editors read and write data files only', () => {
   assert.equal(route('PUT', 'contents/data/pages/x.json'), 'contents/data/pages/x.json');
   assert.equal(route('DELETE', 'contents/data/pages/x.json'), 'contents/data/pages/x.json');
   assert.equal(route('GET', 'actions/runs'), 'actions/runs');
+  assert.equal(route('PUT', 'contents/data/shut-edits/12.json'), 'contents/data/shut-edits/12.json'); // one Q&A entry, never shut.json itself
   for (const [m, p] of [['PUT', 'contents/site/app.js'], ['PUT', 'contents/.github/workflows/pages.yml'], ['PUT', 'contents/data/../scripts/build.mjs'], ['PUT', 'contents/data/shut.json'], ['PUT', 'contents/data'], ['DELETE', ''], ['POST', 'contents/data/x.json'], ['GET', 'contents/scripts/build.mjs'], ['GET', 'collaborators']]) {
     assert.equal(route(m, p), null, `${m} ${p}`);
   }

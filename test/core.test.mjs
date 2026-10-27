@@ -1,7 +1,7 @@
 // Unit tests for the build's text and safety helpers. Run with: npm test (also part of npm run check and CI).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { url, tel, esc, escAttr, gist, isHidden, unlinkHidden, HIDDEN, site, validateCms } from '../scripts/lib/core.mjs';
+import { url, tel, esc, escAttr, gist, isHidden, unlinkHidden, HIDDEN, site, validateCms, validateShutEdit, mergeShut } from '../scripts/lib/core.mjs';
 import { ld } from '../scripts/lib/parts.mjs';
 
 test('url() keeps https links and site paths', () => {
@@ -80,4 +80,19 @@ test('validateCms() accepts good topics and pages and rejects bad ones', () => {
   assert.throws(() => validateCms(t, [{ ...p, title: '' }]), /no title/);
   assert.throws(() => validateCms(t, [{ ...p, blocks: [{ type: 'script' }] }]), /block type/);
   assert.throws(() => validateCms(t, [{ ...p, slug: '../x' }]), /file name/);
+});
+
+test('mergeShut() applies editor edits: replace, add, delete', () => {
+  const base = [{ id: 1, title: 'a' }, { id: 2, title: 'b' }, { id: 3, title: 'c' }];
+  assert.equal(mergeShut(base, []), base);
+  assert.deepEqual(mergeShut(base, [{ id: 2, title: 'B' }, { id: 3, deleted: true }, { id: 9, title: 'new' }]).map((x) => x.title), ['a', 'B', 'new']);
+});
+
+test('validateShutEdit() rejects edits that would break the site', () => {
+  const ok = { id: 7, kind: 'shut', title: 'כותרת', q: ['שאלה'], a: ['תשובה'], date: '' };
+  assert.doesNotThrow(() => validateShutEdit('7.json', ok));
+  assert.doesNotThrow(() => validateShutEdit('7.json', { id: 7, deleted: true }));
+  for (const [f, x] of [['8.json', ok], ['7.json', { ...ok, kind: 'x' }], ['7.json', { ...ok, title: '' }], ['7.json', { ...ok, a: ['', ' '] }], ['7.json', { ...ok, q: 'text' }], ['7.json', { ...ok, a: [1] }], ['..json', { ...ok, id: '.' }]]) {
+    assert.throws(() => validateShutEdit(f, x), Error, JSON.stringify(x).slice(0, 40));
+  }
 });
