@@ -474,3 +474,5 @@ header.top.hide{transition-timing-function:var(--ease-in)}
 .zpick{font:1rem var(--sans);min-height:44px;padding:8px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:inherit}
 @media (max-width:600px){.zbox{padding:16px}}
 .zbox [hidden]{display:none}
+.zl{display:block;margin-top:2px;font:800 1rem var(--sans);color:var(--gold-deep);text-align:start}.zl:empty{display:none}
+.hrs .zl{margin-top:4px}

@@ -21,6 +21,7 @@ vm.runInContext(files.map((f) => readFileSync(join(root, f), 'utf8')).join('\n;\
 const run = (code) => vm.runInContext(code, ctx);
 run('initializeModel()');
 
+// A day is [Hebrew date, parasha, sunrise seconds, sunset seconds, ...one time per column].
 // Columns, in the order shown on the page. A day without a zman (candle lighting on a weekday) leaves it empty.
 const cols = ['עלות השחר', 'הנץ החמה', 'סוף ק"ש (מג"א)', 'סוף ק"ש (גר"א)', 'תפילה (גר"א)', 'חצות היום', 'מנחה גדולה',
   'מנחה קטנה', 'פלג המנחה', 'הדלקת נרות', 'שקיעת החמה', 'צאת הכוכבים', 'צאת השבת', 'רבינו תם'];
@@ -33,7 +34,9 @@ for (let key = first; key <= last; key = run(`addDaysToKey('${key}', 1)`)) {
   const byName = Object.fromEntries(r.items.map((it) => [it.shortName, run('fmtItem')(it)]));
   const dow = run(`getHebrewCalendarParts(keyToDate('${key}')).dow`);
   const parasha = dow >= 5 && r.parashaInfo ? r.parashaInfo.fullTitle : '';
-  days[key] = [run(`formatHebrewDayMonthOnly(keyToDate('${key}'))`), parasha, ...cols.map((c) => byName[c] || '')];
+  // Sunrise and sunset also as whole seconds: prayer and mikveh times written relative to them ("20 minutes before sunset") are worked out in the browser.
+  const sec = (name) => Math.round(r.items.find((it) => it.shortName === name).sec);
+  days[key] = [run(`formatHebrewDayMonthOnly(keyToDate('${key}'))`), parasha, sec('הנץ החמה'), sec('שקיעת החמה'), ...cols.map((c) => byName[c] || '')];
 }
 writeFileSync(new URL('../site/zmanim.json', import.meta.url), JSON.stringify({ cols, days }));
 console.log(`${Object.keys(days).length} days, ${first} to ${last}`);
