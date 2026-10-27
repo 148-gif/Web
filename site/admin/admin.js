@@ -22,7 +22,7 @@
   var ICONS = ['book', 'books', 'crown', 'lyre', 'candle', 'flame', 'heart', 'star', 'users', 'letter', 'sparkle', 'home', 'mountain', 'drop', 'school', 'scale', 'pin', 'clock', 'chat'];
 
   var RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachman', 'uman', 'tikkun-haklali', 'moharash', 'yeshiva', 'print', 'yavniel', 'mikveh-malka', 'institutions', 'search', 'about', 'contact', 'accessibility', 'privacy', 'offline', 'fonts', 'img', 'books', 'idx', 'zmanim'];
-  var cfg, token, cur = null, dirty = false, rawBad = false;
+  var cfg, token, owner = false, cur = null, dirty = false, rawBad = false;
 
   // ---- GitHub ----
   function api(path, opt) {
@@ -135,6 +135,7 @@
   function side(files, pages) {
     var s = $('#side'); s.textContent = '';
     s.append(el('button', { type: 'button', class: 'new', text: '+ נושא חדש', onclick: newTopic }), el('button', { type: 'button', class: 'new', text: '+ דף חדש', onclick: newPage }));
+    if (owner) s.append(el('button', { type: 'button', class: 'new', 'data-p': '#editors', text: 'ניהול עורכים', onclick: people }));
     s.append(el('h2', { text: 'דפים ונושאים שיצרתם' }));
     s.append(el('button', { type: 'button', 'data-p': 'data/topics.json', text: 'רשימת הנושאים', onclick: function () { open('data/topics.json'); } }));
     pages.forEach(function (n) { s.append(el('button', { type: 'button', 'data-p': 'data/pages/' + n, text: n.replace(/\.json$/, ''), onclick: function () { open('data/pages/' + n); } })); });
@@ -275,6 +276,33 @@
     }, function (e) { say(e.message, true); });
   }
 
+  // ---- editors (site owners only; the server checks this too) ----
+  function editorsApi(method, email) {
+    return fetch(cfg.worker.replace(/\/$/, '') + '/editors', { method: method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: email ? JSON.stringify({ email: email }) : undefined })
+      .then(function (r) { return r.json().then(function (j) { if (r.status === 401) signout('פג תוקף ההתחברות. התחברו שוב.'); if (!r.ok) throw new Error(j.message || 'שגיאה ' + r.status); return j.editors; }); });
+  }
+  function people() {
+    if (!leave()) return;
+    dirty = false; cur = null;
+    document.querySelectorAll('#side button').forEach(function (b) { b.classList.toggle('cur', b.getAttribute('data-p') === '#editors'); });
+    var ed = $('#ed'); ed.textContent = 'טוען…';
+    var draw = function (list) {
+      ed.textContent = '';
+      var inp = el('input', { id: 'newed', type: 'email', class: 'ltr', autocomplete: 'off', placeholder: 'name@gmail.com', required: true });
+      var form = el('form', { class: 'row' }, el('div', { class: 'fld' }, el('label', { for: 'newed', text: 'הוספת עורך (כתובת Gmail או כל חשבון Google)' }), inp), el('button', { type: 'submit', class: 'pri', text: 'הוספה' }));
+      form.addEventListener('submit', function (e) { e.preventDefault(); var v = inp.value.trim(); if (!v) return; editorsApi('PUT', v).then(function (l) { say('העורך נוסף, ועכשיו הוא יכול להיכנס לעריכה עם Google: ' + v); draw(l); }, function (x) { say(x.message, true); }); });
+      ed.append(el('div', { class: 'bar' }, el('h2', { text: 'ניהול עורכים' })),
+        el('p', { class: 'hint', text: 'מי שברשימה יכול להתחבר עם חשבון ה־Google שלו ולערוך את תוכן האתר. הסרה תופסת מיד. בעלי האתר תמיד יכולים להיכנס, ורק הם רואים את המסך הזה.' }), form);
+      if (!list.length) ed.append(el('p', { class: 'hint', text: 'עדיין אין עורכים נוספים.' }));
+      var ul = el('ul', { class: 'eds' });
+      list.forEach(function (m) {
+        ul.append(el('li', {}, el('span', { class: 'ltr', text: m }), el('button', { type: 'button', class: 'sm dng', text: 'הסרה', onclick: function () { if (confirm('להסיר את ' + m + ' מהעורכים?')) editorsApi('DELETE', m).then(function (l) { say('העורך הוסר: ' + m); draw(l); }, function (x) { say(x.message, true); }); } })));
+      });
+      ed.append(ul);
+    };
+    editorsApi('GET').then(draw, function (e) { ed.textContent = ''; say(e.message, true); });
+  }
+
   // ---- start ----
   function enter(who) {
     return api('').then(function (r) {
@@ -307,7 +335,7 @@
         $('#lerr').textContent = '';
         fetch(cfg.worker.replace(/\/$/, '') + '/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: resp.credential }) })
           .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'ההתחברות נכשלה'); return j; }); })
-          .then(function (j) { token = j.token; remember({ token: j.token, email: j.email }, $('#grem').checked); return enter(j.email); })
+          .then(function (j) { token = j.token; owner = !!j.owner; remember({ token: j.token, email: j.email, owner: owner }, $('#grem').checked); return enter(j.email); })
           .catch(function (e) { $('#lerr').textContent = e.message; });
       } });
       window.google.accounts.id.renderButton($('#gbtn'), { theme: 'filled_blue', size: 'large', text: 'signin_with', locale: 'he' });
@@ -319,7 +347,7 @@
     var st = saved();
     $('#out').addEventListener('click', function () { if (leave()) signout(); });
     if (cfg.worker) {
-      if (st && st.email) { token = st.token; enter(st.email); } else google();
+      if (st && st.email) { token = st.token; owner = !!st.owner; enter(st.email); } else google();
       return;
     }
     $('#tokbox').hidden = false;

@@ -13,8 +13,9 @@
 
 ## עורך האתר
 
-- [ ] **כניסה עם Google לעורך** (`/admin/`): הקוד מוכן. נשארה הגדרה חד־פעמית של בעל האתר: מזהה התחברות ב־Google,
-  שרת חינמי ב־Cloudflare ומפתח GitHub לשרת, לפי `cms-worker/README.md`. אחרי זה: למלא `worker` ו־`googleClientId` ב־`site/admin/config.json`.
+- [ ] **כניסה עם Google לעורך** (`/admin/`): הקוד מוכן. נשארה הגדרה חד־פעמית של בעל האתר לפי `cms-worker/README.md`:
+  מזהה התחברות ב־Google, ושני מפתחות (Cloudflare ו־GitHub) שנשמרים ב־Secrets של המאגר.
+  אחרי זה: למלא את ה־Client ID ב־`cms-worker/wrangler.toml` וב־`site/admin/config.json`, לפרסם את השרת, ולמלא את כתובתו ב־`worker`.
 
 ## עד המעבר לדומיין הפרטי
 

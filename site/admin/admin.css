@@ -25,6 +25,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 #side button{text-align:start;border-color:transparent;background:none}
 #side button.cur{background:var(--pri);color:#fff}
 #side button.new{border:1px dashed var(--pri);color:var(--pri)}
+#side button.new.cur{color:#fff}
 #ed{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0}
 .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:var(--card);padding:8px 0;border-bottom:1px solid var(--line);margin-bottom:12px;z-index:2}
 .bar h2{margin:0;margin-inline-end:auto;font-size:1.2rem}
@@ -45,5 +46,7 @@ details.it>.bd{padding:0 12px 12px}
 .toast.bad{background:var(--err)}
 dialog{border:1px solid var(--line);border-radius:12px;padding:20px;max-width:480px;width:calc(100% - 32px)}
 dialog::backdrop{background:#0006}
+ul.eds{list-style:none;padding:0;margin:16px 0}ul.eds li{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--line);border-radius:8px;margin:6px 0}
+.row>button{align-self:flex-end}
 .ltr{direction:ltr;text-align:left}
 @media(max-width:800px){#app{grid-template-columns:minmax(0,1fr);padding:0 8px;margin:12px auto}#side{position:static;max-height:none;flex-direction:row;flex-wrap:wrap}#side h2{flex-basis:100%}#side button{border:1px solid var(--line);padding:5px 10px}#ed{padding:12px}fieldset{padding:6px 8px 10px;margin:8px 0}details.it>.bd{padding:0 8px 8px}.ah{flex-wrap:wrap;gap:8px}}

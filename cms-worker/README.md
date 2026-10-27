@@ -1,68 +1,49 @@
-# כניסה לעורך האתר עם Google: הגדרה חד־פעמית
+# כניסה לעורך האתר עם Google
 
-עורך האתר (`/admin/`) מתחבר עם חשבון Google. שרת קטן וחינמי ב־Cloudflare (הקוד ב־`worker.mjs`) בודק שהמייל נמצא ברשימת המורשים,
-ורק אז שומר את השינוי במאגר. מפתח הגישה ל־GitHub נשמר רק בשרת הזה, והעורכים לא רואים אותו.
+עורך האתר (`/admin/`) מתחבר עם חשבון Google. שרת קטן וחינמי ב־Cloudflare (הקוד ב־`worker.mjs`) בודק שהמייל מורשה,
+ורק אז שומר את השינוי במאגר. מפתח ה־GitHub נשמר רק בשרת, והעורכים לא רואים אותו.
 
-ההגדרה לוקחת בערך 20 דקות, ועושים אותה פעם אחת. יש ארבעה שלבים.
+- **בעלי האתר** (רשומים ב־`OWNERS` ב־`wrangler.toml`, כגיבוב של המייל) נכנסים תמיד, ורק הם רואים את המסך "ניהול עורכים".
+- **עורכים** נוספים ומוסרים מתוך העורך, במסך "ניהול עורכים". הרשימה נשמרת ב־Cloudflare (KV בשם `heichal-cms-editors`)
+  ולא במאגר, כי המאגר ציבורי.
+- השרת מתפרסם אוטומטית מ־`.github/workflows/cms-worker.yml` בכל שינוי בתיקייה הזאת בענף הפרסום.
 
-## 1. מפתח GitHub לשרת
+## הגדרה חד־פעמית (בעל האתר)
 
-1. נכנסים ל־<https://github.com/settings/personal-access-tokens/new>.
-2. נותנים שם (למשל "עורך האתר") ותוקף (עד שנה; כשיפוג, יוצרים חדש ומחליפים בשלב 3).
-3. ב־Repository access בוחרים Only select repositories, ואת `148-gif/Web`.
-4. ב־Repository permissions: ‏**Contents: Read and write**, ו־**Actions: Read-only**.
-5. Generate token, ומעתיקים את המפתח (הוא מוצג פעם אחת בלבד).
+### 1. מזהה מ־Google
+1. <https://console.cloud.google.com> → פרויקט חדש `heichal-cms`.
+2. APIs & Services → OAuth consent screen → Get started: שם `היכל הקודש עריכה`, המייל שלכם, External, Create.
+3. Audience → Publish app.
+4. Clients → Create client → Web application. ב־Authorized JavaScript origins: `https://148-gif.github.io` → Create.
+5. מעתיקים את ה־Client ID ושולחים אותו (הוא לא סודי). הוא נכנס ל־`GOOGLE_CLIENT_ID` ב־`wrangler.toml` ול־`googleClientId` ב־`site/admin/config.json`.
 
-## 2. מזהה התחברות של Google
+### 2. מפתח Cloudflare (כדי ש־GitHub יפרסם את השרת)
+1. <https://dash.cloudflare.com/profile/api-tokens> → Create Token → בתבנית **Edit Cloudflare Workers** לוחצים Use template.
+2. Account Resources: החשבון שלכם. Zone Resources: All zones. → Continue to summary → Create Token → מעתיקים.
 
-1. נכנסים ל־<https://console.cloud.google.com/>, ויוצרים פרויקט חדש (למשל "heichal-cms").
-2. APIs & Services → OAuth consent screen: סוג **External**, שם האפליקציה "היכל הקודש – עריכה", והמייל שלכם. שומרים.
-   ב־Audience לוחצים **Publish app** (או מוסיפים את המיילים של העורכים כ־Test users).
-3. APIs & Services → Credentials → Create credentials → **OAuth client ID**, סוג **Web application**.
-4. ב־Authorized JavaScript origins מוסיפים: `https://148-gif.github.io` (וכשיהיה דומיין פרטי, גם אותו).
-5. Create, ומעתיקים את ה־**Client ID** (נגמר ב־`.apps.googleusercontent.com`).
+### 3. מפתח GitHub לשרת
+<https://github.com/settings/personal-access-tokens/new> → Only select repositories → `Web` →
+Permissions: Contents **Read and write**, Actions **Read-only** → Generate token → מעתיקים.
 
-## 3. השרת ב־Cloudflare
+### 4. שמירת שני המפתחות ב־GitHub
+<https://github.com/148-gif/Web/settings/secrets/actions> → New repository secret, פעמיים:
 
-1. פותחים חשבון חינמי ב־<https://dash.cloudflare.com/sign-up>.
-2. Workers & Pages → Create → Create Worker. נותנים שם `heichal-cms` ולוחצים Deploy.
-3. Edit code: מוחקים את הקוד שיש שם, מדביקים את כל התוכן של `cms-worker/worker.mjs` מהמאגר, ולוחצים Deploy.
-4. Settings → Variables and Secrets, ומוסיפים:
+| Name | Secret |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | המפתח משלב 2 |
+| `CMS_GITHUB_TOKEN` | המפתח משלב 3 |
 
-   | שם | סוג | ערך |
-   |---|---|---|
-   | `GOOGLE_CLIENT_ID` | Text | ה־Client ID משלב 2 |
-   | `ALLOWED_EMAILS` | Text | המיילים של מי שמורשה לערוך, מופרדים בפסיק: `148148v@gmail.com` |
-   | `ALLOWED_ORIGIN` | Text | `https://148-gif.github.io` |
-   | `REPO` | Text | `148-gif/Web` |
-   | `BRANCH` | Text | `claude/greeting-2i183o` |
-   | `GITHUB_TOKEN` | **Secret** | המפתח משלב 1 |
-   | `SESSION_SECRET` | **Secret** | טקסט אקראי ארוך (לפחות 32 תווים) |
+המפתחות האלה לא נשלחים לאף אחד: GitHub מעביר אותם ישירות ל־Cloudflare.
 
-5. מעתיקים את כתובת השרת, למשל `https://heichal-cms.<השם-שלכם>.workers.dev`.
-
-(מי שמעדיף שורת פקודה: `cd cms-worker && npx wrangler deploy`, ואת שני הסודות עם `npx wrangler secret put`.)
-
-## 4. חיבור העורך
-
-בקובץ `site/admin/config.json` ממלאים:
-
-```json
-{
-  "repo": "148-gif/Web",
-  "branch": "claude/greeting-2i183o",
-  "worker": "https://heichal-cms.<השם-שלכם>.workers.dev",
-  "googleClientId": "….apps.googleusercontent.com"
-}
-```
-
-אחרי הפרסום, נכנסים ל־`https://148-gif.github.io/Web/admin/` ומתחברים עם Google.
-כל עוד `worker` ריק, העורך מבקש מפתח GitHub אישי כמו קודם.
+### 5. הפעלה
+בפרסום הבא של התיקייה הזאת (או Actions → Deploy editor login server → Run workflow) השרת עולה.
+את כתובת השרת (`https://heichal-cms.<…>.workers.dev`, מופיעה ביומן של הריצה) כותבים ב־`worker` ב־`site/admin/config.json`.
 
 ## ניהול שוטף
 
-- **להוסיף או להסיר עורך:** משנים את `ALLOWED_EMAILS` ב־Cloudflare. הסרה תופסת מיד, גם למי שכבר מחובר.
-- **לנתק את כולם:** משנים את `SESSION_SECRET`.
-- **מי שינה מה:** כל שמירה נרשמת במאגר עם השורה "נערך על ידי: <מייל>" (GitHub → Commits).
-- **מה העורך יכול לשנות:** רק קבצים בתיקייה `data/` (חוץ מ־`shut.json`), ורק בענף שבהגדרות. את הקוד, את העיצוב ואת ה־workflows הוא לא יכול לשנות.
-- **מעבר לדומיין פרטי:** מוסיפים את הכתובת החדשה ב־Google (שלב 2.4), ומעדכנים את `ALLOWED_ORIGIN`.
+- **להוסיף או להסיר עורך:** בעורך, "ניהול עורכים". הסרה תופסת מיד, גם למי שכבר מחובר.
+- **להוסיף בעלים:** מוסיפים ל־`OWNERS` את הגיבוב של המייל (`printf %s "name@gmail.com" | sha256sum`), אחרי פסיק.
+- **לנתק את כולם:** מחליפים את `CMS_GITHUB_TOKEN` (ההתחברויות חתומות במפתח שנגזר ממנו).
+- **מי שינה מה:** כל שמירה נרשמת במאגר עם "נערך על ידי: <מייל>".
+- **מה אפשר לשנות דרך העורך:** רק קבצים בתיקייה `data/` (חוץ מ־`shut.json`), ורק בענף הפרסום.
+- **מעבר לדומיין פרטי:** מוסיפים את הכתובת ב־Google (שלב 1.4) ומעדכנים את `ALLOWED_ORIGIN`.

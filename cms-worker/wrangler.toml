@@ -1,12 +1,21 @@
-# Cloudflare Worker for the site editor's Google sign-in. Deploy: npx wrangler deploy (from this folder). Guide: README.md
+# Cloudflare Worker for the site editor's Google sign-in (see worker.mjs and README.md).
+# Deployed by .github/workflows/cms-worker.yml whenever this folder changes on the publishing branch.
 name = "heichal-cms"
 main = "worker.mjs"
 compatibility_date = "2026-01-01"
+workers_dev = true
 
 [vars]
+# Fill in from Google Cloud (README.md, step 1). Not secret: Google shows it to every visitor of the sign-in button.
 GOOGLE_CLIENT_ID = ""
-ALLOWED_EMAILS = "148148v@gmail.com"
+# SHA-256 of each owner's lower-case email (the repository is public, so the emails themselves are not written here).
+# Add one with: printf %s "name@gmail.com" | sha256sum
+OWNERS = "3433adb7521744e030794ba973a2faa70debbffe0c60abdd254c6cf9e11ea04b"
 ALLOWED_ORIGIN = "https://148-gif.github.io"
 REPO = "148-gif/Web"
 BRANCH = "claude/greeting-2i183o"
-# Secrets (not here): npx wrangler secret put GITHUB_TOKEN ; npx wrangler secret put SESSION_SECRET
+
+# The editors the owners add from /admin/ (created in the site's Cloudflare account).
+[[kv_namespaces]]
+binding = "EDITORS"
+id = "0457d5e9914b42e69d7f11ad77894d63"

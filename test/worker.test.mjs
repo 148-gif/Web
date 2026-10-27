@@ -1,9 +1,11 @@
 // Unit tests for the editor login server (cms-worker/worker.mjs): who may sign in, and what an editor may change.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { route, verifyGoogle, makeSession, readSession, handle } from '../cms-worker/worker.mjs';
+import { route, verifyGoogle, makeSession, readSession, handle, sha256 } from '../cms-worker/worker.mjs';
 
-const env = { GOOGLE_CLIENT_ID: 'cid', ALLOWED_EMAILS: 'a@gmail.com, B@Gmail.com', ALLOWED_ORIGIN: 'https://site.example', REPO: 'o/r', BRANCH: 'live', GITHUB_TOKEN: 'ghp', SESSION_SECRET: 'secret' };
+// a@gmail.com owns the site; b@gmail.com is an editor the owner added (kept in the KV store).
+const kv = (init) => { const m = new Map(Object.entries(init)); return { get: async (k) => m.get(k) ?? null, put: async (k, v) => { m.set(k, v); } }; };
+const env = { GOOGLE_CLIENT_ID: 'cid', OWNERS: `${await sha256('a@gmail.com')}, ${await sha256('x@y.z')}`, EDITORS: kv({ editors: '["b@gmail.com"]' }), ALLOWED_ORIGIN: 'https://site.example', REPO: 'o/r', BRANCH: 'live', GITHUB_TOKEN: 'ghp' };
 const b64url = (s) => Buffer.from(s).toString('base64url');
 
 // A Google-like signing key, served as Google's key set by a stubbed fetch.
@@ -48,7 +50,8 @@ test('sessions expire, cannot be forged, and end when the email is removed', asy
   assert.equal(await readSession(s, env), 'b@gmail.com');
   assert.equal(await readSession(s, env, Date.now() / 1000 + 13 * 3600), null);
   assert.equal(await readSession(s, { ...env, SESSION_SECRET: 'other' }), null);
-  assert.equal(await readSession(s, { ...env, ALLOWED_EMAILS: 'a@gmail.com' }), null);
+  assert.equal(await readSession(s, { ...env, GITHUB_TOKEN: 'replaced' }), null);
+  assert.equal(await readSession(s, { ...env, EDITORS: kv({ editors: '[]' }) }), null);
   assert.equal(await readSession(b64url(JSON.stringify({ email: 'a@gmail.com', exp: 9e9 })) + '.' + s.split('.')[1], env), null);
   assert.equal(await readSession('', env), null);
 });
@@ -73,4 +76,22 @@ test('handle(): sign-in, allow-list and the proxied save', async () => {
   assert.match(body.message, /נערך על ידי: a@gmail\.com$/);
   await handle(req('/gh/contents/data?ref=main', { headers: { Authorization: `Bearer ${token}` } }), env);
   assert.equal(calls.at(-1).u, 'https://api.github.com/repos/o/r/contents/data?ref=live');
+});
+
+test('handle(): only owners manage editors, and a new editor can then sign in', async () => {
+  const e = { ...env, EDITORS: kv({ editors: '["b@gmail.com"]' }) };
+  const login = async (email) => handle(req('/session', { method: 'POST', body: JSON.stringify({ credential: await idToken({ ...good, email }) }) }), e);
+  const owner = await (await login('A@gmail.com')).json();
+  assert.equal(owner.owner, true);
+  const editor = await (await login('b@gmail.com')).json();
+  assert.equal(editor.owner, false);
+  const call = (tok, method, body) => handle(req('/editors', { method, body: body && JSON.stringify(body), headers: { Authorization: `Bearer ${tok}` } }), e);
+  assert.equal((await call(editor.token, 'GET')).status, 403);
+  assert.equal((await call(editor.token, 'PUT', { email: 'c@gmail.com' })).status, 403);
+  assert.equal((await login('c@gmail.com')).status, 403);
+  assert.equal((await call(owner.token, 'PUT', { email: 'not an email' })).status, 400);
+  assert.deepEqual((await (await call(owner.token, 'PUT', { email: ' C@Gmail.com ' })).json()).editors, ['b@gmail.com', 'c@gmail.com']);
+  assert.equal((await login('c@gmail.com')).status, 200);
+  assert.deepEqual((await (await call(owner.token, 'DELETE', { email: 'b@gmail.com' })).json()).editors, ['c@gmail.com']);
+  assert.equal((await handle(req('/gh', { headers: { Authorization: `Bearer ${editor.token}` } }), e)).status, 401); // removed: signed out at once
 });

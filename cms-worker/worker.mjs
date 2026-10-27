@@ -1,20 +1,30 @@
 // Editor login server (Cloudflare Worker) for /admin/: signs editors in with Google and saves their edits to GitHub.
-// The GitHub key lives only here, as a secret; editors never see it. Only emails in ALLOWED_EMAILS may edit,
-// only files under data/ can be changed, and only on BRANCH. Setup: cms-worker/README.md.
+// The GitHub key lives only here, as a secret; editors never see it. Only allowed emails may edit,
+// only files under data/ can be changed, and only on BRANCH. Setup and deploy: cms-worker/README.md.
 //
-// Settings (Cloudflare → the worker → Settings → Variables):
+// Who may edit: the site owners (OWNERS) and the editors the owners add from the editor itself (/admin/ → ניהול עורכים),
+// kept in the EDITORS KV store so their emails are not published in this (public) repository.
+//
+// Settings (wrangler.toml, deployed by .github/workflows/cms-worker.yml):
 //   GOOGLE_CLIENT_ID  the OAuth client ID from Google Cloud
-//   ALLOWED_EMAILS    who may edit, comma separated
+//   OWNERS            SHA-256 (hex) of each owner's lower-case email, comma separated: owners can add and remove editors
 //   ALLOWED_ORIGIN    the site's origin, e.g. https://148-gif.github.io
 //   REPO, BRANCH      e.g. 148-gif/Web and claude/greeting-2i183o
+//   EDITORS           KV binding holding the editors list (key "editors": JSON array of emails)
 //   GITHUB_TOKEN      secret: fine-grained token, this repo only, Contents read/write and Actions read
-//   SESSION_SECRET    secret: any long random text; changing it signs everyone out
+//   SESSION_SECRET    optional secret; by default sessions are signed with a key derived from GITHUB_TOKEN,
+//                     so replacing either one signs everyone out
 
 const SESSION_HOURS = 12;
 const enc = new TextEncoder();
 const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64url = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4)), (c) => c.charCodeAt(0));
-const allowed = (env, email) => env.ALLOWED_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean).includes(String(email).toLowerCase());
+const norm = (e) => String(e || '').trim().toLowerCase();
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(s)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+const isOwner = async (env, email) => String(env.OWNERS || '').split(',').map((h) => h.trim()).filter(Boolean).includes(await sha256(norm(email)));
+const editors = async (env) => { try { return JSON.parse((await env.EDITORS.get('editors')) || '[]'); } catch { return []; } };
+const allowed = async (env, email) => (await isOwner(env, email)) || (await editors(env)).includes(norm(email));
 
 // ---- Google sign-in: verify the ID token (RS256) against Google's published keys ----
 let jwks = null, jwksAt = 0;
@@ -43,8 +53,8 @@ async function verifyGoogle(idToken, env, now = Date.now() / 1000) {
   return c.email;
 }
 
-// ---- our own session: {email, exp} signed with SESSION_SECRET ----
-const hmacKey = (env) => crypto.subtle.importKey('raw', enc.encode(env.SESSION_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+// ---- our own session: {email, exp}, signed (see SESSION_SECRET above) ----
+const hmacKey = async (env) => crypto.subtle.importKey('raw', enc.encode(env.SESSION_SECRET || `session:${await sha256(String(env.GITHUB_TOKEN))}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 async function makeSession(email, env, now = Date.now()) {
   const body = b64url(enc.encode(JSON.stringify({ email, exp: Math.floor(now / 1000) + SESSION_HOURS * 3600 })));
   return `${body}.${b64url(await crypto.subtle.sign('HMAC', await hmacKey(env), enc.encode(body)))}`;
@@ -53,8 +63,8 @@ async function readSession(token, env, now = Date.now() / 1000) {
   const [body, sig] = String(token || '').split('.');
   if (!sig || !(await crypto.subtle.verify('HMAC', await hmacKey(env), unb64url(sig), enc.encode(body)))) return null;
   const s = JSON.parse(new TextDecoder().decode(unb64url(body)));
-  // Re-checked on every request, so removing an email from ALLOWED_EMAILS takes effect at once.
-  return s.exp > now && allowed(env, s.email) ? s.email : null;
+  // Re-checked on every request, so removing an editor takes effect at once.
+  return s.exp > now && (await allowed(env, s.email)) ? s.email : null;
 }
 
 // ---- what an editor may ask GitHub for ----
@@ -81,13 +91,27 @@ async function handle(req, env) {
   if (url.pathname === '/session' && req.method === 'POST') {
     let email;
     try { email = await verifyGoogle((await req.json()).credential, env); } catch { return json({ message: 'ההתחברות עם Google נכשלה' }, 401, cors); }
-    if (!allowed(env, email)) return json({ message: `לחשבון ${email} אין הרשאת עריכה` }, 403, cors);
-    return json({ token: await makeSession(email, env), email }, 200, cors);
+    if (!(await allowed(env, email))) return json({ message: `לחשבון ${email} אין הרשאת עריכה. בקשו מבעל האתר להוסיף אתכם.` }, 403, cors);
+    return json({ token: await makeSession(email, env), email, owner: await isOwner(env, email) }, 200, cors);
+  }
+
+  const email = await readSession((req.headers.get('Authorization') || '').replace(/^Bearer /, ''), env);
+  if (!email) return json({ message: 'צריך להתחבר מחדש' }, 401, cors);
+
+  // Editors list: owners only. GET lists, PUT {email} adds, DELETE {email} removes.
+  if (url.pathname === '/editors') {
+    if (!(await isOwner(env, email))) return json({ message: 'רק בעל האתר יכול לנהל עורכים' }, 403, cors);
+    let list = await editors(env);
+    if (req.method === 'PUT' || req.method === 'DELETE') {
+      const e = norm((await req.json()).email);
+      if (!EMAIL.test(e)) return json({ message: 'כתובת מייל לא תקינה' }, 400, cors);
+      list = req.method === 'PUT' ? [...new Set([...list, e])].sort() : list.filter((x) => x !== e);
+      await env.EDITORS.put('editors', JSON.stringify(list));
+    } else if (req.method !== 'GET') return json({ message: 'not allowed' }, 405, cors);
+    return json({ editors: list }, 200, cors);
   }
 
   if (!url.pathname.startsWith('/gh')) return json({ message: 'not found' }, 404, cors);
-  const email = await readSession((req.headers.get('Authorization') || '').replace(/^Bearer /, ''), env);
-  if (!email) return json({ message: 'צריך להתחבר מחדש' }, 401, cors);
   const path = route(req.method, url.pathname.replace(/^\/gh\/?/, ''));
   if (path === null) return json({ message: 'פעולה לא מורשית' }, 403, cors);
 
@@ -115,4 +139,4 @@ export default {
     return json({ message: 'שגיאה בשרת העריכה' }, 500, origin === env.ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {});
   }),
 };
-export { route, verifyGoogle, makeSession, readSession, allowed, handle };
+export { route, verifyGoogle, makeSession, readSession, allowed, isOwner, sha256, handle };
