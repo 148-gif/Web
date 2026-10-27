@@ -1,6 +1,6 @@
 // Page shell: security policy, menus, icons and the layout every page is built with.
 import { createHash } from 'node:crypto';
-import { SITE, BASE, ORIGIN, BUILD, font, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden } from './core.mjs';
+import { SITE, BASE, ORIGIN, BUILD, font, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden, topics, cmsPages } from './core.mjs';
 
 // Security policy. Inline scripts (head bootstrap, speculation rules) and the splash styles are allowed by hash.
 const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
@@ -47,7 +47,9 @@ const groups = [
   ['רבי נחמן מברסלב', [['/rabbi-nachman/', 'רבי נחמן', 'crown', 'רבינו, חייו, תורתו ודרכו'], ['/uman/', 'אומן', 'pin', 'ציון רבינו וקיבוץ ראש השנה'], ['/tikkun-haklali/', 'התיקון הכללי', 'lyre', 'עשרה מזמורי תהלים']]],
   ['הצדיק מיבנאל', [['/moharash/', 'הצדיק מיבנאל', 'flame', 'מוהרא״ש: חייו ודרכו'], ['/moharash/tziyun/', 'ציון הצדיק', 'candle', 'ההבטחות ודרכי הגעה'], ['/yeshiva/', 'ישיבת בית מנחם', 'school', 'ישיבה חסידית בנשיאותו'], ['/print/', 'הדפסת אשר בנחל', 'print', 'שותפות בהדפסת ספריו']]],
   ['יבנאל עיר ברסלב', [['/yavniel/', 'יבנאל', 'mountain', 'קהילה, תפילות ומידע'], ['/mikveh-malka/', 'מקווה מלכה', 'drop', 'מקווה טהרה לנשים'], ...(institutions.length ? [['/institutions/', 'מוסדות הקהילה', 'heart', 'תמיכה ותרומות']] : [])]],
-].map(([g, xs]) => [g, xs.filter(([h]) => !isHidden(h))]);
+  // Topics from the editor: a menu group per topic, but only once it has pages (an empty topic is never shown).
+  ...topics.map((t) => [t.title, cmsPages.filter((p) => p.topic === t.slug).map((p) => [`/${t.slug}/${p.slug}/`, p.title, t.icon || 'book', p.lead || ''])]),
+].map(([g, xs]) => [g, xs.filter(([h]) => !isHidden(h))]).filter(([, xs]) => xs.length);
 const nav = [['/', 'בית', 'home'], ...groups.flatMap(([, xs]) => xs), ['/search/', 'חיפוש', 'search']];
 const inGroup = (xs, path) => xs.some(([h]) => h === path || (h !== '/' && path.startsWith(h)));
 const menuLink = ([h, t, ic], path) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${icon(ic, 'ico sm')}${t}</a>`;

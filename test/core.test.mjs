@@ -1,7 +1,7 @@
 // Unit tests for the build's text and safety helpers. Run with: npm test (also part of npm run check and CI).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { url, tel, esc, escAttr, gist, isHidden, unlinkHidden, HIDDEN, site } from '../scripts/lib/core.mjs';
+import { url, tel, esc, escAttr, gist, isHidden, unlinkHidden, HIDDEN, site, validateCms } from '../scripts/lib/core.mjs';
 import { ld } from '../scripts/lib/parts.mjs';
 
 test('url() keeps https links and site paths', () => {
@@ -66,4 +66,18 @@ test('hidden sections: links become text, cards and list items are dropped', { s
   assert.equal(unlinkHidden(`<ul><li><a href="${h}">א</a>: תיאור</li><li><a href="/shut/">ב</a></li></ul>`), '<ul><li><a href="/shut/">ב</a></li></ul>');
   const live = '<p><a href="/shut/12/">שאלה</a> <a href="https://example.com/">חוץ</a></p>';
   assert.equal(unlinkHidden(live), live);
+});
+
+test('validateCms() accepts good topics and pages and rejects bad ones', () => {
+  const t = [{ slug: 'parasha', title: 'פרשה' }];
+  const p = { slug: 'bereshit', topic: 'parasha', title: 'בראשית', blocks: [{ type: 'text' }] };
+  assert.doesNotThrow(() => validateCms(t, [p]));
+  assert.doesNotThrow(() => validateCms([], []));
+  assert.throws(() => validateCms([{ slug: 'Bad Slug', title: 'x' }], []));
+  assert.throws(() => validateCms([{ slug: 'shut', title: 'x' }], []), /slug/); // would overwrite a built-in section
+  assert.throws(() => validateCms([...t, ...t], []), /duplicate/);
+  assert.throws(() => validateCms(t, [{ ...p, topic: 'nope' }]), /unknown topic/);
+  assert.throws(() => validateCms(t, [{ ...p, title: '' }]), /no title/);
+  assert.throws(() => validateCms(t, [{ ...p, blocks: [{ type: 'script' }] }]), /block type/);
+  assert.throws(() => validateCms(t, [{ ...p, slug: '../x' }]), /file name/);
 });

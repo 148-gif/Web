@@ -81,9 +81,32 @@ const rn = read('rabbi-nachman.json');
 const um = read('uman.json');
 const tk = read('tikkun.json');
 const tkText = read('books/tikkun-haklali.json');
+// Topics and pages made in the editor (/admin/): data/topics.json and data/pages/*.json. Checked here so a bad edit fails the build, not the site.
+const BLOCK_TYPES = ['text', 'cards', 'faq', 'quote', 'links'];
+const RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachman', 'uman', 'tikkun-haklali', 'moharash', 'yeshiva', 'print', 'yavniel', 'mikveh-malka', 'institutions', 'search', 'about', 'contact', 'accessibility', 'privacy', 'offline', 'fonts', 'img', 'books', 'idx', 'zmanim'];
+const topics = read('topics.json');
+const cmsPages = readdirSync(new URL('../../data/pages/', import.meta.url)).filter((f) => f.endsWith('.json')).map((f) => ({ slug: f.slice(0, -5), ...read(`pages/${f}`) }));
+const validateCms = (topics, pages) => {
+  const bad = (m) => { throw new Error(`CMS: ${m}`); };
+  const seen = new Set();
+  for (const t of topics) {
+    if (!/^[a-z0-9-]+$/.test(t.slug || '') || RESERVED.includes(t.slug) || seen.has(t.slug)) bad(`invalid or duplicate topic slug "${t.slug}"`);
+    if (!t.title) bad(`topic ${t.slug} has no title`);
+    seen.add(t.slug);
+  }
+  for (const p of pages) {
+    if (!/^[a-z0-9-]+$/.test(p.slug)) bad(`invalid page file name "${p.slug}"`);
+    if (!seen.has(p.topic)) bad(`page ${p.slug}: unknown topic "${p.topic}"`);
+    if (!p.title) bad(`page ${p.slug} has no title`);
+    for (const b of p.blocks || []) if (!BLOCK_TYPES.includes(b.type)) bad(`page ${p.slug}: unknown block type "${b.type}"`);
+  }
+  const keys = pages.map((p) => `${p.topic}/${p.slug}`);
+  if (new Set(keys).size !== keys.length) bad('duplicate page');
+};
+validateCms(topics, cmsPages);
 const regey = lib.books.find((b) => b.slug === 'regey-moharash');
 const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

@@ -9,6 +9,13 @@ The CSP has no `'unsafe-inline'` for styles: never write a `style="…"` attribu
 `npm run lint` runs ESLint; a pre-commit hook (`.githooks/`, enabled by `npm run setup`) runs the tests and lint.
 The live site is published from the `claude/greeting-2i183o` branch (GitHub Pages workflow).
 
+## Editor (`/admin/`)
+
+`site/admin/` is a static editor (no server): it reads and commits `data/*.json` through the GitHub API with the editor's own fine-grained token (Contents: read/write), straight to the branch in `site/admin/config.json`; the Pages workflow then tests and publishes.
+It builds its forms from the shape of each JSON file, so a new field in a data file shows up without changing the editor. `data/shut.json` is not listed (too large).
+Topics and new pages live in `data/topics.json` and `data/pages/<slug>.json` (blocks: text, cards, faq, quote, links); `scripts/lib/sections/pages.mjs` builds them, and `validateCms` in `core.mjs` fails the build on a bad one.
+A topic appears in the menus only once it has a page. The admin page has its own CSP (own scripts and styles only, no inline); keep it that way.
+
 ## Content that is missing or not ready
 
 Never show visitors an empty or unfinished section. When something is not ready:

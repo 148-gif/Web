@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.github.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex"><meta name="referrer" content="no-referrer">
+<title>עריכת האתר | היכל הקודש</title><link rel="icon" href="data:,"><link rel="stylesheet" href="admin.css"></head>
+<body>
+<header class="ah"><b>עריכת האתר</b><span id="who"></span><a href="../">לאתר ←</a><button type="button" id="out" hidden>יציאה</button></header>
+<main id="login" class="box">
+  <h1>כניסה לעריכה</h1>
+  <p>העריכה נשמרת ישירות במאגר הקבצים של האתר, ולכן צריך מפתח גישה אישי מ־GitHub. המפתח נשמר בדפדפן הזה בלבד ולא נשלח לשום מקום אחר.</p>
+  <ol>
+    <li>נכנסים ל־<a href="https://github.com/settings/personal-access-tokens/new" rel="noopener" target="_blank">יצירת מפתח אישי ב־GitHub</a>.</li>
+    <li>ב־Repository access בוחרים Only select repositories ואת מאגר האתר.</li>
+    <li>ב־Permissions → Repository permissions מגדירים Contents: Read and write.</li>
+    <li>מעתיקים את המפתח ומדביקים כאן.</li>
+  </ol>
+  <label for="tok">מפתח גישה</label><input id="tok" type="password" autocomplete="off" dir="ltr">
+  <label class="chk"><input id="rem" type="checkbox"> זכור במחשב הזה</label>
+  <p><button type="button" id="go" class="pri">כניסה</button></p><p id="lerr" class="err" role="alert"></p>
+</main>
+<div id="app" hidden>
+  <nav id="side" aria-label="קבצים"></nav>
+  <section id="ed"><p class="hint">בחרו מימין מה לערוך, או צרו דף או נושא חדש.</p></section>
+</div>
+<p id="msg" class="toast" role="status" hidden></p>
+<script src="admin.js"></script>
+</body></html>
