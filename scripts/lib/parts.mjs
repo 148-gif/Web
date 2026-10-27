@@ -6,7 +6,10 @@ const chips = ['אמונה', 'התבודדות', 'שמחה', 'תפילה', 'או
 const searchForm = `<label class="slabel" for="sq">חיפוש בשאלות ובתשובות</label><form action="/search/" class="hsearch" role="search"><input id="sq" name="q" type="search" placeholder="מה מעסיק אתכם?"><button>${icon('search', 'ico sm')}חיפוש</button></form>`;
 const ul = (xs) => `<ul>${xs.map((x) => `<li>${x}</li>`).join('')}</ul>`;
 const ps = (xs) => xs.map((p) => `<p>${esc(p)}</p>`).join('');
-const navBtns = (q, cls = '') => `<div class="navbtns${cls}"><a class="btn" href="${url(`https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`)}" rel="noopener">${icon('nav', 'ico sm')}ניווט ב־Waze</a><a class="btn ghost" href="${url(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`)}" rel="noopener">${icon('pin', 'ico sm')}Google Maps</a></div>`;
+// Navigation buttons. With exact coordinates (ll = "lat,lng") Waze opens its web map with the route and "send to phone"
+// on a computer, and the app on a phone. Without them Waze only offers an app-store page on a computer, so its button
+// is kept to touch devices (class "touch-only") until coordinates are added.
+const navBtns = (q, ll = '', cls = '') => `<div class="navbtns${cls}"><a class="btn${ll ? '' : ' touch-only'}" href="${url(ll ? `https://www.waze.com/ul?ll=${encodeURIComponent(ll)}&navigate=yes` : `https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`)}" rel="noopener">${icon('nav', 'ico sm')}ניווט ב־Waze</a><a class="btn${ll ? ' ghost' : ''}" href="${url(ll ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(ll)}&travelmode=driving` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`)}" rel="noopener">${icon('pin', 'ico sm')}Google Maps</a></div>`;
 const anchors = (xs) => `<nav class="chips anchors" aria-label="בעמוד זה">${xs.map(([h, t]) => `<a href="#${h}">${t}</a>`).join('')}</nav>`;
 const ysect = (id, cls, title, sub, body, narrow = true) => `<section class="band${cls ? ' ' + cls : ''}" id="${id}"><div class="wrap${narrow ? ' narrow' : ''}"><h2 class="sh">${title}</h2>${sub ? `<p class="shsub">${sub}</p>` : orn}${body}</div></section>`;
 // Times written relative to the sun get the calculated time next to them (site/zmanim.js fills it in, so the text stays the source of truth).
