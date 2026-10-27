@@ -1,5 +1,5 @@
 // Yavniel and Malka mikveh pages, and the community institutions page.
-import { esc, url, tel, write, institutions, yv, mk } from '../core.mjs';
+import { esc, url, tel, write, institutions, yv, mk, BUILD } from '../core.mjs';
 import { icon, orn, phead, layout, sr } from '../layout.mjs';
 import { ul, ps, navBtns, anchors, ysect, sched, hours, statrow, telA } from '../parts.mjs';
 
@@ -13,6 +13,11 @@ ${ysect('community', '', 'קהילת ברסלב ביבנאל', '', `<div class="
 ${ysect('city', '', esc(yv.cityTitle), '', `<div class="about">${ps(yv.city)}</div>${yv.quotes.map(([q, by]) => `<figure class="letterq"><blockquote>${esc(q)}</blockquote><figcaption>${esc(by)}</figcaption></figure>`).join('')}`)}
 <section class="band soft" id="zion"><div class="wrap narrow"><h2 class="sh">ציון הצדיק</h2>${orn}<div class="about">${ps(yv.zion)}</div><p class="navbtns"><a class="btn" href="/moharash/tziyun/">${icon('flame', 'ico sm')}לדף ציון מוהרא״ש</a><a class="btn ghost" href="/moharash/">על הצדיק מיבנאל</a></p><div class="vow"><span class="kicker2">${esc(yv.promiseNote.replace(/:$/, ''))}</span><p>${esc(yv.promise)}</p></div></div></section>
 <section class="band" id="letters"><div class="wrap"><h2 class="sh">${esc(yv.fromShutTitle)}</h2><p class="shsub">${esc(yv.fromShutLead)}</p><div class="grid notes">${yv.fromShut.map(([t, ids]) => `<div class="card"><p>${esc(t)}</p><span class="go">${ids.map((i, n) => `<a href="/shut/${i}/">${ids.length > 1 ? `תשובה ${'אבג'[n]}׳` : 'לתשובה'} ←</a>`).join('')}</span></div>`).join('')}</div></div></section>
+<section class="band" id="zmanim" hidden><div class="wrap narrow"><h2 class="sh">זמני היום ביבנאל</h2><p class="shsub">לפי אופק יבנאל, בשעון ישראל</p>
+<div class="zbox card"><div class="zhead"><button type="button" class="btn ghost zprev" aria-label="היום הקודם">${icon('arrow', 'ico sm')}</button><div class="ztitle"><b class="zday"></b><span class="zsub small"></span></div><button type="button" class="btn ghost znext" aria-label="היום הבא">${icon('arrow', 'ico sm')}</button></div>
+<dl class="hrs zlist" aria-live="polite"></dl>
+<div class="zfoot"><button type="button" class="btn ghost ztoday" hidden>חזרה להיום</button><label class="small">לתאריך אחר <input type="date" class="zpick"></label></div></div>
+<p class="snote c">${esc(yv.zmanimNote)}</p></div><script src="/zmanim.js?v=${BUILD}" defer></script></section>
 <section class="band soft" id="prayer"><div class="wrap"><h2 class="sh">זמני תפילה</h2><p class="shsub">${esc(yv.prayerNote)}</p><h3 class="subh">${icon('clock', 'ico')}ימי חול</h3>${sched(yv.weekday)}<p class="snote c">${esc(yv.weekdayNote)}</p><h3 class="subh">${icon('flame', 'ico')}שבת קודש</h3>${sched(yv.shabbat)}<p class="snote c">${esc(yv.shabbatNote)}</p></div></section>
 <section class="band" id="lessons"><div class="wrap"><h2 class="sh">שיעורי תורה</h2><p class="shsub">שיעורים קבועים בבתי המדרש ובכוללים</p>${sched(yv.lessons)}<div class="card wide">${icon('users', 'ico lg')}<h3>אבות ובנים</h3><p>${esc(yv.fathers)}</p></div></div></section>
 <section class="band soft" id="services"><div class="wrap"><h2 class="sh">מקוואות ושירותים</h2><p class="shsub">מה שכדאי לדעת לפני שמגיעים</p><div class="svc two">
@@ -23,7 +28,7 @@ ${ysect('city', '', esc(yv.cityTitle), '', `<div class="about">${ps(yv.city)}</d
 </div></div></section>
 <section class="band final" id="visit"><div class="wrap narrow"><h2>מגיעים ליבנאל</h2><p>${esc(yv.directions)}</p>${navBtns(yv.navQuery)}</div></section>
 <section class="band srcs"><div class="wrap narrow"><h2>מקורות</h2>${ul(yv.sources.map(([t, u]) => `<a href="${url(u)}" rel="noopener">${esc(t)}</a>`))}</div></section>`,
-  { desc: 'יבנאל עיר ברסלב: תולדות המושבה, קהילת חסידי ברסלב, ציון מוהרא״ש, זמני תפילה, מקוואות ושיעורים', path: '/yavniel/', full: true, head: phead('הגליל התחתון · עיר ברסלב', 'יבנאל', esc(yv.lead), anchors([['history', 'היסטוריה'], ['community', 'הקהילה'], ['zion', 'הציון'], ['prayer', 'זמני תפילה'], ['services', 'מקוואות ושירותים'], ['visit', 'הגעה']])) }));
+  { desc: 'יבנאל עיר ברסלב: תולדות המושבה, קהילת חסידי ברסלב, ציון מוהרא״ש, זמני תפילה, מקוואות ושיעורים', path: '/yavniel/', full: true, head: phead('הגליל התחתון · עיר ברסלב', 'יבנאל', esc(yv.lead), anchors([['history', 'היסטוריה'], ['community', 'הקהילה'], ['zion', 'הציון'], ['zmanim', 'זמני היום'], ['prayer', 'זמני תפילה'], ['services', 'מקוואות ושירותים'], ['visit', 'הגעה']])) }));
 
 write('mikveh-malka/index.html', layout('מקווה מלכה', `<section class="band"><div class="wrap"><ul class="clist quick">
 <li>${icon('phone', 'ico')}<span><b>טלפון במקווה</b>${telA(mk.phone)}</span></li>
