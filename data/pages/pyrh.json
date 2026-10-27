@@ -1,14 +1,14 @@
 {
   "topic": "matkonym",
   "title": "פירה",
-  "lead": "",
+  "lead": "פירה טעים",
   "desc": "",
   "blocks": [
     {
       "type": "text",
-      "title": "",
+      "title": "מתכון",
       "paragraphs": [
-        ""
+        "מתכון טעים"
       ]
     }
   ]
