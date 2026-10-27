@@ -1,0 +1,198 @@
+{
+  "intro": "קונטרסים קצרים של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה בחינם. כל קונטרס קובץ PDF אחד.",
+  "groups": [
+    [
+      "shalom",
+      "שלום בית וחינוך"
+    ],
+    [
+      "hitchazkut",
+      "התחזקות ושמחה"
+    ],
+    [
+      "teshuva",
+      "תשובה, לימוד וצדיקים"
+    ],
+    [
+      "moadim",
+      "חגים ומועדים"
+    ]
+  ],
+  "items": [
+    {
+      "slug": "shalom-bebeitcha",
+      "title": "שלום בביתך",
+      "group": "shalom",
+      "pages": 20,
+      "size": "191KB"
+    },
+    {
+      "slug": "lama-lehitgaresh",
+      "title": "למה להתגרש",
+      "group": "shalom",
+      "pages": 28,
+      "size": "254KB"
+    },
+    {
+      "slug": "kvod-haisha",
+      "title": "כבוד האשה",
+      "group": "shalom",
+      "pages": 24,
+      "size": "218KB"
+    },
+    {
+      "slug": "kvod-habaal",
+      "title": "כבוד הבעל",
+      "group": "shalom",
+      "pages": 22,
+      "size": "200KB"
+    },
+    {
+      "slug": "isha-reguah",
+      "title": "אשה רגועה",
+      "group": "shalom",
+      "pages": 20,
+      "size": "1.1MB"
+    },
+    {
+      "slug": "yashiv-chema",
+      "title": "ישיב חימה",
+      "group": "shalom",
+      "pages": 24,
+      "size": "859KB"
+    },
+    {
+      "slug": "chinuch-mutzlach",
+      "title": "חינוך מוצלח",
+      "group": "shalom",
+      "pages": 22,
+      "size": "225KB"
+    },
+    {
+      "slug": "savlanut-leyeladim",
+      "title": "סבלנות לילדים",
+      "group": "shalom",
+      "pages": 22,
+      "size": "215KB"
+    },
+    {
+      "slug": "tzaar-gidul-banim",
+      "title": "צער גידול בנים",
+      "group": "shalom",
+      "pages": 20,
+      "size": "197KB"
+    },
+    {
+      "slug": "matzav-ruach-tov",
+      "title": "מצב רוח טוב",
+      "group": "hitchazkut",
+      "pages": 30,
+      "size": "5.9MB"
+    },
+    {
+      "slug": "ata-lo-levad",
+      "title": "אתה לא לבד",
+      "group": "hitchazkut",
+      "pages": 20,
+      "size": "193KB"
+    },
+    {
+      "slug": "tafsik-lehitatzben",
+      "title": "תפסיק להתעצבן",
+      "group": "hitchazkut",
+      "pages": 26,
+      "size": "232KB"
+    },
+    {
+      "slug": "asur-lehityaesh",
+      "title": "אסור להתיאש",
+      "group": "hitchazkut",
+      "pages": 22,
+      "size": "188KB"
+    },
+    {
+      "slug": "shmor-dibburcha",
+      "title": "שמור דיבורך",
+      "group": "hitchazkut",
+      "pages": 26,
+      "size": "241KB"
+    },
+    {
+      "slug": "koach-hatefila",
+      "title": "כוח התפילה",
+      "group": "hitchazkut",
+      "pages": 24,
+      "size": "234KB"
+    },
+    {
+      "slug": "hitkarvut-latzadikim",
+      "title": "התקרבות לצדיקים",
+      "group": "teshuva",
+      "pages": 18,
+      "size": "206KB"
+    },
+    {
+      "slug": "eich-lachzor-bteshuva",
+      "title": "איך לחזור בתשובה",
+      "group": "teshuva",
+      "pages": 28,
+      "size": "315KB"
+    },
+    {
+      "slug": "seder-derech-halimud",
+      "title": "סדר דרך הלימוד",
+      "group": "teshuva",
+      "pages": 86,
+      "size": "1.1MB"
+    },
+    {
+      "slug": "bachur-yeshiva-mutzlach",
+      "title": "בחור ישיבה מוצלח",
+      "group": "teshuva",
+      "pages": 26,
+      "size": "330KB"
+    },
+    {
+      "slug": "ahavat-yisrael",
+      "title": "אהבת ישראל",
+      "group": "teshuva",
+      "pages": 30,
+      "size": "295KB"
+    },
+    {
+      "slug": "ki-tavo-leuman",
+      "title": "כי תבוא לאומן",
+      "group": "moadim",
+      "pages": 30,
+      "size": "1.7MB"
+    },
+    {
+      "slug": "or-shovavim",
+      "title": "אור שובבי״ם",
+      "group": "moadim",
+      "pages": 30,
+      "size": "1.9MB"
+    },
+    {
+      "slug": "maalat-lag-baomer",
+      "title": "מעלת ל״ג בעומר",
+      "group": "moadim",
+      "pages": 22,
+      "size": "320KB"
+    },
+    {
+      "slug": "chag-kasher-vesameach",
+      "title": "חג כשר ושמח",
+      "group": "moadim",
+      "pages": 18,
+      "size": "1.2MB"
+    },
+    {
+      "slug": "simchat-purim",
+      "title": "שמחת פורים",
+      "group": "moadim",
+      "pages": 24,
+      "size": "269KB"
+    }
+  ]
+}

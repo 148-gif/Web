@@ -307,6 +307,13 @@ ${libCats.map(([c, n]) => `<section class="libcat" id="${c}"><h2 class="subh">${
     head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: 'ספרייה', description: lib.intro, hasPart: lib.books.map((b) => ({ '@type': 'Book', name: b.title, author: person, ...(absu(`/library/${b.slug}/`) ? { url: absu(`/library/${b.slug}/`) } : {}) })) }, crumbs([['בית', '/'], ['ספרייה', '/library/']])] }) }));
 
 // Book reader: one page per section of every book with a text file (introduction, sections, closing prayer)
+// Short kuntresim (data/kuntresim.json): one page grouped by topic, each item a PDF in site/books/kuntresim/
+const kt = read('kuntresim.json');
+write('library/kuntresim/index.html', layout('קונטרסים', `<section class="band"><div class="wrap"><nav class="chips lchips" aria-label="נושאים">${kt.groups.map(([g, n]) => `<a href="#${g}">${esc(n)}</a>`).join('')}</nav>
+${kt.groups.map(([g, n]) => `<section class="libcat" id="${g}"><h2 class="subh">${icon('book', 'ico')}${esc(n)}</h2><div class="grid">${kt.items.filter((k) => k.group === g).map((k) => `<a class="card book" href="/books/kuntresim/${k.slug}.pdf">${icon('book', 'ico lg')}<h3>${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">קריאה והורדה · PDF ←</span></a>`).join('')}</div></section>`).join('')}</div></section>`,
+  { desc: `קונטרסים קצרים של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה בחינם: ${kt.groups.map(([, n]) => n).join(', ')}.`, path: '/library/', self: '/library/kuntresim/', full: true, head: phead('מוהרא״ש · הצדיק מיבנאל', 'קונטרסים', esc(kt.intro)),
+    head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: 'קונטרסים', description: kt.intro }, crumbs([['בית', '/'], ['ספרייה', '/library/'], ['קונטרסים', '/library/kuntresim/']])] }) }));
+
 const bookTexts = lib.books.filter((b) => b.text).map((b) => [b, read(b.text)]);
 const heLabel = (n) => { const o = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'], t = ['', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ']; return n === 15 ? 'טו' : n === 16 ? 'טז' : t[Math.floor(n / 10)] + o[n % 10]; };
 const fnText = (txt, key, labels) => esc(txt).replace(/\[([^\]\s]{1,4})\]/g, (m, l) => (labels.has(l) ? `<sup class="fn"><a href="#fn-${key}-${l}" id="fr-${key}-${l}" aria-label="הערה ${l}">${l}</a></sup>` : m));
@@ -580,7 +587,7 @@ ${lib.books.map((b) => `- [${b.title}](${ORIGIN + BASE}/library/${b.slug}/): ${n
 - [ישיבת בית מנחם](${ORIGIN + BASE}/yeshiva/)
 - [אודות](${ORIGIN + BASE}/about/)
 `);
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/rabbi-nachman/', '/uman/', '/tikkun-haklali/', '/moharash/', '/moharash/tziyun/', '/library/', ...lib.books.map((b) => `/library/${b.slug}/`), ...Object.entries(bookChapters).flatMap(([slug, chs]) => chs.map((c) => `/library/${slug}/${c.id}/`)), '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/library/kuntresim/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/rabbi-nachman/', '/uman/', '/tikkun-haklali/', '/moharash/', '/moharash/tziyun/', '/library/', ...lib.books.map((b) => `/library/${b.slug}/`), ...Object.entries(bookChapters).flatMap(([slug, chs]) => chs.map((c) => `/library/${slug}/${c.id}/`)), '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
 write('robots.txt', `User-agent: *\nAllow: /\n${ORIGIN ? `Sitemap: ${ORIGIN}${BASE}/sitemap.xml\n` : ''}`);
 // HTTP security headers (honoured by Netlify; GitHub Pages ignores this file and relies on the meta CSP).
 write('_headers', `/*
