@@ -7,7 +7,7 @@ workers_dev = true
 
 [vars]
 # Fill in from Google Cloud (README.md, step 1). Not secret: Google shows it to every visitor of the sign-in button.
-GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_ID = "919663714203-tli67jfhc255740ievn9she99pt019nv.apps.googleusercontent.com"
 # SHA-256 of each owner's lower-case email (the repository is public, so the emails themselves are not written here).
 # Add one with: printf %s "name@gmail.com" | sha256sum
 OWNERS = "3433adb7521744e030794ba973a2faa70debbffe0c60abdd254c6cf9e11ea04b"
