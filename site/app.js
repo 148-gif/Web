@@ -1,6 +1,3 @@
-// Fonts load without blocking render (CSP forbids inline onload, so the switch lives here).
-document.querySelectorAll('link[data-fonts]').forEach((l) => { l.media = 'all'; });
-
 // Mobile menu, hide-on-scroll header, reading tools, campaign sticky CTA, search warm-up.
 {
 const me = new URL(document.currentScript.src);
