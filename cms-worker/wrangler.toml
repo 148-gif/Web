@@ -1,0 +1,12 @@
+# Cloudflare Worker for the site editor's Google sign-in. Deploy: npx wrangler deploy (from this folder). Guide: README.md
+name = "heichal-cms"
+main = "worker.mjs"
+compatibility_date = "2026-01-01"
+
+[vars]
+GOOGLE_CLIENT_ID = ""
+ALLOWED_EMAILS = "148148v@gmail.com"
+ALLOWED_ORIGIN = "https://148-gif.github.io"
+REPO = "148-gif/Web"
+BRANCH = "claude/greeting-2i183o"
+# Secrets (not here): npx wrangler secret put GITHUB_TOKEN ; npx wrangler secret put SESSION_SECRET

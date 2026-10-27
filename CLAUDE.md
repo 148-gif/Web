@@ -11,7 +11,8 @@ The live site is published from the `claude/greeting-2i183o` branch (GitHub Page
 
 ## Editor (`/admin/`)
 
-`site/admin/` is a static editor (no server): it reads and commits `data/*.json` through the GitHub API with the editor's own fine-grained token (Contents: read/write), straight to the branch in `site/admin/config.json`; the Pages workflow then tests and publishes.
+`site/admin/` is a static editor: it reads and commits `data/*.json` through the GitHub API, straight to the branch in `site/admin/config.json`; the Pages workflow then tests and publishes.
+Editors sign in with Google through `cms-worker/` (a Cloudflare Worker that holds the GitHub token, checks `ALLOWED_EMAILS` and only lets `data/` be written; setup in `cms-worker/README.md`, tests in `test/worker.test.mjs`). While `worker` in `config.json` is empty, the editor asks for a personal GitHub token instead.
 It builds its forms from the shape of each JSON file, so a new field in a data file shows up without changing the editor. `data/shut.json` is not listed (too large).
 Topics and new pages live in `data/topics.json` and `data/pages/<slug>.json` (blocks: text, cards, faq, quote, links); `scripts/lib/sections/pages.mjs` builds them, and `validateCms` in `core.mjs` fails the build on a bad one.
 A topic appears in the menus only once it has a page. The admin page has its own CSP (own scripts and styles only, no inline); keep it that way.

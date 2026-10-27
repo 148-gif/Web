@@ -1,5 +1,7 @@
-// Site editor: edits data/*.json (and creates topics and pages) straight in the GitHub repository with the user's own token.
-// Every save is a commit to the publishing branch; the Pages workflow then tests, builds and publishes it.
+// Site editor: edits data/*.json (and creates topics and pages) in the GitHub repository.
+// Sign-in: with Google through the editor server (cms-worker/, when config.json has "worker"), which holds the GitHub key
+// and checks the email; otherwise with the editor's own GitHub token. Every save is a commit to the publishing branch;
+// the Pages workflow then tests, builds and publishes it.
 (function () {
   'use strict';
   var $ = function (s) { return document.querySelector(s); };
@@ -25,9 +27,13 @@
   // ---- GitHub ----
   function api(path, opt) {
     opt = opt || {};
-    return fetch('https://api.github.com/repos/' + cfg.repo + (path ? '/' + path : ''), Object.assign({}, opt, { headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } })).then(function (r) {
+    var base = cfg.worker ? cfg.worker.replace(/\/$/, '') + '/gh' : 'https://api.github.com/repos/' + cfg.repo;
+    var headers = cfg.worker ? { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } : { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+    return fetch(base + (path ? '/' + path : ''), Object.assign({}, opt, { headers: headers })).then(function (r) {
       if (r.ok) return r.status === 204 ? null : r.json();
-      return r.text().then(function (t) { var e = new Error(r.status === 401 ? 'המפתח לא תקין או שפג תוקפו' : r.status === 403 || r.status === 404 ? 'אין הרשאה, או שהקובץ לא קיים (' + r.status + ')' : r.status === 409 || r.status === 422 ? 'הקובץ השתנה בינתיים. טענו מחדש ונסו שוב (' + r.status + ')' : 'שגיאה ' + r.status + ': ' + t.slice(0, 150)); e.status = r.status; throw e; });
+      if (r.status === 401 && cfg.worker) signout('פג תוקף ההתחברות. התחברו שוב.');
+      return r.text().then(function (t) { var msg = ''; try { msg = JSON.parse(t).message; } catch { /* not JSON */ }
+        var e = new Error(cfg.worker && msg && r.status !== 404 && r.status !== 409 && r.status !== 422 ? msg : r.status === 401 ? 'המפתח לא תקין או שפג תוקפו' : r.status === 403 || r.status === 404 ? 'אין הרשאה, או שהקובץ לא קיים (' + r.status + ')' : r.status === 409 || r.status === 422 ? 'הקובץ השתנה בינתיים. טענו מחדש ונסו שוב (' + r.status + ')' : 'שגיאה ' + r.status + ': ' + t.slice(0, 150)); e.status = r.status; throw e; });
     });
   }
   function b64e(s) { var b = new TextEncoder().encode(s), r = ''; for (var i = 0; i < b.length; i += 0x8000) r += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(r); }
@@ -270,23 +276,59 @@
   }
 
   // ---- start ----
-  function enter() {
-    api('').then(function (r) {
-      if (!r.permissions || !r.permissions.push) throw new Error('למפתח אין הרשאת כתיבה למאגר');
-      $('#login').hidden = true; $('#app').hidden = false; $('#out').hidden = false; $('#who').textContent = cfg.repo + ' · ' + cfg.branch;
+  function enter(who) {
+    return api('').then(function (r) {
+      if (!r.permissions || !r.permissions.push) throw new Error(cfg.worker ? 'למפתח של שרת העריכה אין הרשאת כתיבה למאגר' : 'למפתח אין הרשאת כתיבה למאגר');
+      $('#login').hidden = true; $('#app').hidden = false; $('#out').hidden = false; $('#who').textContent = who || cfg.repo + ' · ' + cfg.branch;
       return load();
-    }).catch(function (e) { $('#login').hidden = false; $('#app').hidden = true; $('#lerr').textContent = e.message; });
+    }).catch(function (e) { $('#login').hidden = false; $('#app').hidden = true; $('#lerr').textContent = e.message; if (cfg.worker) google(); });
   }
-  function saved() { try { return localStorage.getItem('cms-token') || sessionStorage.getItem('cms-token') || ''; } catch { return ''; } }
+  function remember(v, persist) {
+    try { localStorage.removeItem('cms-token'); sessionStorage.removeItem('cms-token'); if (v) (persist ? localStorage : sessionStorage).setItem('cms-token', JSON.stringify(v)); } catch { /* storage blocked: kept for this page only */ }
+  }
+  function saved() { try { return JSON.parse(localStorage.getItem('cms-token') || sessionStorage.getItem('cms-token') || 'null'); } catch { return null; } }
+  function signout(why) {
+    dirty = false; remember(null); token = '';
+    if (!why) return location.reload();
+    $('#lerr').textContent = why; $('#login').hidden = false; $('#app').hidden = true; $('#out').hidden = true;
+    if (cfg.worker) google();
+  }
+  // Google sign-in: Google's button gives an ID token; the editor server checks it and the email, and returns a 12-hour session.
+  var gStarted = false;
+  function google() {
+    $('#gbox').hidden = false;
+    if (gStarted) return;
+    gStarted = true;
+    var s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onerror = function () { $('#lerr').textContent = 'לא הצלחנו לטעון את ההתחברות של Google. בדקו את החיבור לאינטרנט.'; };
+    s.onload = function () {
+      window.google.accounts.id.initialize({ client_id: cfg.googleClientId, ux_mode: 'popup', callback: function (resp) {
+        $('#lerr').textContent = '';
+        fetch(cfg.worker.replace(/\/$/, '') + '/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: resp.credential }) })
+          .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'ההתחברות נכשלה'); return j; }); })
+          .then(function (j) { token = j.token; remember({ token: j.token, email: j.email }, $('#grem').checked); return enter(j.email); })
+          .catch(function (e) { $('#lerr').textContent = e.message; });
+      } });
+      window.google.accounts.id.renderButton($('#gbtn'), { theme: 'filled_blue', size: 'large', text: 'signin_with', locale: 'he' });
+    };
+    document.head.append(s);
+  }
   fetch('config.json').then(function (r) { return r.json(); }).then(function (c) {
-    cfg = c; token = saved();
+    cfg = c;
+    var st = saved();
+    $('#out').addEventListener('click', function () { if (leave()) signout(); });
+    if (cfg.worker) {
+      if (st && st.email) { token = st.token; enter(st.email); } else google();
+      return;
+    }
+    $('#tokbox').hidden = false;
     $('#go').addEventListener('click', function () {
       token = $('#tok').value.trim(); if (!token) return;
-      try { (($('#rem').checked) ? localStorage : sessionStorage).setItem('cms-token', token); } catch { /* storage blocked */ }
+      remember({ token: token }, $('#rem').checked);
       $('#lerr').textContent = ''; enter();
     });
     $('#tok').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('#go').click(); });
-    $('#out').addEventListener('click', function () { if (!leave()) return; dirty = false; try { localStorage.removeItem('cms-token'); sessionStorage.removeItem('cms-token'); } catch { /* storage blocked */ } location.reload(); });
-    if (token) enter();
+    if (st && st.token) { token = st.token; enter(); }
   });
 })();

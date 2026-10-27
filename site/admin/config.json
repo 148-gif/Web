@@ -1,4 +1,6 @@
 {
   "repo": "148-gif/Web",
-  "branch": "claude/greeting-2i183o"
+  "branch": "claude/greeting-2i183o",
+  "worker": "",
+  "googleClientId": ""
 }
