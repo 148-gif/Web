@@ -9,13 +9,14 @@ const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
 // Until it is in, the page stays hidden: behind the branded splash on the first page of a visit (which also waits
 // for the fonts), otherwise only for the moment it takes to come from the cache. Either way it appears once, styled.
 const HEAD_JS = [
-  "var d=document.documentElement,sp=0,ready=function(){d.classList.add('ready')};d.classList.add('js');",
+  // Wrapped in a function so none of its variables leak into the page's global scope (where site scripts live too).
+  "(function(){var d=document.documentElement,sp=0,ready=function(){d.classList.add('ready')};d.classList.add('js');",
   // Saved text size, and whether the splash was already shown this visit; storage may be blocked, so both are optional.
   "try{var rs=parseFloat(localStorage.getItem('rs'));if(rs>=0.85&&rs<=1.5)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){sp=1;sessionStorage.setItem('seen',1)}}catch(e){}",
   `d.classList.add(sp?'splash':'wait');var l=document.createElement('link'),f=document.fonts;l.rel='stylesheet';l.href='${CSS_URL}';`,
   `l.onload=l.onerror=function(){(sp&&f&&f.load?Promise.all([f.load('1em Assistant','א1'),f.load('900 1em "Frank Ruhl Libre"','א1')]):Promise.resolve()).then(ready,ready)};`,
   // Never leave the page hidden: show it after 6 seconds even if the stylesheet is still on its way.
-  'document.head.appendChild(l);setTimeout(ready,6000)',
+  'document.head.appendChild(l);setTimeout(ready,6000)})()',
 ].join('');
 // Prefetch same-site pages on hover/touch so navigation feels instant.
 // PDFs are left out: a hover would otherwise download the whole book.
@@ -80,6 +81,8 @@ const ICON = {
   heart: '<path d="M19.5 12.6 12 20l-7.5-7.4A5 5 0 1 1 12 6a5 5 0 1 1 7.5 6.6Z"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
   arrow: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
+  sunrise: '<path d="M3 19h18M7 19a5 5 0 0 1 10 0M12 4v5M9 6l3-3 3 3M4.2 12.2l1.4 1.4M19.8 12.2l-1.4 1.4"/>',
+  sunset: '<path d="M3 19h18M7 19a5 5 0 0 1 10 0M12 3v5M9 6l3 3 3-3M4.2 12.2l1.4 1.4M19.8 12.2l-1.4 1.4"/>',
   letter: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/>',
   phone: '<path d="M5 3h3.5l1.7 4.3-2.2 1.4a11 11 0 0 0 7.3 7.3l1.4-2.2L21 15.5V19a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2Z"/>',
   pin: '<path d="M12 21s-7-6.1-7-11.5a7 7 0 0 1 14 0C19 14.9 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>',
