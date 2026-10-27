@@ -1,0 +1,33 @@
+/* Site-wide refinements, kept last so they win: readability floor, search skeleton, line length, press feedback, exit easing, search label. */
+/* Readability floor: no text under 13px; link-style buttons get full touch height */
+.brand small{font-size:.875rem;letter-spacing:.04em}
+.soonlist small{font-size:.875rem}
+.statrow span{font-size:.875rem}
+.tier2 em{font-size:.875rem}
+a.tbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;text-decoration:none}
+.notes .go a{min-height:44px}
+@media (max-width:860px){.brand small{font-size:.875rem}}
+
+/* Search: skeleton cards while the index loads */
+.skel{pointer-events:none}.skel i{display:block;height:1em;border-radius:var(--r-sm);background:linear-gradient(90deg,var(--sunk) 25%,var(--line) 50%,var(--sunk) 75%);background-size:300% 100%;animation:skel 1.4s linear infinite}
+.skel i+i{margin-top:12px;width:70%}
+@keyframes skel{from{background-position:100% 0}to{background-position:-200% 0}}
+
+/* Line length: long paragraphs never run wider than the reading measure */
+.wrap>p:not(.ctarow):not(.shsub):not(.small),.card.wide p{max-width:var(--measure)}
+.wrap>p:not(.ctarow):not(.shsub):not(.small){margin-inline:auto}
+
+/* Press feedback on every pointer */
+button:active,.btn:active,.tbtn:active,.iconbtn:active{transform:scale(.98);transition-duration:.08s}
+
+/* Exit easing: elements leave with ease-in and enter with ease-out */
+.ddp,.secbar,.totop,html.js .stickcta,.fnpop{transition-timing-function:var(--ease-in)}
+.dd.open .ddp,.secbar.show,.totop.show,html.js .stickcta.show{transition-timing-function:var(--ease)}
+@media (hover:hover){.dd:hover .ddp{transition-timing-function:var(--ease)}}
+header.top.hide{transition-timing-function:var(--ease-in)}
+@media (max-width:860px){.top nav{transition-timing-function:var(--ease-in)}.open nav{transition-timing-function:var(--ease)}}
+
+/* Search: visible label above the field */
+.slabel{display:block;max-width:600px;margin:24px auto 8px;padding-inline:24px;font:700 .875rem/1.4 var(--sans);color:var(--on-navy3);text-align:start}
+.slabel+.hsearch{margin-top:0}
+.empty .slabel{color:var(--mute)}

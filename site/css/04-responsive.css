@@ -1,0 +1,33 @@
+/* Shared breakpoints (860px, 640px), reduced motion, touch screens; long-form text in .about blocks. */
+@media (max-width:860px){
+.tiles{grid-template-columns:1fr 1fr}.needs.values{grid-template-columns:1fr 1fr}
+}
+@media (max-width:640px){
+body{line-height:1.75}
+.wrap,.page{padding:0 16px}.page{padding-block:24px 40px}
+.top nav a{font-size:1rem}
+.phead{padding:32px 0 32px}.phead h1,.phero2 h1,.sh,.qhead h1{text-wrap:balance}.phead h1,.phero2 h1{font-size:2rem}.phead .sub,.phero2 .sub{font-size:1rem}
+.hero{padding:32px 0 32px}.hero h1{font-size:2.5rem}.mark.big{width:52px;height:52px;margin-bottom:8px}.mark.big .ico{width:30px;height:30px}
+.qhead h1{font-size:1.5rem}
+.hsearch{margin-top:16px}.hsearch>.ico{display:none}.hsearch input{font-size:16px;padding:8px 12px}.hsearch button{padding:12px 16px}
+.chips{gap:8px}.chips a{font-size:.875rem;padding:0 12px}
+.band{padding:48px 0}.sh{font-size:2rem}
+.tiles{gap:12px}.tile{padding:16px 16px}.tile>.ico{width:28px;height:28px;margin-bottom:8px}.tile b{font-size:1.125rem}.tile span{font-size:.875rem}.tile .arr{display:none}
+.feature{flex-direction:column;text-align:center;padding:24px 16px;gap:12px}.feature .btn{width:100%}.ftxt b{font-size:1.25rem}
+.grid{grid-template-columns:1fr;gap:12px}.card{padding:16px 16px}
+.sheet{padding:24px 24px 16px;font-size:calc(1.125rem * var(--rs,1));line-height:1.9;border-radius:var(--r-md);margin-inline:-8px}.tools{padding:12px 0}.sheet:before{inset:4px}
+.qnav{grid-template-columns:1fr}.qnav .next{text-align:start}
+.pager{font-size:.875rem}.pager .btn{padding:12px 16px}
+.statrow .wrap{gap:4px;padding-block:16px}.statrow b{font-size:1.25rem}.statrow span{font-size:.875rem}
+.pq p{font-size:1.5rem}.needs{grid-template-columns:1fr 1fr;gap:12px}.need{padding:16px 12px}
+.tiers2{grid-template-columns:1fr;gap:12px;margin:16px 0}.tier2.pick,.tier2.pick:hover{transform:none}
+.tier2{display:grid;grid-template-columns:auto 1fr;grid-template-areas:'amt h' 'amt p' 'amt go';column-gap:16px;text-align:start;padding:16px 16px 16px;align-items:center}.tier2 .amt{grid-area:amt;font-size:1.5rem;min-width:96px;text-align:center;border-inline-end:1px solid var(--line);padding-inline-end:16px;line-height:1.2}.tier2 h3{grid-area:h;font-size:1.125rem;margin:0}.tier2 p{grid-area:p;font-size:.875rem;line-height:1.5}.tier2 .go{grid-area:go;padding-top:4px}.tier2 em{top:-12px;inset-inline-start:18px;transform:none;font-size:.875rem;padding:2px 12px}.tier2 .amt.free{font-size:1rem}.steps2{grid-template-columns:1fr}
+.btn.big{display:flex;padding:16px 16px}.final h2{font-size:1.5rem}
+.donbox{max-width:none;margin-inline:-8px}
+.stickcta{display:block;position:fixed;bottom:0;inset-inline-start:0;inset-inline-end:0;z-index:20;padding:12px 16px max(12px,env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent,var(--bg) 45%)}.stickcta .btn{box-shadow:0 6px 20px rgba(0,0,0,.3)}
+body:has(.stickcta){padding-bottom:80px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}html{scroll-behavior:auto}}
+@media (hover:none){a.card:hover,.tile:hover,.tier2:hover,button:hover,.btn:hover{transform:none}a.card:active,.tile:active,.tier2:active,.qnav a:active{transform:scale(.98);transition-duration:.08s}}
+@media (min-width:1181px){header.top.hide{transform:none}}
+.about h3{font-family:"Frank Ruhl Libre",David,serif;font-size:1.25rem;margin:32px 0 4px}.about ul{margin:12px 0;padding-inline-start:24px}.about li{margin:8px 0}.about blockquote{margin:24px 0;padding:4px 16px;border-inline-start:3px solid var(--gold,#e6c466);background:rgba(0,0,0,.03)}.about blockquote p{margin:8px 0;font-size:1rem;font-weight:400}.about blockquote footer{font-size:.875rem;opacity:.75;margin:8px 0 12px}

@@ -1,6 +1,13 @@
 // Mobile menu, hide-on-scroll header, reading tools, campaign sticky CTA, search warm-up.
 {
 const me = new URL(document.currentScript.src);
+// Saved preferences (text size, vowel marks, place in each book). Storage can be blocked (private browsing,
+// site data turned off): then nothing is remembered and the page works as on a first visit.
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* not remembered */ } },
+};
+const lastRead = (book) => { try { return JSON.parse(store.get(`book:${book}`)); } catch { return null; } };
 
 // Start fetching the search index once someone shows intent to search, so results are instant:
 // the small titles file when they head for the search page, the full text too when they focus a search box.
@@ -41,7 +48,7 @@ document.querySelectorAll('[data-fs]').forEach((b) => b.addEventListener('click'
   const cur = parseFloat(getComputedStyle(root).getPropertyValue('--rs')) || 1;
   const v = Math.min(1.5, Math.max(0.85, Math.round((cur + 0.1 * b.dataset.fs) * 100) / 100));
   root.style.setProperty('--rs', v);
-  try { localStorage.setItem('rs', v); } catch (e) {}
+  store.set('rs', v);
 }));
 document.querySelectorAll('[data-share]').forEach((b) => b.addEventListener('click', () => {
   const title = document.querySelector('h1').textContent, url = location.href;
@@ -82,15 +89,14 @@ if (sheetEl && nikBtn) {
     nikBtn.setAttribute('aria-pressed', String(off)); nikBtn.textContent = off ? 'עם ניקוד' : 'בלי ניקוד';
   };
   let off = false;
-  try { off = localStorage.getItem('nikud') === '0'; } catch (e) {}
+  off = store.get('nikud') === '0';
   setNik(off);
-  nikBtn.addEventListener('click', () => { off = !off; setNik(off); try { localStorage.setItem('nikud', off ? '0' : '1'); } catch (e) {} });
+  nikBtn.addEventListener('click', () => { off = !off; setNik(off); store.set('nikud', off ? '0' : '1'); });
 }
 const art = document.querySelector('article[data-book]');
-if (art) try { localStorage.setItem(`book:${art.dataset.book}`, JSON.stringify({ u: location.pathname, c: art.dataset.ch })); } catch (e) {}
+if (art) store.set(`book:${art.dataset.book}`, JSON.stringify({ u: location.pathname, c: art.dataset.ch }));
 document.querySelectorAll('[data-continue]').forEach((el) => {
-  let v = null;
-  try { v = JSON.parse(localStorage.getItem(`book:${el.dataset.continue}`)); } catch (e) {}
+  const v = lastRead(el.dataset.continue);
   if (!v || !v.u) return;
   const a = document.createElement('a'); a.className = 'btn'; a.href = v.u; a.textContent = `להמשיך מהמקום שעצרתם: ${v.c} ←`;
   el.append(a); el.hidden = false;
@@ -124,8 +130,7 @@ if (totop) {
 if (matchMedia('(min-width: 861px)').matches) document.querySelectorAll('details.scard').forEach((d) => { d.open = true; });
 // Book contents: open the part that holds the last section read.
 document.querySelectorAll('[data-continue]').forEach((el) => {
-  let v = null;
-  try { v = JSON.parse(localStorage.getItem(`book:${el.dataset.continue}`)); } catch (e) {}
+  const v = lastRead(el.dataset.continue);
   const a = v && v.u && document.querySelector(`details.tocpart a[href="${v.u}"]`);
   if (a) { a.closest('details').open = true; a.classList.add('last'); }
 });

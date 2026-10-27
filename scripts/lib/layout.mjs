@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { SITE, BASE, ORIGIN, BUILD, font, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden } from './core.mjs';
 
-// Security policy. Inline scripts (head bootstrap, speculation rules) are allowed by hash.
+// Security policy. Inline scripts (head bootstrap, speculation rules) and the splash styles are allowed by hash.
 const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
 // Head bootstrap, inlined at the top of every page.
 // The stylesheet is added from here rather than as a <link> in the HTML, so it never blocks the first paint.
@@ -22,10 +22,14 @@ const HEAD_JS = [
 const SPEC = '{"prefetch":[{"where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":"/*.pdf"}}]},"eagerness":"moderate"}]}';
 const sha = (t) => `'sha256-${createHash('sha256').update(t).digest('base64')}'`;
 const frames = [pr.donate.iframeUrl].filter(Boolean).map((u) => new URL(u).origin);
+// First page of a visit: a branded splash shows until the stylesheet and the fonts are in (see HEAD_JS).
+// The page itself stays out of layout until then, so it appears once, styled, instead of jumping (CLS).
+const SPLASH_CSS = '#splash{display:none}.wait:not(.ready) body{visibility:hidden}.splash:not(.ready) body>:not(#splash){display:none}.splash #splash{display:flex;position:fixed;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(120% 90% at 50% 0,#1a46a3,#0b1d50 55%,#071338);color:#e6c466;font:900 1.7rem/1.2 "Frank Ruhl Libre",David,serif;transition:opacity .45s;animation:spout .4s 6s forwards}#splash small{font:600 .8rem Assistant,Arial,sans-serif;letter-spacing:.14em;color:#c9d3ef}#splash .spm{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;border:1.5px solid #e6c466;background:radial-gradient(circle at 50% 35%,#2a5bc4,#0d2466 70%);animation:spp 1.6s infinite}#splash svg{width:46px;height:46px}#splash i{width:140px;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#e6c466,transparent) 0 0/50% 100% no-repeat;animation:sps 1.1s ease-in-out infinite alternate}html.ready #splash{opacity:0;visibility:hidden;transition:opacity .45s,visibility 0s .45s}@keyframes spp{0%{box-shadow:0 0 0 0 rgba(230,196,102,.55)}70%,100%{box-shadow:0 0 0 20px rgba(230,196,102,0)}}@keyframes sps{to{background-position:100% 0}}@keyframes spout{to{opacity:0;visibility:hidden}}@media (prefers-reduced-motion:reduce){#splash,#splash *{animation:none!important}}';
 const CSP = [
   "default-src 'self'",
   `script-src 'self' ${sha(HEAD_JS)} ${sha(SPEC)}`,
-  "style-src 'self' 'unsafe-inline'",
+  // No inline style attributes anywhere; the one <style> block (the splash) is allowed by its hash.
+  `style-src 'self' ${sha(SPLASH_CSS)}`,
   "font-src 'self'",
   "img-src 'self' data: https:",
   "connect-src 'self'",
@@ -94,9 +98,6 @@ const ICON = {
 const icon = (n, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
 const orn = `<div class="orn-rule" aria-hidden="true"><i></i>${icon('flame')}<i></i></div>`;
 const phead = (kicker, title, lead = '', extra = '') => `<section class="phead"><div class="wrap">${kicker ? `<p class="kicker2">${kicker}</p>` : ''}<h1>${title.replace(/ ([–—]) /g, '\u00a0$1 ')}</h1>${lead ? `<p class="sub">${lead}</p>` : ''}${extra}</div></section>`;
-// First page of a visit: a branded splash shows until the stylesheet and the fonts are in (see HEAD_JS).
-// The page itself stays out of layout until then, so it appears once, styled, instead of jumping (CLS).
-const SPLASH_CSS = '#splash{display:none}.wait:not(.ready) body{visibility:hidden}.splash:not(.ready) body>:not(#splash){display:none}.splash #splash{display:flex;position:fixed;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(120% 90% at 50% 0,#1a46a3,#0b1d50 55%,#071338);color:#e6c466;font:900 1.7rem/1.2 "Frank Ruhl Libre",David,serif;transition:opacity .45s;animation:spout .4s 6s forwards}#splash small{font:600 .8rem Assistant,Arial,sans-serif;letter-spacing:.14em;color:#c9d3ef}#splash .spm{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;border:1.5px solid #e6c466;background:radial-gradient(circle at 50% 35%,#2a5bc4,#0d2466 70%);animation:spp 1.6s infinite}#splash svg{width:46px;height:46px}#splash i{width:140px;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#e6c466,transparent) 0 0/50% 100% no-repeat;animation:sps 1.1s ease-in-out infinite alternate}html.ready #splash{opacity:0;visibility:hidden;transition:opacity .45s,visibility 0s .45s}@keyframes spp{0%{box-shadow:0 0 0 0 rgba(230,196,102,.55)}70%,100%{box-shadow:0 0 0 20px rgba(230,196,102,0)}}@keyframes sps{to{background-position:100% 0}}@keyframes spout{to{opacity:0;visibility:hidden}}@media (prefers-reduced-motion:reduce){#splash,#splash *{animation:none!important}}';
 const splash = `<div id="splash" aria-hidden="true"><span class="spm">${icon('flame')}</span><span>${SITE}</span><small>חסידות ברסלב</small><i></i></div>`;
 // Every page needs both subsets of both fonts: Hebrew for the letters, Latin for spaces, digits and punctuation.
 // Preloading all four lets them arrive together, so text is not laid out again when a late subset swaps in (CLS).

@@ -15,6 +15,9 @@ jobs:
         with:
           node-version: 22
       - run: node --test test/*.test.mjs
+      # Lint needs the pinned dev tools from package-lock.json; the build itself has no dependencies.
+      - run: npm ci --ignore-scripts
+      - run: npx eslint .
       # Same settings as the deploy, so links are checked exactly as they will be published.
       - run: node scripts/build.mjs
         env:
