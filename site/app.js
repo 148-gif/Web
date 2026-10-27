@@ -50,11 +50,57 @@ document.querySelectorAll('[data-fs]').forEach((b) => b.addEventListener('click'
   root.style.setProperty('--rs', v);
   store.set('rs', v);
 }));
-document.querySelectorAll('[data-share]').forEach((b) => b.addEventListener('click', () => {
-  const title = document.querySelector('h1').textContent, url = location.href;
-  if (navigator.share) navigator.share({ title, url }).catch(() => {});
-  else open(`https://wa.me/?text=${encodeURIComponent(title + '\n' + url)}`, '_blank', 'noopener');
-}));
+// Share: the whole text, ready to paste. Phones get the system share sheet (WhatsApp, mail, SMS, Telegram...);
+// elsewhere a small menu offers WhatsApp, email, copying the text, or copying the link.
+const shareText = () => {
+  const sheet = document.querySelector('.sheet');
+  const head = [...document.querySelectorAll('.phead h1, .phead .csum')].map((e) => e.textContent.trim());
+  // Book sections are titled "סעיף א": name the book too, so the text stands on its own.
+  const book = document.querySelector('article[data-book]') && document.querySelectorAll('.phead .crumb a')[1];
+  if (book) head[0] = `${book.textContent.trim()} · ${head[0]}`;
+  const body = [];
+  if (sheet) {
+    const clone = sheet.cloneNode(true);
+    clone.querySelectorAll('sup, .fnotes, .fnpop, .orn-rule, script').forEach((e) => e.remove());
+    clone.querySelectorAll('h2, h3, p, li').forEach((e) => { const t = e.textContent.replace(/\s+/g, ' ').trim(); if (t) body.push(t); });
+  }
+  return `${head.join('\n')}\n\n${body.join('\n\n')}\n\nמתוך ״היכל הקודש״:\n${location.href}`;
+};
+const toast = (msg) => {
+  let t = document.querySelector('.toast');
+  if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.append(t); }
+  t.textContent = msg; t.classList.add('show'); clearTimeout(t.timer); t.timer = setTimeout(() => t.classList.remove('show'), 2600);
+};
+const copy = (txt, msg) => (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast(msg), () => toast('ההעתקה לא הצליחה. סמנו את הטקסט והעתיקו ידנית.'));
+const shareMenu = (btn) => {
+  let m = btn.parentElement.querySelector('.sharemenu');
+  if (m) { m.remove(); btn.setAttribute('aria-expanded', 'false'); return; }
+  const title = document.querySelector('h1').textContent.trim(), full = shareText(), short = `${title}\n${location.href}`;
+  // Very long URLs get cut by WhatsApp Web and mail programs: past this length the text is copied for pasting instead.
+  const fits = encodeURIComponent(full).length < 6000;
+  m = document.createElement('div'); m.className = 'sharemenu'; m.setAttribute('role', 'menu');
+  const item = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = label; b.addEventListener('click', () => { fn(); m.remove(); btn.setAttribute('aria-expanded', 'false'); }); m.append(b); };
+  item('וואטסאפ', () => { if (fits) open(`https://wa.me/?text=${encodeURIComponent(full)}`, '_blank', 'noopener'); else copy(full, 'הטקסט הועתק. הדביקו אותו בשיחה בוואטסאפ.').then(() => open('https://web.whatsapp.com/', '_blank', 'noopener')); });
+  item('אימייל', () => { location.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(fits ? full : `${short}\n\n(הטקסט המלא הועתק ללוח, אפשר להדביק כאן)`)}`; if (!fits) copy(full, 'הטקסט המלא הועתק. הדביקו אותו בגוף המייל.'); });
+  item('העתקת הטקסט', () => copy(full, 'הטקסט הועתק, מוכן להדבקה.'));
+  item('העתקת הקישור', () => copy(location.href, 'הקישור הועתק.'));
+  btn.after(m); btn.setAttribute('aria-expanded', 'true'); m.querySelector('button').focus();
+};
+document.querySelectorAll('[data-share]').forEach((b) => {
+  b.setAttribute('aria-haspopup', 'menu'); b.setAttribute('aria-expanded', 'false');
+  b.addEventListener('click', () => {
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) navigator.share({ title: document.title, text: shareText() }).catch(() => {});
+    else shareMenu(b);
+  });
+});
+document.addEventListener('click', (e) => { const m = document.querySelector('.sharemenu'); if (m && !e.target.closest('.sharemenu, [data-share]')) { m.remove(); document.querySelector('[data-share][aria-expanded="true"]')?.setAttribute('aria-expanded', 'false'); } });
+document.addEventListener('keydown', (e) => { const m = document.querySelector('.sharemenu'); if (e.key === 'Escape' && m) { const b = m.previousElementSibling; m.remove(); b?.setAttribute('aria-expanded', 'false'); b?.focus(); } });
+
+// Google Maps directions without a starting point stall on a computer; there the button opens the place itself.
+if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.querySelectorAll('a[href*="google.com/maps/dir/"]').forEach((a) => {
+  const to = new URL(a.href).searchParams.get('destination');
+  if (to) a.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(to)}`;
+});
 
 const stick = document.querySelector('.stickcta');
 if (stick && 'IntersectionObserver' in window) {
