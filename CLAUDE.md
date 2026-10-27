@@ -13,7 +13,8 @@ The live site is published from the `claude/greeting-2i183o` branch (GitHub Page
 
 `site/admin/` is a static editor: it reads and commits `data/*.json` through the GitHub API, straight to the branch in `site/admin/config.json`; the Pages workflow then tests and publishes.
 Editors sign in with Google through `cms-worker/` (a Cloudflare Worker that holds the GitHub token and only lets `data/` be written; setup in `cms-worker/README.md`, tests in `test/worker.test.mjs`, deployed by `.github/workflows/cms-worker.yml`). Owners are SHA-256 hashes of their emails in `OWNERS` (`wrangler.toml`; the repository is public, so no plain emails there); they add and remove editors from the editor itself, and that list lives in Cloudflare KV. While `worker` in `config.json` is empty, the editor asks for a personal GitHub token instead.
-It builds its forms from the shape of each JSON file, so a new field in a data file shows up without changing the editor. `data/shut.json` is not listed (too large).
+It builds its forms from the shape of each JSON file, so a new field in a data file shows up without changing the editor; give a new field a Hebrew name in `LABELS` (and `TUPLES` for fixed-length rows) in `site/admin/admin.js`.
+`data/shut.json` (25MB) is never rewritten by the editor: an edited, new or hidden Q&A entry is saved as `data/shut-edits/<id>.json`, which `mergeShut` in `core.mjs` applies over it (`validateShutEdit` fails the build on a bad one). The editor searches `dist/admin/shut/index.json` and reads entries from its chunks (`scripts/lib/sections/admin.mjs`).
 Topics and new pages live in `data/topics.json` and `data/pages/<slug>.json` (blocks: text, cards, faq, quote, links); `scripts/lib/sections/pages.mjs` builds them, and `validateCms` in `core.mjs` fails the build on a bad one.
 A topic appears in the menus only once it has a page. The admin page has its own CSP (own scripts and styles only, no inline); keep it that way.
 

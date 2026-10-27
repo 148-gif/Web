@@ -48,7 +48,28 @@ const write = (p, c) => {
   writeFileSync(`dist/${p}`, c);
 };
 
-const all = read('shut.json');
+// Q&A edits from the editor (/admin/): data/shut-edits/<id>.json holds one whole entry, replacing the one with that id
+// (or added, for a new id), or { id, deleted: true } to take it off the site. shut.json itself is never rewritten by the editor.
+const SHUT_KINDS = ['shut', 'letters'];
+const validateShutEdit = (file, x) => {
+  const bad = (m) => { throw new Error(`shut-edits/${file}: ${m}`); };
+  if (String(x.id) !== file.replace(/\.json$/, '') || !/^[\w-]+$/.test(String(x.id))) bad('id must match the file name');
+  if (x.deleted === true) return;
+  if (!SHUT_KINDS.includes(x.kind)) bad(`unknown kind "${x.kind}"`);
+  if (!x.title || typeof x.title !== 'string') bad('no title');
+  for (const k of ['q', 'a']) if (!Array.isArray(x[k]) || x[k].some((p) => typeof p !== 'string')) bad(`${k} must be a list of paragraphs`);
+  if (!x.a.some((p) => p.trim())) bad('empty answer');
+};
+const mergeShut = (base, edits) => {
+  if (!edits.length) return base;
+  const byId = new Map(edits.map((e) => [String(e.id), e]));
+  const ids = new Set(base.map((x) => String(x.id)));
+  return base.map((x) => byId.get(String(x.id)) || x).concat(edits.filter((e) => !ids.has(String(e.id)))).filter((x) => !x.deleted);
+};
+const EDITS_DIR = new URL('../../data/shut-edits/', import.meta.url);
+const shutEdits = (() => { try { return readdirSync(EDITS_DIR).filter((f) => f.endsWith('.json')); } catch { return []; } })()
+  .map((f) => { const x = read(`shut-edits/${f}`); validateShutEdit(f, x); return x; });
+const all = mergeShut(read('shut.json'), shutEdits);
 const shut = all.filter((x) => x.kind === 'shut');
 const letters = all.filter((x) => x.kind === 'letters');
 // Same shape as shut.json entries: { id, title, q: [...], a: [...], date }.
@@ -109,4 +130,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
