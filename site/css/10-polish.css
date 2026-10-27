@@ -44,3 +44,9 @@ header.top.hide{transition-timing-function:var(--ease-in)}
 
 /* App-only actions (Waze without exact coordinates) stay off computers with a mouse */
 @media (hover:hover) and (pointer:fine){.touch-only{display:none!important}}
+
+/* Share a selected passage: small floating button beside the selection */
+.selshare{position:absolute;z-index:35;animation:fnin .15s var(--ease)}
+.selshare>.btn{min-height:40px;padding:8px 16px;border-radius:999px;font-size:.875rem;box-shadow:0 8px 24px rgba(11,29,80,.28)}
+.selshare .sharemenu{inset-inline-end:auto;inset-inline-start:0}
+@media (pointer:coarse){.selshare>.btn{min-height:44px}}
