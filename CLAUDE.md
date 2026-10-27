@@ -19,7 +19,7 @@ When the content arrives, remove the path from `hidden` and tick it off in `TODO
 ## Site audits
 
 Until the site moves to its own private domain, these issues are known and listed in `TODO.md` under
-"עד המעבר לדומיין הפרטי": the accessibility coordinator's details, the contact details, and the missing
+"עד המעבר לדומיין הפרטי": the site not yet having its own domain, the accessibility coordinator's details, the contact details, and the missing
 anti-framing (`frame-ancestors` / `X-Frame-Options`) and `X-Content-Type-Options` headers on GitHub Pages,
 and GitHub Pages' fixed 10-minute cache (`_headers` already sets a one-year cache for the versioned files).
 An audit may mention them, but must not count them against any score or the overall grade.

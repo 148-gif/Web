@@ -5,7 +5,9 @@ import { pages } from './qa.mjs';
 import { bookChapters } from './library.mjs';
 import { indexed } from './search.mjs';
 
-write('site.webmanifest', JSON.stringify({ name: SITE, short_name: SITE, description: DESC, lang: 'he', dir: 'rtl', start_url: `${BASE}/`, scope: `${BASE}/`, display: 'standalone', background_color: '#0b1d50', theme_color: '#0b1d50', icons: [192, 512].map((n) => ({ src: `${BASE}/img/icon-${n}.png`, sizes: `${n}x${n}`, type: 'image/png', purpose: 'any maskable' })) }));
+write('site.webmanifest', JSON.stringify({ name: SITE, short_name: SITE, description: DESC, lang: 'he', dir: 'rtl', start_url: `${BASE}/`, scope: `${BASE}/`, display: 'standalone', background_color: '#0b1d50', theme_color: '#0b1d50', icons: ['any', 'maskable'].flatMap((purpose) => [192, 512].map((n) => ({ src: `${BASE}/img/icon-${n}.png`, sizes: `${n}x${n}`, type: 'image/png', purpose }))) }));
+// The icons have a full-bleed background with the flame inside the central 80% safe zone, so the same files serve as maskable;
+// they are declared once per purpose, as the manifest spec recommends, rather than as "any maskable".
 // llms.txt: a plain summary of the site for AI engines (https://llmstxt.org)
 write('llms.txt', `# ${SITE}
 

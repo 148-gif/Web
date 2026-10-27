@@ -3,10 +3,20 @@ import { createHash } from 'node:crypto';
 import { SITE, BASE, ORIGIN, BUILD, font, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden } from './core.mjs';
 
 // Security policy. Inline scripts (head bootstrap, speculation rules) are allowed by hash.
-// It also adds the stylesheet: normally parser-blocking, but on a first visit it loads without blocking paint
-// behind the splash, which fades once the styles are in (class "ready").
 const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
-const HEAD_JS = `var d=document.documentElement,u='${CSS_URL}',sp=0;d.classList.add('js');try{var rs=parseFloat(localStorage.getItem('rs'));if(rs>=0.85&&rs<=1.5)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){sp=1;sessionStorage.setItem('seen',1)}}catch(e){}if(sp){d.classList.add('splash');var l=document.createElement('link');l.rel='stylesheet';l.href=u;var r=function(){d.classList.add('ready')},f=document.fonts;l.onload=l.onerror=function(){(f&&f.load?Promise.all([f.load('1em Assistant','א1'),f.load('900 1em "Frank Ruhl Libre"','א1')]):Promise.resolve()).then(r,r)};document.head.appendChild(l);setTimeout(function(){d.classList.add('ready')},6000)}else document.write('<link rel="stylesheet" href="'+u+'">')`;
+// Head bootstrap, inlined at the top of every page.
+// The stylesheet is added from here rather than as a <link> in the HTML, so it never blocks the first paint.
+// Until it is in, the page stays hidden: behind the branded splash on the first page of a visit (which also waits
+// for the fonts), otherwise only for the moment it takes to come from the cache. Either way it appears once, styled.
+const HEAD_JS = [
+  "var d=document.documentElement,sp=0,ready=function(){d.classList.add('ready')};d.classList.add('js');",
+  // Saved text size, and whether the splash was already shown this visit; storage may be blocked, so both are optional.
+  "try{var rs=parseFloat(localStorage.getItem('rs'));if(rs>=0.85&&rs<=1.5)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){sp=1;sessionStorage.setItem('seen',1)}}catch(e){}",
+  `d.classList.add(sp?'splash':'wait');var l=document.createElement('link'),f=document.fonts;l.rel='stylesheet';l.href='${CSS_URL}';`,
+  `l.onload=l.onerror=function(){(sp&&f&&f.load?Promise.all([f.load('1em Assistant','א1'),f.load('900 1em "Frank Ruhl Libre"','א1')]):Promise.resolve()).then(ready,ready)};`,
+  // Never leave the page hidden: show it after 6 seconds even if the stylesheet is still on its way.
+  'document.head.appendChild(l);setTimeout(ready,6000)',
+].join('');
 // Prefetch same-site pages on hover/touch so navigation feels instant.
 // PDFs are left out: a hover would otherwise download the whole book.
 const SPEC = '{"prefetch":[{"where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":"/*.pdf"}}]},"eagerness":"moderate"}]}';
@@ -84,9 +94,9 @@ const ICON = {
 const icon = (n, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
 const orn = `<div class="orn-rule" aria-hidden="true"><i></i>${icon('flame')}<i></i></div>`;
 const phead = (kicker, title, lead = '', extra = '') => `<section class="phead"><div class="wrap">${kicker ? `<p class="kicker2">${kicker}</p>` : ''}<h1>${title.replace(/ ([–—]) /g, '\u00a0$1 ')}</h1>${lead ? `<p class="sub">${lead}</p>` : ''}${extra}</div></section>`;
-// First visit only: the stylesheet loads without blocking paint, and a branded splash shows until it and the fonts are in.
+// First page of a visit: a branded splash shows until the stylesheet and the fonts are in (see HEAD_JS).
 // The page itself stays out of layout until then, so it appears once, styled, instead of jumping (CLS).
-const SPLASH_CSS = '#splash{display:none}.splash:not(.ready) body>:not(#splash){display:none}.splash #splash{display:flex;position:fixed;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(120% 90% at 50% 0,#1a46a3,#0b1d50 55%,#071338);color:#e6c466;font:900 1.7rem/1.2 "Frank Ruhl Libre",David,serif;transition:opacity .45s;animation:spout .4s 6s forwards}#splash small{font:600 .8rem Assistant,Arial,sans-serif;letter-spacing:.14em;color:#c9d3ef}#splash .spm{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;border:1.5px solid #e6c466;background:radial-gradient(circle at 50% 35%,#2a5bc4,#0d2466 70%);animation:spp 1.6s infinite}#splash svg{width:46px;height:46px}#splash i{width:140px;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#e6c466,transparent) 0 0/50% 100% no-repeat;animation:sps 1.1s ease-in-out infinite alternate}html.ready #splash{opacity:0;visibility:hidden;transition:opacity .45s,visibility 0s .45s}@keyframes spp{0%{box-shadow:0 0 0 0 rgba(230,196,102,.55)}70%,100%{box-shadow:0 0 0 20px rgba(230,196,102,0)}}@keyframes sps{to{background-position:100% 0}}@keyframes spout{to{opacity:0;visibility:hidden}}@media (prefers-reduced-motion:reduce){#splash,#splash *{animation:none!important}}';
+const SPLASH_CSS = '#splash{display:none}.wait:not(.ready) body{visibility:hidden}.splash:not(.ready) body>:not(#splash){display:none}.splash #splash{display:flex;position:fixed;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(120% 90% at 50% 0,#1a46a3,#0b1d50 55%,#071338);color:#e6c466;font:900 1.7rem/1.2 "Frank Ruhl Libre",David,serif;transition:opacity .45s;animation:spout .4s 6s forwards}#splash small{font:600 .8rem Assistant,Arial,sans-serif;letter-spacing:.14em;color:#c9d3ef}#splash .spm{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;border:1.5px solid #e6c466;background:radial-gradient(circle at 50% 35%,#2a5bc4,#0d2466 70%);animation:spp 1.6s infinite}#splash svg{width:46px;height:46px}#splash i{width:140px;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#e6c466,transparent) 0 0/50% 100% no-repeat;animation:sps 1.1s ease-in-out infinite alternate}html.ready #splash{opacity:0;visibility:hidden;transition:opacity .45s,visibility 0s .45s}@keyframes spp{0%{box-shadow:0 0 0 0 rgba(230,196,102,.55)}70%,100%{box-shadow:0 0 0 20px rgba(230,196,102,0)}}@keyframes sps{to{background-position:100% 0}}@keyframes spout{to{opacity:0;visibility:hidden}}@media (prefers-reduced-motion:reduce){#splash,#splash *{animation:none!important}}';
 const splash = `<div id="splash" aria-hidden="true"><span class="spm">${icon('flame')}</span><span>${SITE}</span><small>חסידות ברסלב</small><i></i></div>`;
 // Every page needs both subsets of both fonts: Hebrew for the letters, Latin for spaces, digits and punctuation.
 // Preloading all four lets them arrive together, so text is not laid out again when a late subset swaps in (CLS).
@@ -114,4 +124,4 @@ ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 const sr = (t) => `<h2 class="sr">${t}</h2>`;
 const card = (x, base = '/shut/') => `<a class="card qcard" href="${base}${x.id}/"><h3>${esc(x.title)}</h3><p>${esc(gist(x.a).slice(0, 150))}…</p><span class="go">לקריאת התשובה ←</span></a>`;
 
-export { CSS_URL, HEAD_JS, SPEC, sha, frames, CSP, groups, nav, inGroup, menuLink, mainMenu, org, sc, orgLine, wa, contactList, infoNav, ICON, icon, orn, phead, SPLASH_CSS, splash, DESC, abs, layout, sr, card };
+export { CSS_URL, HEAD_JS, PRELOAD_FONTS, SPEC, sha, frames, CSP, groups, nav, inGroup, menuLink, mainMenu, org, sc, orgLine, wa, contactList, infoNav, ICON, icon, orn, phead, SPLASH_CSS, splash, DESC, abs, layout, sr, card };

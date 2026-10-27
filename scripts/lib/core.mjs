@@ -11,7 +11,8 @@ const BUILD = Date.now().toString(36);
 // Fonts carry a hash of their content (fonts/x.woff2?v=…), so they can be cached for a year and a changed file still reaches everyone.
 // build.mjs adds it to the url()s in style.css; layout.mjs to the preloads, which must match those exactly.
 const FONT_DIR = new URL('../../site/fonts/', import.meta.url);
-const FONT_V = Object.fromEntries(readdirSync(FONT_DIR).filter((f) => f.endsWith('.woff2')).map((f) => [f, createHash('sha256').update(readFileSync(new URL(f, FONT_DIR))).digest('hex').slice(0, 10)]));
+const fileHash = (u) => createHash('sha256').update(readFileSync(u)).digest('hex').slice(0, 10);
+const FONT_V = Object.fromEntries(readdirSync(FONT_DIR).filter((f) => f.endsWith('.woff2')).map((f) => [f, fileHash(new URL(f, FONT_DIR))]));
 const font = (f) => `fonts/${f}?v=${FONT_V[f]}`;
 // Text in attributes and <title> is escaped without the bidi marks: search results and share previews would show them.
 const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -33,11 +34,18 @@ const nik = (s) => s.replace(/[֑-ׇ]/g, '');
 // the greeting with the asker's name, or the opening "לנכון קבלתי את מכתבך".
 const gist = (ps) => ps.slice(Math.max(0, ps.findIndex((p) => p.length > 60))).join(' ').replace(/^לנכון קבלתי (את )?מכתבך[.,]?\s*/, '');
 const read = (f) => JSON.parse(readFileSync(new URL(`../../data/${f}`, import.meta.url), 'utf8'));
+// Sitemap and llms.txt: entries and lines pointing at a hidden section are dropped.
+const dropHiddenLines = (c) => c
+  .replace(/<url><loc>[^<]*<\/loc><\/url>/g, (m) => (isHidden(m.replace(/<[^>]+>/g, '').replace(ORIGIN + BASE, '')) ? '' : m))
+  .split('\n')
+  .filter((l) => !HIDDEN.some((h) => l.includes(`${h})`) || l.includes(`${ORIGIN + BASE}${h}`)))
+  .join('\n');
 const write = (p, c) => {
   if (isHidden(`/${p}`)) return;
   if (p.endsWith('.html')) c = rebase(unlinkHidden(c));
-  else if (/\.(xml|txt)$/.test(p)) c = c.replace(/<url><loc>[^<]*<\/loc><\/url>/g, (m) => (isHidden(m.replace(/<[^>]+>/g, '').replace(ORIGIN + BASE, '')) ? '' : m)).split('\n').filter((l) => !HIDDEN.some((h) => l.includes(`${h})`) || l.includes(`${ORIGIN + BASE}${h}`))).join('\n');
-  mkdirSync(`dist/${p.split('/').slice(0, -1).join('/')}`, { recursive: true }); writeFileSync(`dist/${p}`, c);
+  else if (/\.(xml|txt)$/.test(p)) c = dropHiddenLines(c);
+  mkdirSync(`dist/${p.split('/').slice(0, -1).join('/')}`, { recursive: true });
+  writeFileSync(`dist/${p}`, c);
 };
 
 const all = read('shut.json');
@@ -54,7 +62,17 @@ const site = read('site.json');
 // pointing at them are dropped, and inline links to them become plain text. Tracked in TODO.md.
 const HIDDEN = (site.hidden || []).map((x) => x.path);
 const isHidden = (u) => HIDDEN.some((h) => u.startsWith(h));
-const unlinkHidden = (html) => (HIDDEN.length ? html.replace(/<li>(<a href="(\/[^"]*)"[\s\S]*?)<\/li>/g, (m, inner, h) => (isHidden(h) && !inner.includes('<li') ? '' : m)).replace(/<a\b([^>]*)\bhref="(\/[^"#?]*)[^"]*"[^>]*>([\s\S]*?)<\/a>/g, (m, pre, h, inner) => (!isHidden(h) ? m : /class="[^"]*\b(card|tile|btn|tbtn|feature)\b/.test(m) ? '' : inner)) : html);
+// A list item that opens with a link to a hidden section is dropped (unless it holds a nested list).
+const LIST_ITEM = /<li>(<a href="(\/[^"]*)"[\s\S]*?)<\/li>/g;
+// Any other link into the site: cards, tiles and buttons to a hidden section are dropped, inline links keep their text.
+const SITE_LINK = /<a\b([^>]*)\bhref="(\/[^"#?]*)[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
+const BLOCK_LINK = /class="[^"]*\b(card|tile|btn|tbtn|feature)\b/;
+const unlinkHidden = (html) => {
+  if (!HIDDEN.length) return html;
+  return html
+    .replace(LIST_ITEM, (m, inner, h) => (isHidden(h) && !inner.includes('<li') ? '' : m))
+    .replace(SITE_LINK, (m, attrs, h, text) => (!isHidden(h) ? m : BLOCK_LINK.test(m) ? '' : text));
+};
 const yv = read('yavniel.json');
 const mk = read('mikveh.json');
 const mo = read('moharash.json');

@@ -19,5 +19,6 @@ await import('./lib/sections/print.mjs');
 await import('./lib/sections/search.mjs');
 await import('./lib/sections/home.mjs');
 await import('./lib/sections/info.mjs');
+await import('./lib/sections/offline.mjs');
 await import('./lib/sections/meta.mjs');
 console.log(`built ${shut.length} Q&A pages, ${letters.length} letters, ${halacha.length} halacha, ${pages} list pages`);

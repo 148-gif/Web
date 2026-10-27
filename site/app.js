@@ -130,6 +130,10 @@ document.querySelectorAll('[data-continue]').forEach((el) => {
   if (a) { a.closest('details').open = true; a.classList.add('last'); }
 });
 
+// Offline reading: the service worker keeps the pages already read (dist/sw.js, built from scripts/lib/sw.js). The offline page's "try again" reloads.
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register(`${me.pathname.replace(/[^/]*$/, '')}sw.js`).catch(() => {}));
+document.querySelectorAll('[data-reload]').forEach((b) => b.addEventListener('click', () => location.reload()));
+
 // Book footnotes: tapping a marker opens the note under its line instead of jumping to the list at the end.
 let fnOpen = null;
 const closeFn = (refocus) => { if (!fnOpen) return; const { pop, a } = fnOpen; pop.remove(); a.setAttribute('aria-expanded', 'false'); fnOpen = null; if (refocus) a.focus(); };

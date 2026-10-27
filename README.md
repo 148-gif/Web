@@ -28,6 +28,7 @@ npm run preview   # מציג את dist/ בדפדפן בכתובת http://localho
 | `scripts/lib/layout.mjs` | שלד העמוד: מדיניות אבטחה (CSP), תפריטים, אייקונים, מסך פתיחה |
 | `scripts/lib/parts.mjs` | רכיבים קטנים שכמה מדורים משתמשים בהם, ונתונים מובנים (JSON-LD) |
 | `scripts/lib/sections/` | קובץ לכל חלק באתר: `qa` (שו״ת), `library`, `yavniel`, `print` וכו׳ |
+| `scripts/lib/sw.js` | ה־Service Worker (קריאה בלי חיבור). הבנייה ממלאת בו גרסה וכותבת אותו ל־`dist/sw.js` |
 | `scripts/check-links.mjs` | בדיקת הקישורים |
 | `test/` | בדיקות יחידה: אימות קישורים וטלפונים, הימלטות HTML, מדורים מוסתרים |
 
