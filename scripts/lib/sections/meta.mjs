@@ -4,6 +4,7 @@ import { frames, CSP, DESC } from '../layout.mjs';
 import { pages } from './qa.mjs';
 import { bookChapters } from './library.mjs';
 import { indexed } from './search.mjs';
+import { cmsUrls } from './pages.mjs';
 
 write('site.webmanifest', JSON.stringify({ name: SITE, short_name: SITE, description: DESC, lang: 'he', dir: 'rtl', start_url: `${BASE}/`, scope: `${BASE}/`, display: 'standalone', background_color: '#0b1d50', theme_color: '#0b1d50', icons: ['any', 'maskable'].flatMap((purpose) => [192, 512].map((n) => ({ src: `${BASE}/img/icon-${n}.png`, sizes: `${n}x${n}`, type: 'image/png', purpose }))) }));
 // The icons have a full-bleed background with the flame inside the central 80% safe zone, so the same files serve as maskable;
@@ -34,7 +35,7 @@ ${lib.books.map((b) => `- [${b.title}](${ORIGIN + BASE}/library/${b.slug}/): ${n
 - [ישיבת בית מנחם](${ORIGIN + BASE}/yeshiva/)
 - [אודות](${ORIGIN + BASE}/about/)
 `);
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/library/kuntresim/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/rabbi-nachman/', '/uman/', '/tikkun-haklali/', '/moharash/', '/moharash/tziyun/', '/library/', ...lib.books.map((b) => `/library/${b.slug}/`), ...Object.entries(bookChapters).flatMap(([slug, chs]) => chs.map((c) => `/library/${slug}/${c.id}/`)), '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/library/kuntresim/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/rabbi-nachman/', '/uman/', '/tikkun-haklali/', '/moharash/', '/moharash/tziyun/', '/library/', ...lib.books.map((b) => `/library/${b.slug}/`), ...Object.entries(bookChapters).flatMap(([slug, chs]) => chs.map((c) => `/library/${slug}/${c.id}/`)), '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...cmsUrls, ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
 write('robots.txt', `User-agent: *\nAllow: /\n${ORIGIN ? `Sitemap: ${ORIGIN}${BASE}/sitemap.xml\n` : ''}`);
 // HTTP security headers (honoured by Netlify; GitHub Pages ignores this file and relies on the meta CSP).
 write('_headers', `/*

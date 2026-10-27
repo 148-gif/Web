@@ -20,6 +20,7 @@ await import('./lib/sections/moharash.mjs');
 await import('./lib/sections/library.mjs');
 await import('./lib/sections/rabbi-nachman.mjs');
 await import('./lib/sections/print.mjs');
+await import('./lib/sections/pages.mjs');
 await import('./lib/sections/search.mjs');
 await import('./lib/sections/home.mjs');
 await import('./lib/sections/info.mjs');

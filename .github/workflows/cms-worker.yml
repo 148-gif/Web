@@ -1,0 +1,36 @@
+name: Deploy editor login server (Cloudflare Worker)
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/greeting-2i183o]
+    paths: ['cms-worker/**', '.github/workflows/cms-worker.yml']
+permissions:
+  contents: read
+concurrency:
+  group: cms-worker
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Third-party actions are pinned to full commit SHAs so a moved tag cannot inject code.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: node --test test/worker.test.mjs
+      # Both secrets are added once by the site owner (cms-worker/README.md); until then there is nothing to deploy.
+      - name: Deploy
+        working-directory: cms-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CMS_GITHUB_TOKEN: ${{ secrets.CMS_GITHUB_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CMS_GITHUB_TOKEN" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN or CMS_GITHUB_TOKEN is not set yet (see cms-worker/README.md); skipping the deploy."
+            exit 0
+          fi
+          npx --yes wrangler@4.150.0 deploy
+          printf %s "$CMS_GITHUB_TOKEN" | npx --yes wrangler@4.150.0 secret put GITHUB_TOKEN
