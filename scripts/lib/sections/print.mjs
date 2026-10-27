@@ -5,8 +5,10 @@ import { org, sc, orgLine, contactList, layout, sr, icon } from '../layout.mjs';
 const pd = pr.donate;
 const h = pr.hero;
 const money = (n) => Number(n).toLocaleString('he-IL');
+// The payment form (about 1.3MB from Nedarim Plus) is not loaded with the page: app.js puts it in place
+// when the button or a tier card is clicked. Without JS, the full-screen link below still works.
 const donateBox = () => pd.iframeUrl
-  ? `<div class="donbox" id="donate"><h2 class="donhead">התרומה שלכם מתחילה כאן</h2><iframe title="תרומה באשראי" src="${url(pd.iframeUrl)}" loading="lazy" allow="payment" referrerpolicy="no-referrer" style="width:100%;height:900px;min-height:80vh"></iframe>${pd.fallbackUrl ? `<p class="ctarow"><a class="btn big" href="${url(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו את טופס התרומה במסך מלא</a></p>` : ''}</div>`
+  ? `<div class="donbox" id="donate"><h2 class="donhead">התרומה שלכם מתחילה כאן</h2><div class="donframe" data-frame="${url(pd.iframeUrl)}"><p>טופס התרומה המאובטח של ״נדרים פלוס״ ייפתח כאן.</p><button type="button" class="btn big">לפתיחת טופס התרומה</button></div>${pd.fallbackUrl ? `<p class="ctarow"><a class="btn big" href="${url(pd.fallbackUrl)}" rel="noopener" target="_blank">פתחו את טופס התרומה במסך מלא</a></p>` : ''}</div>`
   : pd.fallbackUrl
     ? `<div class="donbox soon" id="donate"><p><a class="btn big" href="${url(pd.fallbackUrl)}" rel="noopener">לתרומה באשראי</a></p></div>`
     : `<div class="donbox soon" id="donate"><p>טופס התרומה באשראי יופעל בקרוב.</p>${pd.phone ? `<p><a href="tel:${tel(pd.phone)}">${esc(pd.phone)}</a></p>` : ''}</div>`;

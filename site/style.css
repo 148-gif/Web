@@ -191,7 +191,8 @@ a.card:hover{transform:translateY(-3px);border-color:var(--gold2)}a.card:hover:b
 .faq summary:after{content:"";width:20px;height:20px;flex:none;align-self:center;background:var(--gold);-webkit-mask:var(--i-chev) center/contain no-repeat;mask:var(--i-chev) center/contain no-repeat;transition:transform .2s var(--ease)}.faq[open] summary:after{transform:rotate(180deg)}.faq p{margin:0;padding:0 16px 16px;color:var(--mute)}
 .promise{max-width:700px;margin:auto}.promise p{margin:16px 0;font-size:1.125rem}.promise p:first-child{font-size:1.25rem;border-inline-start:4px solid var(--gold2);padding-inline-start:16px}
 .donbox{max-width:620px;margin:32px auto 16px}.donhead{text-align:center;margin:8px 0 16px}
-.donbox iframe{border:1px solid var(--line);border-radius:var(--r);background:#fff;box-shadow:var(--shadow)}
+.donbox iframe{display:block;width:100%;height:900px;min-height:80vh;border:1px solid var(--line);border-radius:var(--r);background:#fff;box-shadow:var(--shadow)}
+.donframe:not(:has(iframe)){text-align:center;background:var(--surface);border:1.5px dashed var(--gold2);border-radius:var(--r);padding:32px}html:not(.js) .donframe{display:none}
 .donbox.soon{text-align:center;background:var(--surface);border:1.5px dashed var(--gold2);border-radius:var(--r);padding:32px}
 .stickcta{display:none}
 html.js .stickcta{transition:transform .3s var(--ease)}html.js .stickcta:not(.show){transform:translateY(130%)}

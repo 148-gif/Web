@@ -14,3 +14,10 @@ Never show visitors an empty or unfinished section. When something is not ready:
 2. Add an entry to `TODO.md` saying what is missing and what is needed to bring it back.
 
 When the content arrives, remove the path from `hidden` and tick it off in `TODO.md`.
+
+## Site audits
+
+Until the site moves to its own private domain, these four issues are known and listed in `TODO.md` under
+"עד המעבר לדומיין הפרטי": the accessibility coordinator's details, the contact details, and the missing
+anti-framing (`frame-ancestors` / `X-Frame-Options`) and `X-Content-Type-Options` headers on GitHub Pages.
+An audit may mention them, but must not count them against any score or the overall grade.

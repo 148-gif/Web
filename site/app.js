@@ -56,6 +56,21 @@ if (stick && 'IntersectionObserver' in window) {
   document.querySelectorAll('.phero2 .btn, .phead .btn, .final .btn, #donate').forEach((el) => io.observe(el));
 } else if (stick) stick.classList.add('show');
 
+// Donation page: the payment iframe loads only when asked for, from its button or a tier card (#donate).
+const donFrame = document.querySelector('.donframe[data-frame]');
+if (donFrame) {
+  const loadDonate = (focus) => {
+    if (!donFrame.dataset.frame) return;
+    const f = document.createElement('iframe');
+    f.title = 'תרומה באשראי'; f.src = donFrame.dataset.frame; f.allow = 'payment'; f.referrerPolicy = 'no-referrer';
+    delete donFrame.dataset.frame;
+    donFrame.replaceChildren(f);
+    if (focus) f.focus();
+  };
+  donFrame.querySelector('button').addEventListener('click', () => loadDonate(true));
+  document.querySelectorAll('a[href="#donate"]').forEach((a) => a.addEventListener('click', () => loadDonate(false)));
+}
+
 // Book reader: hide/show vowel marks (remembered), and remember the last section read per book.
 const sheetEl = document.querySelector('.book-sheet'), nikBtn = document.querySelector('[data-nikud]');
 if (sheetEl && nikBtn) {
