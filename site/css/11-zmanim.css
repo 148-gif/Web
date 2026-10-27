@@ -1,0 +1,20 @@
+/* Zmanim of Yavne'el (site/zmanim.js): the daily box, live times next to prayer and mikveh hours, today's strip. */
+.zbox{padding:16px 24px}.zhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:2px solid var(--gold2)}
+.ztitle{text-align:center}.ztitle b{display:block;font-size:1.25rem;color:var(--brand)}.zsub{color:var(--mute)}
+.zprev .ico{transform:scaleX(-1)}.zhead .btn{padding:12px}.zhead .btn:disabled{opacity:.4;cursor:default}
+.zlist{margin-block:8px}.zlist>div{grid-template-columns:1fr auto}.zlist dd{text-align:end}.zlist bdi{font-variant-numeric:tabular-nums;font-weight:700}
+.zfoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding-top:8px;border-top:1px dashed var(--line)}
+.zpick{font:1rem var(--sans);min-height:44px;padding:8px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:inherit}
+@media (max-width:600px){.zbox{padding:16px}}
+.zbox [hidden]{display:none}
+.zl{display:block;margin-top:2px;font:800 1rem var(--sans);color:var(--gold-deep);text-align:start}.zl:empty{display:none}
+.hrs .zl{margin-top:4px}
+/* Today's sunrise, sunset and evening zman: the stat row, with an icon and a date line */
+.zstrip{background:var(--sunk)}.zstrip[hidden]{display:none}.zstrip .wrap{padding-block:24px 0}
+.zstrip .wrap>div{display:flex;flex-direction:column;align-items:center;gap:4px}.zstrip .ico{color:var(--gold-deep)}.zstrip i{font-style:normal;line-height:0}.zstrip i[hidden]{display:none}
+.zstrip b{font-variant-numeric:tabular-nums;direction:ltr}
+.zdate{margin:0;padding:0 16px 16px;text-align:center;color:var(--mute);font-family:var(--sans)}
+/* The daily box: the key times stand out in the list */
+.zlist .key dt,.zlist .key dd{color:var(--gold)}.zlist .key dt{font-weight:800}.zlist .key bdi{font-size:1.125rem}
+@media (max-width:600px){.zstrip .wrap{padding-block:16px 0}.zstrip .ico{width:24px;height:24px}}
+.zmiss{padding:16px 0;text-align:center;color:var(--mute);font-family:var(--sans)}
