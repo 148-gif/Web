@@ -1,6 +1,8 @@
 # היכל הקודש
 
 Static Hebrew (RTL) site: `node scripts/build.mjs` turns `data/*.json` and `site/` into `dist/`.
+Shared code is in `scripts/lib/` (core, layout, parts) and each part of the site has its own file in `scripts/lib/sections/`.
+`npm run check` builds the site and checks every internal link and anchor; it also runs on every pull request.
 The live site is published from the `claude/greeting-2i183o` branch (GitHub Pages workflow).
 
 ## Content that is missing or not ready
