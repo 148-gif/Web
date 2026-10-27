@@ -1,9 +1,11 @@
-// Makes site/zmanim.json (the daily zmanim of Yavne'el) by running the calculation engine of the "Onot" app
+// Makes site/zmanim/ (the daily zmanim of Yavne'el): one small file per week, named by its Sunday (2026-10-25.json),
+// and index.json with the first and last day. A page loads only the week it shows: today, this Friday and Shabbat are always in one file.
+// (The daily zmanim of Yavne'el) by running the calculation engine of the "Onot" app
 // (עונות) as it is, so the times on this site always match the app's.
 // Usage: node scripts/gen-zmanim.mjs <folder of the app, with js/ and index.html>
 // The folder can be the app's source, or a copy of the published app (index.html lists the script files).
 // Covers the range of the Luchot Chai tables inside the app; to extend it, add the next year to the app and run this again.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
 
@@ -38,5 +40,11 @@ for (let key = first; key <= last; key = run(`addDaysToKey('${key}', 1)`)) {
   const sec = (name) => Math.round(r.items.find((it) => it.shortName === name).sec);
   days[key] = [run(`formatHebrewDayMonthOnly(keyToDate('${key}'))`), parasha, sec('הנץ החמה'), sec('שקיעת החמה'), ...cols.map((c) => byName[c] || '')];
 }
-writeFileSync(new URL('../site/zmanim.json', import.meta.url), JSON.stringify({ cols, days }));
-console.log(`${Object.keys(days).length} days, ${first} to ${last}`);
+const out = new URL('../site/zmanim/', import.meta.url);
+rmSync(out, { recursive: true, force: true });
+mkdirSync(out, { recursive: true });
+const weeks = {};
+for (const [key, day] of Object.entries(days)) (weeks[run(`addDaysToKey('${key}', -getHebrewCalendarParts(keyToDate('${key}')).dow)`)] ??= {})[key] = day;
+for (const [sunday, wd] of Object.entries(weeks)) writeFileSync(new URL(`${sunday}.json`, out), JSON.stringify({ cols, days: wd }));
+writeFileSync(new URL('index.json', out), JSON.stringify({ min: first, max: last }));
+console.log(`${Object.keys(days).length} days in ${Object.keys(weeks).length} weeks, ${first} to ${last}`);

@@ -484,3 +484,4 @@ header.top.hide{transition-timing-function:var(--ease-in)}
 /* The daily box: the key times stand out in the list */
 .zlist .key dt,.zlist .key dd{color:var(--gold)}.zlist .key dt{font-weight:800}.zlist .key bdi{font-size:1.125rem}
 @media (max-width:600px){.zstrip .wrap{padding-block:16px 0}.zstrip .ico{width:24px;height:24px}}
+.zmiss{padding:16px 0;text-align:center;color:var(--mute);font-family:var(--sans)}
