@@ -1,9 +1,9 @@
-// Titles load first so results appear at once; full-text shards fill in as they arrive.
+// Titles load first so results appear at once; the full-text shards are fetched on the first search and fill in as they arrive.
 const me = new URL(document.currentScript.src), root = me.pathname.replace(/[^/]*$/, ''), v = me.search;
 const input = document.getElementById('q'), out = document.getElementById('results'), count = document.getElementById('count');
 const strip = (s) => s.replace(/[֑-ׇ]/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ');
 const get = (f) => fetch(`${root}idx/${f}.json${v}`).then((r) => r.json());
-let items = null, shards = 0, total = 0, timer;
+let items = null, shards = 0, total = 0, size = 0, loading = false, timer;
 const run = () => {
   const terms = strip(input.value).trim().split(/\s+/).filter(Boolean);
   out.textContent = ''; count.textContent = '';
@@ -20,13 +20,17 @@ const run = () => {
   out.append(frag);
 };
 input.value = new URLSearchParams(location.search).get('q') || '';
-input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 120); });
+const loadText = () => {
+  if (loading || !items || !input.value.trim()) return;
+  loading = true;
+  for (let k = 0; k < total; k++) get(k).then((w) => {
+    w.forEach((txt, i) => { const r = items[k * size + i]; r.s += ' ' + txt; });
+    shards++; if (input.value.trim()) run();
+  }).catch(() => { shards++; });
+};
+input.addEventListener('input', () => { loadText(); clearTimeout(timer); timer = setTimeout(run, 120); });
 if (input.value) count.textContent = 'טוען…';
 get('titles').then((d) => {
   items = d.t.map(([id, title]) => ({ id, title, s: strip(title) }));
-  total = d.n; run();
-  for (let k = 0; k < d.n; k++) get(k).then((w) => {
-    w.forEach((txt, i) => { const r = items[k * d.size + i]; r.s += ' ' + txt; });
-    shards++; if (input.value.trim()) run();
-  }).catch(() => { shards++; });
+  total = d.n; size = d.size; run(); loadText();
 }).catch(() => { count.textContent = 'החיפוש לא נטען. בדקו את החיבור ורעננו את העמוד.'; });

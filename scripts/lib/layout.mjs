@@ -1,6 +1,6 @@
 // Page shell: security policy, menus, icons and the layout every page is built with.
 import { createHash } from 'node:crypto';
-import { SITE, BASE, ORIGIN, FONTS, BUILD, esc, url, tel, nik, shut, letters, institutions, pr, site, isHidden } from './core.mjs';
+import { SITE, BASE, ORIGIN, FONTS, BUILD, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden } from './core.mjs';
 
 // Security policy. Inline scripts (head bootstrap, speculation rules) are allowed by hash.
 // It also adds the stylesheet: normally parser-blocking, but on a first visit it loads without blocking paint
@@ -91,8 +91,8 @@ const DESC = 'היכל הקודש: חסידות ברסלב, שאלות ותשו�
 const abs = (p) => esc(ORIGIN + BASE + p);
 const layout = (title, body, { desc = '', path = '/', self = path, head = '', full = false, reading = false, head_extra = '', index = true } = {}) => `<!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="strict-origin-when-cross-origin"><script>${HEAD_JS}</script>
-<title>${esc(nik(title))}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${esc(nik(desc || DESC))}">${index ? '' : '<meta name="robots" content="noindex">'}
-<meta name="theme-color" content="#0b1d50"><meta property="og:title" content="${esc(nik(title))}"><meta property="og:description" content="${esc(nik(desc || DESC))}"><meta property="og:site_name" content="${SITE}"><meta property="og:locale" content="he_IL"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">${ORIGIN && index ? `<link rel="canonical" href="${abs(self)}"><meta property="og:url" content="${abs(self)}"><meta property="og:image" content="${abs('/img/og.png')}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">` : ''}
+<title>${escAttr(nik(title))}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${escAttr(nik(desc || DESC))}">${index ? '' : '<meta name="robots" content="noindex">'}
+<meta name="theme-color" content="#0b1d50"><meta property="og:title" content="${escAttr(nik(title))}"><meta property="og:description" content="${escAttr(nik(desc || DESC))}"><meta property="og:site_name" content="${SITE}"><meta property="og:locale" content="he_IL"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">${ORIGIN && index ? `<link rel="canonical" href="${abs(self)}"><meta property="og:url" content="${abs(self)}"><meta property="og:image" content="${abs('/img/og.png')}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">` : ''}
 <link rel="manifest" href="/site.webmanifest"><link rel="apple-touch-icon" href="/img/icon-180.png"><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0b1d50"/><g fill="none" stroke="#e6c466" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON.flame}</g></svg>`)}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <noscript><link rel="stylesheet" href="/style.css?v=${BUILD}"></noscript><style>${SPLASH_CSS}</style>
@@ -106,6 +106,6 @@ ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 <p>שו״ת ברסלב נכתב על ידי <a href="/moharash/">הצדיק מיבניאל זצ״ל</a>, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer><button type="button" class="totop" aria-label="חזרה לראש העמוד" hidden><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">${SPEC}</script></body></html>`;
 
 const sr = (t) => `<h2 class="sr">${t}</h2>`;
-const card = (x, base = '/shut/') => `<a class="card qcard" href="${base}${x.id}/"><h3>${esc(x.title)}</h3><p>${esc((x.a.find((p) => p.length > 60) || x.a[0]).slice(0, 150))}…</p><span class="go">לקריאת התשובה ←</span></a>`;
+const card = (x, base = '/shut/') => `<a class="card qcard" href="${base}${x.id}/"><h3>${esc(x.title)}</h3><p>${esc(gist(x.a).slice(0, 150))}…</p><span class="go">לקריאת התשובה ←</span></a>`;
 
 export { CSS_URL, HEAD_JS, SPEC, sha, frames, CSP, groups, nav, inGroup, menuLink, mainMenu, org, sc, orgLine, wa, contactList, infoNav, ICON, icon, orn, phead, SPLASH_CSS, splash, DESC, abs, layout, sr, card };

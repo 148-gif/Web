@@ -8,7 +8,10 @@ const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`
 const PER_PAGE = 40;
 const FONTS = 'https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@400;700;900&display=swap';
 const BUILD = Date.now().toString(36);
-const esc = (s) => String(s).replace(/(\d+)–(\d+)/g, '\u2066$1–$2\u2069').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+// Text in attributes and <title> is escaped without the bidi marks: search results and share previews would show them.
+const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+// Page text: a number range (1940–2015) is isolated so it keeps its order inside Hebrew.
+const esc = (s) => escAttr(String(s).replace(/(\d+)–(\d+)/g, '\u2066$1–$2\u2069'));
 // Links from data/*.json must be https, tel, mailto or a site-relative path; anything else (javascript:, data:, http:) fails the build.
 const url = (u, schemes = ['https:']) => {
   if (!u) return '';
@@ -21,6 +24,9 @@ const url = (u, schemes = ['https:']) => {
 };
 const tel = (n) => { if (!/^[+\d][\d\s-]*$/.test(n)) throw new Error(`Invalid phone in data: ${n}`); return esc(n.replace(/[\s-]/g, '')); };
 const nik = (s) => s.replace(/[֑-ׇ]/g, '');
+// The body of an answer, for previews and descriptions: from its first full paragraph, without the date,
+// the greeting with the asker's name, or the opening "לנכון קבלתי את מכתבך".
+const gist = (ps) => ps.slice(Math.max(0, ps.findIndex((p) => p.length > 60))).join(' ').replace(/^לנכון קבלתי (את )?מכתבך[.,]?\s*/, '');
 const read = (f) => JSON.parse(readFileSync(new URL(`../../data/${f}`, import.meta.url), 'utf8'));
 const write = (p, c) => {
   if (isHidden(`/${p}`)) return;
@@ -57,4 +63,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { SITE, BASE, ORIGIN, rebase, PER_PAGE, FONTS, BUILD, esc, url, tel, nik, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { SITE, BASE, ORIGIN, rebase, PER_PAGE, FONTS, BUILD, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

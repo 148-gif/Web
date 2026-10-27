@@ -14,7 +14,8 @@ const indexed = [...shut.map((x) => ['shut', x]), ...(isHidden('/letters/') ? []
 const shardSize = Math.ceil(indexed.length / SHARDS);
 write('idx/titles.json', JSON.stringify({ n: SHARDS, size: shardSize, t: indexed.map(([b, x]) => [`${b}/${x.id}`, x.title]) }));
 for (let k = 0; k < SHARDS; k++) write(`idx/${k}.json`, JSON.stringify(indexed.slice(k * shardSize, (k + 1) * shardSize).map(([, x]) => words((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600), new Set(words(x.title).split(' '))))));
-const preloads = ['titles', ...Array.from({ length: SHARDS }, (_, k) => k)].map((f) => `<link rel="preload" href="/idx/${f}.json?v=${BUILD}" as="fetch" crossorigin>`).join('');
+// Only the titles are preloaded; search.js fetches the full-text shards (about 1.2MB) once there is something to search for.
+const preloads = `<link rel="preload" href="/idx/titles.json?v=${BUILD}" as="fetch" crossorigin>`;
 write('search/index.html', layout('חיפוש', `${sr('תוצאות החיפוש')}<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid"></div><script src="/search.js?v=${BUILD}" defer></script>`, { path: '/search/', head_extra: preloads, head: phead(isHidden('/letters/') ? 'בכל אלפי השאלות' : 'בכל אלפי השאלות והמכתבים', 'חיפוש באתר', '', `<div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" aria-label="חיפוש" autofocus></div><div class="chips">${chips}</div>`) }));
 
 export { indexed };

@@ -5,15 +5,16 @@ document.querySelectorAll('link[data-fonts]').forEach((l) => { l.media = 'all'; 
 {
 const me = new URL(document.currentScript.src);
 
-// Start fetching the search index as soon as someone shows intent to search, so results are instant.
-let warm = false;
-const warmSearch = () => {
-  if (warm) return; warm = true;
+// Start fetching the search index once someone shows intent to search, so results are instant:
+// the small titles file when they head for the search page, the full text too when they focus a search box.
+let warm = 0;
+const warmSearch = (full) => {
+  if (warm >= (full ? 2 : 1)) return; warm = full ? 2 : 1;
   const base = me.pathname.replace(/[^/]*$/, '');
-  fetch(`${base}idx/titles.json${me.search}`).then((r) => r.json()).then((d) => { for (let k = 0; k < d.n; k++) fetch(`${base}idx/${k}.json${me.search}`); }).catch(() => {});
+  fetch(`${base}idx/titles.json${me.search}`).then((r) => r.json()).then((d) => { if (full) for (let k = 0; k < d.n; k++) fetch(`${base}idx/${k}.json${me.search}`); }).catch(() => {});
 };
-document.querySelectorAll('input[name=q]').forEach((el) => el.addEventListener('focus', warmSearch, { once: true }));
-document.querySelectorAll('a[href*="/search/"]').forEach((el) => ['pointerenter', 'touchstart', 'focus'].forEach((ev) => el.addEventListener(ev, warmSearch, { once: true, passive: true })));
+document.querySelectorAll('input[name=q]').forEach((el) => el.addEventListener('focus', () => warmSearch(true), { once: true }));
+document.querySelectorAll('a[href*="/search/"]').forEach((el) => ['pointerenter', 'touchstart', 'focus'].forEach((ev) => el.addEventListener(ev, () => warmSearch(false), { once: true, passive: true })));
 const hdr = document.querySelector('.top'), btn = document.querySelector('.mbtn');
 // Header dropdowns (desktop): click/Enter toggles, Escape or a click elsewhere closes.
 const dds = [...document.querySelectorAll('.dd')];
