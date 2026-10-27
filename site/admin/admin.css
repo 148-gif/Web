@@ -50,3 +50,6 @@ ul.eds{list-style:none;padding:0;margin:16px 0}ul.eds li{display:flex;gap:12px;a
 .row>button{align-self:flex-end}
 .ltr{direction:ltr;text-align:left}
 @media(max-width:800px){#app{grid-template-columns:minmax(0,1fr);padding:0 8px;margin:12px auto}#side{position:static;max-height:none;flex-direction:row;flex-wrap:wrap}#side h2{flex-basis:100%}#side button{border:1px solid var(--line);padding:5px 10px}#ed{padding:12px}fieldset{padding:6px 8px 10px;margin:8px 0}details.it>.bd{padding:0 8px 8px}.ah{flex-wrap:wrap;gap:8px}}
+/* Google's sign-in button: its placeholder sizes itself with inline styles, which this page's CSP blocks, so it is sized here. */
+#gbtn{min-height:44px;max-width:320px;margin:12px 0;overflow:hidden}
+#gbtn svg{width:18px;height:18px}
