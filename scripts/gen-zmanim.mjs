@@ -1,0 +1,50 @@
+// Makes site/zmanim/ (the daily zmanim of Yavne'el): one small file per week, named by its Sunday (2026-10-25.json),
+// and index.json with the first and last day. A page loads only the week it shows: today, this Friday and Shabbat are always in one file.
+// (The daily zmanim of Yavne'el) by running the calculation engine of the "Onot" app
+// (עונות) as it is, so the times on this site always match the app's.
+// Usage: node scripts/gen-zmanim.mjs <folder of the app, with js/ and index.html>
+// The folder can be the app's source, or a copy of the published app (index.html lists the script files).
+// Covers the range of the Luchot Chai tables inside the app; to extend it, add the next year to the app and run this again.
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import vm from 'node:vm';
+
+const root = process.argv[2];
+if (!root) throw new Error('Usage: node scripts/gen-zmanim.mjs <app folder>');
+
+// Only the calculation files; screens, storage and the DOM are not needed.
+const files = ['js/config.js', 'js/core/storage.js', 'js/data/yavneel-tables.js', 'js/place.js', 'js/core/dates.js',
+  'js/core/state.js', 'js/zmanim/hebrew-calendar.js', 'js/zmanim/engine.js', 'js/zmanim/format.js'];
+const ctx = { console, Date, Intl, Math, JSON, Map, Set, setTimeout, setInterval: () => 0, navigator: {},
+  localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, document: { addEventListener() {}, getElementById: () => null } };
+ctx.window = ctx;
+vm.createContext(ctx);
+vm.runInContext(files.map((f) => readFileSync(join(root, f), 'utf8')).join('\n;\n'), ctx);
+const run = (code) => vm.runInContext(code, ctx);
+run('initializeModel()');
+
+// A day is [Hebrew date, parasha, sunrise seconds, sunset seconds, ...one time per column].
+// Columns, in the order shown on the page. A day without a zman (candle lighting on a weekday) leaves it empty.
+const cols = ['עלות השחר', 'הנץ החמה', 'סוף ק"ש (מג"א)', 'סוף ק"ש (גר"א)', 'תפילה (גר"א)', 'חצות היום', 'מנחה גדולה',
+  'מנחה קטנה', 'פלג המנחה', 'הדלקת נרות', 'שקיעת החמה', 'צאת הכוכבים', 'צאת השבת', 'רבינו תם'];
+
+const [first, last] = run(`[CHAI_TABLE_YEARS[0].sunset[0].startGreg, (() => { const y = CHAI_TABLE_YEARS.at(-1).sunset.at(-1); const [a, b, c] = y.startGreg.split('-').map(Number); return toDateKey(new Date(Date.UTC(a, b - 1, c + y.times.length - 1, 12))); })()]`);
+const days = {};
+for (let key = first; key <= last; key = run(`addDaysToKey('${key}', 1)`)) {
+  const r = run(`computeZmanim(keyToDate('${key}'))`);
+  if (r.unavailable) continue;
+  const byName = Object.fromEntries(r.items.map((it) => [it.shortName, run('fmtItem')(it)]));
+  const dow = run(`getHebrewCalendarParts(keyToDate('${key}')).dow`);
+  const parasha = dow >= 5 && r.parashaInfo ? r.parashaInfo.fullTitle : '';
+  // Sunrise and sunset also as whole seconds: prayer and mikveh times written relative to them ("20 minutes before sunset") are worked out in the browser.
+  const sec = (name) => Math.round(r.items.find((it) => it.shortName === name).sec);
+  days[key] = [run(`formatHebrewDayMonthOnly(keyToDate('${key}'))`), parasha, sec('הנץ החמה'), sec('שקיעת החמה'), ...cols.map((c) => byName[c] || '')];
+}
+const out = new URL('../site/zmanim/', import.meta.url);
+rmSync(out, { recursive: true, force: true });
+mkdirSync(out, { recursive: true });
+const weeks = {};
+for (const [key, day] of Object.entries(days)) (weeks[run(`addDaysToKey('${key}', -getHebrewCalendarParts(keyToDate('${key}')).dow)`)] ??= {})[key] = day;
+for (const [sunday, wd] of Object.entries(weeks)) writeFileSync(new URL(`${sunday}.json`, out), JSON.stringify({ cols, days: wd }));
+writeFileSync(new URL('index.json', out), JSON.stringify({ min: first, max: last }));
+console.log(`${Object.keys(days).length} days in ${Object.keys(weeks).length} weeks, ${first} to ${last}`);

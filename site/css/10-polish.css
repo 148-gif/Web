@@ -9,6 +9,8 @@ a.tbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min
 @media (max-width:860px){.brand small{font-size:.875rem}}
 
 /* Search: skeleton cards while the index loads */
+/* Search results: room reserved up front, so the footer does not move while results arrive part by part (CLS) */
+#results{min-height:70vh;align-content:start}
 .skel{pointer-events:none}.skel i{display:block;height:1em;border-radius:var(--r-sm);background:linear-gradient(90deg,var(--sunk) 25%,var(--line) 50%,var(--sunk) 75%);background-size:300% 100%;animation:skel 1.4s linear infinite}
 .skel i+i{margin-top:12px;width:70%}
 @keyframes skel{from{background-position:100% 0}to{background-position:-200% 0}}

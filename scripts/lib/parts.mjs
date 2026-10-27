@@ -12,11 +12,36 @@ const ps = (xs) => xs.map((p) => `<p>${esc(p)}</p>`).join('');
 const navBtns = (q, ll = '', cls = '') => `<div class="navbtns${cls}"><a class="btn${ll ? '' : ' touch-only'}" href="${url(ll ? `https://www.waze.com/ul?ll=${encodeURIComponent(ll)}&navigate=yes` : `https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`)}" rel="noopener">${icon('nav', 'ico sm')}ניווט ב־Waze</a><a class="btn${ll ? ' ghost' : ''}" href="${url(ll ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(ll)}&travelmode=driving` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`)}" rel="noopener">${icon('pin', 'ico sm')}Google Maps</a></div>`;
 const anchors = (xs) => `<nav class="chips anchors" aria-label="בעמוד זה">${xs.map(([h, t]) => `<a href="#${h}">${t}</a>`).join('')}</nav>`;
 const ysect = (id, cls, title, sub, body, narrow = true) => `<section class="band${cls ? ' ' + cls : ''}" id="${id}"><div class="wrap${narrow ? ' narrow' : ''}"><h2 class="sh">${title}</h2>${sub ? `<p class="shsub">${sub}</p>` : orn}${body}</div></section>`;
+// Times written relative to the sun get the calculated time next to them (site/zmanim.js fills it in, so the text stays the source of truth).
+// A marker is "ref:minutes:day": ref netz | shkia | rt, minutes from it, day today | fri | sat (the coming one).
+const REL = { 'הנץ החמה': 'netz', 'השקיעה': 'shkia', 'ר״ת': 'rt', 'זמן רבנו תם': 'rt' };
+const relMark = (t, day) => {
+  const m = /^(?:כ־)?(\d+) דק׳ (לפני|אחרי) (הנץ החמה|השקיעה)/.exec(t);
+  if (m) return `${REL[m[3]]}:${m[2] === 'לפני' ? '-' : ''}${m[1]}:${day}`;
+  return /^כשעה אחרי השקיעה/.test(t) ? `shkia:60:${day}` : '';
+};
+const groupDay = (title) => (/לפני שבת|קבלת שבת/.test(title) ? 'fri' : /שבת/.test(title) ? 'sat' : 'today');
+const live = (start, end = '') => (start || end ? `<b class="zl"${start ? ` data-z="${start}"` : ''}${end ? ` data-ze="${end}"` : ''} dir="ltr"></b>` : '');
+// Mikveh hours: "from sunset until 3 hours after", "until an hour before sunset", "from half an hour after Rabbeinu Tam, for about two hours".
+const hoursMark = (title, v) => {
+  const day = /ערב שבת/.test(title) ? 'fri' : /מוצאי שבת/.test(title) ? 'sat' : 'today';
+  let m = /^(?:משקיעת החמה|מהשקיעה) (?:ועד|עד) (?:([\d.]+) שעות|(כשעה)) אחריה$/.exec(v);
+  if (m) return [`shkia:0:${day}`, `shkia:${m[2] ? 60 : Math.round(m[1] * 60)}:${day}`];
+  if (/עד שעה לפני השקיעה$/.test(v)) return ['', `shkia:-60:${day}`];
+  if (/^מחצי שעה אחרי (?:ר״ת|זמן רבנו תם).*כשעתיים$/.test(v)) return [`rt:30:${day}`, `rt:150:${day}`];
+  return ['', ''];
+};
+// Today's sunrise, sunset and the evening zman, in the site's stat-row look. Hidden until site/zmanim.js fills it in.
+const zstrip = () => `<div class="statrow zstrip" hidden><div class="wrap">
+<div>${icon('sunrise', 'ico lg')}<span>הנץ החמה</span><b data-zv="netz"></b></div>
+<div>${icon('sunset', 'ico lg')}<span>שקיעת החמה</span><b data-zv="shkia"></b></div>
+<div><i class="zc">${icon('candle', 'ico lg')}</i><i class="zs">${icon('star', 'ico lg')}</i><span data-zv="thirdname"></span><b data-zv="third"></b></div></div>
+<p class="zdate small"></p></div>`;
 // Prayer schedules fold into one row per prayer (opened by app.js on wide screens); the summary shows the time span.
 const span = (rows) => { const ts = rows.map(([t]) => t).filter((t) => /^\d{1,2}:\d{2}$/.test(t)); return ts.length > 1 ? `${ts[0]}–${ts[ts.length - 1]}` : ts[0] || ''; };
-const sched = (gs) => `<div class="sgrid">${gs.map((g) => `<details class="scard"><summary><h3>${esc(g.title)}</h3><span class="sspan">${rows(g.rows.length)}${span(g.rows) ? ` · <bdi>${span(g.rows)}</bdi>` : ''}</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>${g.note ? `<p class="snote">${esc(g.note)}</p>` : ''}<dl>${g.rows.map(([t, p]) => `<div><dt>${esc(t)}</dt><dd>${esc(p)}</dd></div>`).join('')}</dl></details>`).join('')}</div>`;
+const sched = (gs) => `<div class="sgrid">${gs.map((g) => `<details class="scard"><summary><h3>${esc(g.title)}</h3><span class="sspan">${rows(g.rows.length)}${span(g.rows) ? ` · <bdi>${span(g.rows)}</bdi>` : ''}</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>${g.note ? `<p class="snote">${esc(g.note)}</p>` : ''}<dl>${g.rows.map(([t, p]) => `<div><dt>${esc(t)}${live(relMark(t, groupDay(g.title)))}</dt><dd>${esc(p)}</dd></div>`).join('')}</dl></details>`).join('')}</div>`;
 const rows = (n) => (n === 1 ? 'מניין אחד' : `${n} מניינים`);
-const hours = (rows) => `<dl class="hrs">${rows.map(([t, v]) => `<div><dt>${esc(t)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
+const hours = (rows) => `<dl class="hrs">${rows.map(([t, v]) => `<div><dt>${esc(t)}</dt><dd>${esc(v)}${live(...hoursMark(t, v))}</dd></div>`).join('')}</dl>`;
 const statrow = (xs) => `<div class="statrow"><div class="wrap">${xs.map(([b, s]) => `<div><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join('')}</div></div>`;
 const telA = (n) => `<a href="tel:${tel(n)}">${esc(n)}</a>`;
 // Structured data (JSON-LD) for search and AI engines
@@ -31,4 +56,4 @@ const person = { '@type': 'Person', ...(absu('/moharash/') ? { '@id': absu('/moh
 const tikkunUrl = '/tikkun-haklali/';
 const rnPerson = { '@type': 'Person', ...(absu('/rabbi-nachman/') ? { '@id': absu('/rabbi-nachman/') + '#person', url: absu('/rabbi-nachman/') } : {}), name: 'רבי נחמן מברסלב', alternateName: ['רבינו', 'מוהר״ן', 'מוהר"ן', 'רבי נחמן מברסלב', 'Rebbe Nachman of Breslov', 'Nachman of Breslov'], birthDate: '1772', deathDate: '1810-10', birthPlace: { '@type': 'Place', name: 'מז׳יבוז׳' }, deathPlace: { '@type': 'Place', name: 'אומן' }, description: rn.short, knowsAbout: ['חסידות ברסלב', 'ליקוטי מוהר״ן'], sameAs: rn.sources.slice(0, 2).map(([, u]) => u) };
 
-export { chips, searchForm, ul, ps, navBtns, anchors, ysect, span, sched, rows, hours, statrow, telA, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, person, tikkunUrl, rnPerson };
+export { zstrip, chips, searchForm, ul, ps, navBtns, anchors, ysect, span, sched, rows, hours, statrow, telA, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, person, tikkunUrl, rnPerson };
