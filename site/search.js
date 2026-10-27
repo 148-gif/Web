@@ -8,7 +8,7 @@ const run = () => {
   const terms = strip(input.value).trim().split(/\s+/).filter(Boolean);
   out.textContent = ''; count.textContent = '';
   if (!terms.length) return;
-  if (!items) { count.textContent = 'טוען…'; return; }
+  if (!items) { count.textContent = 'טוען…'; out.innerHTML = '<div class="card skel" aria-hidden="true"><i></i><i></i></div>'.repeat(6); return; }
   const hits = items.filter((r) => terms.every((t) => r.s.includes(t)));
   const more = shards < total ? ' · ממשיך לחפש בתוך התשובות…' : '';
   count.textContent = (hits.length ? `נמצאו ${hits.length} תוצאות${hits.length > 50 ? ' (מוצגות 50 הראשונות)' : ''}` : shards < total ? 'מחפש…' : 'לא נמצאו תוצאות') + (hits.length ? more : '');
@@ -29,7 +29,7 @@ const loadText = () => {
   }).catch(() => { shards++; });
 };
 input.addEventListener('input', () => { loadText(); clearTimeout(timer); timer = setTimeout(run, 120); });
-if (input.value) count.textContent = 'טוען…';
+if (input.value) run();
 get('titles').then((d) => {
   items = d.t.map(([id, title]) => ({ id, title, s: strip(title) }));
   total = d.n; size = d.size; run(); loadText();

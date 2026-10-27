@@ -6,7 +6,7 @@ const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when
 const ORIGIN = (process.env.SITE_ORIGIN || '').replace(/\/$/, ''); // e.g. https://user.github.io; sitemap URLs must be absolute
 const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`) : h);
 const PER_PAGE = 40;
-const FONTS = 'https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@400;700;900&display=swap';
+const FONTS = 'https://fonts.googleapis.com/css2?family=Assistant:wght@400;700&family=Frank+Ruhl+Libre:wght@400;700&display=swap';
 const BUILD = Date.now().toString(36);
 // Text in attributes and <title> is escaped without the bidi marks: search results and share previews would show them.
 const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
