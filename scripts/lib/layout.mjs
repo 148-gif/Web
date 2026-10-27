@@ -9,13 +9,14 @@ const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
 // Until it is in, the page stays hidden: behind the branded splash on the first page of a visit (which also waits
 // for the fonts), otherwise only for the moment it takes to come from the cache. Either way it appears once, styled.
 const HEAD_JS = [
-  "var d=document.documentElement,sp=0,ready=function(){d.classList.add('ready')};d.classList.add('js');",
+  // Wrapped in a function so none of its variables leak into the page's global scope (where site scripts live too).
+  "(function(){var d=document.documentElement,sp=0,ready=function(){d.classList.add('ready')};d.classList.add('js');",
   // Saved text size, and whether the splash was already shown this visit; storage may be blocked, so both are optional.
   "try{var rs=parseFloat(localStorage.getItem('rs'));if(rs>=0.85&&rs<=1.5)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){sp=1;sessionStorage.setItem('seen',1)}}catch(e){}",
   `d.classList.add(sp?'splash':'wait');var l=document.createElement('link'),f=document.fonts;l.rel='stylesheet';l.href='${CSS_URL}';`,
   `l.onload=l.onerror=function(){(sp&&f&&f.load?Promise.all([f.load('1em Assistant','א1'),f.load('900 1em "Frank Ruhl Libre"','א1')]):Promise.resolve()).then(ready,ready)};`,
   // Never leave the page hidden: show it after 6 seconds even if the stylesheet is still on its way.
-  'document.head.appendChild(l);setTimeout(ready,6000)',
+  'document.head.appendChild(l);setTimeout(ready,6000)})()',
 ].join('');
 // Prefetch same-site pages on hover/touch so navigation feels instant.
 // PDFs are left out: a hover would otherwise download the whole book.
