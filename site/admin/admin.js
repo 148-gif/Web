@@ -19,12 +19,13 @@
   var BLOCKS = { text: ['טקסט', { type: 'text', title: '', paragraphs: [''] }], cards: ['כרטיסים', { type: 'cards', title: '', items: [{ title: '', text: '' }] }], faq: ['שאלות ותשובות', { type: 'faq', title: '', items: [{ q: '', a: '' }] }], quote: ['ציטוט', { type: 'quote', text: '', by: '' }], links: ['קישורים', { type: 'links', title: '', items: [{ title: '', url: 'https://' }] }] };
   var ICONS = ['book', 'books', 'crown', 'lyre', 'candle', 'flame', 'heart', 'star', 'users', 'letter', 'sparkle', 'home', 'mountain', 'drop', 'school', 'scale', 'pin', 'clock', 'chat'];
 
-  var cfg, token, cur = null, dirty = false;
+  var RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachman', 'uman', 'tikkun-haklali', 'moharash', 'yeshiva', 'print', 'yavniel', 'mikveh-malka', 'institutions', 'search', 'about', 'contact', 'accessibility', 'privacy', 'offline', 'fonts', 'img', 'books', 'idx', 'zmanim'];
+  var cfg, token, cur = null, dirty = false, rawBad = false;
 
   // ---- GitHub ----
   function api(path, opt) {
     opt = opt || {};
-    return fetch('https://api.github.com/repos/' + cfg.repo + '/' + path, Object.assign({}, opt, { headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } })).then(function (r) {
+    return fetch('https://api.github.com/repos/' + cfg.repo + (path ? '/' + path : ''), Object.assign({}, opt, { headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } })).then(function (r) {
       if (r.ok) return r.status === 204 ? null : r.json();
       return r.text().then(function (t) { var e = new Error(r.status === 401 ? 'המפתח לא תקין או שפג תוקפו' : r.status === 403 || r.status === 404 ? 'אין הרשאה, או שהקובץ לא קיים (' + r.status + ')' : r.status === 409 || r.status === 422 ? 'הקובץ השתנה בינתיים. טענו מחדש ונסו שוב (' + r.status + ')' : 'שגיאה ' + r.status + ': ' + t.slice(0, 150)); e.status = r.status; throw e; });
     });
@@ -143,11 +144,12 @@
   }
   function open(path) {
     if (!leave()) return;
-    dirty = false;
+    dirty = false; rawBad = false;
     $('#ed').textContent = 'טוען…';
     getFile(path).then(function (f) { cur = f; show(); }, function (e) { $('#ed').textContent = ''; say(e.message, true); });
   }
   function show(raw) {
+    if (rawBad) return say('ה־JSON לא תקין. תקנו אותו לפני המעבר לטופס.', true);
     var ed = $('#ed'), y = window.scrollY; ed.textContent = '';
     document.querySelectorAll('#side button').forEach(function (b) { b.classList.toggle('cur', b.getAttribute('data-p') === cur.path); });
     var isPage = /^data\/pages\//.test(cur.path);
@@ -162,7 +164,7 @@
     }
     if (raw) {
       var ta = el('textarea', { class: 'raw' }); ta.value = JSON.stringify(cur.data, null, 2);
-      ta.addEventListener('input', function () { try { cur.data = JSON.parse(ta.value); touch(); ta.setCustomValidity(''); } catch { ta.setCustomValidity('x'); } });
+      ta.addEventListener('input', function () { touch(); try { cur.data = JSON.parse(ta.value); rawBad = false; ta.setCustomValidity(''); } catch { rawBad = true; ta.setCustomValidity('JSON לא תקין'); } });
       ed.append(ta);
     } else {
       var wrap = el('div');
@@ -182,15 +184,42 @@
     }
     if (path === 'data/topics.json') {
       if (!Array.isArray(data)) return 'רשימת הנושאים חייבת להיות רשימה';
-      for (var i = 0; i < data.length; i++) { if (!/^[a-z0-9-]+$/.test(data[i].slug || '')) return 'מזהה נושא חייב להיות באותיות לועזיות קטנות, ספרות ומקף'; if (!data[i].title) return 'חסרה כותרת לנושא ' + data[i].slug; }
+      for (var i = 0; i < data.length; i++) { if (RESERVED.indexOf(data[i].slug) > -1) return 'המזהה "' + data[i].slug + '" תפוס על ידי חלק קיים באתר'; if (!/^[a-z0-9-]+$/.test(data[i].slug || '')) return 'מזהה נושא חייב להיות באותיות לועזיות קטנות, ספרות ומקף'; if (!data[i].title) return 'חסרה כותרת לנושא ' + data[i].slug; }
     }
     return '';
   }
   function save() {
+    if (rawBad) return say('ה־JSON לא תקין, ולכן לא נשמר.', true);
     var err = check(cur.path, cur.data);
     if (err) return say(err, true);
-    var name = cur.path.replace(/^data\//, '');
-    putFile(cur.path, cur.data, cur.indent, cur.sha, 'עריכת תוכן: ' + name).then(function (r) { cur.sha = r.content.sha; dirty = false; var d = $('.dirty'); if (d) d.hidden = true; say('נשמר. האתר יתעדכן בעוד דקה או שתיים.'); }, function (e) { say(e.message, true); });
+    var f = cur, name = f.path.replace(/^data\//, '');
+    // A page must point at an existing topic, and a topic still in use by a page cannot be removed: either would fail the build.
+    var guard = /^data\/pages\//.test(f.path) ? getFile('data/topics.json').then(function (t) { if (!t.data.some(function (x) { return x.slug === f.data.topic; })) throw new Error('הנושא "' + f.data.topic + '" לא קיים ברשימת הנושאים'); })
+      : f.path === 'data/topics.json' ? pageTopics().then(function (used) { var gone = used.filter(function (u) { return !f.data.some(function (x) { return x.slug === u; }); }); if (gone.length) throw new Error('יש דפים בנושא "' + gone[0] + '". מחקו או העבירו אותם לפני מחיקת הנושא.'); })
+        : Promise.resolve();
+    guard.then(function () { return putFile(f.path, f.data, f.indent, f.sha, 'עריכת תוכן: ' + name); }).then(function (r) { f.sha = r.content.sha; if (cur === f) { dirty = false; var d = $('.dirty'); if (d) d.hidden = true; } published(r.commit.sha); }, function (e) { say(e.message, true); });
+  }
+  function pageTopics() {
+    return api('contents/data/pages?ref=' + encodeURIComponent(cfg.branch)).catch(function () { return []; }).then(function (fs) {
+      return Promise.all(fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { return getFile('data/pages/' + x.name).then(function (p) { return p.data.topic; }); }));
+    });
+  }
+  // After a save: follow the publishing run, so the editor hears whether the site was actually updated.
+  // Needs the token's Actions (read) permission; without it, only the save itself is reported.
+  function published(sha) {
+    say('נשמר. האתר מתעדכן, זה לוקח דקה או שתיים…');
+    var tries = 0;
+    (function poll() {
+      if (++tries > 40) return;
+      setTimeout(function () {
+        api('actions/runs?head_sha=' + sha).then(function (r) {
+          var run = (r.workflow_runs || [])[0];
+          if (!run || run.status !== 'completed') return poll();
+          if (run.conclusion === 'success') say('האתר עודכן.');
+          else say('הפרסום נכשל, והאתר נשאר כמו שהיה. כנראה יש שגיאה בתוכן ששמרתם. פרטים: ' + run.html_url, true);
+        }, function () { /* no Actions permission: nothing more to report */ });
+      }, 10000);
+    })();
   }
   function del() {
     if (!confirm('למחוק את הדף "' + cur.data.title + '" מהאתר?')) return;
@@ -206,7 +235,7 @@
     var errp = el('p', { class: 'err', role: 'alert' });
     form.append(errp, el('p', {}, el('button', { type: 'submit', class: 'pri', text: 'יצירה' }), ' ', el('button', { type: 'button', text: 'ביטול', onclick: function () { dlg.close(); dlg.remove(); } })));
     form.addEventListener('submit', function (e) { e.preventDefault(); var r = ok(); if (typeof r === 'string') errp.textContent = r; else r.then(function () { dlg.close(); dlg.remove(); }, function (x) { errp.textContent = x.message; }); });
-    dlg.append(form); document.body.append(dlg); dlg.showModal();
+    dlg.addEventListener('close', function () { dlg.remove(); }); dlg.append(form); document.body.append(dlg); dlg.showModal();
   }
   var slugInput = function () { return el('input', { type: 'text', class: 'ltr', pattern: '[a-z0-9\\-]+', required: true, autocomplete: 'off' }); };
   function newTopic() {
@@ -256,6 +285,7 @@
       try { (($('#rem').checked) ? localStorage : sessionStorage).setItem('cms-token', token); } catch { /* storage blocked */ }
       $('#lerr').textContent = ''; enter();
     });
+    $('#tok').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('#go').click(); });
     $('#out').addEventListener('click', function () { if (!leave()) return; dirty = false; try { localStorage.removeItem('cms-token'); sessionStorage.removeItem('cms-token'); } catch { /* storage blocked */ } location.reload(); });
     if (token) enter();
   });

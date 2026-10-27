@@ -4,14 +4,14 @@
 <meta name="robots" content="noindex"><meta name="referrer" content="no-referrer">
 <title>עריכת האתר | היכל הקודש</title><link rel="icon" href="data:,"><link rel="stylesheet" href="admin.css"></head>
 <body>
-<header class="ah"><b>עריכת האתר</b><span id="who"></span><a href="../">לאתר ←</a><button type="button" id="out" hidden>יציאה</button></header>
+<header class="ah"><b>עריכת האתר</b><span id="who" dir="ltr"></span><a href="../">לאתר ←</a><button type="button" id="out" hidden>יציאה</button></header>
 <main id="login" class="box">
   <h1>כניסה לעריכה</h1>
   <p>העריכה נשמרת ישירות במאגר הקבצים של האתר, ולכן צריך מפתח גישה אישי מ־GitHub. המפתח נשמר בדפדפן הזה בלבד ולא נשלח לשום מקום אחר.</p>
   <ol>
     <li>נכנסים ל־<a href="https://github.com/settings/personal-access-tokens/new" rel="noopener" target="_blank">יצירת מפתח אישי ב־GitHub</a>.</li>
     <li>ב־Repository access בוחרים Only select repositories ואת מאגר האתר.</li>
-    <li>ב־Permissions → Repository permissions מגדירים Contents: Read and write.</li>
+    <li>ב־Permissions → Repository permissions מגדירים Contents: Read and write, ו־Actions: Read-only (כדי לדעת אם הפרסום הצליח).</li>
     <li>מעתיקים את המפתח ומדביקים כאן.</li>
   </ol>
   <label for="tok">מפתח גישה</label><input id="tok" type="password" autocomplete="off" dir="ltr">

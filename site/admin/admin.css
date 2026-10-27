@@ -31,11 +31,11 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .bar .dirty{color:var(--err);font-size:.9rem}
 .fld{margin:12px 0}
 .fld>label{font-size:.92rem;color:var(--mut)}
-fieldset{border:1px solid var(--line);border-radius:10px;margin:12px 0;padding:8px 14px 14px}
+fieldset{min-width:0;border:1px solid var(--line);border-radius:10px;margin:12px 0;padding:8px 14px 14px}
 legend{font-weight:700;padding:0 6px}
 details.it{border:1px solid var(--line);border-radius:10px;margin:8px 0;background:#fcfbf7}
 details.it>summary{cursor:pointer;padding:8px 12px;display:flex;gap:8px;align-items:center}
-details.it>summary .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+details.it>summary .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 details.it>.bd{padding:0 12px 12px}
 .tools{display:flex;gap:4px}
 .row{display:flex;gap:8px;align-items:flex-start;margin:6px 0}.row>.fld{flex:1;margin:0}
@@ -46,4 +46,4 @@ details.it>.bd{padding:0 12px 12px}
 dialog{border:1px solid var(--line);border-radius:12px;padding:20px;max-width:480px;width:calc(100% - 32px)}
 dialog::backdrop{background:#0006}
 .ltr{direction:ltr;text-align:left}
-@media(max-width:800px){#app{grid-template-columns:1fr}#side{position:static;max-height:none}}
+@media(max-width:800px){#app{grid-template-columns:minmax(0,1fr);padding:0 8px;margin:12px auto}#side{position:static;max-height:none;flex-direction:row;flex-wrap:wrap}#side h2{flex-basis:100%}#side button{border:1px solid var(--line);padding:5px 10px}#ed{padding:12px}fieldset{padding:6px 8px 10px;margin:8px 0}details.it>.bd{padding:0 8px 8px}.ah{flex-wrap:wrap;gap:8px}}
