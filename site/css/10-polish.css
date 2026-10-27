@@ -33,3 +33,20 @@ header.top.hide{transition-timing-function:var(--ease-in)}
 .slabel{display:block;max-width:600px;margin:24px auto 8px;padding-inline:24px;font:700 .875rem/1.4 var(--sans);color:var(--on-navy3);text-align:start}
 .slabel+.hsearch{margin-top:0}
 .empty .slabel{color:var(--mute)}
+
+/* Share menu (desktop) and confirmation toast */
+.tools{position:relative}
+.sharemenu{position:absolute;top:calc(100% + 4px);inset-inline-end:0;z-index:30;display:grid;min-width:200px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 1px 2px rgba(20,30,60,.06),0 16px 32px rgba(20,30,60,.14);animation:fnin .18s var(--ease)}
+.sharemenu button{min-height:44px;padding:0 12px;justify-content:flex-start;background:none;color:var(--ink);font:700 1rem var(--sans);box-shadow:none;border-radius:var(--r-sm)}
+.sharemenu button:hover,.sharemenu button:focus-visible{background:var(--sunk);transform:none;filter:none}
+.toast{position:fixed;inset-inline:16px;bottom:max(24px,env(safe-area-inset-bottom));z-index:80;max-width:420px;margin-inline:auto;padding:12px 16px;border-radius:var(--r-md);background:var(--navy);color:#fff;font:700 1rem var(--sans);text-align:center;box-shadow:0 12px 32px rgba(4,10,30,.3);opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .2s var(--ease-in),transform .2s var(--ease-in)}
+.toast.show{opacity:1;transform:none;transition-timing-function:var(--ease)}
+
+/* App-only actions (Waze without exact coordinates) stay off computers with a mouse */
+@media (hover:hover) and (pointer:fine){.touch-only{display:none!important}}
+
+/* Share a selected passage: small floating button beside the selection */
+.selshare{position:absolute;z-index:35;animation:fnin .15s var(--ease)}
+.selshare>.btn{min-height:40px;padding:8px 16px;border-radius:999px;font-size:.875rem;box-shadow:0 8px 24px rgba(11,29,80,.28)}
+.selshare .sharemenu{inset-inline-end:auto;inset-inline-start:0}
+@media (pointer:coarse){.selshare>.btn{min-height:44px}}
