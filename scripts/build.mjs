@@ -64,7 +64,8 @@ for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (cons
 const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
 const HEAD_JS = `var d=document.documentElement,u='${CSS_URL}',sp=0;d.classList.add('js');try{var rs=parseFloat(localStorage.getItem('rs'));if(rs>=0.85&&rs<=1.5)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){sp=1;sessionStorage.setItem('seen',1)}}catch(e){}if(sp){d.classList.add('splash');var l=document.createElement('link');l.rel='stylesheet';l.href=u;l.onload=l.onerror=function(){d.classList.add('ready')};document.head.appendChild(l)}else document.write('<link rel="stylesheet" href="'+u+'">')`;
 // Prefetch same-site pages on hover/touch so navigation feels instant.
-const SPEC = '{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}';
+// PDFs are left out: a hover would otherwise download the whole book.
+const SPEC = '{"prefetch":[{"where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":"/*.pdf"}}]},"eagerness":"moderate"}]}';
 const sha = (t) => `'sha256-${createHash('sha256').update(t).digest('base64')}'`;
 const frames = [pr.donate.iframeUrl].filter(Boolean).map((u) => new URL(u).origin);
 const CSP = [
@@ -157,7 +158,7 @@ ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 <footer class="foot"><div class="wrap"><div class="fbrand"><span class="mark">${icon('flame')}</span><div><b>${SITE}</b><span>אור הצדיק לכל נפש</span></div></div>
 <nav aria-label="ניווט תחתון">${nav.slice(1, -1).map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>
 <nav class="finfo" aria-label="מידע על האתר">${infoNav.map(([h, t]) => `<a href="${h}"${h === self ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</nav>
-<p>שו״ת ברסלב נכתב על ידי <a href="/moharash/">הצדיק מיבניאל זצ״ל</a>, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer><button type="button" class="totop" aria-label="חזרה לראש העמוד" hidden><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script></body></html>`;
+<p>שו״ת ברסלב נכתב על ידי <a href="/moharash/">הצדיק מיבניאל זצ״ל</a>, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer><button type="button" class="totop" aria-label="חזרה לראש העמוד" hidden><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">${SPEC}</script></body></html>`;
 
 const sr = (t) => `<h2 class="sr">${t}</h2>`;
 const card = (x, base = '/shut/') => `<a class="card qcard" href="${base}${x.id}/"><h3>${esc(x.title)}</h3><p>${esc((x.a.find((p) => p.length > 60) || x.a[0]).slice(0, 150))}…</p><span class="go">לקריאת התשובה ←</span></a>`;
@@ -280,7 +281,7 @@ ${ysect('passing', 'soft', 'פטירתו', '', `<div class="about">${ps(mo.passi
 <section class="band soft" id="faq"><div class="wrap narrow"><h2 class="sh">שאלות נפוצות</h2><p class="shsub">בקצרה, על הצדיק מיבנאל</p>${faqHtml(mo.faq)}</div></section>
 ${srcList(mo.sources)}`,
   { desc: 'מוהרא״ש, הצדיק מיבנאל: רבי אליעזר שלמה שיק (1940–2015), מנהיג בחסידות ברסלב, מייסד היכל הקודש ומחבר אשר בנחל. תולדות חייו, דרכו, ספריו וציונו ביבנאל.', path: '/moharash/', full: true,
-    head: phead('רבי אליעזר שלמה שיק זצ״ל', esc(mo.title), esc(mo.lead), `${anchors([['life', 'תולדות חייו'], ['story', 'סיפור ההסתר'], ['teachings', 'דרכו'], ['books', 'ספריו'], ['passing', 'פטירתו'], ['faq', 'שאלות נפוצות']])}<div class="navbtns hcta"><a class="btn" href="/moharash/tziyun/">${icon('flame', 'ico sm')}לציון הצדיק</a><a class="btn ghost" href="/shut/">${icon('book', 'ico sm')}שו״ת ברסלב</a></div>`),
+    head: phead('רבי אליעזר שלמה שיק זצ״ל', esc(mo.title), esc(mo.lead), `${anchors([['life', 'תולדות חייו'], ['teachings', 'דרכו'], ['books', 'ספריו'], ['passing', 'פטירתו'], ['faq', 'שאלות נפוצות']])}<div class="navbtns hcta"><a class="btn" href="/moharash/tziyun/">${icon('flame', 'ico sm')}לציון הצדיק</a><a class="btn ghost" href="/shut/">${icon('book', 'ico sm')}שו״ת ברסלב</a></div>`),
     head_extra: ld({ '@context': 'https://schema.org', '@graph': [person, crumbs([['בית', '/'], [mo.title, '/moharash/']]), faqLd(mo.faq)] }) }));
 
 const tz = mo.tziyun;
@@ -454,11 +455,11 @@ ${stick}`, { desc: h.sub, path: '/print/', full: true }));
 write('print/promise/index.html', layout('ההבטחה והסגולה', `<section class="phero2 short"><div class="wrap"><p class="kicker2">ההבטחה</p><h1>מה הבטיח הצדיק</h1></div></section>
 ${sect('quoteband', promiseBlock)}
 ${sect('', `<div class="about promise">${pr.promiseText.map((p) => `<p>${esc(p)}</p>`).join('')}</div><p class="ctarow">${cta()}</p>${trust}`)}
-${stick}`, { full: true, desc: 'ההבטחה בשם הצדיק מיבניאל זצ״ל למשתתפים בהדפסת אשר בנחל', path: '/print/' }));
+${stick}`, { full: true, desc: 'ההבטחה בשם הצדיק מיבניאל זצ״ל למשתתפים בהדפסת אשר בנחל', path: '/print/', self: '/print/promise/' }));
 
 write('print/donate/index.html', layout('תרומה להדפסת אשר בנחל', `<section class="phero2 short"><div class="wrap"><p class="kicker2">כמעט שם</p><h1>הצטרפו להדפסת אשר בנחל</h1><p class="sub">בחרו סכום, רשמו הקדשה, וסיימתם. התשלום מאובטח.</p>${trust}</div></section>
 ${sect('', `${sr('בחירת סכום')}${goal}${tierCards('#donate')}${donateBox()}<p class="small center">התרומה היא להדפסת ספרי הצדיק והפצתם. אין בה התחייבות לתוצאה מסוימת.</p>`)}
-${sect('soft', `<div class="info narrow"><h2>פרטים חשובים לפני התרומה</h2>${orgLine ? `<p><b>מקבל התרומה:</b> ${orgLine}.</p>` : ''}<p><b>אבטחת התשלום:</b> התשלום מתבצע בטופס המאובטח של מערכת ״נדרים פלוס״. פרטי האשראי מוזנים ישירות אצלם, ואינם עוברים דרך האתר ואינם נשמרים בו.</p><p><b>קבלה:</b> ניתן לבקש קבלה בעת התרומה.${org.section46 ? ' התרומות מוכרות לזיכוי ממס לפי סעיף 46 לפקודת מס הכנסה.' : ''}</p><p><b>ביטול או טעות בחיוב:</b> תרומה שבוצעה בטעות, או חיוב כפול, יבוטלו לפי בקשה. פנו אלינו <a href="/contact/">בעמוד צור קשר</a> בהקדם ונטפל בפנייה.</p><p><b>פרטיות:</b> פרטיכם משמשים לביצוע התרומה, להקדשה ולמשלוח קבלה בלבד. פרטים נוספים ב<a href="/privacy/">מדיניות הפרטיות</a>.</p></div>`)}`, { full: true, desc: 'תרומה באשראי להדפסת אשר בנחל', path: '/print/' }));
+${sect('soft', `<div class="info narrow"><h2>פרטים חשובים לפני התרומה</h2>${orgLine ? `<p><b>מקבל התרומה:</b> ${orgLine}.</p>` : ''}<p><b>אבטחת התשלום:</b> התשלום מתבצע בטופס המאובטח של מערכת ״נדרים פלוס״. פרטי האשראי מוזנים ישירות אצלם, ואינם עוברים דרך האתר ואינם נשמרים בו.</p><p><b>קבלה:</b> ניתן לבקש קבלה בעת התרומה.${org.section46 ? ' התרומות מוכרות לזיכוי ממס לפי סעיף 46 לפקודת מס הכנסה.' : ''}</p><p><b>ביטול או טעות בחיוב:</b> תרומה שבוצעה בטעות, או חיוב כפול, יבוטלו לפי בקשה. ${contactList(sc).length ? 'פנו אלינו <a href="/contact/">בעמוד צור קשר</a> בהקדם ונטפל בפנייה.' : 'פנו בהקדם לשירות הלקוחות של ״נדרים פלוס״, שדרכה בוצע החיוב. פרטי הפנייה מופיעים בקבלה שנשלחה אליכם.'}</p><p><b>פרטיות:</b> פרטיכם משמשים לביצוע התרומה, להקדשה ולמשלוח קבלה בלבד. פרטים נוספים ב<a href="/privacy/">מדיניות הפרטיות</a>.</p></div>`)}`, { full: true, desc: 'תרומה באשראי להדפסת אשר בנחל', path: '/print/', self: '/print/donate/' }));
 
 // Letters
 write('letters/index.html', layout('מכתבים', `${sr('רשימת המכתבים')}<div class="grid">${letters.map((x) => card(x, '/letters/')).join('')}</div>`, { path: '/letters/', head: phead('מכתבי הצדיק מיבניאל זצ״ל', 'מכתבים', 'מכתבים כלליים לאנשי שלומנו: חיזוק, עצות ודרך בעבודת ה׳.') }));
@@ -506,7 +507,7 @@ write('about/index.html', layout('אודות', doc([
 ]), { path: '', self: '/about/', desc: `על ${SITE}: שו״ת ברסלב של הצדיק מיבניאל זצ״ל, מכתבים ומידע על הקהילה`, head: phead('אור הצדיק לכל נפש', 'אודות האתר') }));
 
 const ci = contactList(sc);
-write('contact/index.html', layout('צור קשר', `${ci.length ? clist(ci) : `<div class="empty">${icon('letter', 'ico lg')}<h2>פרטי הקשר יעודכנו בקרוב</h2><p>בינתיים, שאלות על תרומה להדפסה אפשר לשאול בטופס התרומה עצמו.</p></div>`}
+write('contact/index.html', layout('צור קשר', `${ci.length ? clist(ci) : `<div class="empty">${icon('letter', 'ico lg')}<h2>פרטי הקשר יעודכנו בקרוב</h2><p>בינתיים, בשאלה על תרומה שבוצעה, חיוב כפול או ביטול, פנו לשירות הלקוחות של ״נדרים פלוס״, שדרכה בוצע החיוב. פרטי הפנייה מופיעים בקבלה שנשלחה אליכם.</p></div>`}
 ${doc([
   ['במה נוכל לעזור', UL([
     'תרומות, קבלות, תשלומים וביטול חיוב שבוצע בטעות.',

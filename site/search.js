@@ -28,5 +28,5 @@ get('titles').then((d) => {
   for (let k = 0; k < d.n; k++) get(k).then((w) => {
     w.forEach((txt, i) => { const r = items[k * d.size + i]; r.s += ' ' + txt; });
     shards++; if (input.value.trim()) run();
-  });
-});
+  }).catch(() => { shards++; });
+}).catch(() => { count.textContent = 'החיפוש לא נטען. בדקו את החיבור ורעננו את העמוד.'; });
