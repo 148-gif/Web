@@ -356,3 +356,16 @@ ul.upl .okrow small{color:var(--ok)}ul.upl .badrow small{color:var(--err)}
 .mgrid.pick{max-height:50vh;overflow:auto;margin-top:12px}
 .mprev{display:block;max-width:240px;max-height:160px;margin:8px 0;border-radius:8px;border:1px solid var(--line)}
 @media (max-width:560px){.mgrid{grid-template-columns:1fr}}
+
+/* long file names (camera files are long strings of digits) must wrap, never widen the page */
+.mgrid>*,.mcard,.mcard .grow,ul.upl li,ul.upl .grow{min-width:0}
+.mname,ul.upl .grow{overflow-wrap:anywhere;unicode-bidi:plaintext}
+.mname{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+ul.upl li .grow{flex:1 1 100%}
+ul.upl .prog{flex:1 1 80px;width:auto;max-width:160px}
+@media (max-width:560px){
+  .mgrid{grid-template-columns:minmax(0,1fr)}
+  .mcard{flex-wrap:wrap}
+  .mcard .acts{flex-direction:row;width:100%}
+  .mcard .acts .btn{flex:1}
+}
