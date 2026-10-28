@@ -52,6 +52,10 @@
     letter: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/>',
     sparkle: '<path d="M12 3l1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8z"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/>',
+    film: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>',
+    music: '<path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.2"/><circle cx="17" cy="16" r="2.2"/>',
+    file: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h6"/>',
     list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
   };
   function icon(n, cls) { var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'ico' + (cls ? ' ' + cls : '')); s.setAttribute('aria-hidden', 'true'); s.innerHTML = ICON[n] || ICON.page; return s; }
@@ -104,6 +108,10 @@
     cards: { name: 'כרטיסים', icon: 'cards', hint: 'רשת של כרטיסים קצרים', make: function () { return { type: 'cards', title: '', items: [{ title: '', text: '' }] }; } },
     faq: { name: 'שאלות ותשובות', icon: 'faq', hint: 'שאלות שנפתחות בלחיצה', make: function () { return { type: 'faq', title: '', items: [{ q: '', a: '' }] }; } },
     quote: { name: 'ציטוט', icon: 'quote', hint: 'משפט מודגש עם מקור', make: function () { return { type: 'quote', text: '', by: '' }; } },
+    image: { name: 'תמונה', icon: 'image', hint: 'תמונה מהספרייה או מקישור', make: function () { return { type: 'image', src: '', alt: '', caption: '' }; } },
+    video: { name: 'סרטון', icon: 'film', hint: 'סרטון מהספרייה או מקישור', make: function () { return { type: 'video', src: '', title: '', caption: '' }; } },
+    audio: { name: 'שמע', icon: 'music', hint: 'קובץ שמע להאזנה', make: function () { return { type: 'audio', src: '', title: '' }; } },
+    file: { name: 'מסמך להורדה', icon: 'file', hint: 'PDF, Word, Excel ועוד', make: function () { return { type: 'file', src: '', title: '', desc: '' }; } },
     links: { name: 'קישורים', icon: 'link', hint: 'רשימת קישורים לאתרים אחרים', make: function () { return { type: 'links', title: '', items: [{ title: '', url: 'https://' }] }; } },
   };
   var RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachman', 'uman', 'tikkun-haklali', 'moharash', 'yeshiva', 'print', 'yavniel', 'mikveh-malka', 'institutions', 'search', 'about', 'contact', 'accessibility', 'privacy', 'offline', 'fonts', 'img', 'books', 'idx', 'zmanim'];
@@ -354,6 +362,7 @@
     nav.append(el('h3', { text: 'ניהול' }));
     if (draft) {
       var pl = link('#/changes', 'list', 'שינויים ממתינים'); pl.append(el('b', { id: 'hi-count', class: 'nb', text: String(pending.list.length) })); nav.append(pl);
+      nav.append(link('#/media', 'image', 'ספריית מדיה'));
       if (publisher) nav.append(link('#/log', 'clock', 'יומן פעילות'));
     }
     var lk = link('#/links', 'link', 'קישורים ו־SEO'); lk.append(el('b', { id: 'lk-count', class: 'nb', text: '' })); nav.append(lk);
@@ -793,6 +802,7 @@
           var def = BLOCKS[b.type] || { name: b.type, icon: 'text' };
           var body = el('div', { class: 'bbody' });
           if (b.type === 'text') body.append(textInput(b, 'title', 'כותרת המקטע (לא חובה)'), listField(b, 'paragraphs', '', { rerender: draw }));
+          else if (MEDIA_BLOCK[b.type]) body.append(mediaFields(b, draw));
           else if (b.type === 'quote') body.append(textInput(b, 'text', 'הציטוט', { long: true }), textInput(b, 'by', 'מקור (לא חובה)'));
           else {
             body.append(textInput(b, 'title', 'כותרת המקטע (לא חובה)'));
@@ -851,6 +861,12 @@
   }
   function pageProblem(p) {
     if (!p.title || !p.title.trim()) return 'חסרה כותרת לדף';
+    var mb_ = (p.blocks || []).filter(function (b) { return MEDIA_BLOCK[b.type]; });
+    for (var i = 0; i < mb_.length; i++) {
+      var b = mb_[i], what = BLOCKS[b.type].name;
+      if (!/^(\/media\/[\w.-]+|https:\/\/\S+)$/.test(b.src || '')) return 'בחרו קובץ למקטע ה' + what + ', או הדביקו קישור שמתחיל ב־https://';
+      if (b.type === 'image' ? !String(b.alt || '').trim() : !String(b.title || '').trim()) return b.type === 'image' ? 'חסר תיאור לתמונה (לקוראי מסך)' : 'חסרה כותרת למקטע ה' + what;
+    }
     if ((p.blocks || []).some(function (b) { return b.type === 'links' && (b.items || []).some(function (l) { return !/^https:\/\/\S+$/.test(l.url || ''); }); })) return 'כל קישור צריך להתחיל ב־https://';
     return '';
   }
@@ -878,6 +894,13 @@
       if (b.type === 'cards') return sect(i, '<div class="grid notes">' + (b.items || []).map(function (c) { return '<div class="card"><h3>' + esc(c.title) + '</h3><p>' + esc(c.text) + '</p></div>'; }).join('') + '</div>', b, true);
       if (b.type === 'faq') return sect(i, '<div class="faqs">' + (b.items || []).map(function (x, n) { return '<details class="faq"' + (n ? '' : ' open') + '><summary>' + esc(x.q) + '</summary><p>' + esc(x.a) + '</p></details>'; }).join('') + '</div>', b);
       if (b.type === 'quote') return '<section class="band quoteband"><div class="wrap"><blockquote class="pq small"><p>' + esc(b.text) + '</p>' + (b.by ? '<cite>' + esc(b.by) + '</cite>' : '') + '</blockquote></div></section>';
+      if (MEDIA_BLOCK[b.type]) {
+        var u = esc(/^\//.test(b.src || '') ? new URL('..' + b.src, location.href).href : b.src || '');
+        if (b.type === 'image') return sect(i, '<figure class="media"><img src="' + u + '" alt="' + esc(b.alt) + '">' + (b.caption ? '<figcaption>' + esc(b.caption) + '</figcaption>' : '') + '</figure>', b);
+        if (b.type === 'video') return sect(i, '<figure class="media"><video controls preload="metadata" src="' + u + '"></video><figcaption>' + esc(b.caption || b.title) + '</figcaption></figure>', b);
+        if (b.type === 'audio') return sect(i, '<figure class="media audio"><figcaption>' + esc(b.title) + '</figcaption><audio controls src="' + u + '"></audio></figure>', b);
+        return sect(i, '<a class="filecard"><span class="ftxt"><b>' + esc(b.title) + '</b>' + (b.desc ? '<span>' + esc(b.desc) + '</span>' : '') + '</span><span class="btn">הורדה</span></a>', b);
+      }
       if (b.type === 'links') return sect(i, '<ul>' + (b.items || []).map(function (l) { return '<li><a>' + esc(l.title) + '</a></li>'; }).join('') + '</ul>', b);
       return '';
     }).join('');
@@ -1111,6 +1134,151 @@
     editorsApi('GET').then(drawList, function (e) { card.textContent = ''; say(e.message, 'bad'); });
   }
 
+  // ---- media: images, video, audio and documents ----
+  // Small files are kept in the site's repository and published with everything else; large files and video go to R2 (the
+  // server decides, by type and size, and counts the free allowance of each place). A page points at a file by its link.
+  var MEDIA_KINDS = { image: ['תמונה', 'image'], video: ['סרטון', 'film'], audio: ['שמע', 'music'], doc: ['מסמך', 'file'] };
+  var MEDIA_BLOCK = { image: 'image', video: 'video', audio: 'audio', file: 'doc' }; // page block type -> media kind
+  var MEDIA_ACCEPT = '.jpg,.jpeg,.png,.webp,.gif,.avif,.mp4,.webm,.mov,.mp3,.m4a,.wav,.ogg,.aac,.pdf,.docx,.xlsx,.pptx,.txt,.epub';
+  var PIECE = 393216;
+  // Isolated, so "2.3 MB" keeps its order inside right-to-left text.
+  function mbytes(n) { return '\u2066' + (n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB') + '\u2069'; }
+  function readB64(blob) { return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(String(r.result).replace(/^data:[^,]*,/, '')); }; r.onerror = function () { rej(new Error('לא הצלחנו לקרוא את הקובץ')); }; r.readAsDataURL(blob); }); }
+  // Uploads one file; onProgress gets 0..1. Resolves with the new library item.
+  function uploadMedia(file, onProgress) {
+    return wapi('POST', '/media/init', { name: file.name, size: file.size }).then(function (init) {
+      if (init.store === 'r2') {
+        return new Promise(function (res, rej) {
+          var x = new XMLHttpRequest();
+          x.open('PUT', cfg.worker.replace(/\/$/, '') + '/media/r2?id=' + init.id);
+          x.setRequestHeader('Authorization', 'Bearer ' + token);
+          x.upload.onprogress = function (e) { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+          x.onload = function () { var j = {}; try { j = JSON.parse(x.responseText); } catch { /* not JSON */ } if (x.status === 401) signout('פג תוקף ההתחברות. התחברו שוב.'); if (x.status < 300) res(j.item); else rej(new Error(j.message || 'שגיאה ' + x.status)); };
+          x.onerror = function () { rej(new Error('החיבור נפסק. נסו שוב.')); };
+          x.send(file);
+        });
+      }
+      var n = Math.ceil(file.size / PIECE);
+      var piece = function (i) {
+        if (i >= n) return wapi('POST', '/media/done', { id: init.id }).then(function (j) { return j.item; });
+        return readB64(file.slice(i * PIECE, (i + 1) * PIECE)).then(function (d) { return wapi('POST', '/media/chunk', { id: init.id, n: i, data: d }); }).then(function () { onProgress((i + 1) / n); return piece(i + 1); });
+      };
+      return piece(0);
+    });
+  }
+  // Uploads several files one after another, with a progress row for each; calls done(item) for each success.
+  function uploadMany(files, list, done) {
+    return Array.prototype.reduce.call(files, function (chain, file) {
+      var bar = el('span', { class: 'bar' }), msg = el('small', { class: 'help' }), row = el('li', {}, el('span', { class: 'grow', text: file.name }), el('span', { class: 'prog' }, bar), msg);
+      list.append(row);
+      return chain.then(function () {
+        return uploadMedia(file, function (f) { bar.setAttribute('data-p', String(Math.round(f * 10))); msg.textContent = Math.round(f * 100) + '%'; }).then(function (item) { row.className = 'okrow'; msg.textContent = 'הועלה'; if (done) done(item); }, function (e) { row.className = 'badrow'; msg.textContent = e.message; });
+      });
+    }, Promise.resolve());
+  }
+  // A staged image (not yet published) is shown from the pieces the server holds.
+  function stagedSrc(item) {
+    var n = Math.ceil(item.size / PIECE), got = [];
+    for (var i = 0; i < n; i++) got.push(wapi('GET', '/media/' + item.id + '/chunk?n=' + i).then(function (j) { return j.data; }));
+    return Promise.all(got).then(function (ds) { return 'data:' + item.mime + ';base64,' + ds.join(''); });
+  }
+  function mediaThumb(item) {
+    var box = el('span', { class: 'mthumb' }, icon(MEDIA_KINDS[item.kind][1]));
+    if (item.kind === 'image') {
+      // A file published a moment ago is not on the site yet (the site needs a minute or two, and its cache a few more): show the icon until it is.
+      var show = function (src) { box.textContent = ''; box.append(el('img', { src: src, alt: '', loading: 'lazy', onerror: function () { box.textContent = ''; box.title = 'התצוגה תופיע כשהאתר יתעדכן'; box.append(icon('image')); } })); };
+      if (item.status === 'staged') stagedSrc(item).then(show, function () { /* icon stays */ });
+      else show(item.store === 'github' ? '..' + item.url : item.url);
+    }
+    return box;
+  }
+  function quotaBar(label, q, off) {
+    var pct = q.max ? Math.min(100, Math.round(q.used / q.max * 100)) : 0;
+    return el('div', { class: 'quota' }, el('div', { class: 'qh' }, el('b', { text: label }), el('small', { text: off ? 'עוד לא הופעל' : mbytes(q.used) + ' מתוך ' + mbytes(q.max) })), el('div', { class: 'qbar' + (pct > 85 ? ' hi' : '') }, el('i', { 'data-p': off ? '0' : String(Math.round(pct / 10)) })));
+  }
+  function pagesUsing(src) {
+    return api('contents/data/pages' + ref()).then(function (fs) {
+      return Promise.all(fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { return readJson('data/pages/' + x.name).then(function (d) { return d && JSON.stringify(d.blocks || []).indexOf(JSON.stringify(src).slice(1, -1)) > -1 ? d.title : null; }); }));
+    }).then(function (ts) { return ts.filter(Boolean); }, function () { return []; });
+  }
+  function mediaScreen() {
+    var m = main();
+    m.append(head('ספריית מדיה', 'תמונות, סרטונים, שמע ומסמכים להוספה לדפים. הקבצים הקטנים נשמרים עם האתר ויפורסמו בפרסום, והגדולים והסרטונים נשמרים באחסון נפרד.'));
+    var quota = el('section', { class: 'card' }), list = el('ul', { class: 'upl' });
+    var input = el('input', { type: 'file', multiple: true, accept: MEDIA_ACCEPT, id: 'mfile', hidden: true });
+    var pick = el('button', { type: 'button', class: 'btn pri', onclick: function () { input.click(); } }, icon('plus'), 'העלאת קבצים');
+    var drop = el('section', { class: 'card drop' }, el('p', { text: 'גררו לכאן קבצים, או לחצו על הכפתור.' }), pick, input, list);
+    var chips = el('div', { class: 'chipbar' }), grid = el('div', { class: 'mgrid' });
+    var q = el('input', { type: 'search', placeholder: 'חיפוש לפי שם…', 'aria-label': 'חיפוש קובץ' });
+    m.append(quota, drop, el('div', { class: 'findbar' }, icon('search'), q), chips, grid);
+    var kind = '', data = { items: [], quota: null };
+    var draw = function () {
+      var w = q.value.trim();
+      quota.textContent = ''; quota.append(el('h2', { text: 'מכסת האחסון החינמית' }));
+      if (data.quota) quota.append(quotaBar('אחסון עם האתר (קבצים קטנים)', data.quota.github), quotaBar('אחסון קבצים גדולים וסרטונים', data.quota.r2, !data.quota.r2.enabled),
+        el('p', { class: 'help', text: 'עד ' + mbytes(data.quota.github.fileMax) + ' לקובץ באחסון עם האתר' + (data.quota.r2.enabled ? ', ועד ' + mbytes(data.quota.r2.fileMax) + ' לקובץ באחסון הגדול' : '. סרטונים וקבצים גדולים יותר דורשים הפעלת אחסון הקבצים הגדולים (R2), או קישור לסרטון ב־YouTube') + '.' }));
+      chips.textContent = '';
+      [['', 'הכול']].concat(Object.keys(MEDIA_KINDS).map(function (k) { return [k, MEDIA_KINDS[k][0]]; })).forEach(function (c) { chips.append(el('button', { type: 'button', class: 'chipb', 'aria-pressed': String(kind === c[0]), onclick: function () { kind = c[0]; draw(); } }, c[1])); });
+      grid.textContent = '';
+      var hits = data.items.filter(function (x) { return (!kind || x.kind === kind) && (!w || x.name.indexOf(w) > -1); });
+      if (!hits.length) grid.append(el('p', { class: 'help center', text: data.items.length ? 'לא נמצא מה שחיפשתם.' : 'עדיין לא הועלו קבצים.' }));
+      hits.forEach(function (x) {
+        var st = x.status === 'staged' ? 'ממתין לפרסום' : x.status === 'removing' ? 'יוסר בפרסום' : '';
+        grid.append(el('div', { class: 'mcard' }, mediaThumb(x), el('div', { class: 'grow' }, el('b', { class: 'mname', text: x.name }), el('small', { class: 'help', text: MEDIA_KINDS[x.kind][0] + ' · ' + mbytes(x.size) + ' · ' + x.by }), st ? el('span', { class: 'tag draft', text: st }) : null),
+          el('span', { class: 'acts' },
+            el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { var full = x.store === 'github' ? new URL('..' + x.url, location.href).href : x.url; (navigator.clipboard ? navigator.clipboard.writeText(full) : Promise.reject()).then(function () { say('הקישור הועתק.', 'ok'); }, function () { prompt('הקישור:', full); }); } }, 'העתקת קישור'),
+            x.status === 'removing' ? null : el('button', { type: 'button', class: 'btn ghost sm dng', onclick: function () { removeMedia(x, load); } }, 'מחיקה'))));
+      });
+    };
+    var load = function () { return wapi('GET', '/media').then(function (j) { data = j; draw(); refreshPending(); }, function (e) { say(e.message, 'bad'); }); };
+    var go = function (files) { if (files && files.length) uploadMany(files, list).then(load); };
+    input.addEventListener('change', function () { go(input.files); input.value = ''; });
+    ['dragover', 'dragenter'].forEach(function (t) { drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+    ['dragleave', 'drop'].forEach(function (t) { drop.addEventListener(t, function () { drop.classList.remove('over'); }); });
+    drop.addEventListener('drop', function (e) { e.preventDefault(); go(e.dataTransfer.files); });
+    q.addEventListener('input', draw);
+    load();
+  }
+  // A file used by a published page cannot be removed from the repository without breaking the build: say where it is used.
+  function removeMedia(x, after) {
+    pagesUsing(x.url).then(function (used) {
+      if (used.length && x.store === 'github') return say('הקובץ בשימוש בדפים: ' + used.join(', ') + '. הסירו אותו משם קודם.', 'bad');
+      if (!confirm('למחוק את ״' + x.name + '״?' + (used.length ? '\nשימו לב: הוא בשימוש בדפים: ' + used.join(', ') + '.' : '') + (x.status === 'published' && x.store === 'github' ? '\nהקובץ יוסר מהאתר בפרסום הבא.' : ''))) return;
+      wapi('DELETE', '/media/' + x.id).then(function () { say('נמחק.', 'ok'); after(); }, function (e) { say(e.message, 'bad'); });
+    });
+  }
+  // Choose a file for a page block, or upload one on the spot.
+  function pickMedia(kind, onPick) {
+    var dlg = el('dialog', { class: 'dlg wide' }, el('h2', { text: 'בחירת ' + MEDIA_KINDS[kind][0] }));
+    var input = el('input', { type: 'file', accept: MEDIA_ACCEPT, hidden: true }), list = el('ul', { class: 'upl' }), grid = el('div', { class: 'mgrid pick' });
+    var chosen = function (x) { dlg.close(); onPick(x); };
+    var load = function () {
+      grid.textContent = ''; loading(grid);
+      wapi('GET', '/media').then(function (j) {
+        grid.textContent = '';
+        var items = j.items.filter(function (x) { return x.kind === kind && x.status !== 'removing'; });
+        if (!items.length) grid.append(el('p', { class: 'help center', text: 'עדיין אין כאן קבצים מסוג זה. אפשר להעלות אחד.' }));
+        items.forEach(function (x) { grid.append(el('button', { type: 'button', class: 'mcard btn-like', onclick: function () { chosen(x); } }, mediaThumb(x), el('span', { class: 'grow' }, el('b', { class: 'mname', text: x.name }), el('small', { class: 'help', text: mbytes(x.size) + (x.status === 'staged' ? ' · ממתין לפרסום' : '') })))); });
+      }, function (e) { grid.textContent = ''; grid.append(el('p', { class: 'err', text: e.message })); });
+    };
+    input.addEventListener('change', function () { var fs = input.files; input.value = ''; if (fs.length) uploadMany(fs, list, function (item) { if (item.kind === kind) chosen(item); }).then(load); });
+    dlg.append(el('p', { class: 'acts' }, el('button', { type: 'button', class: 'btn pri', onclick: function () { input.click(); } }, icon('plus'), 'העלאת קובץ חדש'), input, el('button', { type: 'button', class: 'btn ghost', onclick: function () { dlg.close(); } }, 'ביטול')), list, grid);
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    document.body.append(dlg); dlg.showModal(); load();
+  }
+  // Fields of an image, video, audio or file block of a page.
+  function mediaFields(b, redraw) {
+    var kind = MEDIA_BLOCK[b.type], box = el('div');
+    box.append(textInput(b, 'src', 'הקובץ (בחירה מהספרייה, או קישור שמתחיל ב־https://)', { k: 'url' }),
+      el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { pickMedia(kind, function (x) { b.src = x.url; touch(); redraw(); }); } }, icon(MEDIA_KINDS[kind][1]), 'בחירה מהספרייה או העלאה'));
+    if (b.type === 'image' && b.src) box.append(el('img', { class: 'mprev', alt: '', src: b.src.charAt(0) === '/' ? '..' + b.src : b.src, onerror: function () { this.hidden = true; } }));
+    if (b.type === 'image') box.append(textInput(b, 'alt', 'תיאור התמונה (חובה, לקוראי מסך)', { long: true }), textInput(b, 'caption', 'כיתוב (לא חובה)'));
+    else if (b.type === 'video') box.append(textInput(b, 'title', 'כותרת הסרטון'), textInput(b, 'caption', 'כיתוב (לא חובה)'));
+    else if (b.type === 'audio') box.append(textInput(b, 'title', 'כותרת ההקלטה'));
+    else box.append(textInput(b, 'title', 'שם המסמך'), textInput(b, 'desc', 'תיאור קצר (לא חובה)'));
+    return box;
+  }
+
   // ---- pending changes, publishing, history, activity log ----
   var PAGE_RX = /^data\/pages\/([\w-]+)\.json$/, SHUT_RX = /^data\/shut-edits\/([\w-]+)\.json$/;
   var STATUS = { added: 'חדש', modified: 'שונה', removed: 'נמחק' };
@@ -1120,6 +1288,7 @@
     if ((m = PAGE_RX.exec(path))) return { kind: 'page', label: 'דף', title: m[1], href: '#/page/' + m[1], id: m[1] };
     if ((m = SHUT_RX.exec(path))) return { kind: 'shut', label: 'שו״ת', title: '#' + m[1], href: '#/shut/' + m[1], id: m[1] };
     if (path === 'data/link-audit.json') return { kind: 'file', label: 'הגדרות', title: 'קישורים ו־SEO', href: '#/links' };
+    if (/^site\/media\//.test(path)) return { kind: 'media', label: 'קובץ', title: path.replace(/^site\/media\/[0-9a-f]{8}-/, ''), href: '#/media' };
     if (path === 'data/topics.json') return { kind: 'topics', label: 'נושאים', title: 'רשימת הנושאים', href: '#/pages' };
     var name = path.replace(/^data\//, '');
     return { kind: 'file', label: 'תוכן', title: FILE[name] ? FILE[name].name : name, href: '#/file/' + name };
@@ -1130,6 +1299,7 @@
   // What a pending change is, in words: a page by its title, topics by what was added, removed or changed, and so on.
   function describe(item) {
     var info = pathInfo(item.path), gone = item.status === 'removed';
+    if (item.media) return Promise.resolve({ title: item.title || info.title, detail: (MEDIA_KINDS[item.kind] || [''])[0] + ' · ' + mbytes(item.size) });
     if (info.kind === 'topics') {
       return Promise.all([readJson(item.path, true), gone ? null : readJson(item.path)]).then(function (r) {
         var before = r[0] || [], after = r[1] || [], by = function (xs) { var o = {}; xs.forEach(function (t) { o[t.slug] = t; }); return o; }, a = by(after), b = by(before), out = [];
@@ -1148,6 +1318,7 @@
   // After a publish the site's own lists lag a minute or two: lay the published items over them meanwhile.
   function noteFor(item, d) {
     var info = pathInfo(item.path);
+    if (info.kind === 'media') return;
     if (info.kind === 'page') { if (item.status === 'removed') note('pages', info.id, null); else if (d) note('pages', info.id, { slug: info.id, title: d.title, topic: d.topic, category: d.category || '' }); }
     if (info.kind === 'shut' && d) { if (d.deleted || item.status === 'removed') note('shut', String(info.id), null); else note('shut', String(info.id), { kind: d.kind, title: d.title, date: d.date || '' }); }
   }
@@ -1169,7 +1340,7 @@
         var all = el('input', { type: 'checkbox', 'aria-label': 'בחירת הכול' }); all.checked = rows.every(function (r) { return r.cb.checked; });
         all.addEventListener('change', function () { rows.forEach(function (r) { r.cb.checked = all.checked; }); sync(); });
         var chosen = function () { return rows.filter(function (r) { return r.cb.checked; }); };
-        var pubBtn = publisher ? el('button', { type: 'button', class: 'btn pri', id: 'dopub', onclick: function () { publishDialog(chosen(), load); } }, 'פרסום הנבחרים…') : null;
+        var pubBtn = publisher ? el('button', { type: 'button', class: 'btn pri', id: 'dopub', onclick: function () { publishDialog(chosen(), load, rows); } }, 'פרסום הנבחרים…') : null;
         var disBtn = el('button', { type: 'button', class: 'btn ghost dng', id: 'dodiscard', onclick: function () {
           var ch = chosen(); if (!ch.length || !confirm('לבטל ' + ch.length + ' שינויים שנשמרו כטיוטה? האתר יישאר כמו שהוא.')) return;
           wapi('POST', '/discard', { paths: ch.map(function (r) { return r.c.path; }) }).then(function () { forget(); say('השינויים בוטלו.', 'ok'); load(); }, function (e) { say(e.message, 'bad'); });
@@ -1195,7 +1366,15 @@
   }
 
   // "Publish?" with the full list of what goes out; a file changed on the site meanwhile must be confirmed on its own.
-  function publishDialog(rows, reload) {
+  function publishDialog(rows, reload, allRows) {
+    // A page that uses a file waiting to be published takes the file along (the build would fail without it).
+    var have = {}; rows.forEach(function (r) { have[r.c.path] = 1; });
+    rows.slice().forEach(function (r) {
+      JSON.stringify((r.d && r.d.data && r.d.data.blocks) || []).replace(/\/media\/([\w.-]+)/g, function (_, f) {
+        var extra = (allRows || []).filter(function (x) { return x.c.path === 'site/media/' + f && !have[x.c.path]; })[0];
+        if (extra) { have[extra.c.path] = 1; rows.push(extra); }
+      });
+    });
     if (!rows.length) return;
     var dlg = el('dialog', { class: 'dlg wide' }, el('h2', { text: 'פרסום לאתר' }));
     var note_ = el('input', { type: 'text', id: 'pubnote', maxlength: '40', placeholder: 'למשל: עדכון זמני התפילות' });
@@ -1251,7 +1430,7 @@
     document.body.append(dlg); dlg.showModal();
   }
 
-  var ACTIONS = { login: 'התחברות', save: 'שמירת טיוטה', delete: 'מחיקה בטיוטה', publish: 'פרסום', 'publish-all': 'פרסום (סיכום)', discard: 'ביטול טיוטה', restore: 'שחזור גרסה', name: 'שינוי שם', 'editor-add': 'הוספת עורך', 'editor-update': 'עדכון עורך', 'editor-remove': 'הסרת עורך' };
+  var ACTIONS = { 'media-upload': 'העלאת קובץ', 'media-delete': 'מחיקת קובץ', login: 'התחברות', save: 'שמירת טיוטה', delete: 'מחיקה בטיוטה', publish: 'פרסום', 'publish-all': 'פרסום (סיכום)', discard: 'ביטול טיוטה', restore: 'שחזור גרסה', name: 'שינוי שם', 'editor-add': 'הוספת עורך', 'editor-update': 'עדכון עורך', 'editor-remove': 'הסרת עורך' };
   function logScreen() {
     var m = main();
     m.append(head('יומן פעילות', 'מי שמר, פרסם, ביטל או שחזר מה, ומתי.' + (owner ? '' : ' כתובות המייל מוצגות רק לבעלי האתר.')));
@@ -1450,6 +1629,7 @@
     else if (h === '#/shut') shutScreen();
     else if ((m = /^#\/topic\/([a-z0-9-]+)$/.exec(h))) topicScreen(m[1]);
     else if (h === '#/pages') pagesScreen();
+    else if (h === '#/media' && draft) mediaScreen();
     else if (h === '#/changes' && draft) changesScreen();
     else if (h === '#/log' && draft && publisher) logScreen();
     else if (h === '#/links') linksScreen();

@@ -1,8 +1,7 @@
 // A small in-memory GitHub (one repo, one branch) that answers the API calls the editor server makes.
-import { blobSha } from '../../cms-worker/worker.mjs';
+import { createHash } from 'node:crypto';
 
-const b64 = (t) => Buffer.from(t, 'utf8').toString('base64');
-const unb64 = (s) => Buffer.from(s, 'base64').toString('utf8');
+const gitSha = (buf) => createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${buf.length}\0`), buf])).digest('hex');
 const sha1 = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-1', new TextEncoder().encode(s)))].map((x) => x.toString(16).padStart(2, '0')).join('');
 
 export async function makeGithub({ repo = 'o/r', branch = 'live', files = {} } = {}) {
@@ -15,14 +14,15 @@ export async function makeGithub({ repo = 'o/r', branch = 'live', files = {} } =
     commits.set(sha, { sha, tree: await snapshot(map), parent, message, author });
     return sha;
   };
-  const put = async (text) => { const s = await blobSha(text); blobs.set(s, text); return s; };
+  // Blobs are kept as bytes, so binary files (media) survive; text files read back as UTF-8.
+  const put = async (data) => { const buf = Buffer.isBuffer(data) ? data : Buffer.from(data, 'utf8'); const s = gitSha(buf); blobs.set(s, buf); return s; };
   const first = new Map();
   for (const [p, t] of Object.entries(files)) first.set(p, await put(t));
   head = await addCommit(first, null, 'start');
 
   const file = (path, treeMap) => {
     const sha = treeMap.get(path);
-    if (sha) return { type: 'file', name: path.split('/').pop(), path, sha, content: b64(blobs.get(sha)) };
+    if (sha) return { type: 'file', name: path.split('/').pop(), path, sha, content: blobs.get(sha).toString('base64') };
     const kids = [...treeMap].filter(([p]) => p.startsWith(`${path}/`) && !p.slice(path.length + 1).includes('/'));
     return kids.length ? kids.map(([p, s]) => ({ type: 'file', name: p.split('/').pop(), path: p, sha: s })) : null;
   };
@@ -32,7 +32,8 @@ export async function makeGithub({ repo = 'o/r', branch = 'live', files = {} } =
     repo, branch, log,
     get head() { return head; },
     // what the live site has now
-    read: (p) => { const s = trees.get(commits.get(head).tree).get(p); return s ? blobs.get(s) : null; },
+    read: (p) => { const s = trees.get(commits.get(head).tree).get(p); return s ? blobs.get(s).toString('utf8') : null; },
+    readBytes: (p) => { const s = trees.get(commits.get(head).tree).get(p); return s ? blobs.get(s) : null; },
     // someone changes the live branch directly (null deletes a file)
     async commit(changes, message = 'direct') {
       const map = new Map(trees.get(commits.get(head).tree));
@@ -56,7 +57,7 @@ export async function makeGithub({ repo = 'o/r', branch = 'live', files = {} } =
       }
       if (rest === `git/ref/heads/${branch}`) return res({ object: { sha: head } });
       if ((m = /^git\/commits\/(\w+)$/.exec(rest)) && method === 'GET') return res(commits.has(m[1]) ? { sha: m[1], tree: { sha: commits.get(m[1]).tree } } : null);
-      if (rest === 'git/blobs') return res({ sha: await put(unb64(body.content)) }, 201);
+      if (rest === 'git/blobs') return res({ sha: await put(Buffer.from(body.content, 'base64')) }, 201);
       if (rest === 'git/trees') {
         const map = new Map(trees.get(body.base_tree));
         for (const e of body.tree) { if (e.sha === null) map.delete(e.path); else map.set(e.path, e.sha); }

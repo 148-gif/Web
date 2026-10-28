@@ -140,3 +140,15 @@ test('pagerHtml() links previous, next and numbers, and nothing for a single pag
   assert.match(h, /href="\/shut\/"/);
   assert.doesNotMatch(pagerHtml(1, 1, href), /pager-nums|href=/);
 });
+
+test('validateCms() checks media blocks: a real /media/ file or an https link, a description for images, a title for the rest', () => {
+  const t = [{ slug: 'm', title: 'מדיה' }], here = (n) => n === 'ab12cd34-x.png' || n === 'ab12cd34-x.pdf';
+  const page = (b) => [{ slug: 'p', topic: 'm', title: 'דף', blocks: [b] }];
+  assert.doesNotThrow(() => validateCms(t, page({ type: 'image', src: '/media/ab12cd34-x.png', alt: 'תיאור' }), here));
+  assert.doesNotThrow(() => validateCms(t, page({ type: 'video', src: 'https://cdn.example/v.mp4', title: 'סרטון' }), here));
+  assert.doesNotThrow(() => validateCms(t, page({ type: 'file', src: '/media/ab12cd34-x.pdf', title: 'מסמך' }), here));
+  for (const b of [{ type: 'image', src: '/media/ab12cd34-x.png', alt: ' ' }, { type: 'image', src: '/media/missing.png', alt: 'x' }, { type: 'image', src: '/media/ab12cd34-x.pdf', alt: 'x' },
+    { type: 'image', src: 'http://insecure.example/x.png', alt: 'x' }, { type: 'image', src: 'javascript:alert(1)', alt: 'x' }, { type: 'image', src: '/media/../data/site.json', alt: 'x' }, { type: 'audio', src: 'https://a.example/a.mp3', title: '' }]) {
+    assert.throws(() => validateCms(t, page(b), here), Error, JSON.stringify(b));
+  }
+});
