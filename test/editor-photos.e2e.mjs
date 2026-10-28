@@ -51,7 +51,7 @@ await alt.fill('תמונה של הרב'); t = await save(); ok(/לא מתחיל/
 await alt.fill('הרב בשטריימל, מחייך');
 await first.getByLabel('אנשים נוספים בתמונה').selectOption('children'); t = await save(); ok(/consent/.test(t) && puts.length === n0, `children without a written approval: blocked (${t})`);
 await first.getByLabel(/צלם או בעלים/).fill(''); await first.getByLabel(/מי אישר לפרסם/).fill('בעל האתר'); t = await save(); ok(/קרדיט/.test(t) && puts.length === n0, `no credit: blocked (${t})`);
-await first.getByLabel(/צלם או בעלים/).fill('לא ידוע'); t = await save();
+await first.getByLabel(/צלם או בעלים/).fill('לא ידוע'); await save();
 ok(puts.length === n0 + 1 && puts.at(-1).path === 'data/images.json' && puts.at(-1).data[0].consent === 'בעל האתר', 'a complete entry is saved');
 
 // ---- photos in a page ----
@@ -62,7 +62,7 @@ let before = puts.length;
 await add('תמונה'); t = await save(); ok(/בחרו תמונה/.test(t) && puts.length === before, `an image block with no photo: blocked (${t})`);
 await p.getByRole('button', { name: 'בחירת תמונה' }).click(); await p.waitForSelector('dialog .mcard');
 ok(await p.locator('dialog .mcard').count() === 26 && await p.locator('dialog .mcard:disabled').count() === 0, 'the chooser lists every photo; all are approved');
-await pick(2); await p.waitForTimeout(300); t = await save();
+await pick(2); await p.waitForTimeout(300); await save();
 const img = puts.at(-1).data.blocks?.find((b) => b.type === 'image');
 ok(puts.length === before + 1 && img && Object.keys(img).sort().join() === 'id,size,type', `the saved image block has only the photo's id (${JSON.stringify(img)})`);
 await add('תמונה'); await p.getByRole('button', { name: 'בחירת תמונה' }).click(); await p.waitForSelector('dialog .mcard'); await pick(2); await p.waitForTimeout(300);
