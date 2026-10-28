@@ -439,3 +439,20 @@ test('large files and video go to R2 when it exists, are checked, and are served
   assert.equal((await call('DELETE', `/media/${init.body.id}`, undefined, w.info.publisher.token)).status, 200);
   assert.equal(R2.m.size, 0);
 });
+
+test('a page that points at a media file is published only together with that file', async () => {
+  const w = await world();
+  const item = (await upload(w.editor, 'pic.png', PNG)).body.item, name = item.key.replace('site/media/', '');
+  const page = { topic: 't', title: 'דף עם תמונה', blocks: [{ type: 'image', src: `/media/${name}`, alt: 'תיאור' }] };
+  await put(w.editor, 'data/pages/withpic.json', page, null);
+  const early = await w.publisher('POST', '/publish', { paths: ['data/pages/withpic.json'] });
+  assert.equal(early.status, 400);
+  assert.match(early.body.message, new RegExp(name));
+  assert.equal(github.read('data/pages/withpic.json'), null);
+  const n0 = github.commits().length;
+  assert.equal((await w.publisher('POST', '/publish', { paths: ['data/pages/withpic.json', item.key] })).status, 200);
+  assert.equal(github.commits().length, n0 + 1);
+  assert.ok(github.readBytes(item.key) && github.read('data/pages/withpic.json'));
+  await put(w.editor, 'data/pages/again.json', { ...page, title: 'עוד' }, null);
+  assert.equal((await w.publisher('POST', '/publish', { paths: ['data/pages/again.json'] })).status, 200); // the file is live by now
+});

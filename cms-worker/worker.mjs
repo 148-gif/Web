@@ -51,6 +51,7 @@ const cleanName = (n) => String(n || '').replace(/[\p{Cc}<>]/gu, ' ').replace(/\
 // The files an editor may change: JSON under data/, never the Q&A archive itself (its edits live in data/shut-edits/).
 const PATH_OK = (p) => typeof p === 'string' && /^data\/(pages\/|shut-edits\/)?[\w-]+\.json$/.test(p) && p !== 'data/shut.json';
 const MAX_FILE = 2e6;
+const PAGE_FILE = /^data\/pages\/[\w-]+\.json$/;
 const MEDIA_OK = (p) => typeof p === 'string' && /^site\/media\/[a-z0-9][\w.-]{0,100}$/.test(p);
 const PUB_OK = (p) => PATH_OK(p) || MEDIA_OK(p);
 
@@ -437,6 +438,15 @@ async function publish(env, me, paths, force, note) {
   const rows = dpaths.length ? (await env.DB.prepare(`SELECT * FROM drafts WHERE path IN (${marks(dpaths.length)})`).bind(...dpaths).all()).results : [];
   const media = mpaths.length ? (await env.DB.prepare(`SELECT * FROM media WHERE store = 'github' AND status IN ('staged', 'removing') AND key IN (${marks(mpaths.length)})`).bind(...mpaths).all()).results : [];
   if (!rows.length && !media.length) throw fail('אין שינויים לפרסם', 400);
+  // A page must not point at a file that is neither live nor published together with it: the build would fail.
+  const together = new Set(media.filter((m) => m.status === 'staged').map((m) => m.key));
+  for (const r of rows.filter((x) => !x.deleted && PAGE_FILE.test(x.path))) {
+    let blocks = []; try { blocks = JSON.parse(r.content).blocks || []; } catch { /* checked when saved */ }
+    for (const b of blocks) {
+      const m = /^\/media\/([a-z0-9][\w.-]*)$/.exec(String(b && b.src || ''));
+      if (m && !together.has(`site/media/${m[1]}`) && !(await publishedSha(env, `site/media/${m[1]}`))) throw fail(`הדף ״${cleanName(JSON.parse(r.content).title)}״ משתמש בקובץ שעוד לא פורסם: ${m[1]}. סמנו גם אותו לפרסום.`, 400);
+    }
+  }
   const pubs = new Map(await Promise.all(rows.map(async (r) => [r.path, await publishedSha(env, r.path)])));
   const shas = new Map(await Promise.all(rows.map(async (r) => [r.path, r.deleted ? null : await blobSha(r.content)])));
   const conflicts = rows.filter((r) => pubs.get(r.path) !== (r.base_sha || null) && pubs.get(r.path) !== shas.get(r.path) && !force.includes(r.path)).map((r) => r.path);
