@@ -114,7 +114,16 @@
   var cfg, token, owner = false, me = '';
   var cur = null; // the open file: { path, sha, indent, data, orig }
   var cache = { topics: null, pages: null, shutIndex: null };
-  var local = {}; // pages created, changed or deleted in this session: the published list lags a minute or two behind
+  // What was just created, changed or removed here. The published lists (pages/index.json, shut/index.json) lag a minute or two
+  // behind a save, so these notes are laid over them; they are kept in the browser, so a reload does not lose them, and
+  // dropped once the published list agrees (or after 15 minutes).
+  var RECENT_MS = 15 * 60000, recent = { pages: {}, shut: {} };
+  try {
+    var rr = JSON.parse(localStorage.getItem('cms-recent') || '{}');
+    ['pages', 'shut'].forEach(function (k) { Object.keys(rr[k] || {}).forEach(function (id) { if (Date.now() - rr[k][id].t < RECENT_MS) recent[k][id] = rr[k][id]; }); });
+  } catch { /* nothing kept */ }
+  function recentSave() { try { localStorage.setItem('cms-recent', JSON.stringify(recent)); } catch { /* storage blocked: kept for this page only */ } }
+  function note(kind, id, entry) { recent[kind][id] = { t: Date.now(), e: entry }; recentSave(); }
 
   // ---- GitHub, directly or through the editor server ----
   function api(path, opt) {
@@ -343,23 +352,30 @@
 
   // ---- data shared by several screens ----
   function topics(force) { if (cache.topics && !force) return Promise.resolve(cache.topics); return getFile('data/topics.json').then(function (f) { cache.topics = f; return f; }); }
-  function slowPages() {
-    return api('contents/data/pages' + ref()).catch(function () { return []; }).then(function (fs) {
-      return Promise.all(fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { var slug = x.name.replace(/\.json$/, ''); return getFile('data/pages/' + x.name).then(function (p) { return { slug: slug, title: p.data.title, topic: p.data.topic, category: p.data.category || '' }; }); }));
-    });
-  }
+  function pageFromFile(slug) { return getFile('data/pages/' + slug + '.json').then(function (p) { return { slug: slug, title: p.data.title, topic: p.data.topic, category: p.data.category || '' }; }); }
+  // Which pages exist comes from the repository itself (always current, and a deleted page is gone at once); the published list
+  // only supplies their titles and categories, and the notes above cover what changed since it was built.
   function pages(force) {
     if (cache.pages && !force) return Promise.resolve(cache.pages);
-    return fetch('pages/index.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('no index'); return r.json(); })
-      .then(function (rows) { return rows.map(function (r) { return { slug: r[0], topic: r[1], title: r[2], category: r[3] || '' }; }); }, slowPages)
-      .then(function (list) {
-        var m = {}; list.forEach(function (p) { m[p.slug] = p; });
-        Object.keys(local).forEach(function (k) { if (local[k] === null) delete m[k]; else m[k] = local[k]; });
-        cache.pages = Object.keys(m).map(function (k) { return m[k]; });
-        return cache.pages;
+    var published = fetch('pages/index.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('no index'); return r.json(); })
+      .then(function (rows) { var m = {}; rows.forEach(function (r) { m[r[0]] = { slug: r[0], topic: r[1], title: r[2], category: r[3] || '' }; }); return m; }, function () { return null; });
+    var listing = api('contents/data/pages' + ref()).then(function (fs) { return fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { return x.name.replace(/\.json$/, ''); }); }, function () { return null; });
+    return Promise.all([published, listing]).then(function (r) {
+      var base = r[0] || {}, names = r[1];
+      if (!names) names = Object.keys(base).filter(function (k) { return !(recent.pages[k] && recent.pages[k].e === null); }).concat(Object.keys(recent.pages).filter(function (k) { return recent.pages[k].e && !base[k]; }));
+      var out = [], missing = [];
+      names.forEach(function (slug) {
+        var n = recent.pages[slug], mine = n && n.e;
+        if (mine && base[slug] && base[slug].title === mine.title && base[slug].topic === mine.topic && base[slug].category === mine.category) { delete recent.pages[slug]; mine = null; } // the published list has caught up
+        var e = mine || base[slug];
+        if (e) out.push(e); else missing.push(slug);
       });
+      Object.keys(recent.pages).forEach(function (k) { if (recent.pages[k].e === null && names.indexOf(k) < 0) delete recent.pages[k]; });
+      recentSave();
+      return Promise.all(missing.map(pageFromFile)).then(function (more) { cache.pages = out.concat(more); return cache.pages; });
+    });
   }
-  function pageEntry(slug, p) { local[slug] = { slug: slug, title: p.title, topic: p.topic, category: p.category || '' }; cache.pages = null; }
+  function pageEntry(slug, p) { note('pages', slug, { slug: slug, title: p.title, topic: p.topic, category: p.category || '' }); cache.pages = null; }
   function groupTitles() {
     var list = GROUPS.map(function (g) { return g[0]; }), ts = (cache.topics && cache.topics.data) || [];
     ts.forEach(function (t) { var g = t.group || OTHER; if (list.indexOf(g) < 0) list.push(g); });
@@ -696,7 +712,7 @@
   }
   function delPage() {
     if (!confirm('למחוק את ״' + cur.data.title + '״ מהאתר? אי אפשר לבטל את זה מכאן.')) return;
-    delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { var gone = cur.path.replace(/^data\/pages\/|\.json$/g, ''), tp = cur.data.topic; local[gone] = null; cache.pages = null; cur = null; say('נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = kindOf((cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === tp; })[0]) === 'page' ? '#/pages' : '#/topic/' + tp; }, function (e) { say(e.message, 'bad'); });
+    delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { var gone = cur.path.replace(/^data\/pages\/|\.json$/g, ''), tp = cur.data.topic; note('pages', gone, null); cache.pages = null; cur = null; say('נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = kindOf((cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === tp; })[0]) === 'page' ? '#/pages' : '#/topic/' + tp; }, function (e) { say(e.message, 'bad'); });
   }
   // Preview with the site's own stylesheet, in the markup the build uses (scripts/lib/sections/pages.mjs).
   function preview(p) {
@@ -785,7 +801,20 @@
   // ---- the Q&A archive: search in a light list, edit one entry at a time (data/shut-edits/<id>.json) ----
   function shutIndex() {
     if (cache.shutIndex) return Promise.resolve(cache.shutIndex);
-    return fetch('shut/index.json').then(function (r) { if (!r.ok) throw new Error('רשימת השאלות עוד לא זמינה. נסו שוב בעוד כמה דקות.'); return r.json(); }).then(function (x) { cache.shutIndex = x; return x; });
+    return fetch('shut/index.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('רשימת השאלות עוד לא זמינה. נסו שוב בעוד כמה דקות.'); return r.json(); }).then(function (x) { cache.shutIndex = x; return x; });
+  }
+  // The published Q&A list with the notes laid over it: hidden questions are left out, edited ones show their new title, new ones are added.
+  function shutRows(idx) {
+    var byId = {}; idx.forEach(function (x) { byId[String(x[0])] = x; });
+    Object.keys(recent.shut).forEach(function (id) {
+      var n = recent.shut[id], row = byId[id];
+      if (n.e === null) { if (!row) delete recent.shut[id]; return; } // hidden; once the published list lacks it, nothing is left to cover
+      if (row && row[2] === n.e.title && row[3] === (n.e.date || '') && row[1] === n.e.kind) { delete recent.shut[id]; return; }
+    });
+    recentSave();
+    var out = idx.filter(function (x) { var n = recent.shut[String(x[0])]; return !(n && n.e === null); }).map(function (x) { var n = recent.shut[String(x[0])]; return n && n.e ? [x[0], n.e.kind, n.e.title, n.e.date || '', x[4]] : x; });
+    Object.keys(recent.shut).forEach(function (id) { if (recent.shut[id].e && !byId[id]) out.push([+id || id, recent.shut[id].e.kind, recent.shut[id].e.title, recent.shut[id].e.date || '', -1]); });
+    return out;
   }
   function shutScreen() {
     var m = main();
@@ -794,7 +823,8 @@
     m.append(head('שו״ת ברסלב', 'חפשו שאלה כדי לערוך אותה, או הוסיפו שאלה חדשה.', [el('a', { class: 'btn pri', href: '#/shut/new' }, icon('plus'), 'שאלה חדשה')]));
     m.append(el('div', { class: 'findbar big' }, icon('search'), q, kind));
     var res = el('div', { class: 'card results' }); m.append(res); loading(res);
-    shutIndex().then(function (idx) {
+    shutIndex().then(function (published) {
+      var idx = shutRows(published);
       var draw = function () {
         res.textContent = '';
         var words = q.value.trim().split(/\s+/).filter(Boolean);
@@ -834,7 +864,7 @@
       m.append(el('p', { class: 'crumbs' }, el('a', { href: '#/shut', text: 'שו״ת ברסלב' }), ' › ', isNew ? 'שאלה חדשה' : '#' + x.id));
       if (x.deleted) {
         cur = null;
-        m.append(el('section', { class: 'card' }, el('h2', { text: 'השאלה הזאת מוסתרת מהאתר' }), el('button', { type: 'button', class: 'btn pri', onclick: function () { delFile(f.path, f.sha, 'החזרת שאלה ' + x.id).then(function () { cache.shutIndex = null; say('השאלה תחזור לאתר תוך דקה או שתיים.', 'ok'); location.hash = '#/shut'; }, function (e) { say(e.message, 'bad'); }); } }, 'החזרה לאתר')));
+        m.append(el('section', { class: 'card' }, el('h2', { text: 'השאלה הזאת מוסתרת מהאתר' }), el('button', { type: 'button', class: 'btn pri', onclick: function () { delFile(f.path, f.sha, 'החזרת שאלה ' + x.id).then(function () { cache.shutIndex = null; delete recent.shut[String(x.id)]; recentSave(); say('השאלה תחזור לאתר תוך דקה או שתיים.', 'ok'); location.hash = '#/shut'; }, function (e) { say(e.message, 'bad'); }); } }, 'החזרה לאתר')));
         return;
       }
       var base = x.kind === 'letters' ? '/letters/' : '/shut/';
@@ -862,7 +892,7 @@
     var clean = Object.assign({}, x, { q: x.q.filter(function (p) { return p.trim(); }), a: x.a.filter(function (p) { return p.trim(); }) });
     if (!clean.a.length) return say('חסרה תשובה', 'bad');
     commit(f.path, clean, 2, f.sha, (isNew ? 'שאלה חדשה ' : 'עריכת שאלה ') + x.id + ': ' + x.title, (x.kind === 'letters' ? '/letters/' : '/shut/') + x.id + '/').then(function (r) {
-      f.sha = r.content.sha; f.data = clean; f.orig = JSON.stringify(clean); cache.shutIndex = null; status();
+      f.sha = r.content.sha; f.data = clean; f.orig = JSON.stringify(clean); note('shut', String(x.id), { kind: clean.kind, title: clean.title, date: clean.date || '' }); status();
       if (isNew) { cur = null; location.hash = '#/shut/' + x.id; }
     }, function (e) { say(e.message, 'bad'); });
   }
@@ -870,7 +900,7 @@
     var f = cur;
     if (!confirm('להסתיר את השאלה ״' + f.data.title + '״ מהאתר? אפשר להחזיר אותה אחר כך.')) return;
     var id = f.data.id;
-    commit(f.path, { id: id, deleted: true }, 2, f.sha, 'הסתרת שאלה ' + id).then(function () { cur = null; cache.shutIndex = null; say('השאלה תוסתר מהאתר תוך דקה או שתיים.', 'ok'); location.hash = '#/shut'; }, function (e) { say(e.message, 'bad'); });
+    commit(f.path, { id: id, deleted: true }, 2, f.sha, 'הסתרת שאלה ' + id).then(function () { note('shut', String(id), null); cur = null; say('השאלה תוסתר מהאתר תוך דקה או שתיים.', 'ok'); location.hash = '#/shut'; }, function (e) { say(e.message, 'bad'); });
   }
 
   // ---- editors (site owners only; the server checks this too) ----
