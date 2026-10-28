@@ -129,6 +129,8 @@ const schema = (env) => {
       env.DB.prepare('CREATE TABLE IF NOT EXISTS drafts (path TEXT PRIMARY KEY, content TEXT, deleted INTEGER NOT NULL DEFAULT 0, base_sha TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, email TEXT NOT NULL, name TEXT NOT NULL)'),
       env.DB.prepare('CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, email TEXT, name TEXT, action TEXT NOT NULL, path TEXT, summary TEXT, sha TEXT)'),
       env.DB.prepare('CREATE INDEX IF NOT EXISTS log_ts ON log (ts)'),
+      // Translations asked of Workers AI per day and editor, so its cost has a ceiling whatever the plan.
+      env.DB.prepare('CREATE TABLE IF NOT EXISTS ai_usage (day TEXT NOT NULL, email TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, email))'),
     ]).catch((e) => { ready.delete(env.DB); throw e; }));
   }
   return ready.get(env.DB);
@@ -176,11 +178,21 @@ function toSlug(english) {
   const kept = words.filter((w) => !STOP.has(w));
   return (kept.length ? kept : words).join('-').slice(0, 40).replace(/-+$/, '');
 }
-async function slugFor(env, text) {
+// May this editor use the model now? Counts the call when it is allowed. Limits: TRANSLATE_PER_USER (100) and TRANSLATE_PER_DAY (300) a day.
+async function aiQuota(env, email) {
+  const day = new Date().toISOString().slice(0, 10), perUser = Number(env.TRANSLATE_PER_USER) || 100, perDay = Number(env.TRANSLATE_PER_DAY) || 300;
+  const mine = (await env.DB.prepare('SELECT n FROM ai_usage WHERE day = ? AND email = ?').bind(day, email).first()) || { n: 0 };
+  const all = (await env.DB.prepare('SELECT COALESCE(SUM(n), 0) AS n FROM ai_usage WHERE day = ?').bind(day).first()).n;
+  if (mine.n >= perUser || all >= perDay) return false;
+  await env.DB.prepare('INSERT INTO ai_usage (day, email, n) VALUES (?, ?, 1) ON CONFLICT(day, email) DO UPDATE SET n = n + 1').bind(day, email).run();
+  return true;
+}
+async function slugFor(env, text, quota) {
   const t = String(text || '').trim().replace(/\s+/g, ' ').slice(0, 80);
   if (!t) return { slug: null };
   if (GLOSSARY[t]) return { slug: GLOSSARY[t], english: GLOSSARY[t], source: 'glossary' };
   if (!env.AI) return { slug: null };
+  if (quota && !(await quota())) return { slug: null, limited: true };
   try {
     const out = await env.AI.run('@cf/meta/m2m100-1.2b', { text: t, source_lang: 'he', target_lang: 'en' });
     const slug = toSlug(out && out.translated_text);
@@ -361,7 +373,7 @@ async function main(req, env, url, cors) {
     return json({ editors: list }, 200, cors);
   }
 
-  if (p === '/translate' && req.method === 'POST') return json(await slugFor(env, (await bodyOf(req)).text), 200, cors);
+  if (p === '/translate' && req.method === 'POST') return json(await slugFor(env, (await bodyOf(req)).text, () => aiQuota(env, me.email)), 200, cors);
   if (p === '/changes' && req.method === 'GET') return json({ changes: await changes(env, q.get('check') === '1') }, 200, cors);
   if (p === '/history' && req.method === 'GET') return json({ history: await history(env, q.get('path')) }, 200, cors);
   if (p === '/log' && req.method === 'GET') {

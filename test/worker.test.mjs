@@ -302,3 +302,19 @@ test('POST /translate is for signed-in editors only', async () => {
   assert.equal((await call(null)).status, 401);
   assert.equal((await (await call(w.info.editor.token)).json()).slug, 'prayer-times');
 });
+
+test('translation has a daily ceiling per editor and for the whole site; the glossary is free', async () => {
+  const w = await world();
+  let runs = 0;
+  const e = { ...w.e, TRANSLATE_PER_USER: '2', TRANSLATE_PER_DAY: '3', AI: { run: async () => { runs++; return { translated_text: 'Word' }; } } };
+  const ask = async (tok, text) => (await (await handle(req('/translate', { method: 'POST', body: JSON.stringify({ text }), headers: { Authorization: `Bearer ${tok}` } }), e)).json());
+  const b = w.info.editor.token, p = w.info.publisher.token;
+  assert.equal((await ask(b, 'ברסלב')).slug, 'breslov'); // glossary: not counted
+  assert.equal((await ask(b, 'אחד')).slug, 'word');
+  assert.equal((await ask(b, 'שניים')).slug, 'word');
+  const over = await ask(b, 'שלושה');
+  assert.deepEqual([over.slug, over.limited], [null, true]); // this editor is done for today
+  assert.equal((await ask(p, 'ארבעה')).slug, 'word'); // third call of the site
+  assert.equal((await ask(p, 'חמישה')).limited, true); // the site is done for today
+  assert.equal(runs, 3);
+});
