@@ -1,7 +1,7 @@
 // Topics and pages made in the editor (/admin/): data/topics.json and data/pages/*.json.
-// A topic is "pages" (a few free pages, listed as cards) or a "collection" (many items of one kind, like the library:
-// a filter, chips and one section per category, each item with its own page).
-import { esc, url, write, topics, cmsPages } from '../core.mjs';
+// A topic is a single "page" (its one page is the topic's own address) or a "collection" (many items of one kind, like the
+// library: a filter, chips and one section per category, each item with its own page).
+import { esc, url, write, topics, cmsPages, isSingle } from '../core.mjs';
 import { ICON, icon, orn, phead, layout } from '../layout.mjs';
 import { ps, ysect, faqHtml, faqLd, crumbs, ld, ul } from '../parts.mjs';
 
@@ -17,18 +17,27 @@ const block = (b, i) => {
   return '';
 };
 const byTitle = (a, b) => a.title.localeCompare(b.title, 'he');
+const body = (p) => (p.blocks || []).map(block).join('') || `<section class="band"><div class="wrap narrow">${orn}</div></section>`;
+const pageLd = (p, trail) => {
+  const faqs = (p.blocks || []).filter((b) => b.type === 'faq').flatMap((b) => (b.items || []).map((x) => [x.q, x.a]));
+  return ld({ '@context': 'https://schema.org', '@graph': [crumbs(trail), ...(faqs.length ? [faqLd(faqs)] : [])] });
+};
 
 for (const t of topics) {
   if (t.icon && !ICON[t.icon]) throw new Error(`CMS: topic ${t.slug}: unknown icon "${t.icon}"`);
   const mine = cmsPages.filter((p) => p.topic === t.slug).sort(byTitle);
   if (!mine.length) continue;
+  if (isSingle(t)) {
+    const [p] = mine;
+    write(`${t.slug}/index.html`, layout(p.title, body(p), { desc: p.desc || p.lead || t.desc || p.title, path: `/${t.slug}/`, full: true,
+      head: phead(esc(t.group || ''), esc(p.title), esc(p.lead || '')), head_extra: pageLd(p, [['בית', '/'], [p.title, `/${t.slug}/`]]) }));
+    continue;
+  }
   const cats = t.categories || [];
   const catOf = (p) => cats.find((c) => c.id === p.category);
-  const collection = t.kind === 'collection';
   const card = (p) => `<a class="card book qcard" href="/${t.slug}/${p.slug}/" data-t="${esc(`${p.title} ${p.lead || ''}`)}">${icon(t.icon || 'book', 'ico lg')}<h3>${esc(p.title)}</h3>${p.lead ? `<p>${esc(p.lead)}</p>` : ''}<span class="go">לקריאה ←</span></a>`;
   let listing;
-  if (!collection) listing = `<section class="band"><div class="wrap"><div class="grid">${mine.map(card).join('')}</div></div></section>`;
-  else {
+  {
     // One section per category, in the order the editor set; items with no (or a removed) category come last, under "אחר".
     const sections = cats.map((c) => [c.id, c.title, mine.filter((p) => p.category === c.id)]);
     const rest = mine.filter((p) => !catOf(p));
@@ -42,12 +51,16 @@ ${shown.map(([c, n, xs]) => `<section class="libcat" id="c-${c}"><h2 class="subh
     head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: t.title, description: t.desc || t.title }, crumbs([['בית', '/'], [t.title, `/${t.slug}/`]])] }),
   }));
   for (const p of mine) {
-    const faqs = (p.blocks || []).filter((b) => b.type === 'faq').flatMap((b) => (b.items || []).map((x) => [x.q, x.a]));
     const c = catOf(p);
-    write(`${t.slug}/${p.slug}/index.html`, layout(p.title, (p.blocks || []).map(block).join('') || `<section class="band"><div class="wrap narrow">${orn}</div></section>`,
+    write(`${t.slug}/${p.slug}/index.html`, layout(p.title, body(p),
       { desc: p.desc || p.lead || p.title, path: `/${t.slug}/${p.slug}/`, full: true,
         head: phead(`<a href="/${t.slug}/">${esc(t.title)}</a>${c ? ' · ' + esc(c.title) : ''}`, esc(p.title), esc(p.lead || '')),
-        head_extra: ld({ '@context': 'https://schema.org', '@graph': [crumbs([['בית', '/'], [t.title, `/${t.slug}/`], [p.title, `/${t.slug}/${p.slug}/`]]), ...(faqs.length ? [faqLd(faqs)] : [])] }) }));
+        head_extra: pageLd(p, [['בית', '/'], [t.title, `/${t.slug}/`], [p.title, `/${t.slug}/${p.slug}/`]]) }));
   }
 }
-export const cmsUrls = topics.flatMap((t) => (cmsPages.some((p) => p.topic === t.slug) ? [`/${t.slug}/`, ...cmsPages.filter((p) => p.topic === t.slug).map((p) => `/${t.slug}/${p.slug}/`)] : []));
+// A single page lives at its topic's address; a collection has its list there and each item below it.
+export const cmsUrls = topics.flatMap((t) => {
+  const mine = cmsPages.filter((p) => p.topic === t.slug);
+  if (!mine.length) return [];
+  return isSingle(t) ? [`/${t.slug}/`] : [`/${t.slug}/`, ...mine.map((p) => `/${t.slug}/${p.slug}/`)];
+});

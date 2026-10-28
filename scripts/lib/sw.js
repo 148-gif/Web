@@ -1,5 +1,6 @@
 // Service worker: pages already read stay available offline.
-// Pages: network first, a copy kept for offline (the most recent 150); without a connection, the copy or the offline page.
+// Pages: network first (checked against the server, at most 3 seconds before a saved copy is shown), a copy kept for offline
+// (the most recent 150); without a connection, the copy or the offline page.
 // Versioned files (?v=: styles, scripts, fonts, search index): cache first, since a new version has a new URL.
 // Everything else (PDFs, images, other sites) is left to the browser.
 // Template: the build fills in VERSION and PRECACHE and writes it to dist/sw.js (scripts/lib/sections/offline.mjs).
@@ -16,7 +17,8 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     for (const k of await caches.keys()) if (k.startsWith('static-') && k !== STATIC) await caches.delete(k);
-    if (self.registration.navigationPreload) await self.registration.navigationPreload.enable();
+    // Pages are fetched by the worker itself (see page()), so the browser's own early request is turned off.
+    if (self.registration.navigationPreload) await self.registration.navigationPreload.disable();
     await self.clients.claim();
   })());
 });
@@ -29,14 +31,18 @@ const keepPage = async (req, res) => {
   for (const k of keys.slice(0, Math.max(0, keys.length - MAX_PAGES))) await c.delete(k);
 };
 
-const page = async (e) => {
-  try {
-    const res = (await e.preloadResponse) || (await fetch(e.request));
-    if (res.ok && res.type === 'basic') e.waitUntil(keepPage(e.request, res.clone()));
-    return res;
-  } catch {
-    return (await caches.match(e.request, { ignoreSearch: true })) || (await caches.match(OFFLINE)) || Response.error();
-  }
+// Pages: always asked from the network and checked against the server (cache: 'no-cache'), so a page changed in the editor shows
+// on the next visit instead of after the browser's 10-minute cache. If the network does not answer within 3 seconds and the page
+// was read before, the saved copy is shown at once (and the fresh one is saved for next time); a page never read waits for the network.
+const NET_WAIT = 3000;
+const page = (e) => {
+  const net = fetch(e.request, { cache: 'no-cache' });
+  e.waitUntil(net.then((res) => (res.ok && res.type === 'basic' ? keepPage(e.request, res.clone()) : null)).catch(() => {}));
+  const saved = caches.match(e.request, { ignoreSearch: true });
+  const late = new Promise((r) => setTimeout(r, NET_WAIT)).then(() => saved);
+  return Promise.race([net, late])
+    .then((first) => first || net)
+    .catch(async () => (await saved) || (await caches.match(OFFLINE)) || Response.error());
 };
 
 const versioned = async (req) => {

@@ -110,3 +110,11 @@ test('validateCms() checks topic kind, group and categories, and a page category
   assert.throws(() => validateCms([{ ...t, categories: [{ id: 'a', title: 'x' }, { id: 'a', title: 'y' }] }], []), /duplicate category/);
   assert.throws(() => validateCms([t], [{ ...p, category: 5 }]), /category/);
 });
+
+test('validateCms() allows one page, at most, in a single-page topic', () => {
+  const t = { slug: 'about-us', title: 'עלינו', kind: 'page' };
+  const p = { slug: 'about-us', topic: 'about-us', title: 'עלינו' };
+  assert.doesNotThrow(() => validateCms([t], [p]));
+  assert.doesNotThrow(() => validateCms([{ ...t, kind: 'pages' }], [p, { ...p, slug: 'b' }])); // the old name of a collection
+  assert.throws(() => validateCms([t], [p, { ...p, slug: 'b' }]), /single page/);
+});

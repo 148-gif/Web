@@ -108,9 +108,11 @@ const RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachm
 const topics = read('topics.json');
 const cmsPages = readdirSync(new URL('../../data/pages/', import.meta.url)).filter((f) => f.endsWith('.json')).map((f) => ({ slug: f.slice(0, -5), ...read(`pages/${f}`) }));
 // A topic is a place in the site's menu: its menu group ("group", a title; the site's own groups or a new one), its kind
-// ("pages": a few free pages, or "collection": many items of one kind, like the library) and, for a collection,
+// ("page": a single page, like אומן, or "collection": many items of one kind, like the library) and, for a collection,
 // its "categories" ([{ id, title }]). Each page may name one of its topic's categories in "category".
-const TOPIC_KINDS = ['pages', 'collection'];
+// "pages" is the old name of a collection without categories, from before single pages existed.
+const TOPIC_KINDS = ['page', 'collection', 'pages'];
+const isSingle = (t) => t.kind === 'page';
 const validateCms = (topics, pages) => {
   const bad = (m) => { throw new Error(`CMS: ${m}`); };
   const seen = new Set();
@@ -131,6 +133,7 @@ const validateCms = (topics, pages) => {
     if (p.category != null && typeof p.category !== 'string') bad(`page ${p.slug}: invalid category`);
     for (const b of p.blocks || []) if (!BLOCK_TYPES.includes(b.type)) bad(`page ${p.slug}: unknown block type "${b.type}"`);
   }
+  for (const t of topics.filter(isSingle)) if (pages.filter((p) => p.topic === t.slug).length > 1) bad(`topic ${t.slug} is a single page, but has more than one page`);
   const keys = pages.map((p) => `${p.topic}/${p.slug}`);
   if (new Set(keys).size !== keys.length) bad('duplicate page');
 };
@@ -140,4 +143,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { TOPIC_KINDS, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
