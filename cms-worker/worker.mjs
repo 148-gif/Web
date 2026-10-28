@@ -13,8 +13,12 @@
 //   REPO, BRANCH      e.g. 148-gif/Web and claude/greeting-2i183o
 //   EDITORS           KV binding holding the editors list (key "editors": JSON array of emails)
 //   GITHUB_TOKEN      secret: fine-grained token, this repo only, Contents read/write and Actions read
+//   RESEND_API_KEY, REPORT_TO  secrets: failure reports are emailed to REPORT_TO through Resend (report.mjs); without them nothing is sent
+//   REPORT_FROM       optional sender for those mails
 //   SESSION_SECRET    optional secret; by default sessions are signed with a key derived from GITHUB_TOKEN,
 //                     so replacing either one signs everyone out
+
+import { cleanReport, deliver } from './report.mjs';
 
 const SESSION_HOURS = 12;
 const enc = new TextEncoder();
@@ -111,7 +115,21 @@ async function handle(req, env) {
     return json({ token: await makeSession(email, env), email, owner: await isOwner(env, email) }, 200, cors);
   }
 
-  const email = await readSession((req.headers.get('Authorization') || '').replace(/^Bearer /, ''), env);
+  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
+
+  // Failure reports from the editor page (signed in: the email is verified) and from visitors' browsers (anonymous: marked as such).
+  // Always answered the same way, so a sender learns nothing about what was throttled or whether mail is set up.
+  if (url.pathname === '/report' && req.method === 'POST') {
+    const text = await req.text();
+    if (text.length > 20000) return json({ message: 'too big' }, 413, cors);
+    let raw;
+    try { raw = JSON.parse(text); } catch { return json({ message: 'bad json' }, 400, cors); }
+    const who = await readSession(bearer, env).catch(() => null);
+    await deliver(env, cleanReport(raw), { source: who ? 'editor' : 'visitor', email: who || '', ua: req.headers.get('User-Agent') || '', country: req.cf?.country || '' });
+    return json({ ok: true }, 202, cors);
+  }
+
+  const email = await readSession(bearer, env);
   if (!email) return json({ message: 'צריך להתחבר מחדש' }, 401, cors);
 
   // Editors list: owners only. GET lists, PUT {email} adds, DELETE {email} removes.
@@ -150,8 +168,10 @@ async function handle(req, env) {
 }
 
 export default {
-  fetch: (req, env) => handle(req, env).catch(() => {
-    const origin = req.headers.get('Origin');
+  fetch: (req, env, ctx) => handle(req, env).catch((err) => {
+    const origin = req.headers.get('Origin'), path = new URL(req.url).pathname;
+    // The server's own failures reach the owner too (not the report endpoint itself, which would only fail again).
+    if (path !== '/report') ctx?.waitUntil?.(deliver(env, cleanReport({ kind: 'server', where: `${req.method} ${path}`, message: err?.message || String(err), stack: err?.stack, extra: { origin } }), { source: 'server', ua: req.headers.get('User-Agent') || '' }));
     return json({ message: 'שגיאה בשרת העריכה' }, 500, origin === env.ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {});
   }),
 };

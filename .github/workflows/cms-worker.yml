@@ -20,13 +20,15 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
-      - run: node --test test/worker.test.mjs
+      - run: node --test test/worker.test.mjs test/report.test.mjs
       # Both secrets are added once by the site owner (cms-worker/README.md); until then there is nothing to deploy.
       - name: Deploy
         working-directory: cms-worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CMS_GITHUB_TOKEN: ${{ secrets.CMS_GITHUB_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REPORT_TO: ${{ secrets.REPORT_TO }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CMS_GITHUB_TOKEN" ]; then
             echo "::warning::CLOUDFLARE_API_TOKEN or CMS_GITHUB_TOKEN is not set yet (see cms-worker/README.md); skipping the deploy."
@@ -34,3 +36,30 @@ jobs:
           fi
           npx --yes wrangler@4.150.0 deploy
           printf %s "$CMS_GITHUB_TOKEN" | npx --yes wrangler@4.150.0 secret put GITHUB_TOKEN
+          # Failure reports by email (optional): the server gets the same two secrets the workflows use.
+          if [ -n "$RESEND_API_KEY" ] && [ -n "$REPORT_TO" ]; then
+            printf %s "$RESEND_API_KEY" | npx --yes wrangler@4.150.0 secret put RESEND_API_KEY
+            printf %s "$REPORT_TO" | npx --yes wrangler@4.150.0 secret put REPORT_TO
+          fi
+  # Emails the site owner when the test or the deploy of the editor server failed.
+  report-failure:
+    needs: deploy
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: node scripts/notify-failure.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          REPORT_KIND: deploy
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REPORT_TO: ${{ secrets.REPORT_TO }}

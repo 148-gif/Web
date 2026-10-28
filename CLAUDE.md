@@ -20,6 +20,10 @@ Topics and new pages live in `data/topics.json` and `data/pages/<slug>.json` (bl
 A topic is a place in the site: `group` is the menu group it joins (the title of one of the site's own groups, or a new one; none means "נושאים נוספים"), and `kind` is `page` (a single page, like אומן: its one page is built at the topic's own address, and `validateCms` allows no second page) or `collection` (many items of one kind, like the library: optional `categories` `[{ id, title }]`, and a page names its own in `category`; `pages` is the old name of a collection and is still read as one). Either way a topic is one menu entry that links to its own address (the page itself, or the collection's list with a filter, chips and a section per category); a topic with no page is never shown. Moving a topic between groups, or changing its kind or categories, is done in the editor's topic settings.
 The admin page has its own CSP (own scripts and styles only, no inline; Google's ready-made sign-in button needs inline styles, so the editor draws its own button and uses Google's token client); keep it strict.
 
+## Failure reports
+
+Every failure is emailed to the owner (`cms-worker/report.mjs`: clean, throttle in KV, send through Resend; setup in `cms-worker/README.md` step 6, tests in `test/report.test.mjs`). Sources: the editor's `report()` in `admin.js` (every `api()` failure, network errors, a slow publish, uncaught errors; an error it reported is marked `reported` so callers do not send it twice), visitors' browsers (`site/report.js`, added to every page when `config.json` has a `worker`; call `window.reportFailure?.(where, err)` where code swallows a failure on purpose), the worker's own exceptions, and the `report-failure` job of `pages.yml` and `cms-worker.yml` (`scripts/notify-failure.mjs`, with the failed step's log). Nothing personal goes in a visitor report (the privacy page says so); keep it that way. Without `RESEND_API_KEY` and `REPORT_TO` nothing is sent.
+
 ## Content that is missing or not ready
 
 Never show visitors an empty or unfinished section. When something is not ready:

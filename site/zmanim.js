@@ -11,7 +11,10 @@ const shift = (key, n) => { const [y, m, d] = key.split('-').map(Number); return
 const dowOf = (key) => new Date(`${key}T12:00:00Z`).getUTCDay();
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 const hm = (sec) => { const m = Math.round(sec / 60); return `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
-const getJson = (name) => fetch(new URL(`${name}.json${me.search}`, base)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+// A week missing (404) is outside the years we have and is expected; a server error or a broken response is reported.
+const getJson = (name) => fetch(new URL(`${name}.json${me.search}`, base))
+  .then((r) => { if (r.ok) return r.json(); if (r.status >= 500) throw new Error(`${r.status} ${r.url}`); return null; })
+  .catch((e) => { window.reportFailure?.('זמני היום', e); return null; });
 const weeks = {};   // a week's file is fetched once
 const load = (key) => (weeks[shift(key, -dowOf(key))] ??= getJson(shift(key, -dowOf(key))));
 

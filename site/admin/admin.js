@@ -121,16 +121,40 @@
     opt = opt || {};
     var base = cfg.worker ? cfg.worker.replace(/\/$/, '') + '/gh' : 'https://api.github.com/repos/' + cfg.repo;
     var headers = cfg.worker ? { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } : { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
-    return fetch(base + (path ? '/' + path : ''), Object.assign({}, opt, { headers: headers })).then(function (r) {
+    var method = opt.method || 'GET', what = method + ' ' + path;
+    return fetch(base + (path ? '/' + path : ''), Object.assign({}, opt, { headers: headers })).catch(function (x) {
+      x.reported = true; report('network', what, x.message); throw x;
+    }).then(function (r) {
       if (r.ok) return r.status === 204 ? null : r.json();
       if (r.status === 401 && cfg.worker) signout('פג תוקף ההתחברות. התחברו שוב.');
       return r.text().then(function (t) {
         var msg = ''; try { msg = JSON.parse(t).message; } catch { /* not JSON */ }
+        // Not reported: a missing file on a read (asked about on purpose) and the editor's own session running out.
+        var quiet = (r.status === 404 && method === 'GET') || msg === 'צריך להתחבר מחדש';
         var e = new Error(r.status === 409 || r.status === 422 ? 'מישהו אחר שמר את אותו תוכן בינתיים. טענו את הדף מחדש ונסו שוב.' : cfg.worker && msg && r.status !== 404 ? msg : r.status === 401 ? 'המפתח לא תקין או שפג תוקפו' : r.status === 404 ? 'לא נמצא' : 'שגיאה ' + r.status);
-        e.status = r.status; throw e;
+        e.status = r.status;
+        if (!quiet) { e.reported = true; report(method === 'GET' ? 'load' : 'save', what, r.status + ' ' + (msg || e.message), t, { status: String(r.status) }); }
+        throw e;
       });
     });
   }
+  // ---- failure reports: every failure here is also sent to the editor server, which emails it to the site owner ----
+  var reported = {};
+  function report(kind, where, message, detail, extra) {
+    if (!cfg || !cfg.worker) return;
+    var key = kind + '|' + where + '|' + message;
+    if (reported[key] && Date.now() - reported[key] < 600000) return;
+    reported[key] = Date.now();
+    try {
+      var headers = { 'Content-Type': 'application/json' }; if (token) headers.Authorization = 'Bearer ' + token;
+      fetch(cfg.worker.replace(/\/$/, '') + '/report', { method: 'POST', headers: headers, keepalive: true, body: JSON.stringify({
+        kind: kind, where: where, message: String(message || ''), detail: detail ? String(detail) : '', page: location.origin + location.pathname + location.hash,
+        extra: Object.assign({ branch: cfg.branch, file: cur ? cur.path : '' }, extra),
+      }) }).catch(function () { /* the report itself failed: nothing more to do */ });
+    } catch { /* a report must never cause a failure */ }
+  }
+  window.addEventListener('error', function (e) { if (e.filename && e.filename.indexOf(location.origin) === 0) report('script', 'admin.js', e.message, e.filename + ':' + e.lineno + ':' + e.colno + '\n' + ((e.error && e.error.stack) || '')); });
+  window.addEventListener('unhandledrejection', function (e) { var r = e.reason || {}; if (!r.reported) report('script', 'promise', r.message || String(r), r.stack); });
   var ref = function () { return '?ref=' + encodeURIComponent(cfg.branch); };
   function b64e(s) { var b = new TextEncoder().encode(s), r = ''; for (var i = 0; i < b.length; i += 0x8000) r += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(r); }
   function b64d(s) { return new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g, '')), function (c) { return c.charCodeAt(0); })); }
@@ -298,7 +322,7 @@
   function commit(path, data, indent, sha, msg, url) {
     if (saving) return Promise.reject(new Error('השמירה הקודמת עוד לא הסתיימה'));
     saving = true; var b = $('#savebtn'); if (b) { b.disabled = true; b.textContent = 'שומר…'; }
-    return putFile(path, data, indent, sha, msg).then(function (r) { published(r.commit.sha, url); return r; }).finally(function () { saving = false; if (b) { b.disabled = false; b.textContent = 'שמירה ופרסום'; } });
+    return putFile(path, data, indent, sha, msg).then(function (r) { published(r.commit.sha, url); return r; }).catch(function (e) { if (!e.reported) { e.reported = true; report('save', path, e.message, e.stack); } throw e; }).finally(function () { saving = false; if (b) { b.disabled = false; b.textContent = 'שמירה ופרסום'; } });
   }
   // After a save: follow it until it is really on the site, as Decap and CloudCannon show the state of the build.
   // The site's run for the commit says whether it waits, runs, failed, or was folded into a newer save (deploys are never cut
@@ -325,12 +349,12 @@
     };
     (function poll() {
       if (done) return;
-      if (Date.now() - t0 > 8 * 60000) { if (newest()) setPub('slow'); return; }
+      if (Date.now() - t0 > 8 * 60000) { if (newest()) { setPub('slow'); report('publish', 'פרסום ' + sha.slice(0, 7), 'הפרסום לוקח יותר מ־8 דקות', 'האתר עדיין לא מגיש את השמירה ' + sha, { sha: sha }); } return; }
       setTimeout(function () {
         Promise.all([api('actions/runs?head_sha=' + sha).catch(function () { return {}; }), live()]).then(function (r) {
           if (r[1]) { done = true; if (newest()) { setPub('live'); say('האתר עודכן ✓', 'ok', pub.url); } return; }
           var runs = (r[0] && r[0].workflow_runs) || [], run = runs.filter(function (x) { return /Pages/.test(x.name); })[0];
-          if (run && run.status === 'completed' && run.conclusion === 'failure') { done = true; if (newest()) { setPub('bad'); say('הפרסום נכשל, והאתר נשאר כמו שהיה. כנראה יש בעיה בתוכן ששמרתם. פנו למי שמתחזק את האתר.', 'bad'); } return; }
+          if (run && run.status === 'completed' && run.conclusion === 'failure') { done = true; if (newest()) { setPub('bad'); /* the workflow's own report job emails the failed step and its log */ say('הפרסום נכשל, והאתר נשאר כמו שהיה. כנראה יש בעיה בתוכן ששמרתם. פנו למי שמתחזק את האתר.', 'bad'); } return; }
           // cancelled: a newer save carries this change too, and its own poll reports it
           if (run && run.status === 'completed' && run.conclusion === 'cancelled' && !newest()) { done = true; return; }
           if (newest()) setPub(run && run.status === 'in_progress' ? 'run' : run && run.status === 'completed' ? 'run' : 'wait');
@@ -785,7 +809,7 @@
   // ---- the Q&A archive: search in a light list, edit one entry at a time (data/shut-edits/<id>.json) ----
   function shutIndex() {
     if (cache.shutIndex) return Promise.resolve(cache.shutIndex);
-    return fetch('shut/index.json').then(function (r) { if (!r.ok) throw new Error('רשימת השאלות עוד לא זמינה. נסו שוב בעוד כמה דקות.'); return r.json(); }).then(function (x) { cache.shutIndex = x; return x; });
+    return fetch('shut/index.json').then(function (r) { if (!r.ok) throw new Error('רשימת השאלות עוד לא זמינה. נסו שוב בעוד כמה דקות.'); return r.json(); }).catch(function (e) { report('load', 'shut/index.json', e.message, e.stack); throw e; }).then(function (x) { cache.shutIndex = x; return x; });
   }
   function shutScreen() {
     var m = main();
@@ -822,7 +846,7 @@
       return getFile(path(id)).catch(function (e) {
         if (e.status !== 404) throw e;
         if (!row) throw new Error('השאלה לא נמצאה');
-        return fetch('shut/' + row[4] + '.json').then(function (r) { return r.json(); }).then(function (chunk) {
+        return fetch('shut/' + row[4] + '.json').then(function (r) { return r.json(); }).catch(function (e) { report('load', 'shut/' + row[4] + '.json', e.message, e.stack); throw e; }).then(function (chunk) {
           var x = chunk.filter(function (y) { return String(y.id) === id; })[0];
           if (!x) throw new Error('השאלה לא נמצאה');
           return { path: path(id), sha: null, indent: 2, data: x, orig: JSON.stringify(x) };
@@ -939,7 +963,7 @@
       if (!r.permissions || !r.permissions.push) throw new Error(cfg.worker ? 'לשרת העריכה אין הרשאת כתיבה למאגר' : 'למפתח אין הרשאת כתיבה למאגר');
       me = who || ''; document.body.classList.remove('out'); $('#login').hidden = true; $('#app').hidden = false; $('#out').hidden = false; $('#burger').hidden = false; $('#who').textContent = who || cfg.repo;
       return topics().catch(function () { return null; }).then(function () { shell(); here = ''; route(true); });
-    }).catch(function (e) { document.body.classList.add('out'); $('#login').hidden = false; $('#app').hidden = true; $('#lerr').textContent = e.message; if (cfg.worker) google(); });
+    }).catch(function (e) { if (!e.reported) report('load', 'כניסה לעורך', e.message, e.stack); document.body.classList.add('out'); $('#login').hidden = false; $('#app').hidden = true; $('#lerr').textContent = e.message; if (cfg.worker) google(); });
   }
   function remember(v, persist) {
     try { localStorage.removeItem('cms-token'); sessionStorage.removeItem('cms-token'); if (v) (persist ? localStorage : sessionStorage).setItem('cms-token', JSON.stringify(v)); } catch { /* storage blocked: kept for this page only */ }

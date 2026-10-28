@@ -6,7 +6,7 @@ const me = new URL(document.currentScript.src), root = me.pathname.replace(/[^/]
 const input = document.getElementById('q'), out = document.getElementById('results'), count = document.getElementById('count');
 const N = Number(out.dataset.parts), SIZE = Number(out.dataset.size);
 const strip = (s) => s.replace(/[֑-ׇ]/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ');
-const get = (f, priority = 'auto') => fetch(`${root}idx/${f}.json${v}`, { priority }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const get = (f, priority = 'auto') => fetch(`${root}idx/${f}.json${v}`, { priority }).then((r) => { if (!r.ok) throw new Error(`${r.status} ${r.url}`); return r.json(); });
 const items = []; // by index position, filled in as title parts arrive
 const titlesDone = new Array(N).fill(false), textAsked = new Array(N).fill(false), textDone = new Array(N).fill(false);
 let failed = 0, asked = false, wantText = false, timer;
@@ -49,7 +49,7 @@ const refresh = () => { if (input.value.trim()) run(); };
 const loadText = (k) => {
   if (textAsked[k]) return; textAsked[k] = true;
   get(k).then((w) => { w.forEach((txt, i) => { const r = items[k * SIZE + i]; if (r) r.s += ' ' + txt; }); })
-    .catch(() => { failed++; })
+    .catch((e) => { failed++; window.reportFailure?.(`חיפוש: טקסט מלא, חלק ${k}`, e); })
     .finally(() => { textDone[k] = true; refresh(); });
 };
 const wantFullText = () => { wantText = true; for (let k = 0; k < N; k++) if (titlesDone[k]) loadText(k); };
@@ -57,7 +57,7 @@ const wantFullText = () => { wantText = true; for (let k = 0; k < N; k++) if (ti
 // A query in the address, or typing before then, fetches them at once. A part's full text follows its titles.
 const loadPart = (k, priority) => get(`t${k}`, priority)
   .then((t) => { t.forEach(([id, title], i) => { const t = strip(title); items[k * SIZE + i] = { id, title, t, s: t }; }); })
-  .catch(() => { failed++; textAsked[k] = textDone[k] = true; }) // no titles, so nothing to add text to
+  .catch((e) => { failed++; textAsked[k] = textDone[k] = true; window.reportFailure?.(`חיפוש: כותרות, חלק ${k}`, e); }) // no titles, so nothing to add text to
   .finally(() => {
     titlesDone[k] = true;
     if (readyParts() === N && !items.some(Boolean)) count.textContent = 'החיפוש לא נטען. בדקו את החיבור ורעננו את העמוד.';

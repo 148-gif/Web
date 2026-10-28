@@ -1,6 +1,6 @@
 // Page shell: security policy, menus, icons and the layout every page is built with.
 import { createHash } from 'node:crypto';
-import { SITE, BASE, ORIGIN, BUILD, font, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden, topics, cmsPages } from './core.mjs';
+import { REPORT_URL, SITE, BASE, ORIGIN, BUILD, font, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden, topics, cmsPages } from './core.mjs';
 
 // Security policy. Inline scripts (head bootstrap, speculation rules) and the splash styles are allowed by hash.
 const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
@@ -33,7 +33,7 @@ const CSP = [
   `style-src 'self' ${sha(SPLASH_CSS)}`,
   "font-src 'self'",
   "img-src 'self' data: https:",
-  "connect-src 'self'",
+  `connect-src 'self'${REPORT_URL ? ` ${new URL(REPORT_URL).origin}` : ''}`,
   `frame-src ${frames.join(' ') || "'none'"}`,
   "form-action 'self'",
   "base-uri 'none'",
@@ -119,7 +119,7 @@ const DESC = 'היכל הקודש, חסידות ברסלב: שו״ת ברסלב 
 // Share previews (WhatsApp, Facebook) need absolute URLs, so canonical/og:url/og:image appear only when SITE_ORIGIN is set.
 const abs = (p) => esc(ORIGIN + BASE + p);
 const layout = (title, body, { desc = '', path = '/', self = path, head = '', full = false, reading = false, head_extra = '', index = true } = {}) => `<!doctype html>
-<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="strict-origin-when-cross-origin"><script>${HEAD_JS}</script>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="strict-origin-when-cross-origin"><script>${HEAD_JS}</script>${REPORT_URL ? `<script src="/report.js?v=${BUILD}" data-url="${escAttr(REPORT_URL)}" defer></script>` : ''}
 <title>${escAttr(nik(title))}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${escAttr(nik(desc || DESC))}">${index ? '' : '<meta name="robots" content="noindex">'}
 <meta name="theme-color" content="#0b1d50"><meta property="og:title" content="${escAttr(nik(title))}"><meta property="og:description" content="${escAttr(nik(desc || DESC))}"><meta property="og:site_name" content="${SITE}"><meta property="og:locale" content="he_IL"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">${ORIGIN && index ? `<link rel="canonical" href="${abs(self)}"><meta property="og:url" content="${abs(self)}"><meta property="og:image" content="${abs('/img/og.png')}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">` : ''}
 <link rel="manifest" href="/site.webmanifest"><link rel="apple-touch-icon" href="/img/icon-180.png"><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0b1d50"/><g fill="none" stroke="#e6c466" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON.flame}</g></svg>`)}">

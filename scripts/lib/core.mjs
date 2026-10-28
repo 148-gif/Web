@@ -6,6 +6,12 @@ const SITE = 'היכל הקודש';
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when served from a sub-path
 const ORIGIN = (process.env.SITE_ORIGIN || '').replace(/\/$/, ''); // e.g. https://user.github.io; sitemap URLs must be absolute
 const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`) : h);
+// Failures in a visitor's browser are reported to the editor server (cms-worker/), whose address is the editor's "worker" setting
+// (site/admin/config.json). Empty while there is none: then no report script is added to the pages and the CSP stays closed.
+const REPORT_URL = (() => {
+  const w = JSON.parse(readFileSync(new URL('../../site/admin/config.json', import.meta.url), 'utf8')).worker;
+  return w ? `${new URL(w).origin}/report` : '';
+})();
 const PER_PAGE = 40;
 const BUILD = Date.now().toString(36);
 // Fonts carry a hash of their content (fonts/x.woff2?v=…), so they can be cached for a year and a changed file still reaches everyone.
@@ -143,4 +149,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { REPORT_URL, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
