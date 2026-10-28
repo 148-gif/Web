@@ -49,6 +49,7 @@ export async function makeGithub({ repo = 'o/r', branch = 'live', files = {} } =
       log.push(`${method} ${rest}`);
       const treeAt = (ref) => (ref === branch ? trees.get(commits.get(head).tree) : commits.has(ref) ? trees.get(commits.get(ref).tree) : null);
       let m;
+      if (rest === '') return res({ full_name: repo, permissions: { push: true } });
       if (rest.startsWith('contents/')) {
         const t = treeAt(q.get('ref') || branch);
         return res(t ? file(decodeURIComponent(rest.slice(9)), t) : null);
