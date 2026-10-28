@@ -108,7 +108,9 @@
   var SLUG = /^[a-z0-9-]+$/;
 
   var OTHER = 'נושאים נוספים'; // the menu group of a topic that names none
-  var KINDS = { pages: ['כמה דפים', 'דפים חופשיים בתוך הנושא, כמו ״אומן״'], collection: ['אוסף', 'הרבה פריטים מאותו סוג, מחולקים לנושאים, כמו הספרייה'] };
+  var KINDS = { page: ['דף יחיד', 'דף אחד, כמו ״אומן״. בתפריט של האתר הוא נפתח ישר'], collection: ['אוסף', 'הרבה פריטים מאותו סוג, כמו הספרייה. אפשר לחלק לנושאים'] };
+  // "pages" is the old name of a collection without categories.
+  var kindOf = function (t) { return t && t.kind === 'page' ? 'page' : 'collection'; };
   var cfg, token, owner = false, me = '';
   var cur = null; // the open file: { path, sha, indent, data, orig }
   var cache = { topics: null, pages: null, shutIndex: null };
@@ -341,7 +343,7 @@
     m.append(head('שלום' + (me ? ', ' + me.split('@')[0] : ''), 'מה תרצו לעשות היום?'));
     var tile = function (hash, ic, t, d, fn) { return el('a', { class: 'tile', href: hash || '#/', onclick: fn ? function (e) { e.preventDefault(); fn(); } : null }, el('span', { class: 'tic' }, icon(ic)), el('b', { text: t }), el('span', { text: d })); };
     m.append(el('div', { class: 'tiles' },
-      tile(null, 'plus', 'דף חדש', 'יצירת דף או פריט חדש בתוך נושא', function () { newPage(); }),
+      tile(null, 'plus', 'נושא חדש', 'דף יחיד או אוסף חדש באתר', function () { topicDialog(); }),
       tile('#/pages', 'page', 'נושאים ודפים', 'הנושאים שיצרתם, והדפים בכל אחד'),
       tile('#/shut', 'chat', 'שו״ת ברסלב', 'חיפוש, עריכה והוספה של שאלות ותשובות'),
       tile('#/file/yavniel.json', 'mountain', 'זמני תפילות ושיעורים', 'עדכון המידע על יבנאל'),
@@ -360,10 +362,10 @@
     }, function (e) { say(e.message, 'bad'); });
   }
 
-  function kindLabel(t) { return (KINDS[t.kind || 'pages'] || KINDS.pages)[0]; }
+  function kindLabel(t) { return KINDS[kindOf(t)][0]; }
   function pagesScreen() {
     var m = main();
-    m.append(head('נושאים ודפים', 'כל נושא נמצא בקבוצה בתפריט של האתר, והוא או כמה דפים או אוסף של פריטים.', [
+    m.append(head('נושאים ודפים', 'כל נושא נמצא בקבוצה בתפריט של האתר, והוא דף יחיד או אוסף של פריטים.', [
       el('button', { type: 'button', class: 'btn pri', onclick: function () { topicDialog(); } }, icon('plus'), 'נושא חדש')]));
     var box = el('div'); m.append(box); loading(box);
     Promise.all([topics(true), pages(true)]).then(function (r) {
@@ -373,11 +375,11 @@
       if (!ts.length) box.append(el('div', { class: 'empty card' }, el('p', { text: 'עדיין אין נושאים. נושא הוא מקום חדש באתר, למשל ״מתכונים״ או ״פרשת השבוע״.' }), el('button', { type: 'button', class: 'btn pri', onclick: function () { topicDialog(); } }, icon('plus'), 'יצירת נושא ראשון')));
       ts.forEach(function (t) {
         var mine = ps.filter(function (p) { return p.topic === t.slug; });
-        var unit = t.kind === 'collection' ? 'פריטים' : 'דפים';
+        var count = kindOf(t) === 'page' ? (mine.length ? 'פורסם' : '') : mine.length ? mine.length + ' פריטים' : '';
         var card = el('section', { class: 'card topic' },
           el('header', {}, el('span', { class: 'tic' }, icon(t.icon || 'book')),
             el('div', { class: 'grow' }, el('h2', {}, el('a', { href: '#/topic/' + t.slug, text: t.title })),
-              el('p', { class: 'help', text: kindLabel(t) + ' · בקבוצה ״' + (t.group || OTHER) + '״ · ' + (mine.length ? mine.length + ' ' + unit : 'עדיין ריק, ולכן לא מופיע באתר') })),
+              el('p', { class: 'help', text: kindLabel(t) + ' · בקבוצה ״' + (t.group || OTHER) + '״ · ' + (count || 'עדיין ריק, ולכן לא מופיע באתר') })),
             el('span', { class: 'acts' }, el('a', { class: 'btn ghost sm', href: '#/topic/' + t.slug }, 'פתיחה'))));
         box.append(card);
       });
@@ -392,10 +394,17 @@
       m.textContent = '';
       shell();
       if (!t) { say('הנושא לא נמצא. אולי הוא נמחק.', 'bad'); location.hash = '#/pages'; return; }
-      var coll = t.kind === 'collection', all = r[1].filter(function (p) { return p.topic === slug; }).sort(function (a, b) { return a.title.localeCompare(b.title, 'he'); });
-      var cats = t.categories || [], word = coll ? 'פריט' : 'דף';
+      if (kindOf(t) === 'page') {
+        var own = r[1].filter(function (p) { return p.topic === slug; })[0];
+        if (own) { here = '#/page/' + own.slug; history.replaceState(null, '', here); pageScreen(own.slug); mark('#/topic/' + slug); return; }
+        m.append(head(t.title, 'דף יחיד · עדיין אין לו תוכן', [el('button', { type: 'button', class: 'btn ghost', onclick: function () { topicDialog(t); } }, 'הגדרות הנושא'), el('button', { type: 'button', class: 'btn ghost dng', onclick: function () { delTopic(t); } }, icon('trash'), 'מחיקת הנושא')]),
+          el('div', { class: 'empty card' }, el('p', { text: 'הדף של הנושא הזה עוד לא נכתב.' }), el('button', { type: 'button', class: 'btn pri', onclick: function () { singlePage(t).then(function (ps) { location.hash = '#/page/' + ps; }, function (e) { say(e.message, 'bad'); }); } }, icon('plus'), 'כתיבת הדף')));
+        return;
+      }
+      var coll = true, all = r[1].filter(function (p) { return p.topic === slug; }).sort(function (a, b) { return a.title.localeCompare(b.title, 'he'); });
+      var cats = t.categories || [], word = 'פריט';
       m.append(el('p', { class: 'crumbs' }, t.group || OTHER, ' › ', t.title));
-      m.append(head(t.title, (t.desc ? t.desc + ' · ' : '') + kindLabel(t) + ' · ' + all.length + (coll ? ' פריטים' : ' דפים'), [
+      m.append(head(t.title, (t.desc ? t.desc + ' · ' : '') + kindLabel(t) + ' · ' + all.length + ' פריטים', [
         all.length ? viewLink('/' + slug + '/', 'באתר') : null,
         el('button', { type: 'button', class: 'btn ghost', onclick: function () { topicDialog(t); } }, 'הגדרות הנושא'),
         all.length ? null : el('button', { type: 'button', class: 'btn ghost dng', onclick: function () { delTopic(t); } }, icon('trash'), 'מחיקת הנושא'),
@@ -435,7 +444,7 @@
     var title = el('input', { type: 'text', required: true }); title.value = edit ? t.title : '';
     var desc = el('textarea', { rows: 2 }); desc.value = edit ? t.desc || '' : '';
     var slug = el('input', { type: 'text', class: 'ltr', dir: 'ltr', disabled: edit }); slug.value = edit ? t.slug : '';
-    var picked = edit ? t.icon || 'book' : 'book', kind = edit ? t.kind || 'pages' : 'pages';
+    var picked = edit ? t.icon || 'book' : 'book', kind = edit ? kindOf(t) : 'page';
     var grid = el('div', { class: 'igrid', role: 'radiogroup', 'aria-label': 'סמל' });
     Object.keys(ICON_NAMES).forEach(function (n) { var b = el('button', { type: 'button', role: 'radio', 'aria-checked': String(n === picked), title: ICON_NAMES[n], 'aria-label': ICON_NAMES[n], onclick: function () { picked = n; grid.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-checked', String(x === b)); }); } }, icon(n)); grid.append(b); });
     if (!edit) title.addEventListener('input', function () { if (!slug.dataset.touched) slug.value = slugify(title.value); });
@@ -492,17 +501,25 @@
         var f = r[0], ps = r[1];
         if (!edit && f.data.some(function (x) { return x.slug === s; })) throw new Error('כבר יש נושא עם הכתובת הזאת');
         // a category that still has items cannot be removed
+        var mine = ps.filter(function (p) { return p.topic === s; });
+        if (kind === 'page' && mine.length > 1) throw new Error('יש באוסף ' + mine.length + ' פריטים, ודף יחיד יכול להכיל רק דף אחד. מחקו או העבירו פריטים קודם.');
         var gone = (edit && t.categories || []).filter(function (c) { return !cats.some(function (x) { return x.id === c.id; }) && ps.some(function (p) { return p.topic === s && p.category === c.id; }); });
         if (gone.length) throw new Error('יש פריטים בנושא ״' + gone[0].title + '״. העבירו אותם לנושא אחר לפני שמסירים אותו.');
         var row = Object.assign({}, edit ? t : {}, { slug: s, title: title.value.trim(), desc: desc.value.trim(), icon: picked, kind: kind });
         if (group === OTHER) delete row.group; else row.group = group;
         if (kind === 'collection' && cats.length) row.categories = cats; else delete row.categories;
         if (edit) f.data = f.data.map(function (x) { return x.slug === s ? row : x; }); else f.data.push(row);
-        return commit('data/topics.json', f.data, 2, f.sha, (edit ? 'עריכת נושא: ' : 'נושא חדש: ') + row.title);
-      }).then(function () {
+        return commit('data/topics.json', f.data, 2, f.sha, (edit ? 'עריכת נושא: ' : 'נושא חדש: ') + row.title).then(function () { return [row, mine]; });
+      }).then(function (x) {
         cache.topics = null;
-        say(edit ? 'הנושא עודכן.' : 'הנושא נוצר. עכשיו הוסיפו לו ' + (kind === 'collection' ? 'פריט' : 'דף') + '.', 'ok');
-        return topics(true).then(function () { shell(); if (edit) route(true); else location.hash = '#/topic/' + s; });
+        var row = x[0], mine = x[1];
+        return topics(true).then(function () {
+          shell();
+          // A new single page gets its page right away, so the editor opens on it.
+          if (kind === 'page' && !mine.length) return singlePage(row).then(function (ps) { say('נוצר. עכשיו כתבו את הדף.', 'ok'); location.hash = '#/page/' + ps; });
+          say(edit ? 'הנושא עודכן.' : 'הנושא נוצר. עכשיו הוסיפו לו פריט.', 'ok');
+          if (edit) route(true); else location.hash = '#/topic/' + s;
+        });
       });
     });
     catsBody.parentNode.hidden = kind !== 'collection';
@@ -510,16 +527,24 @@
   function delTopic(t) {
     if (!confirm('למחוק את הנושא ״' + t.title + '״?')) return;
     Promise.all([topics(true), pages(true)]).then(function (r) {
-      if (r[1].some(function (p) { return p.topic === t.slug; })) throw new Error('יש בנושא הזה ' + (t.kind === 'collection' ? 'פריטים' : 'דפים') + '. מחקו או העבירו אותם קודם.');
+      if (r[1].some(function (p) { return p.topic === t.slug; })) throw new Error(kindOf(t) === 'page' ? 'קודם מחקו את הדף של הנושא.' : 'יש באוסף הזה פריטים. מחקו או העבירו אותם קודם.');
       var f = r[0]; f.data = f.data.filter(function (x) { return x.slug !== t.slug; });
       return commit('data/topics.json', f.data, 2, f.sha, 'מחיקת נושא: ' + t.title);
     }).then(function () { cache.topics = null; say('הנושא נמחק.', 'ok'); return topics(true).then(function () { shell(); location.hash = '#/pages'; }); }, function (e) { say(e.message, 'bad'); });
   }
+  function singlePage(t) {
+    var try_ = function (name, n) { return exists('data/pages/' + name + '.json').then(function (yes) { return yes ? try_(t.slug + '-' + (n + 1), n + 1) : name; }); };
+    return try_(t.slug, 1).then(function (name) {
+      var data = { topic: t.slug, title: t.title, lead: t.desc || '', desc: '', blocks: [BLOCKS.text.make()] };
+      return commit('data/pages/' + name + '.json', data, 2, null, 'דף חדש: ' + data.title).then(function () { pageEntry(name, data); cur = null; return name; });
+    });
+  }
   function newPage(topicSlug, category) {
     if (!leave()) return;
     topics().then(function (tf) {
-      if (!tf.data.length) { say('קודם צרו נושא, ואז אפשר להוסיף לו דפים.', 'bad'); topicDialog(); return; }
-      var topic = el('select'); tf.data.forEach(function (t) { topic.append(el('option', { value: t.slug, text: t.title })); });
+      var colls = tf.data.filter(function (t) { return kindOf(t) === 'collection'; });
+      if (!colls.length) { say('פריטים מוסיפים לאוסף. קודם צרו נושא מסוג ״אוסף״.', 'bad'); topicDialog(); return; }
+      var topic = el('select'); colls.forEach(function (t) { topic.append(el('option', { value: t.slug, text: t.title })); });
       if (typeof topicSlug === 'string') topic.value = topicSlug;
       var catSel = el('select'), catField = el('div', {}, catSel);
       var fillCats = function () {
@@ -532,7 +557,7 @@
       var title = el('input', { type: 'text', required: true }), slug = el('input', { type: 'text', class: 'ltr', dir: 'ltr' });
       title.addEventListener('input', function () { if (!slug.dataset.touched) slug.value = slugify(title.value); });
       slug.addEventListener('input', function () { slug.dataset.touched = 1; });
-      dialog('דף חדש', [['כותרת', title], ['נושא', topic], ['חלוקה', catField], ['כתובת באתר', slug, 'באותיות לועזיות. נוצרת לבד מהכותרת, ואפשר לשנות.']], 'יצירה', function () {
+      dialog('פריט חדש', [['כותרת', title], ['אוסף', topic], ['חלוקה', catField], ['כתובת באתר', slug, 'באותיות לועזיות. נוצרת לבד מהכותרת, ואפשר לשנות.']], 'יצירה', function () {
         var s = slug.value.trim();
         if (!title.value.trim()) return 'חסרה כותרת';
         if (!SLUG.test(s)) return 'הכתובת יכולה להכיל רק אותיות לועזיות קטנות, ספרות ומקף';
@@ -558,7 +583,8 @@
       cur.orig = JSON.stringify(p);
       m.textContent = '';
       var t = ts.filter(function (x) { return x.slug === p.topic; })[0];
-      m.append(el('p', { class: 'crumbs' }, el('a', { href: '#/pages', text: 'נושאים ודפים' }), ' › ', t ? el('a', { href: '#/topic/' + t.slug, text: t.title }) : p.topic));
+      var single = kindOf(t) === 'page';
+      m.append(el('p', { class: 'crumbs' }, el('a', { href: '#/pages', text: 'נושאים ודפים' }), ' › ', t && !single ? el('a', { href: '#/topic/' + t.slug, text: t.title }) : (t ? t.title : p.topic)));
       var col = el('div', { class: 'col' }), side = el('aside', { class: 'side' });
       m.append(el('div', { class: 'split' }, col, side));
       col.append(textInput(p, 'title', '', { cls: 'bigtitle', placeholder: 'כותרת הדף' }), textInput(p, 'lead', 'פתיח', { long: true, placeholder: 'משפט או שניים שמופיעים מתחת לכותרת' }));
@@ -588,7 +614,8 @@
         if (!p.blocks.length) blocks.append(el('p', { class: 'help center', text: 'הדף ריק. לחצו על ״הוספת מקטע״ כדי להתחיל.' }));
       };
       draw();
-      var topicSel = el('select', { id: 'ptopic' }); ts.forEach(function (x) { topicSel.append(el('option', { value: x.slug, text: x.title })); }); topicSel.value = p.topic;
+      // An item can move to another collection; a single page stays with its topic.
+      var topicSel = el('select', { id: 'ptopic' }); ts.filter(function (x) { return kindOf(x) === 'collection' || x.slug === p.topic; }).forEach(function (x) { topicSel.append(el('option', { value: x.slug, text: x.title })); }); topicSel.value = p.topic;
       // The category field exists only for a collection that has categories; moving to another topic clears it.
       var catWrap = el('div');
       var drawCat = function () {
@@ -603,10 +630,11 @@
       };
       topicSel.addEventListener('change', function () { p.topic = topicSel.value; delete p.category; drawCat(); touch(); });
       drawCat();
-      var url = '/' + p.topic + '/' + slug + '/';
+      var url = single ? '/' + p.topic + '/' : '/' + p.topic + '/' + slug + '/';
       side.append(saveBox(function () { savePage(slug); }),
         el('div', { class: 'card' }, el('h3', { text: 'הגדרות הדף' }),
-          el('div', { class: 'fld' }, el('label', { for: 'ptopic', text: 'נושא' }), topicSel), catWrap,
+          single ? el('p', { class: 'help' }, 'דף יחיד של הנושא ״' + t.title + '״. ', el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { topicDialog(t); } }, 'הגדרות הנושא'))
+            : el('div', { class: 'fld' }, el('label', { for: 'ptopic', text: 'אוסף' }), topicSel), catWrap,
           textInput(p, 'desc', 'תיאור לחיפוש ולשיתוף', { long: true, help: 'מה יופיע בגוגל ובוואטסאפ. אם ריק, משתמשים בפתיח.' }),
           el('p', { class: 'help' }, 'כתובת: ', el('span', { class: 'ltr', text: url }))),
         el('div', { class: 'card stack' },
@@ -632,12 +660,12 @@
     var f = cur, oldTopic = JSON.parse(f.orig).topic;
     commit(f.path, p, f.indent, f.sha, 'עריכת דף: ' + p.title).then(function (r) {
       f.sha = r.content.sha; f.orig = JSON.stringify(p); pageEntry(slug, p); status();
-      if (oldTopic !== p.topic) say('נשמר. שימו לב: הכתובת של הדף השתנתה ל־/' + p.topic + '/' + slug + '/', 'ok');
+      if (oldTopic !== p.topic) say('נשמר. שימו לב: הכתובת של הפריט השתנתה ל־/' + p.topic + '/' + slug + '/', 'ok');
     }, function (e) { say(e.message, 'bad'); });
   }
   function delPage() {
     if (!confirm('למחוק את ״' + cur.data.title + '״ מהאתר? אי אפשר לבטל את זה מכאן.')) return;
-    delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { var gone = cur.path.replace(/^data\/pages\/|\.json$/g, ''), tp = cur.data.topic; local[gone] = null; cache.pages = null; cur = null; say('נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = '#/topic/' + tp; }, function (e) { say(e.message, 'bad'); });
+    delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { var gone = cur.path.replace(/^data\/pages\/|\.json$/g, ''), tp = cur.data.topic; local[gone] = null; cache.pages = null; cur = null; say('נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = kindOf((cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === tp; })[0]) === 'page' ? '#/pages' : '#/topic/' + tp; }, function (e) { say(e.message, 'bad'); });
   }
   // Preview with the site's own stylesheet, in the markup the build uses (scripts/lib/sections/pages.mjs).
   function preview(p) {

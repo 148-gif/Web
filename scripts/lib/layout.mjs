@@ -54,7 +54,7 @@ for (const t of topics.filter((x) => cmsPages.some((p) => p.topic === x.slug))) 
   const title = t.group || 'נושאים נוספים';
   let row = baseGroups.find(([g]) => g === title);
   if (!row) baseGroups.push(row = [title, []]);
-  row[1].push([`/${t.slug}/`, t.title, t.icon || 'book', t.desc || '']);
+  row[1].push([`/${t.slug}/`, t.title, t.icon || 'book', t.desc || (t.kind === 'page' ? (cmsPages.find((p) => p.topic === t.slug) || {}).lead || '' : '')]);
 }
 const groups = baseGroups.map(([g, xs]) => [g, xs.filter(([h]) => !isHidden(h))]).filter(([, xs]) => xs.length);
 const nav = [['/', 'בית', 'home'], ...groups.flatMap(([, xs]) => xs), ['/search/', 'חיפוש', 'search']];
