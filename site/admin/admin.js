@@ -65,7 +65,7 @@
   var GROUPS = [
     ['לימוד', [['library.json', 'ספרייה', 'books', '/library/'], ['kuntresim.json', 'קונטרסים', 'book', '/library/kuntresim/'], ['halacha.json', 'שו״ת הלכתי', 'scale', '/halacha/']]],
     ['רבי נחמן מברסלב', [['rabbi-nachman.json', 'רבי נחמן', 'crown', '/rabbi-nachman/'], ['uman.json', 'אומן', 'pin', '/uman/'], ['tikkun.json', 'התיקון הכללי', 'lyre', '/tikkun-haklali/']]],
-    ['הצדיק מיבנאל', [['moharash.json', 'הצדיק מיבנאל', 'flame', '/moharash/'], ['yeshiva.json', 'ישיבת בית מנחם', 'school', '/yeshiva/'], ['print.json', 'הדפסת אשר בנחל', 'print', '/print/']]],
+    ['הצדיק מיבנאל', [['moharash.json', 'הצדיק מיבנאל', 'flame', '/moharash/'], ['yeshiva.json', 'ישיבת בית מנחם', 'school', '/yeshiva/'], ['images.json', 'תמונות', 'image', '/moharash/photos/'], ['print.json', 'הדפסת אשר בנחל', 'print', '/print/']]],
     ['יבנאל עיר ברסלב', [['yavniel.json', 'יבנאל', 'mountain', '/yavniel/'], ['mikveh.json', 'מקווה מלכה', 'drop', '/mikveh-malka/'], ['institutions.json', 'מוסדות הקהילה', 'heart', '/institutions/']]],
   ];
   var FILE = {}; GROUPS.forEach(function (g) { g[1].forEach(function (f) { FILE[f[0]] = { name: f[1], icon: f[2], url: f[3] }; }); });
@@ -92,6 +92,13 @@
     mikvehMen: 'מקווה גברים', mikvehMenNote: 'הערה למקווה גברים', mikvehWomen: 'מקווה נשים', mikvehWomenNote: 'הערה למקווה נשים', kitchen: 'מטבח', womenEvening: 'ערב נשים', directions: 'דרכי הגעה',
     mikvehWomenPhone: 'טלפון מקווה נשים', institutions: 'מוסדות', chesed: 'חסד', nachman: 'רבי נחמן', nachmanBy: 'מקור', banner: 'שורת פתיחה', values: 'ערכים', photos: 'תמונות', id: 'מספר', date: 'תאריך', kind: 'סוג',
   };
+  Object.assign(LABELS, { alt: 'תיאור לקוראי מסך (alt)', caption: 'כיתוב', credit: 'צלם או בעלים (אם לא ידוע: ״לא ידוע״)', year: 'שנה', fx: 'מיקוד: מרחק מהצד (באחוזים)', fy: 'מיקוד: גובה (באחוזים)',
+    rights: 'אישור פרסום', others: 'אנשים נוספים בתמונה', consent: 'מי אישר לפרסם (חובה כשיש ילדים או אנשים נוספים)', check: 'לבדוק לפני פרסום', note: 'הערה פנימית', tags: 'תגיות', decorative: 'קישוט בלבד (בלי תיאור)', w: 'רוחב', h: 'גובה', ids: 'תמונות בגלריה' });
+  // Fields that are a choice from a fixed list, not free text: [value, name].
+  var ENUMS = {
+    rights: [['pending', 'ממתינה לאישור'], ['approved', 'מאושרת לפרסום']],
+    others: [['', 'בחרו…'], ['none', 'אין, רק הצדיק'], ['background', 'אנשים רחוקים ברקע, לא ברורים'], ['adults', 'מבוגרים נוספים'], ['children', 'ילדים או נערים']],
+  };
   // Lists of fixed-length rows (e.g. a question and its answer): a name for each position. "סמל" positions get an icon picker.
   var TUPLES = {
     groups: ['מזהה', 'שם'], categories: ['מזהה', 'שם'], facts: ['פרט', 'ערך'], online: ['מזהה', 'שם', 'קישור', 'תיאור'], soon: ['מזהה', 'תיאור'], hours: ['ימים', 'שעות'],
@@ -108,7 +115,8 @@
     cards: { name: 'כרטיסים', icon: 'cards', hint: 'רשת של כרטיסים קצרים', make: function () { return { type: 'cards', title: '', items: [{ title: '', text: '' }] }; } },
     faq: { name: 'שאלות ותשובות', icon: 'faq', hint: 'שאלות שנפתחות בלחיצה', make: function () { return { type: 'faq', title: '', items: [{ q: '', a: '' }] }; } },
     quote: { name: 'ציטוט', icon: 'quote', hint: 'משפט מודגש עם מקור', make: function () { return { type: 'quote', text: '', by: '' }; } },
-    image: { name: 'תמונה', icon: 'image', hint: 'תמונה מהספרייה או מקישור', make: function () { return { type: 'image', src: '', alt: '', caption: '' }; } },
+    image: { name: 'תמונה', icon: 'image', hint: 'תמונה מספריית התמונות', make: function () { return { type: 'image', id: '', size: 'full' }; } },
+    gallery: { name: 'גלריית תמונות', icon: 'image', hint: 'עד 12 תמונות מספריית התמונות', make: function () { return { type: 'gallery', title: '', ids: [] }; } },
     video: { name: 'סרטון', icon: 'film', hint: 'סרטון מהספרייה או מקישור', make: function () { return { type: 'video', src: '', title: '', caption: '' }; } },
     audio: { name: 'שמע', icon: 'music', hint: 'קובץ שמע להאזנה', make: function () { return { type: 'audio', src: '', title: '' }; } },
     file: { name: 'מסמך להורדה', icon: 'file', hint: 'PDF, Word, Excel ועוד', make: function () { return { type: 'file', src: '', title: '', desc: '' }; } },
@@ -277,6 +285,13 @@
     inp.addEventListener('input', function () { parent[key] = inp.value; touch(); });
     return el('div', { class: 'fld' }, label ? el('label', { for: id, text: label }) : null, inp, opts.help ? el('small', { class: 'help', text: opts.help }) : null);
   }
+  function enumInput(parent, key, label) {
+    var id = 'f' + (++uid), sel = el('select', { id: id });
+    ENUMS[key].forEach(function (o) { sel.append(el('option', { value: o[0], text: o[1] })); });
+    sel.value = parent[key];
+    sel.addEventListener('change', function () { parent[key] = sel.value; touch(); });
+    return el('div', { class: 'fld' }, el('label', { for: id, text: label }), sel);
+  }
   function iconPicker(parent, key, label) {
     var id = 'f' + (++uid), sel = el('select', { id: id });
     var names = Object.keys(ICON_NAMES); if (parent[key] && names.indexOf(parent[key]) < 0) names.push(parent[key]);
@@ -292,6 +307,7 @@
     if (isObj(v)) return group(v, label, ctx);
     if (typeof v === 'boolean') { var cb = el('input', { type: 'checkbox' }); cb.checked = v; cb.addEventListener('change', function () { parent[key] = cb.checked; touch(); }); return el('div', { class: 'fld' }, el('label', { class: 'chk' }, cb, label)); }
     if (typeof v === 'number') { var id = 'f' + (++uid), n = el('input', { id: id, type: 'number', step: 'any', class: 'num' }); n.value = v; n.addEventListener('input', function () { parent[key] = n.value === '' ? 0 : Number(n.value); touch(); }); return el('div', { class: 'fld' }, el('label', { for: id, text: label }), n); }
+    if (ENUMS[key] && typeof v === 'string') return enumInput(parent, key, label);
     if (label === 'סמל' || key === 'icon') return iconPicker(parent, key, label);
     return textInput(parent, key, label, { long: key === 'a' || key === 'text' || ctx.long });
   }
@@ -329,17 +345,22 @@
       box.append(el('button', { type: 'button', class: 'add', onclick: function () { arr.push(''); touch(); rerender(); } }, icon('plus'), para ? 'הוספת פסקה' : 'הוספת שורה'));
       return box;
     }
-    var names = TUPLES[key];
+    var names = TUPLES[key], locked = ctx.file === 'images.json' && ctx.top;
     arr.forEach(function (item, i) {
       var d = el('details', { class: 'item' });
-      d.append(el('summary', {}, el('span', { class: 'n', text: String(i + 1) }), el('span', { class: 't', text: summary(item).slice(0, 90) || '(ריק)' }), tools(arr, i, rerender, 'פריט')));
+      d.append(el('summary', {}, el('span', { class: 'n', text: String(i + 1) }), el('span', { class: 't', text: summary(item).slice(0, 90) || '(ריק)' }), locked ? null : tools(arr, i, rerender, 'פריט')));
       var bd = el('div', { class: 'bd' });
       if (Array.isArray(item)) item.forEach(function (_, j) { bd.append(field(item, j, names && names[j] || 'שדה ' + (j + 1), { rerender: rerender, long: j > 0 && String(item[j]).length > 40 })); });
-      else Object.keys(item).forEach(function (k) { bd.append(field(item, k, LABELS[k] || k, { rerender: rerender })); });
+      else Object.keys(item).forEach(function (k) {
+        // A photo's id and size are set when its files are made; changing them here would break the files' match.
+        if (locked && ['id', 'w', 'h'].indexOf(k) > -1) bd.append(el('p', { class: 'help' }, (LABELS[k] || k) + ': ', el('b', { text: String(item[k]) })));
+        else bd.append(field(item, k, LABELS[k] || k, { rerender: rerender }));
+      });
       d.append(bd);
       if (arr.length <= 3 || (ctx.openLast && i === arr.length - 1)) d.open = true;
       box.append(d);
     });
+    if (locked) { box.append(el('p', { class: 'help', text: 'תמונה חדשה מתווספת בהכנת הקבצים (הסקיל images), לא כאן. כאן עורכים תיאור, כיתוב, קרדיט, אישורים ומיקוד.' })); return box; }
     box.append(el('button', { type: 'button', class: 'add', onclick: function () { var x = blank(tpl); if (ctx.file === 'halacha.json' && ctx.top) x.id = 'h' + Date.now().toString(36); arr.push(x); ctx.openLast = true; touch(); rerender(); } }, icon('plus'), 'הוספת פריט'));
     return box;
   }
@@ -802,6 +823,8 @@
           var def = BLOCKS[b.type] || { name: b.type, icon: 'text' };
           var body = el('div', { class: 'bbody' });
           if (b.type === 'text') body.append(textInput(b, 'title', 'כותרת המקטע (לא חובה)'), listField(b, 'paragraphs', '', { rerender: draw }));
+          else if (b.type === 'image') body.append(photoFields(b, draw));
+          else if (b.type === 'gallery') body.append(galleryFields(b, draw));
           else if (MEDIA_BLOCK[b.type]) body.append(mediaFields(b, draw));
           else if (b.type === 'quote') body.append(textInput(b, 'text', 'הציטוט', { long: true }), textInput(b, 'by', 'מקור (לא חובה)'));
           else {
@@ -865,8 +888,10 @@
     for (var i = 0; i < mb_.length; i++) {
       var b = mb_[i], what = BLOCKS[b.type].name;
       if (!/^(\/media\/[\w.-]+|https:\/\/\S+)$/.test(b.src || '')) return 'בחרו קובץ למקטע ה' + what + ', או הדביקו קישור שמתחיל ב־https://';
-      if (b.type === 'image' ? !String(b.alt || '').trim() : !String(b.title || '').trim()) return b.type === 'image' ? 'חסר תיאור לתמונה (לקוראי מסך)' : 'חסרה כותרת למקטע ה' + what;
+      if (!String(b.title || '').trim()) return 'חסרה כותרת למקטע ה' + what;
     }
+    var ph = photoProblem(p);
+    if (ph) return ph;
     if ((p.blocks || []).some(function (b) { return b.type === 'links' && (b.items || []).some(function (l) { return !/^https:\/\/\S+$/.test(l.url || ''); }); })) return 'כל קישור צריך להתחיל ב־https://';
     return '';
   }
@@ -895,9 +920,13 @@
       if (b.type === 'cards') return sect(i, '<div class="grid notes">' + (b.items || []).map(function (c) { return '<div class="card"><h3>' + esc(c.title) + '</h3><p>' + esc(c.text) + '</p></div>'; }).join('') + '</div>', b, true);
       if (b.type === 'faq') return sect(i, '<div class="faqs">' + (b.items || []).map(function (x, n) { return '<details class="faq"' + (n ? '' : ' open') + '><summary>' + esc(x.q) + '</summary><p>' + esc(x.a) + '</p></details>'; }).join('') + '</div>', b);
       if (b.type === 'quote') return '<section class="band quoteband"><div class="wrap"><blockquote class="pq small"><p>' + esc(b.text) + '</p>' + (b.by ? '<cite>' + esc(b.by) + '</cite>' : '') + '</blockquote></div></section>';
+      if (b.type === 'image' || b.type === 'gallery') {
+        var th = function (id) { var x = photoOf(id); return x && x.thumb ? esc(new URL('photos/' + id + '.webp', location.href).href) : ''; };
+        if (b.type === 'image') { var ph1 = photoOf(b.id); return sect(i, ph1 ? '<figure class="fig fig-' + (b.size === 'side' ? 'side' : 'full') + ' fig-tall"><img src="' + th(b.id) + '" alt="' + esc(ph1.alt) + '">' + (ph1.caption ? '<figcaption>' + esc(ph1.caption) + '</figcaption>' : '') + '</figure>' : '<p>(בחרו תמונה)</p>', b); }
+        return sect(i, '<ul class="gal">' + (b.ids || []).map(function (id) { var x = photoOf(id); return '<li><a><img src="' + th(id) + '" alt="' + esc(x ? x.alt : '') + '"></a></li>'; }).join('') + '</ul>', b, true);
+      }
       if (MEDIA_BLOCK[b.type]) {
         var u = esc(staged[b.src] || (/^\//.test(b.src || '') ? new URL('..' + b.src, location.href).href : b.src || ''));
-        if (b.type === 'image') return sect(i, '<figure class="media"><img src="' + u + '" alt="' + esc(b.alt) + '">' + (b.caption ? '<figcaption>' + esc(b.caption) + '</figcaption>' : '') + '</figure>', b);
         if (b.type === 'video') return sect(i, '<figure class="media"><video controls preload="metadata" src="' + u + '"></video><figcaption>' + esc(b.caption || b.title) + '</figcaption></figure>', b);
         if (b.type === 'audio') return sect(i, '<figure class="media audio"><figcaption>' + esc(b.title) + '</figcaption><audio controls src="' + u + '"></audio></figure>', b);
         return sect(i, '<a class="filecard"><span class="ftxt"><b>' + esc(b.title) + '</b>' + (b.desc ? '<span>' + esc(b.desc) + '</span>' : '') + '</span><span class="btn">הורדה</span></a>', b);
@@ -973,6 +1002,17 @@
   }
   function fileProblem(name, d) {
     if (name === 'halacha.json' && d.some(function (x) { return !/^[\w-]+$/.test(String(x.id)) || !x.title; })) return 'לכל שאלה צריכה להיות כותרת';
+    if (name === 'images.json') {
+      if (!RULES) return 'הכללים עוד נטענים. נסו שוב בעוד רגע.';
+      var was = {}; (cur && cur.orig ? JSON.parse(cur.orig) : []).forEach(function (x) { was[x.id] = x; });
+      var ids = d.map(function (x) { return x.id; });
+      if (Object.keys(was).some(function (id) { return ids.indexOf(id) < 0; }) || ids.some(function (id) { return !was[id]; })) return 'תמונות לא מוסיפים ולא מוחקים כאן';
+      for (var i = 0; i < d.length; i++) {
+        if (d[i].w !== was[d[i].id].w || d[i].h !== was[d[i].id].h) return 'ברוחב ובגובה של תמונה לא נוגעים';
+        var m = RULES.imageProblems(d[i]);
+        if (m.length) return 'תמונה ״' + d[i].id + '״: ' + m[0];
+      }
+    }
     if (name === 'site.json' && (d.hidden || []).some(function (h) { return !/^\/[\w/-]*$/.test(h.path || ''); })) return 'כל נתיב מוסתר צריך להתחיל ב־/';
     return '';
   }
@@ -1139,7 +1179,7 @@
   // Small files are kept in the site's repository and published with everything else; large files and video go to R2 (the
   // server decides, by type and size, and counts the free allowance of each place). A page points at a file by its link.
   var MEDIA_KINDS = { image: ['תמונה', 'image'], video: ['סרטון', 'film'], audio: ['שמע', 'music'], doc: ['מסמך', 'file'] };
-  var MEDIA_BLOCK = { image: 'image', video: 'video', audio: 'audio', file: 'doc' }; // page block type -> media kind
+  var MEDIA_BLOCK = { video: 'video', audio: 'audio', file: 'doc' }; // page block type -> media kind
   var MEDIA_ACCEPT = '.jpg,.jpeg,.png,.webp,.gif,.avif,.mp4,.webm,.mov,.mp3,.m4a,.wav,.ogg,.aac,.pdf,.docx,.xlsx,.pptx,.txt,.epub';
   var PIECE = 393216;
   // Isolated, so "2.3 MB" keeps its order inside right-to-left text.
@@ -1312,6 +1352,77 @@
     else if (b.type === 'audio') box.append(textInput(b, 'title', 'כותרת ההקלטה'));
     else box.append(textInput(b, 'title', 'שם המסמך'), textInput(b, 'desc', 'תיאור קצר (לא חובה)'));
     return box;
+  }
+
+  // ---- photos: the rules are the build's own (image-rules.mjs); the photos come from the list the build publishes (admin/photos/index.json) ----
+  var RULES = null, PHOTO_LIST = null, MAX_GALLERY = 12;
+  import('./image-rules.mjs').then(function (m) { RULES = m; MAX_GALLERY = m.IMG_LIMITS.gallery; }, function () { RULES = null; });
+  function loadPhotos() {
+    if (PHOTO_LIST) return Promise.resolve(PHOTO_LIST);
+    return fetch('photos/index.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('רשימת התמונות עוד לא זמינה. נסו שוב בעוד כמה דקות.'); return r.json(); }).then(function (l) { PHOTO_LIST = l; return l; });
+  }
+  loadPhotos().catch(function () { /* asked for again when a photo is chosen */ });
+  function photoOf(id) { return (PHOTO_LIST || []).filter(function (x) { return x.id === id; })[0]; }
+  function phThumb(x) { return x && x.thumb ? el('img', { class: 'phthumb', alt: '', src: 'photos/' + x.id + '.webp' }) : el('span', { class: 'phthumb ph', text: x ? 'ממתינה' : '?' }); }
+  // The photo chooser: only photos approved for publishing can be chosen; the others are shown with the reason.
+  function pickPhotos(title, chosen, max, onDone) {
+    var picked = chosen.slice(), dlg = el('dialog', { class: 'dlg wide' }, el('h2', { text: title })), grid = el('div', { class: 'mgrid pick' });
+    var count = el('p', { class: 'help' }), done = el('button', { type: 'button', class: 'btn pri', onclick: function () { dlg.close(); onDone(picked); } }, 'אישור');
+    var say_ = function () { count.textContent = max > 1 ? 'נבחרו ' + picked.length + ' מתוך ' + max : ''; };
+    var draw = function (list) {
+      grid.textContent = '';
+      list.forEach(function (x) {
+        var ok = x.rights === 'approved', on = picked.indexOf(x.id) > -1;
+        var b = el('button', { type: 'button', class: 'mcard btn-like' + (on ? ' on' : ''), disabled: !ok, 'aria-pressed': String(on), onclick: function () {
+          if (max === 1) { dlg.close(); onDone([x.id]); return; }
+          var at = picked.indexOf(x.id);
+          if (at > -1) picked.splice(at, 1); else if (picked.length < max) picked.push(x.id); else return say('אפשר עד ' + max + ' תמונות בגלריה. יותר מזה: דף גלריה נפרד.', 'bad');
+          draw(list); say_();
+        } }, phThumb(x), el('span', { class: 'grow' }, el('b', { class: 'mname', text: x.alt || x.id }), el('small', { class: 'help', text: ok ? (on ? 'נבחרה' : '') : 'ממתינה לאישור פרסום, אי אפשר להציג בדף' })));
+        grid.append(b);
+      });
+    };
+    dlg.append(count, grid, el('p', { class: 'acts' }, max > 1 ? done : null, el('button', { type: 'button', class: 'btn ghost', onclick: function () { dlg.close(); } }, 'ביטול'), el('a', { class: 'btn ghost', href: '#/file/images.json', onclick: function () { dlg.close(); } }, 'ספריית התמונות')));
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    document.body.append(dlg); dlg.showModal(); loading(grid);
+    loadPhotos().then(function (l) { draw(l); say_(); }, function (e) { grid.textContent = ''; grid.append(el('p', { class: 'err', text: e.message })); });
+  }
+  // Fields of an image block: the photo itself, with its description and caption, comes from the library, so the block only chooses it.
+  function photoFields(b, redraw) {
+    var x = photoOf(b.id), box = el('div');
+    if (b.id) box.append(el('div', { class: 'mcard' }, phThumb(x), el('span', { class: 'grow' }, el('b', { class: 'mname', text: x ? x.alt : b.id }), el('small', { class: 'help', text: x ? (x.rights === 'approved' ? '' : 'עדיין לא אושרה לפרסום') : 'התמונה לא נמצאה בספרייה' }))));
+    box.append(el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { pickPhotos('בחירת תמונה', b.id ? [b.id] : [], 1, function (ids) { b.id = ids[0]; touch(); redraw(); }); } }, icon('image'), b.id ? 'החלפת תמונה' : 'בחירת תמונה'));
+    var sz = el('select', { 'aria-label': 'רוחב התמונה' }, el('option', { value: 'full', text: 'רחבה (כרוחב הטקסט)' }), el('option', { value: 'side', text: 'צרה' }));
+    sz.value = b.size === 'side' ? 'side' : 'full'; sz.addEventListener('change', function () { b.size = sz.value; touch(); });
+    box.append(el('div', { class: 'fld' }, el('label', { text: 'רוחב' }), sz), el('p', { class: 'help', text: 'התיאור, הכיתוב והקרדיט נקבעים בספריית התמונות ומוצגים בכל מקום באותו אופן.' }));
+    return box;
+  }
+  function galleryFields(b, redraw) {
+    b.ids = b.ids || [];
+    var box = el('div', {}, textInput(b, 'title', 'כותרת הגלריה (לא חובה)'));
+    var list = el('div', { class: 'mgrid' });
+    b.ids.forEach(function (id, i) { var x = photoOf(id); list.append(el('div', { class: 'mcard' }, phThumb(x), el('span', { class: 'grow' }, el('b', { class: 'mname', text: x ? x.alt : id })), tools(b.ids, i, redraw, 'תמונה'))); });
+    box.append(list, el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { pickPhotos('בחירת תמונות לגלריה', b.ids, MAX_GALLERY, function (ids) { b.ids = ids; touch(); redraw(); }); } }, icon('image'), b.ids.length ? 'שינוי התמונות' : 'בחירת תמונות'),
+      el('p', { class: 'help', text: 'עד ' + MAX_GALLERY + ' תמונות. יותר מזה: דף גלריה נפרד.' }));
+    return box;
+  }
+  // What stops a page with photos from being saved: the same rules as the build, in the build's own words.
+  function photoProblem(p) {
+    var blocks = (p.blocks || []).filter(function (b) { return b.type === 'image' || b.type === 'gallery'; });
+    if (!blocks.length) return '';
+    if (!RULES || !PHOTO_LIST) return 'רשימת התמונות והכללים עוד נטענים. נסו שוב בעוד רגע.';
+    var bad = RULES.blockProblems(p.blocks);
+    if (bad.length) return bad[0];
+    for (var i = 0; i < blocks.length; i++) {
+      var ids = blocks[i].type === 'image' ? [blocks[i].id] : blocks[i].ids || [];
+      if (blocks[i].type === 'image' && !blocks[i].id) return 'בחרו תמונה למקטע התמונה';
+      for (var j = 0; j < ids.length; j++) {
+        var x = photoOf(ids[j]);
+        if (!x) return 'התמונה ' + ids[j] + ' לא נמצאה בספרייה';
+        if (x.rights !== 'approved') return 'התמונה ״' + (x.alt || x.id) + '״ עוד לא אושרה לפרסום';
+      }
+    }
+    return '';
   }
 
   // ---- pending changes, publishing, history, activity log ----
