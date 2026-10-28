@@ -27,4 +27,5 @@ await import('./lib/sections/home.mjs');
 await import('./lib/sections/info.mjs');
 await import('./lib/sections/offline.mjs');
 await import('./lib/sections/meta.mjs');
+await import('./lib/sections/links-audit.mjs'); // last: it reads the finished dist/
 console.log(`built ${shut.length} Q&A pages, ${letters.length} letters, ${halacha.length} halacha, ${pages} list pages`);

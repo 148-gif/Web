@@ -26,3 +26,7 @@ jobs:
       - run: node scripts/check-links.mjs
         env:
           SITE_BASE: /${{ github.event.repository.name }}
+      # Orphan pages and broken links fail the check; warnings and suggestions are only reported (weekly report: link-audit.yml).
+      - run: node scripts/audit-links.mjs --strict
+        env:
+          SITE_BASE: /${{ github.event.repository.name }}

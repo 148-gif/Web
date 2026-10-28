@@ -56,4 +56,14 @@ const person = { '@type': 'Person', ...(absu('/moharash/') ? { '@id': absu('/moh
 const tikkunUrl = '/tikkun-haklali/';
 const rnPerson = { '@type': 'Person', ...(absu('/rabbi-nachman/') ? { '@id': absu('/rabbi-nachman/') + '#person', url: absu('/rabbi-nachman/') } : {}), name: 'רבי נחמן מברסלב', alternateName: ['רבינו', 'מוהר״ן', 'מוהר"ן', 'רבי נחמן מברסלב', 'Rebbe Nachman of Breslov', 'Nachman of Breslov'], birthDate: '1772', deathDate: '1810-10', birthPlace: { '@type': 'Place', name: 'מז׳יבוז׳' }, deathPlace: { '@type': 'Place', name: 'אומן' }, description: rn.short, knowsAbout: ['חסידות ברסלב', 'ליקוטי מוהר״ן'], sameAs: rn.sources.slice(0, 2).map(([, u]) => u) };
 
-export { zstrip, chips, searchForm, ul, ps, navBtns, anchors, ysect, span, sched, rows, hours, statrow, telA, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, person, tikkunUrl, rnPerson };
+// Page numbers a list page links to: first, last, every 5th and two either side of the current one. Any page is then at most two clicks from page 1 (a bare previous/next chain made page 141 of the Q&A 141 clicks deep).
+const pageNumbers = (cur, total) => {
+  const set = new Set([1, total]);
+  for (let n = 5; n < total; n += 5) set.add(n);
+  for (let n = cur - 2; n <= cur + 2; n++) if (n >= 1 && n <= total) set.add(n);
+  return [...set].sort((a, b) => a - b);
+};
+// Pager of a paginated list: previous and next, plus the numbered links of pageNumbers(). hrefOf(n) gives the site path of page n.
+const pagerHtml = (cur, total, hrefOf) => `<nav class="pager" aria-label="עמודים"><div class="pager-step">${cur > 1 ? `<a class="btn ghost" href="${hrefOf(cur - 1)}">→ הקודם</a>` : '<span></span>'}<span>עמוד ${cur} מתוך ${total}</span>${cur < total ? `<a class="btn ghost" href="${hrefOf(cur + 1)}">הבא ←</a>` : '<span></span>'}</div>${total > 1 ? `<ol class="pager-nums">${pageNumbers(cur, total).map((n) => `<li>${n === cur ? `<span aria-current="page">${n}</span>` : `<a href="${hrefOf(n)}" aria-label="עמוד ${n}">${n}</a>`}</li>`).join('')}</ol>` : ''}</nav>`;
+
+export { pageNumbers, pagerHtml, zstrip, chips, searchForm, ul, ps, navBtns, anchors, ysect, span, sched, rows, hours, statrow, telA, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, person, tikkunUrl, rnPerson };
