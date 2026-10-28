@@ -164,6 +164,30 @@ function route(method, path) {
   return m && !m[1].split('/').some((x) => x === '..' || x === '.') ? path : null;
 }
 
+// ---- web addresses: an English slug for a Hebrew title, by meaning (not by sound) ----
+// Fixed terms of the site come first (a name like Breslov must not be "translated"); anything else goes to Workers AI.
+const GLOSSARY = {
+  'ברסלב': 'breslov', 'רבי נחמן': 'rabbi-nachman', 'אומן': 'uman', 'יבנאל': 'yavniel', 'מוהרא״ש': 'moharash', 'מוהרא"ש': 'moharash', 'התיקון הכללי': 'tikkun-haklali',
+  'ספרייה': 'library', 'ספריה': 'library', 'שו״ת': 'shut', 'שו"ת': 'shut', 'הלכה': 'halacha', 'תפילה': 'prayer', 'תפילות': 'prayers', 'שיעורים': 'lessons', 'מתכונים': 'recipes', 'חברים': 'friends',
+};
+const STOP = new Set(['the', 'a', 'an', 'of']);
+function toSlug(english) {
+  const words = String(english || '').toLowerCase().replace(/['’`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  const kept = words.filter((w) => !STOP.has(w));
+  return (kept.length ? kept : words).join('-').slice(0, 40).replace(/-+$/, '');
+}
+async function slugFor(env, text) {
+  const t = String(text || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+  if (!t) return { slug: null };
+  if (GLOSSARY[t]) return { slug: GLOSSARY[t], english: GLOSSARY[t], source: 'glossary' };
+  if (!env.AI) return { slug: null };
+  try {
+    const out = await env.AI.run('@cf/meta/m2m100-1.2b', { text: t, source_lang: 'he', target_lang: 'en' });
+    const slug = toSlug(out && out.translated_text);
+    return slug ? { slug, english: out.translated_text, source: 'ai' } : { slug: null };
+  } catch { return { slug: null }; }
+}
+
 const json = (o, status, cors) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...cors } });
 const fail = (message, status, extra) => Object.assign(new Error(message), { status, extra });
 const bodyOf = async (req) => { try { return (await req.json()) || {}; } catch { return {}; } };
@@ -337,6 +361,7 @@ async function main(req, env, url, cors) {
     return json({ editors: list }, 200, cors);
   }
 
+  if (p === '/translate' && req.method === 'POST') return json(await slugFor(env, (await bodyOf(req)).text), 200, cors);
   if (p === '/changes' && req.method === 'GET') return json({ changes: await changes(env, q.get('check') === '1') }, 200, cors);
   if (p === '/history' && req.method === 'GET') return json({ history: await history(env, q.get('path')) }, 200, cors);
   if (p === '/log' && req.method === 'GET') {
@@ -401,4 +426,4 @@ export default {
     return json({ message: 'שגיאה בשרת העריכה' }, 500, origin === env.ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {});
   }),
 };
-export { route, PATH_OK, blobSha, verifyGoogle, verifyAccessToken, makeSession, readSession, allowed, who, isOwner, sha256, handle };
+export { toSlug, slugFor, route, PATH_OK, blobSha, verifyGoogle, verifyAccessToken, makeSession, readSession, allowed, who, isOwner, sha256, handle };

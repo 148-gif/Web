@@ -1,7 +1,7 @@
 // Unit tests for the editor login server (cms-worker/worker.mjs): who may sign in, and what an editor may change.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { route, verifyGoogle, verifyAccessToken, makeSession, readSession, handle, sha256, blobSha } from '../cms-worker/worker.mjs';
+import { toSlug, slugFor, route, verifyGoogle, verifyAccessToken, makeSession, readSession, handle, sha256, blobSha } from '../cms-worker/worker.mjs';
 import { makeD1 } from './helpers/d1.mjs';
 import { makeGithub } from './helpers/fake-github.mjs';
 
@@ -278,4 +278,27 @@ test('an old list of editor emails still works, and blobSha matches git', async 
   const e = { ...env, DB: makeD1() };
   assert.equal((await handle(req('/session', { method: 'POST', body: JSON.stringify({ credential: await idToken({ ...good, email: 'b@gmail.com' }) }) }), e)).status, 200);
   assert.equal(await blobSha('hello\n'), 'ce013625030ba8dba906f756967f9e9ca394464a');
+});
+
+test('toSlug() makes a short address from English; slugFor() prefers the site glossary, then Workers AI, and fails soft', async () => {
+  assert.equal(toSlug("The Rabbi's Prayer Times!"), 'rabbis-prayer-times');
+  assert.equal(toSlug('of the'), 'of-the');
+  assert.equal(toSlug('x'.repeat(60)).length, 40);
+  let asked = null;
+  const AI = { run: async (m, i) => { asked = i; return { translated_text: 'Friends of the Community' }; } };
+  assert.equal((await slugFor({ AI }, 'ברסלב')).slug, 'breslov'); // glossary: never sent to the model
+  assert.equal(asked, null);
+  assert.equal((await slugFor({ AI }, ' חברי  הקהילה ')).slug, 'friends-community');
+  assert.deepEqual([asked.source_lang, asked.target_lang, asked.text], ['he', 'en', 'חברי הקהילה']);
+  assert.equal((await slugFor({ AI: { run: async () => { throw new Error('down'); } } }, 'דבר')).slug, null);
+  assert.equal((await slugFor({}, 'דבר')).slug, null);
+  assert.equal((await slugFor({ AI }, '   ')).slug, null);
+});
+
+test('POST /translate is for signed-in editors only', async () => {
+  const w = await world();
+  const e = { ...w.e, AI: { run: async () => ({ translated_text: 'Prayer times' }) } };
+  const call = (tok) => handle(req('/translate', { method: 'POST', body: JSON.stringify({ text: 'זמני תפילה' }), headers: tok ? { Authorization: `Bearer ${tok}` } : {} }), e);
+  assert.equal((await call(null)).status, 401);
+  assert.equal((await (await call(w.info.editor.token)).json()).slug, 'prayer-times');
 });

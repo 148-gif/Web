@@ -225,6 +225,23 @@
 
   // ---- web addresses from Hebrew titles ----
   var TR = { 'א': 'a', 'ב': 'b', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'v', 'ז': 'z', 'ח': 'ch', 'ט': 't', 'י': 'y', 'כ': 'k', 'ך': 'k', 'ל': 'l', 'מ': 'm', 'ם': 'm', 'נ': 'n', 'ן': 'n', 'ס': 's', 'ע': 'a', 'פ': 'p', 'ף': 'f', 'צ': 'tz', 'ץ': 'tz', 'ק': 'k', 'ר': 'r', 'ש': 'sh', 'ת': 't' };
+  // With the editor server the address is also translated by meaning (Workers AI): the sound-based version shows at once and is
+  // replaced when the translation arrives, unless the editor already typed their own address.
+  function suggestSlug(titleEl, slugEl) {
+    var t;
+    titleEl.addEventListener('input', function () {
+      if (slugEl.dataset.touched) return;
+      slugEl.value = slugify(titleEl.value);
+      if (!draft) return;
+      clearTimeout(t);
+      var asked = titleEl.value.trim();
+      if (!asked) return;
+      t = setTimeout(function () {
+        wapi('POST', '/translate', { text: asked }).then(function (r) { if (r.slug && !slugEl.dataset.touched && titleEl.value.trim() === asked) slugEl.value = r.slug; }, function () { /* keeps the sound-based address */ });
+      }, 600);
+    });
+    slugEl.addEventListener('input', function () { slugEl.dataset.touched = 1; });
+  }
   function slugify(s) { var r = String(s).toLowerCase().split('').map(function (c) { return TR[c] != null ? TR[c] : /[a-z0-9]/.test(c) ? c : '-'; }).join('').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 40); return r || 'page-' + Date.now().toString(36); }
 
   // ---- form fields ----
@@ -617,8 +634,7 @@
     var picked = edit ? t.icon || 'book' : 'book', kind = edit ? kindOf(t) : 'page';
     var grid = el('div', { class: 'igrid', role: 'radiogroup', 'aria-label': 'סמל' });
     Object.keys(ICON_NAMES).forEach(function (n) { var b = el('button', { type: 'button', role: 'radio', 'aria-checked': String(n === picked), title: ICON_NAMES[n], 'aria-label': ICON_NAMES[n], onclick: function () { picked = n; grid.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-checked', String(x === b)); }); } }, icon(n)); grid.append(b); });
-    if (!edit) title.addEventListener('input', function () { if (!slug.dataset.touched) slug.value = slugify(title.value); });
-    slug.addEventListener('input', function () { slug.dataset.touched = 1; });
+    if (!edit) suggestSlug(title, slug);
     // kind
     var kinds = el('div', { class: 'kinds', role: 'radiogroup', 'aria-label': 'סוג הנושא' }), catsBody;
     Object.keys(KINDS).forEach(function (k) {
@@ -725,8 +741,7 @@
       };
       topic.addEventListener('change', function () { category = ''; fillCats(); });
       var title = el('input', { type: 'text', required: true }), slug = el('input', { type: 'text', class: 'ltr', dir: 'ltr' });
-      title.addEventListener('input', function () { if (!slug.dataset.touched) slug.value = slugify(title.value); });
-      slug.addEventListener('input', function () { slug.dataset.touched = 1; });
+      suggestSlug(title, slug);
       dialog('פריט חדש', [['כותרת', title], ['אוסף', topic], ['חלוקה', catField], ['כתובת באתר', slug, 'באותיות לועזיות. נוצרת לבד מהכותרת, ואפשר לשנות.']], 'יצירה', function () {
         var s = slug.value.trim();
         if (!title.value.trim()) return 'חסרה כותרת';
