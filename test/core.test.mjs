@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { url, tel, esc, escAttr, gist, isHidden, unlinkHidden, HIDDEN, site, validateCms, validateShutEdit, mergeShut } from '../scripts/lib/core.mjs';
-import { ld } from '../scripts/lib/parts.mjs';
+import { ld, pageNumbers, pagerHtml } from '../scripts/lib/parts.mjs';
 
 test('url() keeps https links and site paths', () => {
   assert.equal(url('https://example.com/a'), 'https://example.com/a');
@@ -117,6 +117,28 @@ test('validateCms() allows one page, at most, in a single-page topic', () => {
   assert.doesNotThrow(() => validateCms([t], [p]));
   assert.doesNotThrow(() => validateCms([{ ...t, kind: 'pages' }], [p, { ...p, slug: 'b' }])); // the old name of a collection
   assert.throws(() => validateCms([t], [p, { ...p, slug: 'b' }]), /single page/);
+});
+
+test('pageNumbers() reaches every page of a long list within two clicks', () => {
+  const total = 141;
+  for (let cur = 1; cur <= total; cur += 7) {
+    const near = new Set(pageNumbers(cur, total));
+    assert.ok(near.has(1) && near.has(total) && near.has(cur));
+  }
+  const reach = new Set([1]);
+  for (const a of pageNumbers(1, total)) for (const b of pageNumbers(a, total)) reach.add(b);
+  assert.equal(reach.size, total);
+  assert.deepEqual(pageNumbers(1, 3), [1, 2, 3]);
+});
+
+test('pagerHtml() links previous, next and numbers, and nothing for a single page', () => {
+  const href = (n) => (n === 1 ? '/shut/' : `/shut/page/${n}/`);
+  const h = pagerHtml(5, 12, href);
+  assert.match(h, /href="\/shut\/page\/4\/">→ הקודם/);
+  assert.match(h, /href="\/shut\/page\/6\/">הבא/);
+  assert.match(h, /<span aria-current="page">5<\/span>/);
+  assert.match(h, /href="\/shut\/"/);
+  assert.doesNotMatch(pagerHtml(1, 1, href), /pager-nums|href=/);
 });
 
 test('validateCms() checks media blocks: a real /media/ file or an https link, a description for images, a title for the rest', () => {
