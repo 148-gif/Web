@@ -1138,7 +1138,8 @@
   var MEDIA_BLOCK = { image: 'image', video: 'video', audio: 'audio', file: 'doc' }; // page block type -> media kind
   var MEDIA_ACCEPT = '.jpg,.jpeg,.png,.webp,.gif,.avif,.mp4,.webm,.mov,.mp3,.m4a,.wav,.ogg,.aac,.pdf,.docx,.xlsx,.pptx,.txt,.epub';
   var PIECE = 393216;
-  function mbytes(n) { return n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB'; }
+  // Isolated, so "2.3 MB" keeps its order inside right-to-left text.
+  function mbytes(n) { return '\u2066' + (n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB') + '\u2069'; }
   function readB64(blob) { return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(String(r.result).replace(/^data:[^,]*,/, '')); }; r.onerror = function () { rej(new Error('לא הצלחנו לקרוא את הקובץ')); }; r.readAsDataURL(blob); }); }
   // Uploads one file; onProgress gets 0..1. Resolves with the new library item.
   function uploadMedia(file, onProgress) {
