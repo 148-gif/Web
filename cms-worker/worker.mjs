@@ -28,6 +28,9 @@
 //   SESSION_SECRET    optional secret; by default sessions are signed with a key derived from GITHUB_TOKEN,
 //                     so replacing either one signs everyone out
 
+// The photo rules are the build's own and the editor's (one file, no file access), so what the editor refuses, this server refuses too.
+import { imageProblems, blockProblems, ownerOnlyChanges, registryShapeChanges, photoFiles, budgetFor } from '../site/admin/image-rules.mjs';
+
 const SESSION_HOURS = 12;
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -52,7 +55,9 @@ const cleanName = (n) => String(n || '').replace(/[\p{Cc}<>]/gu, ' ').replace(/\
 const PATH_OK = (p) => typeof p === 'string' && /^data\/(pages\/|shut-edits\/)?[\w-]+\.json$/.test(p) && p !== 'data/shut.json';
 const MAX_FILE = 2e6;
 const PAGE_FILE = /^data\/pages\/[\w-]+\.json$/;
-const MEDIA_OK = (p) => typeof p === 'string' && /^site\/media\/[a-z0-9][\w.-]{0,100}$/.test(p);
+// A photo's files live with its registry entry (see data/images.json): data/img/<id>/<width>.webp and t<width>.webp.
+const PHOTO_FILE = /^data\/img\/([a-z0-9-]+)\/(\d{3,4}|t\d{3})\.webp$/;
+const MEDIA_OK = (p) => typeof p === 'string' && (/^site\/media\/[a-z0-9][\w.-]{0,100}$/.test(p) || PHOTO_FILE.test(p));
 const PUB_OK = (p) => PATH_OK(p) || MEDIA_OK(p);
 
 // ---- who is who ----
@@ -169,6 +174,9 @@ const at = (env, path, ref) => `contents/${path}?ref=${encodeURIComponent(ref ||
 // The id of a file as published (null if the live site does not have it).
 const publishedSha = async (env, path) => { const j = await gh(env, at(env, path), { allow404: true }); return j && !Array.isArray(j) ? j.sha : null; };
 
+// The text of a file as published (null if the live site does not have it).
+const publishedText = async (env, path) => { const j = await gh(env, at(env, path), { allow404: true }); return j && !Array.isArray(j) ? fromB64(j.content) : null; };
+
 // ---- what an editor may ask GitHub for (reads only; writes go through drafts and /publish) ----
 // Returns the GitHub API path, or null when the request is not allowed.
 function route(method, path) {
@@ -268,7 +276,22 @@ const mediaSlug = (name) => String(name).replace(/\.[^.]*$/, '').toLowerCase().r
 const mediaUrl = (env, row, origin) => (row.store === 'github' ? `/media/${row.key.replace(/^site\/media\//, '')}` : `${(env.MEDIA_PUBLIC_URL || `${origin}/m`).replace(/\/$/, '')}/${row.key}`);
 const mediaView = (env, r, origin) => ({ id: r.id, name: r.name, kind: r.kind, mime: r.mime, size: r.size, store: r.store, key: r.key, status: r.status, by: r.by_name, ts: r.created_at, url: mediaUrl(env, r, origin) });
 
+// A photo's file, staged like any media but kept under data/img/<id>/ so that it is published with the photo's registry entry.
+async function photoInit(env, me, b) {
+  const id = String(b.photo.id || ''), file = String(b.photo.file || ''), size = Number(b.size), key = `data/img/${id}/${file}`;
+  if (!PHOTO_FILE.test(key)) throw fail('שם קובץ תמונה לא תקין', 400);
+  if (!Number.isInteger(size) || size < 1 || size > budgetFor(file)) throw fail(`הקובץ ${file} גדול מדי (עד ${Math.round(budgetFor(file) / 1000)}KB). כווצו את התמונה.`, 413);
+  await env.DB.prepare("DELETE FROM media_chunks WHERE id IN (SELECT id FROM media WHERE status = 'uploading' AND created_at < ?)").bind(Date.now() - 36e5).run();
+  await env.DB.prepare("DELETE FROM media WHERE status = 'uploading' AND created_at < ?").bind(Date.now() - 36e5).run();
+  if (await env.DB.prepare("SELECT 1 AS x FROM media WHERE key = ? AND status != 'removing'").bind(key).first() || await publishedSha(env, key)) throw fail('תמונה בשם הזה כבר קיימת או ממתינה לפרסום', 409);
+  const pick = chooseStore('image', size, limits(env), await mediaUsage(env));
+  if (pick.store !== 'github') throw fail(pick.error || 'אין מקום לתמונה', 413);
+  const mid = hex(crypto.getRandomValues(new Uint8Array(4)));
+  await env.DB.prepare("INSERT INTO media (id, name, kind, mime, size, store, key, status, email, by_name, created_at) VALUES (?, ?, 'photo', 'image/webp', ?, 'github', ?, 'uploading', ?, ?, ?)").bind(mid, `${id}/${file}`, size, key, me.email, me.shown, Date.now()).run();
+  return { id: mid, store: 'github', chunk: CHUNK_B64 };
+}
 async function mediaInit(env, me, b) {
+  if (b.photo) return photoInit(env, me, b);
   const name = String(b.name || '').trim().slice(0, 120), ext = (/\.([A-Za-z0-9]{1,5})$/.exec(name) || [])[1]?.toLowerCase(), size = Number(b.size);
   const kind = ext && kindOfExt(ext);
   if (!kind) throw fail('סוג הקובץ לא נתמך. אפשר: תמונות (jpg, png, webp, gif, avif), סרטונים (mp4, webm), שמע (mp3, m4a, wav, ogg) ומסמכים (pdf, docx, xlsx, pptx, txt, epub).', 400);
@@ -324,7 +347,8 @@ async function mediaDrop(env, row) {
 }
 async function mediaList(env, origin) {
   const lim = limits(env), used = await mediaUsage(env);
-  const rows = (await env.DB.prepare("SELECT * FROM media WHERE status != 'uploading' ORDER BY created_at DESC").all()).results;
+  // A photo's files belong to the photo library, not to the list of loose files.
+  const rows = (await env.DB.prepare("SELECT * FROM media WHERE status != 'uploading' AND kind != 'photo' ORDER BY created_at DESC").all()).results;
   return { items: rows.map((r) => mediaView(env, r, origin)), quota: { github: { used: used.github, max: lim.ghTotal, fileMax: lim.ghFile }, r2: { enabled: lim.r2, used: used.r2, max: lim.r2Total, fileMax: lim.r2File } } };
 }
 async function mediaRemove(env, me, id) {
@@ -379,6 +403,61 @@ async function listDir(env, dir) {
   return [...byName.values()];
 }
 
+// ---- photos: the rules, on the server ----
+// The editor checks these as people type, but a browser can be bypassed, and a bad file that reaches the live branch stops the site from
+// building. So the server checks them too, with the same code: when a file is saved, and again when it is published.
+const REGISTRY = 'data/images.json';
+const registryNow = async (env, rows) => {
+  const mine = (rows || []).find((r) => r.path === REGISTRY && !r.deleted);
+  try { return JSON.parse(mine ? mine.content : (await publishedText(env, REGISTRY)) || '[]'); } catch { return []; }
+};
+async function photoRulesOnSave(env, me, path, text, draftText) {
+  const data = JSON.parse(text);
+  if (path === REGISTRY) {
+    if (!Array.isArray(data)) throw fail('רשימת התמונות חייבת להיות רשימה', 400);
+    const bad = data.flatMap((im) => imageProblems(im).map((m) => `תמונה ״${im.id}״: ${m}`));
+    if (bad.length) throw fail(bad[0], 400);
+    const before = JSON.parse(draftText || (await publishedText(env, REGISTRY)) || '[]');
+    const shape = registryShapeChanges(before, data);
+    if (shape.length) throw fail(shape[0], 400);
+    const owner = ownerOnlyChanges(before, data);
+    if (owner.length && !me.owner) throw fail(owner[0], 403);
+    return;
+  }
+  if (PAGE_FILE.test(path)) {
+    const blocks = Array.isArray(data.blocks) ? data.blocks : [];
+    for (const b of blocks) if (b && b.type === 'image' && !b.id) throw fail('בלוק תמונה צריך לבחור תמונה מספריית התמונות (לא קובץ או קישור)', 400);
+    const bad = blockProblems(blocks);
+    if (bad.length) throw fail(bad[0], 400);
+  }
+}
+// Before publishing: every photo a page shows is in the registry and approved, and every file of a new photo is live or goes out with it.
+async function photoPreflight(env, rows, together) {
+  const reg = await registryNow(env, rows), live = JSON.parse((await publishedText(env, REGISTRY)) || '[]');
+  const has = async (key) => together.has(key) || !!(await publishedSha(env, key));
+  const regRow = rows.find((r) => r.path === REGISTRY && !r.deleted);
+  if (regRow) {
+    for (const im of reg) {
+      const bad = imageProblems(im);
+      if (bad.length) throw fail(`תמונה ״${im.id}״: ${bad[0]}`, 400);
+      if (live.some((x) => x.id === im.id)) continue;
+      for (const f of photoFiles(im)) if (!(await has(`data/img/${im.id}/${f}`))) throw fail(`התמונה ״${im.id}״ חדשה והקובץ ${f} שלה עוד לא פורסם. סמנו גם את קבצי התמונה לפרסום.`, 400);
+    }
+  }
+  for (const r of rows.filter((x) => !x.deleted && PAGE_FILE.test(x.path))) {
+    let page = {}; try { page = JSON.parse(r.content); } catch { /* checked when saved */ }
+    for (const b of page.blocks || []) {
+      const ids = b.type === 'image' ? [b.id] : b.type === 'gallery' && Array.isArray(b.ids) ? b.ids : [];
+      for (const id of ids) {
+        const im = reg.find((x) => x.id === id), where = `הדף ״${cleanName(page.title)}״`;
+        if (!im) throw fail(`${where} משתמש בתמונה שאינה בספרייה: ${id}`, 400);
+        if (im.rights !== 'approved') throw fail(`${where} משתמש בתמונה שעוד לא אושרה לפרסום: ${id}`, 400);
+        if (!(await has(`data/img/${id}/${im.w}.webp`))) throw fail(`${where} משתמש בתמונה שהקבצים שלה עוד לא באתר: ${id}`, 400);
+      }
+    }
+  }
+}
+
 // ---- drafts: write ----
 // Saves a file as a draft. expected is the id the editor last saw (null when it is making a new file): if the file has moved
 // on since, someone else saved it meanwhile and the editor is told, instead of overwriting their work.
@@ -389,6 +468,7 @@ async function saveDraft(env, me, path, text, expected, { auto, restore, summary
   const row = await draftRow(env, path), pub = await publishedSha(env, path);
   const current = row ? (row.deleted ? null : await blobSha(row.content)) : pub;
   if (!restore && (expected || null) !== (current || null)) throw fail('מישהו אחר שמר את הקובץ הזה בינתיים. טענו אותו מחדש ונסו שוב.', 409);
+  await photoRulesOnSave(env, me, path, text, row && !row.deleted ? row.content : null);
   const sha = await blobSha(text);
   if (pub && sha === pub) await env.DB.prepare('DELETE FROM drafts WHERE path = ?').bind(path).run(); // back to what is published
   else {
@@ -447,6 +527,7 @@ async function publish(env, me, paths, force, note) {
       if (m && !together.has(`site/media/${m[1]}`) && !(await publishedSha(env, `site/media/${m[1]}`))) throw fail(`הדף ״${cleanName(JSON.parse(r.content).title)}״ משתמש בקובץ שעוד לא פורסם: ${m[1]}. סמנו גם אותו לפרסום.`, 400);
     }
   }
+  await photoPreflight(env, rows, together);
   const pubs = new Map(await Promise.all(rows.map(async (r) => [r.path, await publishedSha(env, r.path)])));
   const shas = new Map(await Promise.all(rows.map(async (r) => [r.path, r.deleted ? null : await blobSha(r.content)])));
   const conflicts = rows.filter((r) => pubs.get(r.path) !== (r.base_sha || null) && pubs.get(r.path) !== shas.get(r.path) && !force.includes(r.path)).map((r) => r.path);

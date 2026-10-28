@@ -1,0 +1,29 @@
+/* Photos: figures with captions, galleries and the lightbox (scripts/lib/images.mjs, site/app.js). Rules: .claude/skills/images/SKILL.md */
+.fig{margin:0 0 1.2em}
+.fig img{display:block;width:100%;height:auto;border-radius:var(--r-md);background:var(--gold3)}
+.fig figcaption{margin-top:8px;font:.9rem/1.6 var(--sans);color:var(--mute)}
+.fig .fyear{color:var(--gold)}.fig .fcred{display:block;font-size:.8rem}
+/* A photo is a block of its own: the width of the text column, or narrower ("side"). A tall photo is kept narrow so it does not fill the screen. */
+.fig-full,.fig-side{margin-inline:auto}.fig-full{max-width:var(--measure)}.fig-side,.fig-tall{max-width:360px}
+
+.gal{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+@media (min-width:800px){.gal{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}}
+.gal a{display:block;border-radius:var(--r-md);overflow:hidden;background:var(--gold3);aspect-ratio:3/4}
+.gal img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .25s}
+.gal a:hover img,.gal a:focus-visible img{transform:scale(1.03)}
+
+/* Lightbox: a native <dialog> opened with showModal() (focus stays inside, Esc closes, the page behind is inert). */
+dialog.lbx{max-width:none;max-height:none;width:100%;height:100%;margin:0;padding:0;border:0;background:transparent;color:#fff;overflow:hidden}
+dialog.lbx::backdrop{background:rgb(8 12 30 / .92)}
+.lbx-in{position:relative;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 12px 12px;box-sizing:border-box}
+.lbx-img{display:block;max-width:100%;max-height:calc(100% - 64px);width:auto;height:auto;object-fit:contain;border-radius:6px;touch-action:pan-y}
+.lbx-cap{margin:12px 0 0;max-width:min(92vw,720px);text-align:center;font:.95rem/1.6 var(--sans);min-height:1.6em}
+.lbx-cnt{position:absolute;top:18px;inset-inline-start:16px;font:.9rem var(--sans);opacity:.85}
+.lbx button{position:absolute;display:grid;place-items:center;width:48px;height:48px;border:0;border-radius:50%;background:rgb(255 255 255 / .14);color:#fff;font:1.6rem/1 var(--sans);cursor:pointer}
+.lbx button:hover,.lbx button:focus-visible{background:rgb(255 255 255 / .3)}
+.lbx button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.lbx-x{top:8px;inset-inline-end:8px}
+/* In Hebrew the previous photo is on the right and the next on the left, like the pages of a book. */
+.lbx-prev{top:50%;right:8px;transform:translateY(-50%)}.lbx-next{top:50%;left:8px;transform:translateY(-50%)}
+.lbx[data-one] .lbx-prev,.lbx[data-one] .lbx-next,.lbx[data-one] .lbx-cnt{display:none}
+html.lbx-open{overflow:hidden}

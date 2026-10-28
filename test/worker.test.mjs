@@ -440,10 +440,10 @@ test('large files and video go to R2 when it exists, are checked, and are served
   assert.equal(R2.m.size, 0);
 });
 
-test('a page that points at a media file is published only together with that file', async () => {
+test('a page that points at a media file (a document) is published only together with that file', async () => {
   const w = await world();
-  const item = (await upload(w.editor, 'pic.png', PNG)).body.item, name = item.key.replace('site/media/', '');
-  const page = { topic: 't', title: 'דף עם תמונה', blocks: [{ type: 'image', src: `/media/${name}`, alt: 'תיאור' }] };
+  const item = (await upload(w.editor, 'doc.pdf', Buffer.from('%PDF-1.4\n' + 'x'.repeat(200)))).body.item, name = item.key.replace('site/media/', '');
+  const page = { topic: 't', title: 'דף עם מסמך', blocks: [{ type: 'file', src: `/media/${name}`, title: 'מסמך' }] };
   await put(w.editor, 'data/pages/withpic.json', page, null);
   const early = await w.publisher('POST', '/publish', { paths: ['data/pages/withpic.json'] });
   assert.equal(early.status, 400);
@@ -456,3 +456,91 @@ test('a page that points at a media file is published only together with that fi
   await put(w.editor, 'data/pages/again.json', { ...page, title: 'עוד' }, null);
   assert.equal((await w.publisher('POST', '/publish', { paths: ['data/pages/again.json'] })).status, 200); // the file is live by now
 });
+
+// ---- photos: the editor server refuses what the build would refuse ----
+{
+  const { readFileSync } = await import('node:fs');
+  const reg = JSON.parse(readFileSync(new URL('../data/images.json', import.meta.url), 'utf8')), armchair = reg.find((x) => x.id === 'armchair');
+  const webp = (f, id = 'armchair') => readFileSync(new URL(`../data/img/${id}/${f}`, import.meta.url));
+  const files = { 'data/pages/x.json': '{"a":1}\n', 'data/topics.json': '[]\n', 'data/images.json': JSON.stringify([armchair], null, 2) + '\n' };
+  const photoWorld = async () => {
+    const w = await world();
+    github = await makeGithub({ repo: 'o/r', branch: 'live', files: { ...files, ...Object.fromEntries(['480', '800', '1002', 't360', 't720'].map((f) => [`data/img/armchair/${f}.webp`, webp(`${f}.webp`)])) } });
+    const photo = async (api, id, file, bytes = webp(file)) => {
+      const init = await api('POST', '/media/init', { photo: { id, file }, size: bytes.length });
+      if (init.status !== 200) return init;
+      const b64 = bytes.toString('base64');
+      for (let n = 0; n * 524288 < b64.length; n++) await api('POST', '/media/chunk', { id: init.body.id, n, data: b64.slice(n * 524288, (n + 1) * 524288) });
+      return api('POST', '/media/done', { id: init.body.id });
+    };
+    const sha = async (path) => { const r = await w.owner('GET', `/gh/contents/${path}`); return r.body.sha; };
+    return { ...w, photo, sha, list: async (api = w.owner) => JSON.parse(Buffer.from((await api('GET', '/gh/contents/data/images.json')).body.content, 'base64').toString()) };
+  };
+  const NAMES = ['480.webp', '800.webp', '1002.webp', 't360.webp', 't720.webp'];
+
+  test('registry: an editor may fix a description but not approve a photo, write who agreed, add, remove or resize one', async () => {
+    const w = await photoWorld();
+    const cur = await w.list(), sha = await w.sha('data/images.json');
+    const save = (api, list, s) => put(api, 'data/images.json', list, s);
+    assert.equal((await save(w.editor, [{ ...cur[0], alt: 'תיאור חדש' }], sha)).status, 200, 'description: any editor');
+    let s2 = await w.sha('data/images.json');
+    const denied = await save(w.editor, [{ ...cur[0], alt: 'תיאור חדש', consent: 'אני אישרתי', others: 'children' }], s2);
+    assert.equal(denied.status, 403); assert.match(denied.body.message, /בעל האתר/);
+    assert.equal((await save(w.editor, [{ ...cur[0], alt: 'תיאור חדש', rights: 'pending' }], s2)).status, 403, 'taking an approval back');
+    assert.equal((await save(w.editor, [], s2)).status, 400, 'removing a photo');
+    assert.equal((await save(w.editor, [{ ...cur[0], alt: 'תיאור חדש', w: 5000 }], s2)).status, 400, 'resizing');
+    assert.equal((await save(w.editor, [{ ...cur[0], alt: 'תיאור חדש', alt2: 1 }, { ...cur[0], id: 'other', rights: 'approved' }], s2)).status, 403, 'a new photo already approved');
+    for (const [over, what] of [[{ alt: 'תמונה של הרב' }, 'a photo of'], [{ credit: '' }, 'no credit'], [{ others: 'adults', consent: '' }, 'people without approval'], [{ dh: 'zz' }, 'no signature']]) {
+      const r = await save(w.owner, [{ ...cur[0], ...over }], s2);
+      assert.equal(r.status, 400, what);
+    }
+    assert.equal((await save(w.owner, [{ ...cur[0], alt: 'תיאור חדש', others: 'adults', consent: 'בעל האתר' }], s2)).status, 200, 'the owner may');
+  });
+
+  test('a new photo: its files are staged out of the media list, and publish only together with its entry', async () => {
+    const w = await photoWorld();
+    assert.equal((await w.photo(w.editor, 'newpic', '480.webp')).status, 200);
+    assert.equal((await w.editor('GET', '/media')).body.items.length, 0, 'photo files are not loose media');
+    assert.equal((await w.photo(w.editor, 'newpic', '480.webp')).status, 409, 'the same file twice');
+    assert.equal((await w.photo(w.editor, 'armchair', '480.webp')).status, 409, 'a file that is already live');
+    for (const bad of [{ id: 'new pic', file: '480.webp' }, { id: 'newpic', file: 'x.webp' }, { id: 'newpic', file: '480.jpg' }, { id: '../x', file: '480.webp' }]) {
+      assert.equal((await w.editor('POST', '/media/init', { photo: bad, size: 100 })).status, 400, JSON.stringify(bad));
+    }
+    assert.equal((await w.editor('POST', '/media/init', { photo: { id: 'big', file: '480.webp' }, size: 90000 })).status, 413, 'over the size limit for 480');
+    for (const f of NAMES.slice(1)) assert.equal((await w.photo(w.editor, 'newpic', f)).status, 200, f);
+    const entry = { ...armchair, id: 'newpic', rights: 'pending', alt: '', credit: '', others: '', consent: '' };
+    const ch = await w.owner('GET', '/changes');
+    assert.ok(ch.body.changes.some((c) => c.path === 'data/img/newpic/480.webp'), 'the staged file is among the changes');
+    const sha = await w.sha('data/images.json'), cur = await w.list();
+    assert.equal((await put(w.editor, 'data/images.json', [...cur, entry], sha)).status, 200, 'a new entry, not approved, unfinished');
+    const early = await w.publisher('POST', '/publish', { paths: ['data/images.json'] });
+    assert.equal(early.status, 400); assert.match(early.body.message, /newpic.*עוד לא פורסם/);
+    const n0 = github.commits().length;
+    const all = ['data/images.json', ...NAMES.map((f) => `data/img/newpic/${f}`)];
+    assert.equal((await w.publisher('POST', '/publish', { paths: all })).status, 200);
+    assert.equal(github.commits().length, n0 + 1, 'one commit');
+    assert.ok(github.readBytes('data/img/newpic/1002.webp') && JSON.parse(github.read('data/images.json')).some((x) => x.id === 'newpic'));
+  });
+
+  test('a page may show only registered, approved photos whose files are live; an image block names a photo, never a file', async () => {
+    const w = await photoWorld();
+    const page = (blocks) => ({ topic: 't', title: 'דף תמונות', blocks });
+    const save = (blocks, s = null) => put(w.editor, 'data/pages/pics.json', page(blocks), s);
+    assert.equal((await save([{ type: 'image', src: '/media/x.png', alt: 'x' }])).status, 400, 'a file instead of a photo');
+    assert.equal((await save([{ type: 'image', id: '' }])).status, 400, 'no photo chosen');
+    assert.equal((await save([{ type: 'image', id: 'armchair' }, { type: 'gallery', ids: ['armchair'] }])).status, 400, 'the same photo twice');
+    assert.equal((await save([{ type: 'gallery', ids: Array.from({ length: 13 }, (_, i) => `p${i}`) }])).status, 400, 'a gallery of 13');
+    assert.equal((await save([{ type: 'image', id: 'nope' }])).status, 200, 'the draft may be saved; publishing is where it is checked');
+    const bad = await w.publisher('POST', '/publish', { paths: ['data/pages/pics.json'] });
+    assert.equal(bad.status, 400); assert.match(bad.body.message, /אינה בספרייה: nope/);
+    assert.equal((await save([{ type: 'image', id: 'armchair', size: 'side' }], (await w.editor('GET', '/gh/contents/data/pages/pics.json')).body.sha)).status, 200);
+    assert.equal((await w.publisher('POST', '/publish', { paths: ['data/pages/pics.json'] })).status, 200, 'an approved photo that is live');
+    // a photo that is in the registry but not approved
+    const cur = await w.list(), s = await w.sha('data/images.json');
+    assert.equal((await put(w.owner, 'data/images.json', [...cur, { ...armchair, id: 'waiting', rights: 'pending' }], s)).status, 200);
+    await w.publisher('POST', '/publish', { paths: ['data/images.json', ...NAMES.map((f) => `data/img/waiting/${f}`)] });
+    await put(w.editor, 'data/pages/two.json', page([{ type: 'image', id: 'waiting' }]), null);
+    const pend = await w.publisher('POST', '/publish', { paths: ['data/pages/two.json'] });
+    assert.equal(pend.status, 400);
+  });
+}

@@ -1,12 +1,14 @@
 // Site settings, text helpers, data files and the page writer, shared by every section.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { IMG_LIMITS, IMG_THUMBS, imgWidths, imageProblems, blockProblems, budgetFor } from '../../site/admin/image-rules.mjs';
 import { validateAuditConfig } from './linkaudit.mjs';
 
 const SITE = 'היכל הקודש';
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when served from a sub-path
 const ORIGIN = (process.env.SITE_ORIGIN || '').replace(/\/$/, ''); // e.g. https://user.github.io; sitemap URLs must be absolute
-const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`) : h);
+// srcset holds several comma-separated paths, so each one that starts at the site root gets the base too.
+const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`).replace(/srcset="([^"]*)"/g, (m, v) => `srcset="${v.replace(/(^|,\s*)\//g, `$1${BASE}/`)}"`) : h);
 const PER_PAGE = 40;
 const BUILD = Date.now().toString(36);
 // Fonts carry a hash of their content (fonts/x.woff2?v=…), so they can be cached for a year and a changed file still reaches everyone.
@@ -106,7 +108,7 @@ const um = read('uman.json');
 const tk = read('tikkun.json');
 const tkText = read('books/tikkun-haklali.json');
 // Topics and pages made in the editor (/admin/): data/topics.json and data/pages/*.json. Checked here so a bad edit fails the build, not the site.
-const BLOCK_TYPES = ['text', 'cards', 'faq', 'quote', 'links', 'image', 'video', 'audio', 'file'];
+const BLOCK_TYPES = ['text', 'cards', 'faq', 'quote', 'links', 'image', 'gallery', 'video', 'audio', 'file'];
 // Media blocks point at a file uploaded in the editor (/media/<name>, committed to site/media/) or at a link on the web.
 const MEDIA_EXT = { image: /\.(jpe?g|png|webp|gif|avif)$/i, video: /\.(mp4|webm|mov)$/i, audio: /\.(mp3|m4a|wav|ogg|aac)$/i, file: /\.(pdf|docx|xlsx|pptx|txt|epub)$/i };
 const mediaHere = (name) => existsSync(new URL(`../../site/media/${name}`, import.meta.url));
@@ -119,7 +121,7 @@ const cmsPages = readdirSync(new URL('../../data/pages/', import.meta.url)).filt
 // "pages" is the old name of a collection without categories, from before single pages existed.
 const TOPIC_KINDS = ['page', 'collection', 'pages'];
 const isSingle = (t) => t.kind === 'page';
-const validateCms = (topics, pages, hasMedia = mediaHere) => {
+const validateCms = (topics, pages, hasMedia = mediaHere, imgs = images) => {
   const bad = (m) => { throw new Error(`CMS: ${m}`); };
   const seen = new Set();
   for (const t of topics) {
@@ -137,14 +139,23 @@ const validateCms = (topics, pages, hasMedia = mediaHere) => {
     if (!seen.has(p.topic)) bad(`page ${p.slug}: unknown topic "${p.topic}"`);
     if (!p.title) bad(`page ${p.slug} has no title`);
     if (p.category != null && typeof p.category !== 'string') bad(`page ${p.slug}: invalid category`);
+    for (const m of blockProblems(p.blocks)) bad(`page ${p.slug}: ${m}`);
     for (const b of p.blocks || []) {
       if (!BLOCK_TYPES.includes(b.type)) bad(`page ${p.slug}: unknown block type "${b.type}"`);
-      if (b.type in MEDIA_EXT) {
+      // A photo from the photo registry (data/images.json) reaches visitors only with the owner's approval (see .claude/skills/images/SKILL.md).
+      const ids = b.type === 'image' && b.id ? [b.id] : b.type === 'gallery' && Array.isArray(b.ids) ? b.ids : [];
+      for (const id of ids) {
+        const im = imgs.find((x) => x.id === id);
+        if (!im) bad(`page ${p.slug}: unknown image "${id}"`);
+        if (im.rights !== 'approved') bad(`page ${p.slug}: image "${id}" is not approved for publishing (rights: ${im.rights})`);
+      }
+      // Every photo goes through the photo registry, which carries the rules (description, credit, sizes, approval): no raw file or link.
+      if (b.type === 'image' && !b.id) bad(`page ${p.slug}: an image block must point at a photo from the registry (id), not a file or a link`);
+      if (b.type in MEDIA_EXT && b.type !== 'image') {
         const m = /^\/media\/([a-z0-9][\w.-]{0,100})$/.exec(b.src || '');
         if (!m && !/^https:\/\/[^\s"'<>]+$/.test(b.src || '')) bad(`page ${p.slug}: ${b.type} block needs a /media/ file or an https link`);
         if (m && (!MEDIA_EXT[b.type].test(m[1]) || !hasMedia(m[1]))) bad(`page ${p.slug}: ${b.type} block points at ${b.src}, which is not an uploaded ${b.type} file`);
-        if (b.type === 'image' && !String(b.alt || '').trim()) bad(`page ${p.slug}: an image needs a description (alt) for screen readers`);
-        if (b.type !== 'image' && !String(b.title || '').trim()) bad(`page ${p.slug}: a ${b.type} block needs a title`);
+        if (!String(b.title || '').trim()) bad(`page ${p.slug}: a ${b.type} block needs a title`);
       }
     }
   }
@@ -152,10 +163,47 @@ const validateCms = (topics, pages, hasMedia = mediaHere) => {
   const keys = pages.map((p) => `${p.topic}/${p.slug}`);
   if (new Set(keys).size !== keys.length) bad('duplicate page');
 };
+// Photos: data/images.json lists them; each one's files are data/img/<id>/<width>.webp (sizes, the largest is the whole photo) and
+// t360.webp / t720.webp (3:4 thumbnails cut around the face). scripts/prepare-image.mjs makes them. The editor writes only under data/.
+const images = read('images.json');
+// Width and height from the header of a WebP file (lossy, lossless or extended), so no image library is needed to check them.
+const webpSize = (b) => {
+  if (b.length < 30 || b.toString('latin1', 0, 4) !== 'RIFF' || b.toString('latin1', 8, 12) !== 'WEBP') throw new Error('not a WebP file');
+  const k = b.toString('latin1', 12, 16);
+  if (k === 'VP8X') return [1 + b.readUIntLE(24, 3), 1 + b.readUIntLE(27, 3)];
+  if (k === 'VP8L') { const v = b.readUInt32LE(21); return [1 + (v & 0x3fff), 1 + ((v >> 14) & 0x3fff)]; }
+  if (k === 'VP8 ') return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
+  throw new Error('unknown WebP type');
+};
+const IMG_DIR = new URL('../../data/img/', import.meta.url);
+const validateImages = (list, dir = IMG_DIR) => {
+  const bad = (m) => { throw new Error(`Images: ${m}`); };
+  const seen = new Set();
+  for (const im of list) {
+    const at = `image "${im.id}"`;
+    if (seen.has(im.id)) bad(`duplicate id "${im.id}"`);
+    seen.add(im.id);
+    // The wording rules are shared with the editor (site/admin/image-rules.mjs); here they stop the build.
+    const problems = imageProblems(im);
+    if (problems.length) bad(`${at}: ${problems.join('; ')}`);
+    const file = (f) => { try { return readFileSync(new URL(`${im.id}/${f}`, dir)); } catch (e) { return bad(`${at}: ${f}: ${e.code === 'ENOENT' ? 'file is missing' : e.message}`); } };
+    const check = (f, w, h) => {
+      const buf = file(f);
+      let size;
+      try { size = webpSize(buf); } catch (e) { return bad(`${at}: ${f}: ${e.message}`); }
+      // The browser reserves space from width/height, so every size must have the registered proportions.
+      if (size[0] !== w || Math.abs(size[1] - h) > 1.5) bad(`${at}: ${f} is ${size[0]}x${size[1]}, expected ${w}x${Math.round(h)}`);
+      if (buf.length > budgetFor(f)) bad(`${at}: ${f} is ${Math.round(buf.length / 1000)}KB, over its ${Math.round(budgetFor(f) / 1000)}KB limit (lower the quality or the size)`);
+    };
+    for (const w of imgWidths(im)) check(`${w}.webp`, w, (w * im.h) / im.w);
+    for (const tw of IMG_THUMBS.filter((t) => t <= im.w)) check(`t${tw}.webp`, tw, Math.round((tw * 4) / 3));
+  }
+};
+validateImages(images);
 validateCms(topics, cmsPages);
 const regey = lib.books.find((b) => b.slug === 'regey-moharash');
 const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { linkAudit, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

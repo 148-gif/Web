@@ -285,3 +285,49 @@ document.querySelectorAll('[data-cfilter]').forEach((box) => {
     if (none) none.hidden = cards.some((c) => !c.hidden);
   });
 });
+
+// Photo galleries (scripts/lib/images.mjs): each thumbnail is a link to the big photo, which still works without this script.
+// Here it opens in a native <dialog> (showModal keeps focus inside, makes the page behind inert and closes on Esc), with the arrows,
+// a swipe and a counter. In Hebrew the previous photo is on the right: the right arrow goes back, the left arrow forward.
+if (typeof HTMLDialogElement === 'function') document.querySelectorAll('[data-gallery]').forEach((gal) => {
+  const links = [...gal.querySelectorAll('a')];
+  let dlg, img, cap, cnt, at = 0, opener, x0 = null;
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+  const btn = (cls, label, text) => { const b = el('button', cls, text); b.type = 'button'; b.setAttribute('aria-label', label); return b; };
+  const show = (i) => {
+    at = (i + links.length) % links.length;
+    const a = links[at], t = a.querySelector('img');
+    img.src = a.href; img.width = +a.dataset.w; img.height = +a.dataset.h; img.alt = t ? t.alt : '';
+    cap.textContent = a.dataset.note || '';
+    cnt.textContent = `${at + 1} מתוך ${links.length}`;
+    // The next photo is fetched now so that going forward is instant.
+    new Image().src = links[(at + 1) % links.length].href;
+  };
+  const step = (d) => { if (links.length > 1) show(at + d); };
+  const build = () => {
+    dlg = el('dialog', 'lbx'); dlg.setAttribute('aria-label', gal.getAttribute('aria-label') || 'תמונה מוגדלת');
+    if (links.length < 2) dlg.dataset.one = '';
+    const box = el('div', 'lbx-in'); img = el('img', 'lbx-img'); cap = el('p', 'lbx-cap'); cnt = el('span', 'lbx-cnt');
+    const x = btn('lbx-x', 'סגירה', '×'), prev = btn('lbx-prev', 'התמונה הקודמת', '›'), next = btn('lbx-next', 'התמונה הבאה', '‹');
+    x.autofocus = true;
+    x.addEventListener('click', () => dlg.close()); prev.addEventListener('click', () => step(-1)); next.addEventListener('click', () => step(1));
+    box.append(cnt, x, prev, img, next, cap); dlg.append(box); document.body.append(dlg);
+    // A click on the dark area around the photo closes it.
+    dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target === box) dlg.close(); });
+    dlg.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); step(-1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); step(1); }
+    });
+    dlg.addEventListener('pointerdown', (e) => { x0 = e.pointerType === 'touch' ? e.clientX : null; });
+    dlg.addEventListener('pointerup', (e) => { if (x0 !== null && Math.abs(e.clientX - x0) > 50) step(e.clientX > x0 ? -1 : 1); x0 = null; });
+    // Closing returns focus to the thumbnail that was opened, so a keyboard user is where they left off.
+    dlg.addEventListener('close', () => { document.documentElement.classList.remove('lbx-open'); if (opener) opener.focus(); });
+  };
+  gal.addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+    e.preventDefault();
+    if (!dlg) build();
+    opener = a; show(links.indexOf(a));
+    document.documentElement.classList.add('lbx-open'); dlg.showModal();
+  });
+});
