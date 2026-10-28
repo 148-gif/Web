@@ -14,7 +14,13 @@ const src = (id, f) => {
   if (!hashes.has(k)) hashes.set(k, createHash('sha256').update(readFileSync(new URL(k, IMG_DIR))).digest('hex').slice(0, 10));
   return `/img/p/${k}?v=${hashes.get(k)}`;
 };
-const get = (id) => { const im = byId.get(id); if (!im) throw new Error(`Images: unknown image "${id}"`); used.add(id); return im; };
+const get = (id) => {
+  const im = byId.get(id);
+  if (!im) throw new Error(`Images: unknown image "${id}"`);
+  if (im.rights !== 'approved') throw new Error(`Images: "${id}" is not approved for publishing (rights: ${im.rights})`);
+  used.add(id);
+  return im;
+};
 const set = (id, ws, prefix = '') => ws.map((w) => `${src(id, `${prefix}${w}.webp`)} ${w}w`).join(', ');
 
 // How wide the photo is shown decides the sizes the browser picks from: the width of the text column, or narrower. A tall photo is narrower still (fig-tall).

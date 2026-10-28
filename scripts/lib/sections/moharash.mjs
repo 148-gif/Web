@@ -1,10 +1,12 @@
 // The Tzaddik of Yavniel: biography and tziyun (grave) pages, with structured data for search and AI engines
 import { esc, url, write, shut, mo, lib, regey } from '../core.mjs';
 import { icon, orn, phead, layout } from '../layout.mjs';
+import { figure, gallery } from '../images.mjs';
+import { images } from '../core.mjs';
 import { ps, navBtns, anchors, ysect, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, person } from '../parts.mjs';
 
 
-write('moharash/index.html', layout(mo.title, `<section class="band"><div class="wrap"><div class="bio-top"><div class="about lead1">${ps(mo.summary)}<p class="small">${esc(mo.acronym)}</p></div><aside class="factbox" aria-label="פרטים עיקריים"><h2>${esc(mo.name)}</h2>${facts(mo.facts)}</aside></div></div></section>
+write('moharash/index.html', layout(mo.title, `<section class="band"><div class="wrap"><div class="bio-top"><div class="about lead1">${figure('portrait', { lead: true })}${ps(mo.summary)}<p class="small">${esc(mo.acronym)}</p></div><aside class="factbox" aria-label="פרטים עיקריים"><h2>${esc(mo.name)}</h2>${facts(mo.facts)}</aside></div></div></section>
 <section class="band soft" id="life"><div class="wrap narrow"><h2 class="sh">תולדות חייו</h2><p class="shsub">מתל אביב וירושלים, דרך ניו יורק, ועד יבנאל</p><p class="snote c">${esc(mo.lifeLead)} <a href="/library/${regey.slug}/">לספר ←</a></p><ol class="tline">${mo.life.map(([t, d]) => `<li><b>${esc(t)}</b><p>${esc(d)}</p></li>`).join('')}</ol><p class="tnote">${esc(mo.community)}</p></div></section>
 <section class="band" id="teachings"><div class="wrap"><h2 class="sh">דרכו והדרכותיו</h2><p class="shsub">הנקודות שעליהן העמיד את תלמידיו, בדרכו של רבי נחמן מברסלב</p><div class="grid notes tch">${mo.teachings.map(([t, d, src]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p>${src ? `<span class="go">${esc(src)}</span>` : ''}</div>`).join('')}</div>
 <div class="card wide"><h3>סדר הלימוד היומי: חמישה־עשר מקורות</h3><ul class="chips2">${mo.sources15.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div></section>
@@ -12,11 +14,12 @@ write('moharash/index.html', layout(mo.title, `<section class="band"><div class=
 <section class="band" id="books"><div class="wrap"><h2 class="sh">ספריו</h2><p class="shsub">ירושתו העיקרית: אלפי מכתבים ועשרות ספרים</p><ul class="inst-list books">${mo.books.map(([n, d]) => `<li>${icon('book', 'ico')}<span><b>${(lib.books.find((x) => x.title === n)) ? `<a href="/library/${lib.books.find((x) => x.title === n).slug}/">${esc(n)}</a>` : esc(n)}</b><small>${esc(d)}</small></span></li>`).join('')}</ul>
 <div class="svc two"><a class="card hl" href="/shut/">${icon('book', 'ico lg')}<h3>שו״ת ברסלב באתר</h3><p>${shut.length.toLocaleString('he-IL')} שאלות ותשובות שכתב מוהרא״ש, בעבודת ה׳, באמונה, בתפילה ובהתבודדות.</p><span class="go">לשאלות ולתשובות ←</span></a><a class="card" href="/print/">${icon('print', 'ico lg')}<h3>הדפסת ״אשר בנחל״</h3><p>שותפות בהדפסת ספרי הצדיק והפצתם, כבקשתו לפני פטירתו.</p><span class="go">להצטרפות ←</span></a></div></div></section>
 ${ysect('passing', 'soft', 'פטירתו', '', `<div class="about">${ps(mo.passing)}</div>`)}
+${ysect('photos', '', 'תמונות', 'מוהרא״ש בשנים שונות', gallery(images.filter((x) => x.tags.includes('moharash') && x.id !== 'portrait').map((x) => x.id), 'תמונות של מוהרא״ש'), false)}
 <section class="band" id="tziyun-cta"><div class="wrap"><a class="feature" href="/moharash/tziyun/"><span class="fic">${icon('flame', 'ico lg')}</span><span class="ftxt"><em>ציון הצדיק ביבנאל</em><b>ציון מוהרא״ש</b><span>ההבטחות לבאים אל קברו, ההילולה בי״ז בשבט ודרכי הגעה.</span></span><span class="btn">לדף הציון ←</span></a></div></section>
 <section class="band soft" id="faq"><div class="wrap narrow"><h2 class="sh">שאלות נפוצות</h2><p class="shsub">בקצרה, על הצדיק מיבנאל</p>${faqHtml(mo.faq)}</div></section>
 ${srcList(mo.sources)}`,
   { desc: 'מוהרא״ש, הצדיק מיבנאל: רבי אליעזר שלמה שיק (1940–2015), מנהיג בחסידות ברסלב, מייסד היכל הקודש ומחבר אשר בנחל. תולדות חייו, דרכו, ספריו וציונו ביבנאל.', path: '/moharash/', full: true,
-    head: phead('רבי אליעזר שלמה שיק זצ״ל', esc(mo.title), esc(mo.lead), `${anchors([['life', 'תולדות חייו'], ['teachings', 'דרכו'], ['books', 'ספריו'], ['passing', 'פטירתו'], ['faq', 'שאלות נפוצות']])}<div class="navbtns hcta"><a class="btn" href="/moharash/tziyun/">${icon('flame', 'ico sm')}לציון הצדיק</a><a class="btn ghost" href="/shut/">${icon('book', 'ico sm')}שו״ת ברסלב</a></div>`),
+    head: phead('רבי אליעזר שלמה שיק זצ״ל', esc(mo.title), esc(mo.lead), `${anchors([['life', 'תולדות חייו'], ['teachings', 'דרכו'], ['books', 'ספריו'], ['passing', 'פטירתו'], ['photos', 'תמונות'], ['faq', 'שאלות נפוצות']])}<div class="navbtns hcta"><a class="btn" href="/moharash/tziyun/">${icon('flame', 'ico sm')}לציון הצדיק</a><a class="btn ghost" href="/shut/">${icon('book', 'ico sm')}שו״ת ברסלב</a></div>`),
     head_extra: ld({ '@context': 'https://schema.org', '@graph': [person, crumbs([['בית', '/'], [mo.title, '/moharash/']]), faqLd(mo.faq)] }) }));
 
 const tz = mo.tziyun;

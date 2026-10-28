@@ -8,6 +8,8 @@ process.env.SITE_BASE = '/Web'; // read once when core.mjs loads, so it is set b
 const { images, validateImages, validateCms, webpSize, rebase } = await import('../scripts/lib/core.mjs');
 const { figure, gallery } = await import('../scripts/lib/images.mjs');
 
+// These tests use the photos' files, not their approval, so they run as if every photo were approved (this process only).
+for (const i of images) i.rights = 'approved';
 const sample = images.find((i) => i.id === 'armchair');
 const entry = (over = {}) => ({ ...sample, rights: 'approved', ...over });
 // A copy of one real photo's files, so a test can break one thing at a time.
@@ -80,8 +82,18 @@ test('figure() escapes the text from the data and shows the caption and credit o
 test('gallery() links each thumbnail to the big photo and keeps its text for the lightbox', () => {
   const g = gallery([sample.id], 'גלריה "א"');
   assert.match(g, /<ul class="gal" data-gallery aria-label="גלריה &quot;א&quot;">/);
-  assert.match(g, /<a href="\/img\/p\/armchair\/1002\.webp\?v=\w+" data-w="1002" data-h="1320">/);
+  assert.match(g, /<a href="\/img\/p\/armchair\/1002\.webp\?v=\w+" data-w="1002" data-h="1320" data-note="צילום: לא ידוע">/);
   assert.match(g, /<img src="[^"]*t360\.webp\?v=\w+" srcset="[^"]*t360\.webp\?v=\w+ 360w, [^"]*t720\.webp\?v=\w+ 720w" [^>]*width="360" height="480"/);
+});
+
+test('figure() and gallery() refuse a photo that is not approved, so no page can show it', () => {
+  const im = images.find((i) => i.id === sample.id);
+  try {
+    im.rights = 'pending';
+    assert.throws(() => figure(sample.id), /not approved/);
+    assert.throws(() => gallery([sample.id]), /not approved/);
+    assert.throws(() => figure('nope'), /unknown image/);
+  } finally { im.rights = 'approved'; }
 });
 
 test('rebase() adds the site base to every path in a srcset, and leaves other hosts alone', () => {
