@@ -358,6 +358,11 @@
     }
     nav.append(link('#/file/site.json', 'gear', 'הגדרות האתר'));
     if (owner) nav.append(link('#/editors', 'users', 'עורכים'));
+    // On a phone the header keeps only the essentials; the rest is here.
+    nav.append(el('div', { class: 'navfoot' },
+      draft ? el('button', { type: 'button', onclick: nameDialog, text: 'השם שלי' }) : null,
+      el('a', { href: '../', target: '_blank', rel: 'noopener', text: 'לאתר' }),
+      el('button', { type: 'button', onclick: function () { $('#out').click(); }, text: 'יציאה' })));
     mark(location.hash || '#/');
   }
   function mark(hash) {
@@ -433,7 +438,8 @@
     var c = $('#pend'); if (!c) return;
     c.hidden = !draft;
     var n = pending.list.length, oldest = pending.list.reduce(function (a, x) { return Math.min(a, x.created || a); }, Date.now()), old = n && Date.now() - oldest > OLD_DAYS * 86400000;
-    c.textContent = n ? n + ' שינויים ממתינים לפרסום' : 'אין שינויים ממתינים';
+    c.textContent = '';
+    c.append(el('span', { class: 'lg', text: n ? n + ' שינויים ממתינים לפרסום' : 'אין שינויים ממתינים' }), el('span', { class: 'sh', text: n ? n + ' ממתינים' : 'מעודכן' }));
     c.className = 'hl pend' + (n ? ' has' : '') + (old ? ' old' : '');
     c.title = old ? 'יש שינויים שממתינים לפרסום כבר ' + Math.floor((Date.now() - oldest) / 86400000) + ' ימים' : '';
     var h = $('#hi-count'); if (h) h.textContent = String(n);
