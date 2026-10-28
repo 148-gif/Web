@@ -1365,6 +1365,7 @@
     var st = saved();
     $('#out').addEventListener('click', function () { if (leave()) signout(); });
     $('#rename').addEventListener('click', nameDialog);
+    $('#pend').addEventListener('click', function () { location.hash = '#/changes'; });
     if (c.autosaveSeconds) AUTO_MS = c.autosaveSeconds * 1000;
     $('#burger').addEventListener('click', function () { document.body.classList.toggle('navopen'); });
     $('#scrim').addEventListener('click', function () { document.body.classList.remove('navopen'); });
