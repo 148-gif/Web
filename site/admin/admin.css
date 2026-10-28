@@ -393,3 +393,9 @@ ul.chg li b{unicode-bidi:plaintext}
 .phthumb.ph{display:grid;place-items:center;font-size:.7rem;color:var(--mute,#667);text-align:center}
 .mcard.on{border-color:var(--pri);box-shadow:0 0 0 2px var(--pri)}
 .mcard:disabled{opacity:.55;cursor:not-allowed}
+
+/* Uploading a photo: where the face is, and what the small picture will look like */
+.phrow{display:flex;flex-wrap:wrap;gap:16px;margin:12px 0}
+.focal{position:relative;display:inline-block;cursor:crosshair;max-width:min(100%,320px);line-height:0}
+.focal img{display:block;width:100%;max-height:320px;object-fit:contain;border-radius:8px;border:1px solid var(--line)}
+.fmark{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px var(--pri);pointer-events:none}

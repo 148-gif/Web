@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [claude/greeting-2i183o]
-    paths: ['cms-worker/**', '.github/workflows/cms-worker.yml']
+    paths: ['cms-worker/**', 'site/admin/image-rules.mjs', '.github/workflows/cms-worker.yml']
 permissions:
   contents: read
 concurrency:
