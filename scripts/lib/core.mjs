@@ -1,7 +1,7 @@
 // Site settings, text helpers, data files and the page writer, shared by every section.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { IMG_LIMITS, imageProblems, blockProblems, budgetFor } from '../../site/admin/image-rules.mjs';
+import { IMG_LIMITS, IMG_THUMBS, imgWidths, imageProblems, blockProblems, budgetFor } from '../../site/admin/image-rules.mjs';
 import { validateAuditConfig } from './linkaudit.mjs';
 
 const SITE = 'היכל הקודש';
@@ -165,7 +165,6 @@ const validateCms = (topics, pages, hasMedia = mediaHere, imgs = images) => {
 };
 // Photos: data/images.json lists them; each one's files are data/img/<id>/<width>.webp (sizes, the largest is the whole photo) and
 // t360.webp / t720.webp (3:4 thumbnails cut around the face). scripts/prepare-image.mjs makes them. The editor writes only under data/.
-const IMG_WIDTHS = [480, 800, 1200, 1600], IMG_THUMBS = [360, 720];
 const images = read('images.json');
 // Width and height from the header of a WebP file (lossy, lossless or extended), so no image library is needed to check them.
 const webpSize = (b) => {
@@ -176,7 +175,6 @@ const webpSize = (b) => {
   if (k === 'VP8 ') return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
   throw new Error('unknown WebP type');
 };
-const imgWidths = (im) => [...IMG_WIDTHS.filter((w) => w < im.w), im.w];
 const IMG_DIR = new URL('../../data/img/', import.meta.url);
 const validateImages = (list, dir = IMG_DIR) => {
   const bad = (m) => { throw new Error(`Images: ${m}`); };
