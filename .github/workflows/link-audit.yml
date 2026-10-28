@@ -1,0 +1,42 @@
+name: Link audit
+# Weekly audit of the internal links of the published site (orphans, depth, anchors, suggestions).
+# The report goes to one open issue labelled "link-audit", updated in place; nothing in the content is changed.
+on:
+  schedule:
+    - cron: '41 5 * * 0'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      # Third-party actions are pinned to full commit SHAs so a moved tag cannot inject code.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: claude/greeting-2i183o
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: node --test test/linkaudit.test.mjs
+      - run: node scripts/build.mjs
+        env:
+          SITE_BASE: /${{ github.event.repository.name }}
+          SITE_ORIGIN: https://${{ github.repository_owner }}.github.io
+      - name: Audit
+        run: node scripts/audit-links.mjs --out report.md --json report.json
+        env:
+          SITE_BASE: /${{ github.event.repository.name }}
+      - name: Write the report to an issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create link-audit --description "Weekly internal-link audit" --color 5319e7 2>/dev/null || true
+          errors=$(node -p "require('./report.json').stats.errors")
+          title="דוח קישורים פנימיים"
+          num=$(gh issue list --label link-audit --state open --json number --jq '.[0].number // empty')
+          if [ -n "$num" ]; then gh issue edit "$num" --title "$title" --body-file report.md; else gh issue create --title "$title" --label link-audit --body-file report.md; fi
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          [ "$errors" = "0" ] || { echo "::error::$errors link errors"; exit 1; }

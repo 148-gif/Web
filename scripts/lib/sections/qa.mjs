@@ -1,7 +1,7 @@
 // Q&A pages
 import { PER_PAGE, esc, gist, write, shut, letters, halacha } from '../core.mjs';
 import { icon, orn, phead, layout, sr, card } from '../layout.mjs';
-import { searchForm } from '../parts.mjs';
+import { searchForm, pagerHtml } from '../parts.mjs';
 
 const para = (ps) => {
   // Short lines at the head of a letter (date, greeting) and at its end (blessing) are styled apart from the body.
@@ -33,7 +33,7 @@ const listDesc = (p, items) => (p === 1
   : `שו״ת ברסלב, עמוד ${p} מתוך ${pages}: ${items.slice(0, 3).map((x) => x.title).join(' · ')}`).slice(0, 155);
 for (let p = 1; p <= pages; p++) {
   const items = shut.slice((p - 1) * PER_PAGE, p * PER_PAGE);
-  const pager = `<nav class="pager" aria-label="עמודים">${p > 1 ? `<a class="btn ghost" href="${p === 2 ? '/shut/' : `/shut/page/${p - 1}/`}">→ הקודם</a>` : '<span></span>'}<span>עמוד ${p} מתוך ${pages}</span>${p < pages ? `<a class="btn ghost" href="/shut/page/${p + 1}/">הבא ←</a>` : '<span></span>'}</nav>`;
+  const pager = pagerHtml(p, pages, (n) => (n === 1 ? '/shut/' : `/shut/page/${n}/`));
   write(p === 1 ? 'shut/index.html' : `shut/page/${p}/index.html`, layout('שו״ת ברסלב', `${sr('רשימת השאלות')}<div class="grid">${items.map((x) => card(x)).join('')}</div>${pager}`, { path: '/shut/', self: p === 1 ? '/shut/' : `/shut/page/${p}/`, desc: listDesc(p, items), head: phead('מכתבי הצדיק מיבניאל זצ״ל', 'שו״ת ברסלב', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות בעבודת ה׳, באמונה ובדרכו של רבינו הקדוש.`, searchForm) }));
 }
 
