@@ -52,6 +52,10 @@
     letter: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/>',
     sparkle: '<path d="M12 3l1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8z"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/>',
+    film: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>',
+    music: '<path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.2"/><circle cx="17" cy="16" r="2.2"/>',
+    file: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h6"/>',
     list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
   };
   function icon(n, cls) { var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'ico' + (cls ? ' ' + cls : '')); s.setAttribute('aria-hidden', 'true'); s.innerHTML = ICON[n] || ICON.page; return s; }
@@ -104,6 +108,10 @@
     cards: { name: 'כרטיסים', icon: 'cards', hint: 'רשת של כרטיסים קצרים', make: function () { return { type: 'cards', title: '', items: [{ title: '', text: '' }] }; } },
     faq: { name: 'שאלות ותשובות', icon: 'faq', hint: 'שאלות שנפתחות בלחיצה', make: function () { return { type: 'faq', title: '', items: [{ q: '', a: '' }] }; } },
     quote: { name: 'ציטוט', icon: 'quote', hint: 'משפט מודגש עם מקור', make: function () { return { type: 'quote', text: '', by: '' }; } },
+    image: { name: 'תמונה', icon: 'image', hint: 'תמונה מהספרייה או מקישור', make: function () { return { type: 'image', src: '', alt: '', caption: '' }; } },
+    video: { name: 'סרטון', icon: 'film', hint: 'סרטון מהספרייה או מקישור', make: function () { return { type: 'video', src: '', title: '', caption: '' }; } },
+    audio: { name: 'שמע', icon: 'music', hint: 'קובץ שמע להאזנה', make: function () { return { type: 'audio', src: '', title: '' }; } },
+    file: { name: 'מסמך להורדה', icon: 'file', hint: 'PDF, Word, Excel ועוד', make: function () { return { type: 'file', src: '', title: '', desc: '' }; } },
     links: { name: 'קישורים', icon: 'link', hint: 'רשימת קישורים לאתרים אחרים', make: function () { return { type: 'links', title: '', items: [{ title: '', url: 'https://' }] }; } },
   };
   var RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachman', 'uman', 'tikkun-haklali', 'moharash', 'yeshiva', 'print', 'yavniel', 'mikveh-malka', 'institutions', 'search', 'about', 'contact', 'accessibility', 'privacy', 'offline', 'fonts', 'img', 'books', 'idx', 'zmanim'];
@@ -354,8 +362,10 @@
     nav.append(el('h3', { text: 'ניהול' }));
     if (draft) {
       var pl = link('#/changes', 'list', 'שינויים ממתינים'); pl.append(el('b', { id: 'hi-count', class: 'nb', text: String(pending.list.length) })); nav.append(pl);
+      nav.append(link('#/media', 'image', 'ספריית מדיה'));
       if (publisher) nav.append(link('#/log', 'clock', 'יומן פעילות'));
     }
+    var lk = link('#/links', 'link', 'קישורים ו־SEO'); lk.append(el('b', { id: 'lk-count', class: 'nb', text: '' })); nav.append(lk);
     nav.append(link('#/file/site.json', 'gear', 'הגדרות האתר'));
     if (owner) nav.append(link('#/editors', 'users', 'עורכים'));
     // On a phone the header keeps only the essentials; the rest is here.
@@ -364,6 +374,7 @@
       el('a', { href: '../', target: '_blank', rel: 'noopener', text: 'לאתר' }),
       el('button', { type: 'button', onclick: function () { $('#out').click(); }, text: 'יציאה' })));
     mark(location.hash || '#/');
+    auditBadge();
   }
   function mark(hash) {
     document.querySelectorAll('#nav a').forEach(function (a) { var h = a.getAttribute('data-h'); a.classList.toggle('cur', h === hash || (h !== '#/' && hash.indexOf(h + '/') === 0) || (h === '#/pages' && /^#\/page\//.test(hash))); });
@@ -539,6 +550,7 @@
       tile('#/shut', 'chat', 'שו״ת ברסלב', 'חיפוש, עריכה והוספה של שאלות ותשובות'),
       tile('#/file/yavniel.json', 'mountain', 'זמני תפילות ושיעורים', 'עדכון המידע על יבנאל'),
       draft ? tile('#/changes', 'list', 'שינויים ממתינים', publisher ? 'מה נשמר ועוד לא באתר, ופרסום' : 'מה נשמר ועוד לא פורסם') : null,
+      tile('#/links', 'link', 'קישורים ו־SEO', 'בדיקת קישורים, הצעות לחיבור עמודים ושאלות קשורות'),
       owner ? tile('#/editors', 'users', 'עורכים', 'הוספה והסרה של מי שיכול לערוך, ומי מפרסם') : null,
       el('a', { class: 'tile', href: '../', target: '_blank', rel: 'noopener' }, el('span', { class: 'tic' }, icon('eye')), el('b', { text: 'צפייה באתר' }), el('span', { text: 'נפתח בלשונית חדשה' }))));
     m.append(el('section', { class: 'card how' }, el('h2', { text: 'איך זה עובד' }), el('ol', {},
@@ -790,6 +802,7 @@
           var def = BLOCKS[b.type] || { name: b.type, icon: 'text' };
           var body = el('div', { class: 'bbody' });
           if (b.type === 'text') body.append(textInput(b, 'title', 'כותרת המקטע (לא חובה)'), listField(b, 'paragraphs', '', { rerender: draw }));
+          else if (MEDIA_BLOCK[b.type]) body.append(mediaFields(b, draw));
           else if (b.type === 'quote') body.append(textInput(b, 'text', 'הציטוט', { long: true }), textInput(b, 'by', 'מקור (לא חובה)'));
           else {
             body.append(textInput(b, 'title', 'כותרת המקטע (לא חובה)'));
@@ -848,6 +861,12 @@
   }
   function pageProblem(p) {
     if (!p.title || !p.title.trim()) return 'חסרה כותרת לדף';
+    var mb_ = (p.blocks || []).filter(function (b) { return MEDIA_BLOCK[b.type]; });
+    for (var i = 0; i < mb_.length; i++) {
+      var b = mb_[i], what = BLOCKS[b.type].name;
+      if (!/^(\/media\/[\w.-]+|https:\/\/\S+)$/.test(b.src || '')) return 'בחרו קובץ למקטע ה' + what + ', או הדביקו קישור שמתחיל ב־https://';
+      if (b.type === 'image' ? !String(b.alt || '').trim() : !String(b.title || '').trim()) return b.type === 'image' ? 'חסר תיאור לתמונה (לקוראי מסך)' : 'חסרה כותרת למקטע ה' + what;
+    }
     if ((p.blocks || []).some(function (b) { return b.type === 'links' && (b.items || []).some(function (l) { return !/^https:\/\/\S+$/.test(l.url || ''); }); })) return 'כל קישור צריך להתחיל ב־https://';
     return '';
   }
@@ -866,7 +885,8 @@
     delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { refreshPending(); var gone = cur.path.replace(/^data\/pages\/|\.json$/g, ''), tp = cur.data.topic; note('pages', gone, null); cache.pages = null; cur = null; say(draft ? 'נמחק בטיוטה. הדף יוסר מהאתר אחרי פרסום.' : 'נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = kindOf((cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === tp; })[0]) === 'page' ? '#/pages' : '#/topic/' + tp; }, function (e) { say(e.message, 'bad'); });
   }
   // Preview with the site's own stylesheet, in the markup the build uses (scripts/lib/sections/pages.mjs).
-  function preview(p) {
+  function preview(p) { stagedMap(p).then(function (m) { previewWith(p, m); }); }
+  function previewWith(p, staged) {
     var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
     var ps = function (xs) { return (xs || []).map(function (x) { return '<p>' + esc(x) + '</p>'; }).join(''); };
     var sect = function (i, inner, b, wide) { return '<section class="band' + (i % 2 ? ' soft' : '') + '"><div class="wrap' + (wide ? '' : ' narrow') + '">' + (b.title ? '<h2 class="sh">' + esc(b.title) + '</h2>' : '') + inner + '</div></section>'; };
@@ -875,6 +895,13 @@
       if (b.type === 'cards') return sect(i, '<div class="grid notes">' + (b.items || []).map(function (c) { return '<div class="card"><h3>' + esc(c.title) + '</h3><p>' + esc(c.text) + '</p></div>'; }).join('') + '</div>', b, true);
       if (b.type === 'faq') return sect(i, '<div class="faqs">' + (b.items || []).map(function (x, n) { return '<details class="faq"' + (n ? '' : ' open') + '><summary>' + esc(x.q) + '</summary><p>' + esc(x.a) + '</p></details>'; }).join('') + '</div>', b);
       if (b.type === 'quote') return '<section class="band quoteband"><div class="wrap"><blockquote class="pq small"><p>' + esc(b.text) + '</p>' + (b.by ? '<cite>' + esc(b.by) + '</cite>' : '') + '</blockquote></div></section>';
+      if (MEDIA_BLOCK[b.type]) {
+        var u = esc(staged[b.src] || (/^\//.test(b.src || '') ? new URL('..' + b.src, location.href).href : b.src || ''));
+        if (b.type === 'image') return sect(i, '<figure class="media"><img src="' + u + '" alt="' + esc(b.alt) + '">' + (b.caption ? '<figcaption>' + esc(b.caption) + '</figcaption>' : '') + '</figure>', b);
+        if (b.type === 'video') return sect(i, '<figure class="media"><video controls preload="metadata" src="' + u + '"></video><figcaption>' + esc(b.caption || b.title) + '</figcaption></figure>', b);
+        if (b.type === 'audio') return sect(i, '<figure class="media audio"><figcaption>' + esc(b.title) + '</figcaption><audio controls src="' + u + '"></audio></figure>', b);
+        return sect(i, '<a class="filecard"><span class="ftxt"><b>' + esc(b.title) + '</b>' + (b.desc ? '<span>' + esc(b.desc) + '</span>' : '') + '</span><span class="btn">הורדה</span></a>', b);
+      }
       if (b.type === 'links') return sect(i, '<ul>' + (b.items || []).map(function (l) { return '<li><a>' + esc(l.title) + '</a></li>'; }).join('') + '</ul>', b);
       return '';
     }).join('');
@@ -1108,6 +1135,185 @@
     editorsApi('GET').then(drawList, function (e) { card.textContent = ''; say(e.message, 'bad'); });
   }
 
+  // ---- media: images, video, audio and documents ----
+  // Small files are kept in the site's repository and published with everything else; large files and video go to R2 (the
+  // server decides, by type and size, and counts the free allowance of each place). A page points at a file by its link.
+  var MEDIA_KINDS = { image: ['תמונה', 'image'], video: ['סרטון', 'film'], audio: ['שמע', 'music'], doc: ['מסמך', 'file'] };
+  var MEDIA_BLOCK = { image: 'image', video: 'video', audio: 'audio', file: 'doc' }; // page block type -> media kind
+  var MEDIA_ACCEPT = '.jpg,.jpeg,.png,.webp,.gif,.avif,.mp4,.webm,.mov,.mp3,.m4a,.wav,.ogg,.aac,.pdf,.docx,.xlsx,.pptx,.txt,.epub';
+  var PIECE = 393216;
+  // Isolated, so "2.3 MB" keeps its order inside right-to-left text.
+  function mbytes(n) { return '\u2066' + (n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB') + '\u2069'; }
+  function readB64(blob) { return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(String(r.result).replace(/^data:[^,]*,/, '')); }; r.onerror = function () { rej(new Error('לא הצלחנו לקרוא את הקובץ')); }; r.readAsDataURL(blob); }); }
+  // Uploads one file; onProgress gets 0..1. Resolves with the new library item.
+  function uploadMedia(file, onProgress) {
+    return wapi('POST', '/media/init', { name: file.name, size: file.size }).then(function (init) {
+      if (init.store === 'r2') {
+        return new Promise(function (res, rej) {
+          var x = new XMLHttpRequest();
+          x.open('PUT', cfg.worker.replace(/\/$/, '') + '/media/r2?id=' + init.id);
+          x.setRequestHeader('Authorization', 'Bearer ' + token);
+          x.upload.onprogress = function (e) { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+          x.onload = function () { var j = {}; try { j = JSON.parse(x.responseText); } catch { /* not JSON */ } if (x.status === 401) signout('פג תוקף ההתחברות. התחברו שוב.'); if (x.status < 300) res(j.item); else rej(new Error(j.message || 'שגיאה ' + x.status)); };
+          x.onerror = function () { rej(new Error('החיבור נפסק. נסו שוב.')); };
+          x.send(file);
+        });
+      }
+      var n = Math.ceil(file.size / PIECE);
+      var piece = function (i) {
+        if (i >= n) return wapi('POST', '/media/done', { id: init.id }).then(function (j) { return j.item; });
+        return readB64(file.slice(i * PIECE, (i + 1) * PIECE)).then(function (d) { return wapi('POST', '/media/chunk', { id: init.id, n: i, data: d }); }).then(function () { onProgress((i + 1) / n); return piece(i + 1); });
+      };
+      return piece(0);
+    });
+  }
+  // Uploads several files one after another, with a progress row for each; calls done(item) for each success.
+  function uploadMany(files, list, done) {
+    list.textContent = ''; // rows of an earlier batch (including failed ones) are cleared when a new one starts
+    return Array.prototype.reduce.call(files, function (chain, file) {
+      var bar = el('span', { class: 'bar' }), msg = el('small', { class: 'help' }), row = el('li', {}, el('span', { class: 'grow', text: file.name }), el('span', { class: 'prog' }, bar), msg);
+      list.append(row);
+      return chain.then(function () {
+        return uploadMedia(file, function (f) { bar.setAttribute('data-p', String(Math.round(f * 10))); msg.textContent = Math.round(f * 100) + '%'; }).then(function (item) { row.className = 'okrow'; msg.textContent = 'הועלה'; setTimeout(function () { row.remove(); }, 3000); if (done) done(item); }, function (e) { row.className = 'badrow'; msg.textContent = e.message; });
+      });
+    }, Promise.resolve());
+  }
+  // A staged image (not yet published) is shown from the pieces the server holds.
+  function stagedSrc(item) {
+    var n = Math.ceil(item.size / PIECE), got = [];
+    for (var i = 0; i < n; i++) got.push(wapi('GET', '/media/' + item.id + '/chunk?n=' + i).then(function (j) { return j.data; }));
+    return Promise.all(got).then(function (ds) { return 'data:' + item.mime + ';base64,' + ds.join(''); });
+  }
+  function mediaThumb(item) {
+    var box = el('span', { class: 'mthumb' }, icon(MEDIA_KINDS[item.kind][1]));
+    if (item.kind === 'image') {
+      // A file published a moment ago is not on the site yet (the site needs a minute or two, and its cache a few more): show the icon until it is.
+      var show = function (src) { box.textContent = ''; box.append(el('img', { src: src, alt: '', loading: 'lazy', onerror: function () { box.textContent = ''; box.title = 'התצוגה תופיע כשהאתר יתעדכן'; box.append(icon('image')); } })); };
+      if (item.status === 'staged') stagedSrc(item).then(show, function () { /* icon stays */ });
+      else show(item.store === 'github' ? '..' + item.url : item.url);
+    }
+    return box;
+  }
+  // View a file full size: an image, a video or audio player, or a link to a document. A file waiting for publish is shown
+  // from the draft the server holds; a published one from the site (which needs a minute or two, and its cache a few more).
+  function viewMedia(x) {
+    var live = x.status !== 'staged', src = x.store === 'github' ? new URL('..' + x.url, location.href).href : x.url;
+    var dlg = el('dialog', { class: 'dlg wide' }, el('h2', { class: 'mname', text: x.name }));
+    var body = el('div', { class: 'mview' }), note = el('p', { class: 'help' });
+    var put = function (url) {
+      body.textContent = '';
+      if (x.kind === 'image') body.append(el('img', { src: url, alt: x.name, onerror: function () { note.textContent = live ? 'התמונה עוד לא באתר. אחרי שהאתר מתעדכן (עד כמה דקות) היא תופיע כאן.' : 'לא הצלחנו להציג את התמונה: ייתכן שהקובץ פגום.'; } }));
+      else if (x.kind === 'video') body.append(el('video', { controls: true, preload: 'metadata', src: url }));
+      else if (x.kind === 'audio') body.append(el('audio', { controls: true, src: url }));
+      else body.append(el('a', { class: 'btn pri', href: url, download: x.name, target: '_blank', rel: 'noopener' }, icon('file'), 'פתיחה או הורדה של המסמך'));
+    };
+    note.textContent = live ? (x.store === 'github' && x.status === 'published' ? 'הקובץ באתר. אם פורסם הרגע, התצוגה תופיע כשהאתר יתעדכן.' : '') : 'עוד לא פורסם: זו תצוגה מהטיוטה.';
+    if (live) put(src); else { loading(body); stagedSrc(x).then(put, function () { body.textContent = ''; note.textContent = 'לא הצלחנו לטעון את הקובץ.'; }); }
+    dlg.append(body, note, el('p', { class: 'acts' }, live ? el('a', { class: 'btn ghost', href: src, target: '_blank', rel: 'noopener' }, 'פתיחה בלשונית חדשה') : null, el('button', { type: 'button', class: 'btn ghost', onclick: function () { dlg.close(); } }, 'סגירה')));
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    document.body.append(dlg); dlg.showModal();
+  }
+  // Images and audio of a page that are still waiting to be published, as data, for the page preview.
+  function stagedMap(p) {
+    var need = (p.blocks || []).filter(function (b) { return (b.type === 'image' || b.type === 'audio') && /^\/media\//.test(b.src || ''); });
+    if (!need.length || !draft) return Promise.resolve({});
+    return wapi('GET', '/media').then(function (j) {
+      var out = {}, jobs = [];
+      need.forEach(function (b) {
+        var it = j.items.filter(function (x) { return x.url === b.src && x.status === 'staged'; })[0];
+        if (it && !(b.src in out)) { out[b.src] = ''; jobs.push(stagedSrc(it).then(function (d) { out[b.src] = d; }, function () { /* stays empty */ })); }
+      });
+      return Promise.all(jobs).then(function () { return out; });
+    }, function () { return {}; });
+  }
+  function quotaBar(label, q, off) {
+    var pct = q.max ? Math.min(100, Math.round(q.used / q.max * 100)) : 0;
+    return el('div', { class: 'quota' }, el('div', { class: 'qh' }, el('b', { text: label }), el('small', { text: off ? 'עוד לא הופעל' : mbytes(q.used) + ' מתוך ' + mbytes(q.max) })), el('div', { class: 'qbar' + (pct > 85 ? ' hi' : '') }, el('i', { 'data-p': off ? '0' : String(Math.round(pct / 10)) })));
+  }
+  function pagesUsing(src) {
+    return api('contents/data/pages' + ref()).then(function (fs) {
+      return Promise.all(fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { return readJson('data/pages/' + x.name).then(function (d) { return d && JSON.stringify(d.blocks || []).indexOf(JSON.stringify(src).slice(1, -1)) > -1 ? d.title : null; }); }));
+    }).then(function (ts) { return ts.filter(Boolean); }, function () { return []; });
+  }
+  function mediaScreen() {
+    var m = main();
+    m.append(head('ספריית מדיה', 'תמונות, סרטונים, שמע ומסמכים להוספה לדפים. הקבצים הקטנים נשמרים עם האתר ויפורסמו בפרסום, והגדולים והסרטונים נשמרים באחסון נפרד.'));
+    var quota = el('section', { class: 'card' }), list = el('ul', { class: 'upl' });
+    var input = el('input', { type: 'file', multiple: true, accept: MEDIA_ACCEPT, id: 'mfile', hidden: true });
+    var pick = el('button', { type: 'button', class: 'btn pri', onclick: function () { input.click(); } }, icon('plus'), 'העלאת קבצים');
+    var drop = el('section', { class: 'card drop' }, el('p', { text: 'גררו לכאן קבצים, או לחצו על הכפתור.' }), pick, input, list);
+    var chips = el('div', { class: 'chipbar' }), grid = el('div', { class: 'mgrid' });
+    var q = el('input', { type: 'search', placeholder: 'חיפוש לפי שם…', 'aria-label': 'חיפוש קובץ' });
+    m.append(quota, drop, el('div', { class: 'findbar' }, icon('search'), q), chips, grid);
+    var kind = '', data = { items: [], quota: null };
+    var draw = function () {
+      var w = q.value.trim();
+      quota.textContent = ''; quota.append(el('h2', { text: 'מכסת האחסון החינמית' }));
+      if (data.quota) quota.append(quotaBar('אחסון עם האתר (קבצים קטנים)', data.quota.github), quotaBar('אחסון קבצים גדולים וסרטונים', data.quota.r2, !data.quota.r2.enabled),
+        el('p', { class: 'help', text: 'עד ' + mbytes(data.quota.github.fileMax) + ' לקובץ באחסון עם האתר' + (data.quota.r2.enabled ? ', ועד ' + mbytes(data.quota.r2.fileMax) + ' לקובץ באחסון הגדול' : '. סרטונים וקבצים גדולים יותר דורשים הפעלת אחסון הקבצים הגדולים (R2), או קישור לסרטון ב־YouTube') + '.' }));
+      chips.textContent = '';
+      [['', 'הכול']].concat(Object.keys(MEDIA_KINDS).map(function (k) { return [k, MEDIA_KINDS[k][0]]; })).forEach(function (c) { chips.append(el('button', { type: 'button', class: 'chipb', 'aria-pressed': String(kind === c[0]), onclick: function () { kind = c[0]; draw(); } }, c[1])); });
+      grid.textContent = '';
+      var hits = data.items.filter(function (x) { return (!kind || x.kind === kind) && (!w || x.name.indexOf(w) > -1); });
+      if (!hits.length) grid.append(el('p', { class: 'help center', text: data.items.length ? 'לא נמצא מה שחיפשתם.' : 'עדיין לא הועלו קבצים.' }));
+      hits.forEach(function (x) {
+        var st = x.status === 'staged' ? 'ממתין לפרסום' : x.status === 'removing' ? 'יוסר בפרסום' : '';
+        grid.append(el('div', { class: 'mcard' }, el('button', { type: 'button', class: 'mthumbbtn', 'aria-label': 'צפייה ב' + x.name, onclick: function () { viewMedia(x); } }, mediaThumb(x)), el('div', { class: 'grow' }, el('b', { class: 'mname', text: x.name }), el('small', { class: 'help', text: MEDIA_KINDS[x.kind][0] + ' · ' + mbytes(x.size) + ' · ' + x.by }), st ? el('span', { class: 'tag draft', text: st }) : null),
+          el('span', { class: 'acts' },
+            el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { viewMedia(x); } }, icon('eye'), 'צפייה'),
+            el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { var full = x.store === 'github' ? new URL('..' + x.url, location.href).href : x.url; (navigator.clipboard ? navigator.clipboard.writeText(full) : Promise.reject()).then(function () { say('הקישור הועתק.', 'ok'); }, function () { prompt('הקישור:', full); }); } }, 'העתקת קישור'),
+            x.status === 'removing' ? null : el('button', { type: 'button', class: 'btn ghost sm dng', onclick: function () { removeMedia(x, function () { list.textContent = ''; load(); }); } }, 'מחיקה'))));
+      });
+    };
+    var load = function () { return wapi('GET', '/media').then(function (j) { data = j; draw(); refreshPending(); }, function (e) { say(e.message, 'bad'); }); };
+    var go = function (files) { if (files && files.length) uploadMany(files, list).then(load); };
+    input.addEventListener('change', function () { go(input.files); input.value = ''; });
+    ['dragover', 'dragenter'].forEach(function (t) { drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+    ['dragleave', 'drop'].forEach(function (t) { drop.addEventListener(t, function () { drop.classList.remove('over'); }); });
+    drop.addEventListener('drop', function (e) { e.preventDefault(); go(e.dataTransfer.files); });
+    q.addEventListener('input', draw);
+    load();
+  }
+  // A file used by a published page cannot be removed from the repository without breaking the build: say where it is used.
+  function removeMedia(x, after) {
+    pagesUsing(x.url).then(function (used) {
+      if (used.length && x.store === 'github') return say('הקובץ בשימוש בדפים: ' + used.join(', ') + '. הסירו אותו משם קודם.', 'bad');
+      if (!confirm('למחוק את ״' + x.name + '״?' + (used.length ? '\nשימו לב: הוא בשימוש בדפים: ' + used.join(', ') + '.' : '') + (x.status === 'published' && x.store === 'github' ? '\nהקובץ יוסר מהאתר בפרסום הבא.' : ''))) return;
+      wapi('DELETE', '/media/' + x.id).then(function () { say('נמחק.', 'ok'); after(); }, function (e) { say(e.message, 'bad'); });
+    });
+  }
+  // Choose a file for a page block, or upload one on the spot.
+  function pickMedia(kind, onPick) {
+    var dlg = el('dialog', { class: 'dlg wide' }, el('h2', { text: 'בחירת ' + MEDIA_KINDS[kind][0] }));
+    var input = el('input', { type: 'file', accept: MEDIA_ACCEPT, hidden: true }), list = el('ul', { class: 'upl' }), grid = el('div', { class: 'mgrid pick' });
+    var chosen = function (x) { dlg.close(); onPick(x); };
+    var load = function () {
+      grid.textContent = ''; loading(grid);
+      wapi('GET', '/media').then(function (j) {
+        grid.textContent = '';
+        var items = j.items.filter(function (x) { return x.kind === kind && x.status !== 'removing'; });
+        if (!items.length) grid.append(el('p', { class: 'help center', text: 'עדיין אין כאן קבצים מסוג זה. אפשר להעלות אחד.' }));
+        items.forEach(function (x) { grid.append(el('button', { type: 'button', class: 'mcard btn-like', onclick: function () { chosen(x); } }, mediaThumb(x), el('span', { class: 'grow' }, el('b', { class: 'mname', text: x.name }), el('small', { class: 'help', text: mbytes(x.size) + (x.status === 'staged' ? ' · ממתין לפרסום' : '') })))); });
+      }, function (e) { grid.textContent = ''; grid.append(el('p', { class: 'err', text: e.message })); });
+    };
+    input.addEventListener('change', function () { var fs = input.files; input.value = ''; if (fs.length) uploadMany(fs, list, function (item) { if (item.kind === kind) chosen(item); }).then(load); });
+    dlg.append(el('p', { class: 'acts' }, el('button', { type: 'button', class: 'btn pri', onclick: function () { input.click(); } }, icon('plus'), 'העלאת קובץ חדש'), input, el('button', { type: 'button', class: 'btn ghost', onclick: function () { dlg.close(); } }, 'ביטול')), list, grid);
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    document.body.append(dlg); dlg.showModal(); load();
+  }
+  // Fields of an image, video, audio or file block of a page.
+  function mediaFields(b, redraw) {
+    var kind = MEDIA_BLOCK[b.type], box = el('div');
+    box.append(textInput(b, 'src', 'הקובץ (בחירה מהספרייה, או קישור שמתחיל ב־https://)', { k: 'url' }),
+      el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { pickMedia(kind, function (x) { b.src = x.url; touch(); redraw(); }); } }, icon(MEDIA_KINDS[kind][1]), 'בחירה מהספרייה או העלאה'));
+    if (b.type === 'image' && b.src) box.append(el('img', { class: 'mprev', alt: '', src: b.src.charAt(0) === '/' ? '..' + b.src : b.src, onerror: function () { this.hidden = true; } }));
+    if (b.type === 'image') box.append(textInput(b, 'alt', 'תיאור התמונה (חובה, לקוראי מסך)', { long: true }), textInput(b, 'caption', 'כיתוב (לא חובה)'));
+    else if (b.type === 'video') box.append(textInput(b, 'title', 'כותרת הסרטון'), textInput(b, 'caption', 'כיתוב (לא חובה)'));
+    else if (b.type === 'audio') box.append(textInput(b, 'title', 'כותרת ההקלטה'));
+    else box.append(textInput(b, 'title', 'שם המסמך'), textInput(b, 'desc', 'תיאור קצר (לא חובה)'));
+    return box;
+  }
+
   // ---- pending changes, publishing, history, activity log ----
   var PAGE_RX = /^data\/pages\/([\w-]+)\.json$/, SHUT_RX = /^data\/shut-edits\/([\w-]+)\.json$/;
   var STATUS = { added: 'חדש', modified: 'שונה', removed: 'נמחק' };
@@ -1116,6 +1322,8 @@
     var m;
     if ((m = PAGE_RX.exec(path))) return { kind: 'page', label: 'דף', title: m[1], href: '#/page/' + m[1], id: m[1] };
     if ((m = SHUT_RX.exec(path))) return { kind: 'shut', label: 'שו״ת', title: '#' + m[1], href: '#/shut/' + m[1], id: m[1] };
+    if (path === 'data/link-audit.json') return { kind: 'file', label: 'הגדרות', title: 'קישורים ו־SEO', href: '#/links' };
+    if (/^site\/media\//.test(path)) return { kind: 'media', label: 'קובץ', title: path.replace(/^site\/media\/[0-9a-f]{8}-/, ''), href: '#/media' };
     if (path === 'data/topics.json') return { kind: 'topics', label: 'נושאים', title: 'רשימת הנושאים', href: '#/pages' };
     var name = path.replace(/^data\//, '');
     return { kind: 'file', label: 'תוכן', title: FILE[name] ? FILE[name].name : name, href: '#/file/' + name };
@@ -1126,6 +1334,7 @@
   // What a pending change is, in words: a page by its title, topics by what was added, removed or changed, and so on.
   function describe(item) {
     var info = pathInfo(item.path), gone = item.status === 'removed';
+    if (item.media) return Promise.resolve({ title: item.title || info.title, detail: (MEDIA_KINDS[item.kind] || [''])[0] + ' · ' + mbytes(item.size) });
     if (info.kind === 'topics') {
       return Promise.all([readJson(item.path, true), gone ? null : readJson(item.path)]).then(function (r) {
         var before = r[0] || [], after = r[1] || [], by = function (xs) { var o = {}; xs.forEach(function (t) { o[t.slug] = t; }); return o; }, a = by(after), b = by(before), out = [];
@@ -1144,6 +1353,7 @@
   // After a publish the site's own lists lag a minute or two: lay the published items over them meanwhile.
   function noteFor(item, d) {
     var info = pathInfo(item.path);
+    if (info.kind === 'media') return;
     if (info.kind === 'page') { if (item.status === 'removed') note('pages', info.id, null); else if (d) note('pages', info.id, { slug: info.id, title: d.title, topic: d.topic, category: d.category || '' }); }
     if (info.kind === 'shut' && d) { if (d.deleted || item.status === 'removed') note('shut', String(info.id), null); else note('shut', String(info.id), { kind: d.kind, title: d.title, date: d.date || '' }); }
   }
@@ -1165,7 +1375,7 @@
         var all = el('input', { type: 'checkbox', 'aria-label': 'בחירת הכול' }); all.checked = rows.every(function (r) { return r.cb.checked; });
         all.addEventListener('change', function () { rows.forEach(function (r) { r.cb.checked = all.checked; }); sync(); });
         var chosen = function () { return rows.filter(function (r) { return r.cb.checked; }); };
-        var pubBtn = publisher ? el('button', { type: 'button', class: 'btn pri', id: 'dopub', onclick: function () { publishDialog(chosen(), load); } }, 'פרסום הנבחרים…') : null;
+        var pubBtn = publisher ? el('button', { type: 'button', class: 'btn pri', id: 'dopub', onclick: function () { publishDialog(chosen(), load, rows); } }, 'פרסום הנבחרים…') : null;
         var disBtn = el('button', { type: 'button', class: 'btn ghost dng', id: 'dodiscard', onclick: function () {
           var ch = chosen(); if (!ch.length || !confirm('לבטל ' + ch.length + ' שינויים שנשמרו כטיוטה? האתר יישאר כמו שהוא.')) return;
           wapi('POST', '/discard', { paths: ch.map(function (r) { return r.c.path; }) }).then(function () { forget(); say('השינויים בוטלו.', 'ok'); load(); }, function (e) { say(e.message, 'bad'); });
@@ -1191,7 +1401,15 @@
   }
 
   // "Publish?" with the full list of what goes out; a file changed on the site meanwhile must be confirmed on its own.
-  function publishDialog(rows, reload) {
+  function publishDialog(rows, reload, allRows) {
+    // A page that uses a file waiting to be published takes the file along (the build would fail without it).
+    var have = {}; rows.forEach(function (r) { have[r.c.path] = 1; });
+    rows.slice().forEach(function (r) {
+      JSON.stringify((r.d && r.d.data && r.d.data.blocks) || []).replace(/\/media\/([\w.-]+)/g, function (_, f) {
+        var extra = (allRows || []).filter(function (x) { return x.c.path === 'site/media/' + f && !have[x.c.path]; })[0];
+        if (extra) { have[extra.c.path] = 1; rows.push(extra); }
+      });
+    });
     if (!rows.length) return;
     var dlg = el('dialog', { class: 'dlg wide' }, el('h2', { text: 'פרסום לאתר' }));
     var note_ = el('input', { type: 'text', id: 'pubnote', maxlength: '40', placeholder: 'למשל: עדכון זמני התפילות' });
@@ -1247,7 +1465,7 @@
     document.body.append(dlg); dlg.showModal();
   }
 
-  var ACTIONS = { login: 'התחברות', save: 'שמירת טיוטה', delete: 'מחיקה בטיוטה', publish: 'פרסום', 'publish-all': 'פרסום (סיכום)', discard: 'ביטול טיוטה', restore: 'שחזור גרסה', name: 'שינוי שם', 'editor-add': 'הוספת עורך', 'editor-update': 'עדכון עורך', 'editor-remove': 'הסרת עורך' };
+  var ACTIONS = { 'media-upload': 'העלאת קובץ', 'media-delete': 'מחיקת קובץ', login: 'התחברות', save: 'שמירת טיוטה', delete: 'מחיקה בטיוטה', publish: 'פרסום', 'publish-all': 'פרסום (סיכום)', discard: 'ביטול טיוטה', restore: 'שחזור גרסה', name: 'שינוי שם', 'editor-add': 'הוספת עורך', 'editor-update': 'עדכון עורך', 'editor-remove': 'הסרת עורך' };
   function logScreen() {
     var m = main();
     m.append(head('יומן פעילות', 'מי שמר, פרסם, ביטל או שחזר מה, ומתי.' + (owner ? '' : ' כתובות המייל מוצגות רק לבעלי האתר.')));
@@ -1268,6 +1486,158 @@
     };
     more.addEventListener('click', load);
     load();
+  }
+
+  // ---- links and SEO: the audit of the last build (admin/links.json) and the settings it reads (data/link-audit.json) ----
+  var AUDIT = {
+    'broken-link': ['קישור פנימי שבור', 'הקישור מוביל לעמוד שלא קיים. תקנו את הכתובת או הסירו את הקישור.'],
+    orphan: ['עמוד יתום', 'אף עמוד באתר לא מקשר אליו, ולכן גוגל ומנועי AI כמעט לא ימצאו אותו. הוסיפו אותו לרשימה או לדף של הנושא שלו.'],
+    'empty-anchor': ['קישור בלי טקסט', 'קישור צריך טקסט (או תמונה עם תיאור) כדי שיהיה ברור לאן הוא מוביל.'],
+    'not-crawlable': ['קישור שאינו a href', 'קישור שנבנה בלי כתובת אמיתית לא נסרק.'],
+    'sitemap-missing-page': ['ב־sitemap אך אין עמוד', 'כתובת ברשימת העמודים לחיפוש שאין לה עמוד.'],
+    'too-deep': ['עמוק מדי', 'צריך יותר מ־3 לחיצות מדף הבית. הוסיפו קישור מדף קרוב יותר.'],
+    unreachable: ['לא מגיעים אליו מדף הבית', 'יש אליו קישורים, אבל רק מעמודים שאי אפשר להגיע אליהם מדף הבית.'],
+    'many-links': ['הרבה קישורים בעמוד', 'עמוד עמוס בקישורים מחליש כל אחד מהם. כדאי לצמצם.'],
+    'generic-anchor': ['עוגן כללי', 'טקסט כמו ״כאן״ או ״קראו עוד״ לא אומר לקורא ולגוגל לאן הקישור מוביל. כתבו את שם היעד.'],
+    'duplicate-title': ['שני עמודים באותה כותרת', 'עמודים באותה כותרת מתחרים זה בזה בחיפוש. שנו אחת מהכותרות.'],
+    'no-title': ['עמוד בלי כותרת', 'לכל עמוד צריכה להיות כותרת.'],
+    'single-inlink': ['קישור נכנס אחד בלבד', 'רק עמוד אחד מקשר אליו. אפשר לחזק בעוד קישורים מעמודים קרובים בנושא.'],
+    'nav-only': ['מקושר רק מתפריט', 'אין אליו קישור מתוך תוכן. קישור בתוך טקסט שווה יותר.'],
+    'one-anchor': ['אותו עוגן בכל הקישורים', 'כשכל הקישורים אליו נראים אותו דבר זה נראה מלאכותי. נסחו בכמה דרכים טבעיות.'],
+    'ambiguous-anchor': ['אותו עוגן ליעדים שונים', 'אותו טקסט מוביל לעמודים שונים. הבדילו ביניהם.'],
+    'not-in-sitemap': ['לא ב־sitemap', 'עמוד שלא מופיע ברשימת העמודים לחיפוש.']
+  };
+  var AUDIT_ORDER = ['error', 'warn', 'info'];
+  function auditData(d) { d.ignore = d.ignore || []; d.ignorePairs = d.ignorePairs || []; d.aliases = d.aliases || {}; d.related = d.related || {}; return d; }
+  function auditTidy(src) {
+    var d = JSON.parse(JSON.stringify(src)), out = {};
+    if ((d.ignore || []).length) out.ignore = d.ignore;
+    if ((d.ignorePairs || []).length) out.ignorePairs = d.ignorePairs;
+    var al = {}; Object.keys(d.aliases || {}).forEach(function (k) { var v = (d.aliases[k] || []).map(function (x) { return x.trim(); }).filter(Boolean); if (k && v.length) al[k] = v; });
+    if (Object.keys(al).length) out.aliases = al;
+    var r = {}; if (d.related && d.related.count !== undefined && d.related.count !== '') r.count = Number(d.related.count);
+    if (d.related && (d.related.exclude || []).length) r.exclude = d.related.exclude;
+    if (Object.keys(r).length) out.related = r;
+    return out;
+  }
+  function linksProblem(d) {
+    var bad = Object.keys(d.aliases || {}).filter(function (k) { return (d.aliases[k] || []).some(function (t) { return t.trim() && t.trim().length < 3; }) || (k && !/^\/\S*$/.test(k)); });
+    if (bad.length) return 'שם נוסף צריך להיות לפחות 3 אותיות, והכתובת של העמוד צריכה להתחיל ב־/';
+    var ex = (d.related && d.related.exclude) || [];
+    if (ex.some(function (x) { return !/^[\w-]+$/.test(x); })) return 'מספרי שאלות להוצאה מ״שאלות קשורות״ צריכים להיות מספרים או מזהים בלבד';
+    return '';
+  }
+  function auditEdit(p) { var m = /^\/shut\/([\w-]+)\/$/.exec(p); return m ? '#/shut/' + m[1] : ''; }
+  function fetchAudit() { return fetch('links.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; }); }
+  function auditBadge() {
+    fetchAudit().then(function (a) {
+      var b = $('#lk-count'); if (!a || !b) return;
+      var n = a.stats.errors + a.stats.warnings + a.suggestions.length;
+      b.textContent = String(n); b.classList.toggle('bad', a.stats.errors > 0);
+    });
+  }
+  function linksScreen() {
+    var m = main(); loading(m);
+    var fresh = { path: 'data/link-audit.json', sha: null, indent: 2, data: {}, orig: '{}', fresh: true };
+    Promise.all([fetchAudit(), getFile('data/link-audit.json').catch(function (e) { if (e.status === 404) return fresh; throw e; })]).then(function (r) {
+      var a = r[0]; cur = r[1]; auditData(cur.data); cur.orig = JSON.stringify(cur.data);
+      cur.check = function () { return linksProblem(cur.data); }; cur.clean = auditTidy;
+      applyLocal(cur); auditData(cur.data);
+      m.textContent = '';
+      m.append(head('קישורים ו־SEO', 'בדיקה אוטומטית של הקישורים הפנימיים באתר, הצעות לחיבור עמודים, וההגדרות שלה.', [el('a', { class: 'btn ghost', href: 'https://github.com/' + cfg.repo + '/issues?q=is%3Aissue+label%3Alink-audit', target: '_blank', rel: 'noopener' }, icon('list'), 'הדוח השבועי ב־GitHub')]));
+      var col = el('div', { class: 'col' }), side = el('aside', { class: 'side' });
+      m.append(el('div', { class: 'split' }, col, side));
+      var body = el('div'); col.append(body);
+      var draw = function () {
+        var y = window.scrollY; body.textContent = '';
+        var d = cur.data;
+        var ign = {}; d.ignore.forEach(function (x) { ign[x.code + '|' + x.path] = 1; });
+        var pairs = {}; d.ignorePairs.forEach(function (x) { pairs[x.join('|')] = 1; });
+        if (!a) body.append(el('section', { class: 'card' }, el('h2', { text: 'עוד אין דוח' }), el('p', { class: 'help', text: 'הדוח נבנה עם כל פרסום של האתר. אחרי הפרסום הבא הוא יופיע כאן.' })));
+        else {
+          var fs = a.findings.filter(function (f) { return !ign[f.code + '|' + f.path]; }), sg = a.suggestions.filter(function (s) { return !pairs[s.from + '|' + s.to]; });
+          var cnt = function (sev) { return fs.filter(function (f) { return f.severity === sev; }).length; };
+          var when = new Date(a.generated).toLocaleString('he-IL');
+          body.append(el('section', { class: 'card' }, el('h2', { text: 'מצב הקישורים' }),
+            el('p', { class: 'help', text: 'נבדק בפרסום האחרון של האתר (' + when + '): ' + a.stats.pages.toLocaleString('he-IL') + ' עמודים, ' + a.stats.links.toLocaleString('he-IL') + ' קישורים, עומק מרבי ' + a.stats.maxDepth + ' לחיצות.' }),
+            el('div', { class: 'tiles' },
+              el('div', { class: 'tile' + (cnt('error') ? ' bad' : '') }, el('b', { text: String(cnt('error')) }), el('span', { text: 'שגיאות לתיקון' })),
+              el('div', { class: 'tile' }, el('b', { text: String(cnt('warn')) }), el('span', { text: 'אזהרות' })),
+              el('div', { class: 'tile' }, el('b', { text: String(sg.length) }), el('span', { text: 'הצעות לקישורים חדשים' })),
+              el('div', { class: 'tile' }, el('b', { text: String(cnt('info')) }), el('span', { text: 'הערות' })))));
+          var any = false;
+          AUDIT_ORDER.forEach(function (sev) {
+            var codes = {}; fs.filter(function (f) { return f.severity === sev; }).forEach(function (f) { (codes[f.code] = codes[f.code] || []).push(f); });
+            Object.keys(codes).forEach(function (code) {
+              any = true; var list = codes[code], info = AUDIT[code] || [code, ''];
+              var det = el('details', { class: 'card sec' + (sev === 'error' ? ' bad' : '') }, el('summary', {}, el('h2', { text: info[0] }), el('span', { class: 'cnt', text: String(list.length) })), el('p', { class: 'help', text: info[1] }));
+              list.slice(0, 40).forEach(function (f) {
+                var edit = auditEdit(f.path);
+                det.append(el('div', { class: 'row' }, el('span', { class: 'grow' }, el('b', { text: f.path || '—' }), f.detail ? el('small', { class: 'help', text: f.detail }) : null),
+                  f.path ? viewLink(f.path, 'באתר') : null, edit ? el('a', { class: 'btn ghost', href: edit }, 'עריכה') : null,
+                  el('button', { type: 'button', class: 'btn ghost', title: 'לא להציג שוב את הממצא הזה', onclick: function () { d.ignore.push({ code: f.code, path: f.path }); touch(); draw(); } }, 'התעלמות')));
+              });
+              if (list.length > 40) det.append(el('p', { class: 'help', text: 'ועוד ' + (list.length - 40) + '. הרשימה המלאה בדוח השבועי ב־GitHub.' }));
+              body.append(det);
+            });
+          });
+          if (!any) body.append(el('section', { class: 'card' }, el('h2', { text: 'הכול תקין' }), el('p', { class: 'help', text: 'אין כרגע ממצאים לטיפול.' })));
+          var box = el('section', { class: 'card' }, el('h2', {}, 'הצעות לקישורים חדשים ', el('span', { class: 'cnt', text: String(sg.length) })),
+            el('p', { class: 'help', text: 'שם של עמוד שמופיע בטקסט של עמוד אחר בלי קישור. ההצעות הן המלצה בלבד: שום דבר לא משתנה בלי שתעשו זאת בעצמכם. ״לא מתאים״ מסתיר את ההצעה לתמיד. תוכן ספרי הצדיק לא נערך אוטומטית.' }));
+          sg.slice(0, 40).forEach(function (s) {
+            var edit = auditEdit(s.from);
+            box.append(el('div', { class: 'row sug' }, el('span', { class: 'grow' }, el('b', { text: '«' + s.anchor + '»' }), el('small', { class: 'help', text: '…' + s.context + '…' }), el('small', { class: 'help', text: 'בעמוד ' + s.from + ' ← אל ' + s.to })),
+              viewLink(s.from, 'העמוד'), edit ? el('a', { class: 'btn ghost', href: edit }, 'עריכה') : null,
+              el('button', { type: 'button', class: 'btn ghost', onclick: function () { d.ignorePairs.push([s.from, s.to]); touch(); draw(); } }, 'לא מתאים / טופל')));
+          });
+          if (!sg.length) box.append(el('p', { class: 'help', text: 'אין הצעות כרגע.' }));
+          body.append(box);
+        }
+        // Settings
+        var rel = el('select', { id: 'rel-count' });
+        [['', 'ברירת מחדל (4)'], ['0', 'כבוי'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6']].forEach(function (o) { rel.append(el('option', { value: o[0], text: o[1] })); });
+        rel.value = d.related.count === undefined ? '' : String(d.related.count);
+        rel.addEventListener('change', function () { if (rel.value === '') delete d.related.count; else d.related.count = Number(rel.value); touch(); });
+        var exc = el('input', { type: 'text', id: 'rel-ex', dir: 'ltr', placeholder: 'למשל: 120, 305' }); exc.value = (d.related.exclude || []).join(', ');
+        exc.addEventListener('input', function () { d.related.exclude = exc.value.split(/[\s,]+/).filter(Boolean); touch(); });
+        body.append(el('section', { class: 'card' }, el('h2', { text: 'שאלות קשורות בשו״ת' }),
+          el('p', { class: 'help', text: 'בסוף כל תשובה מופיעות שאלות קרובות בנושא, שנבחרות אוטומטית לפי המילים. כך כל שאלה מקושרת לאחרות, וגם הגולש ממשיך לקרוא.' }),
+          el('div', { class: 'fld' }, el('label', { for: 'rel-count', text: 'כמה שאלות קשורות להציג' }), rel),
+          el('div', { class: 'fld' }, el('label', { for: 'rel-ex', text: 'שאלות שלא יציגו ״שאלות קשורות״ ולא יוצעו באחרות (מספרי שאלה)' }), exc, el('small', { class: 'help', text: 'לשאלות רגישות, למשל. המספר הוא מה שמופיע בכתובת השאלה.' }))));
+        var al = el('section', { class: 'card' }, el('h2', { text: 'שמות נוספים לעמודים' }),
+          el('p', { class: 'help', text: 'ההצעות מחפשות את כותרת העמוד בטקסט. אם עמוד נקרא גם בשמות אחרים, הוסיפו אותם כאן (מופרדים בפסיק), וגם הם ייחשבו. לפחות 3 אותיות.' }));
+        Object.keys(d.aliases).forEach(function (k) {
+          var p = el('input', { type: 'text', dir: 'ltr', placeholder: '/library/zot-hatorah/', 'aria-label': 'כתובת העמוד' }); p.value = k;
+          var t = el('input', { type: 'text', placeholder: 'שם נוסף, שם נוסף', 'aria-label': 'שמות נוספים' }); t.value = d.aliases[k].join(', ');
+          var sync = function () { var vals = t.value.split(/\s*,\s*/); delete d.aliases[k]; k = p.value.trim(); d.aliases[k] = vals; touch(); };
+          p.addEventListener('input', sync); t.addEventListener('input', sync);
+          al.append(el('div', { class: 'row' }, p, t, el('button', { type: 'button', class: 'btn ghost dng', 'aria-label': 'הסרה', onclick: function () { delete d.aliases[k]; touch(); draw(); } }, icon('trash'))));
+        });
+        al.append(el('button', { type: 'button', class: 'add', onclick: function () { d.aliases[''] = []; touch(); draw(); } }, icon('plus'), 'שם נוסף לעמוד'));
+        body.append(al);
+        var hidden = d.ignore.length + d.ignorePairs.length;
+        if (hidden) {
+          var ig = el('details', { class: 'card sec' }, el('summary', {}, el('h2', { text: 'מה הוסתר' }), el('span', { class: 'cnt', text: String(hidden) })), el('p', { class: 'help', text: 'ממצאים והצעות שסימנתם כלא רלוונטיים. ביטול מחזיר אותם לרשימה אחרי הפרסום הבא.' }));
+          d.ignore.forEach(function (x, i) { ig.append(el('div', { class: 'row' }, el('span', { class: 'grow', text: ((AUDIT[x.code] || [x.code])[0]) + ' · ' + (x.path || '—') }), el('button', { type: 'button', class: 'btn ghost', onclick: function () { d.ignore.splice(i, 1); touch(); draw(); } }, 'ביטול'))); });
+          d.ignorePairs.forEach(function (x, i) { ig.append(el('div', { class: 'row' }, el('span', { class: 'grow', text: 'הצעה: ' + x[0] + ' ← ' + x[1] }), el('button', { type: 'button', class: 'btn ghost', onclick: function () { d.ignorePairs.splice(i, 1); touch(); draw(); } }, 'ביטול'))); });
+          body.append(ig);
+        }
+        body.append(el('section', { class: 'card' }, el('h2', { text: 'איך מקבלים התראה' }), el('ul', { class: 'help' },
+          el('li', { text: 'בכל יום ראשון האתר נבדק מחדש. כשמופיעה בעיה חדשה נפתח או מתעדכן דיווח ב־GitHub (התווית link-audit), ו־GitHub שולח עליו מייל לכל מי שעוקב אחרי המאגר.' }),
+          el('li', { text: 'אם נמצאה שגיאה (קישור שבור או עמוד יתום), גם הבדיקה עצמה מסומנת ככישלון ונשלח מייל נוסף.' }),
+          el('li', { text: 'כשאין יותר מה לטפל, הדיווח נסגר לבד ולא נשלח דבר.' }),
+          el('li', { text: 'כדי לקבל או להפסיק לקבל את המיילים: בדף המאגר ב־GitHub לוחצים Watch ← Custom ← Issues, ובהגדרות החשבון ב־Notifications בוחרים מייל.' }),
+          el('li', { text: 'כתובות מייל לא נשמרות באתר או בקוד. הן נשארות בחשבון ה־GitHub של כל אחד.' }))));
+        window.scrollTo(0, y);
+      };
+      draw();
+      var saveLinks = function () {
+        var f = cur, bad = linksProblem(f.data); if (bad) return say(bad, 'bad');
+        commit(f.path, auditTidy(f.data), f.indent, f.sha, 'עריכת תוכן: הגדרות קישורים', '/').then(function (r) { f.sha = r.content.sha; f.fresh = false; f.orig = JSON.stringify(f.data); status(); }, saveFail(saveLinks));
+      };
+      side.append(saveBox(saveLinks));
+      status();
+    }, function (e) { m.textContent = ''; say(e.message, 'bad'); });
   }
 
   // The name shown in the public history of the site's repository (never the email).
@@ -1294,8 +1664,10 @@
     else if (h === '#/shut') shutScreen();
     else if ((m = /^#\/topic\/([a-z0-9-]+)$/.exec(h))) topicScreen(m[1]);
     else if (h === '#/pages') pagesScreen();
+    else if (h === '#/media' && draft) mediaScreen();
     else if (h === '#/changes' && draft) changesScreen();
     else if (h === '#/log' && draft && publisher) logScreen();
+    else if (h === '#/links') linksScreen();
     else if (h === '#/editors' && owner) editorsScreen();
     else home();
   }

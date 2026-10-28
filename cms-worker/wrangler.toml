@@ -29,3 +29,9 @@ database_id = "da698e66-6615-4d83-98ef-9cb77ccd6531"
 # Translates a Hebrew title into an English web address by meaning (Workers AI, pay per use with a daily free allowance).
 [ai]
 binding = "AI"
+
+# Large media (video, big audio and files): R2, counted against its free 10GB. Served by this worker at /m/<file>
+# (set MEDIA_PUBLIC_URL to the bucket's public r2.dev address, or a custom domain, to serve it directly instead).
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "heichal-media"

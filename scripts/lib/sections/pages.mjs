@@ -18,6 +18,9 @@ const block = (b, i) => {
   if (b.type === 'image') return sect(cls, figure(b.id, { size: b.size === 'side' ? 'side' : 'full', lead: i === 0 }));
   if (b.type === 'gallery') return sect(cls, gallery(b.ids, b.title || undefined));
   if (b.type === 'links') return sect(cls, ul((b.items || []).map((l) => `<a href="${url(l.url, ['https:'])}" rel="noopener">${esc(l.title)}</a>`)));
+  if (b.type === 'video') return sect(cls, `<figure class="media"><video controls preload="metadata" playsinline src="${url(b.src)}" aria-label="${esc(b.title)}"></video><figcaption>${esc(b.caption || b.title)}</figcaption></figure>`);
+  if (b.type === 'audio') return sect(cls, `<figure class="media audio"><figcaption>${esc(b.title)}</figcaption><audio controls preload="none" src="${url(b.src)}"></audio></figure>`);
+  if (b.type === 'file') return sect(cls, `<a class="filecard" href="${url(b.src)}" download><span class="fic">${icon('book', 'ico lg')}</span><span class="ftxt"><b>${esc(b.title)}</b>${b.desc ? `<span>${esc(b.desc)}</span>` : ''}</span><span class="btn">הורדה</span></a>`);
   return '';
 };
 const byTitle = (a, b) => a.title.localeCompare(b.title, 'he');

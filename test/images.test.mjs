@@ -49,13 +49,13 @@ test('a page may show only photos that are approved for publishing', () => {
   const topics = [{ slug: 'x', title: 'x', kind: 'page' }];
   const page = (blocks) => [{ slug: 'p', topic: 'x', title: 'p', blocks }];
   const list = [entry({ id: 'ok' }), entry({ id: 'ok2' }), entry({ id: 'wait', rights: 'pending' })];
-  assert.doesNotThrow(() => validateCms(topics, page([{ type: 'image', id: 'ok' }, { type: 'gallery', ids: ['ok2'] }]), list));
-  assert.throws(() => validateCms(topics, page([{ type: 'image', id: 'wait' }]), list), /not approved/);
-  assert.throws(() => validateCms(topics, page([{ type: 'gallery', ids: ['ok', 'wait'] }]), list), /not approved/);
-  assert.throws(() => validateCms(topics, page([{ type: 'image', id: 'nope' }]), list), /unknown image/);
-  assert.throws(() => validateCms(topics, page([{ type: 'gallery', ids: [] }]), list), /גלריה צריכה/);
-  assert.throws(() => validateCms(topics, page([{ type: 'image', id: 'ok' }, { type: 'gallery', ids: ['ok'] }]), list), /יותר מפעם אחת/);
-  assert.throws(() => validateCms(topics, page([{ type: 'gallery', ids: Array.from({ length: 13 }, () => 'ok') }]), list), /מקסימום 12/);
+  assert.doesNotThrow(() => validateCms(topics, page([{ type: 'image', id: 'ok' }, { type: 'gallery', ids: ['ok2'] }]), undefined, list));
+  assert.throws(() => validateCms(topics, page([{ type: 'image', id: 'wait' }]), undefined, list), /not approved/);
+  assert.throws(() => validateCms(topics, page([{ type: 'gallery', ids: ['ok', 'wait'] }]), undefined, list), /not approved/);
+  assert.throws(() => validateCms(topics, page([{ type: 'image', id: 'nope' }]), undefined, list), /unknown image/);
+  assert.throws(() => validateCms(topics, page([{ type: 'gallery', ids: [] }]), undefined, list), /גלריה צריכה/);
+  assert.throws(() => validateCms(topics, page([{ type: 'image', id: 'ok' }, { type: 'gallery', ids: ['ok'] }]), undefined, list), /יותר מפעם אחת/);
+  assert.throws(() => validateCms(topics, page([{ type: 'gallery', ids: Array.from({ length: 13 }, () => 'ok') }]), undefined, list), /מקסימום 12/);
 });
 
 test('figure() gives the browser the size to reserve and the sizes to choose from; only the lead photo loads at once', () => {

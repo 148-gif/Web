@@ -1,7 +1,8 @@
 // Site settings, text helpers, data files and the page writer, shared by every section.
-import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { IMG_LIMITS, imageProblems, blockProblems, budgetFor } from '../../site/admin/image-rules.mjs';
+import { validateAuditConfig } from './linkaudit.mjs';
 
 const SITE = 'היכל הקודש';
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when served from a sub-path
@@ -81,6 +82,8 @@ const institutions = read('institutions.json').filter((i) => !/דוגמה/.test(
 const pr = read('print.json');
 const yeshiva = read('yeshiva.json');
 const site = read('site.json');
+// Settings of the link audit and of "related questions", saved by the editor's links screen; the file may not exist yet.
+const linkAudit = (() => { try { return validateAuditConfig(read('link-audit.json')); } catch (e) { if (e.code === 'ENOENT') return {}; throw e; } })();
 // Sections not ready for visitors (data/site.json "hidden"): no pages are built, menu entries and cards
 // pointing at them are dropped, and inline links to them become plain text. Tracked in TODO.md.
 const HIDDEN = (site.hidden || []).map((x) => x.path);
@@ -105,7 +108,10 @@ const um = read('uman.json');
 const tk = read('tikkun.json');
 const tkText = read('books/tikkun-haklali.json');
 // Topics and pages made in the editor (/admin/): data/topics.json and data/pages/*.json. Checked here so a bad edit fails the build, not the site.
-const BLOCK_TYPES = ['text', 'cards', 'faq', 'quote', 'links', 'image', 'gallery'];
+const BLOCK_TYPES = ['text', 'cards', 'faq', 'quote', 'links', 'image', 'gallery', 'video', 'audio', 'file'];
+// Media blocks point at a file uploaded in the editor (/media/<name>, committed to site/media/) or at a link on the web.
+const MEDIA_EXT = { image: /\.(jpe?g|png|webp|gif|avif)$/i, video: /\.(mp4|webm|mov)$/i, audio: /\.(mp3|m4a|wav|ogg|aac)$/i, file: /\.(pdf|docx|xlsx|pptx|txt|epub)$/i };
+const mediaHere = (name) => existsSync(new URL(`../../site/media/${name}`, import.meta.url));
 const RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachman', 'uman', 'tikkun-haklali', 'moharash', 'yeshiva', 'print', 'yavniel', 'mikveh-malka', 'institutions', 'search', 'about', 'contact', 'accessibility', 'privacy', 'offline', 'fonts', 'img', 'books', 'idx', 'zmanim'];
 const topics = read('topics.json');
 const cmsPages = readdirSync(new URL('../../data/pages/', import.meta.url)).filter((f) => f.endsWith('.json')).map((f) => ({ slug: f.slice(0, -5), ...read(`pages/${f}`) }));
@@ -115,7 +121,7 @@ const cmsPages = readdirSync(new URL('../../data/pages/', import.meta.url)).filt
 // "pages" is the old name of a collection without categories, from before single pages existed.
 const TOPIC_KINDS = ['page', 'collection', 'pages'];
 const isSingle = (t) => t.kind === 'page';
-const validateCms = (topics, pages, imgs = images) => {
+const validateCms = (topics, pages, hasMedia = mediaHere, imgs = images) => {
   const bad = (m) => { throw new Error(`CMS: ${m}`); };
   const seen = new Set();
   for (const t of topics) {
@@ -136,12 +142,20 @@ const validateCms = (topics, pages, imgs = images) => {
     for (const m of blockProblems(p.blocks)) bad(`page ${p.slug}: ${m}`);
     for (const b of p.blocks || []) {
       if (!BLOCK_TYPES.includes(b.type)) bad(`page ${p.slug}: unknown block type "${b.type}"`);
-      // A photo reaches visitors only with the owner's approval (see .claude/skills/images/SKILL.md).
-      const ids = b.type === 'image' ? [b.id] : b.type === 'gallery' && Array.isArray(b.ids) ? b.ids : [];
+      // A photo from the photo registry (data/images.json) reaches visitors only with the owner's approval (see .claude/skills/images/SKILL.md).
+      const ids = b.type === 'image' && b.id ? [b.id] : b.type === 'gallery' && Array.isArray(b.ids) ? b.ids : [];
       for (const id of ids) {
         const im = imgs.find((x) => x.id === id);
         if (!im) bad(`page ${p.slug}: unknown image "${id}"`);
         if (im.rights !== 'approved') bad(`page ${p.slug}: image "${id}" is not approved for publishing (rights: ${im.rights})`);
+      }
+      // Every photo goes through the photo registry, which carries the rules (description, credit, sizes, approval): no raw file or link.
+      if (b.type === 'image' && !b.id) bad(`page ${p.slug}: an image block must point at a photo from the registry (id), not a file or a link`);
+      if (b.type in MEDIA_EXT && b.type !== 'image') {
+        const m = /^\/media\/([a-z0-9][\w.-]{0,100})$/.exec(b.src || '');
+        if (!m && !/^https:\/\/[^\s"'<>]+$/.test(b.src || '')) bad(`page ${p.slug}: ${b.type} block needs a /media/ file or an https link`);
+        if (m && (!MEDIA_EXT[b.type].test(m[1]) || !hasMedia(m[1]))) bad(`page ${p.slug}: ${b.type} block points at ${b.src}, which is not an uploaded ${b.type} file`);
+        if (!String(b.title || '').trim()) bad(`page ${p.slug}: a ${b.type} block needs a title`);
       }
     }
   }
@@ -194,4 +208,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
