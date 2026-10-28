@@ -5,5 +5,12 @@
     "desc": "מתכונים לנשים",
     "icon": "book",
     "kind": "pages"
+  },
+  {
+    "slug": "chbrym",
+    "title": "חברים",
+    "desc": "חיחיח",
+    "icon": "users",
+    "kind": "collection"
   }
 ]
