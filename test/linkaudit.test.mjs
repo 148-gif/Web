@@ -1,7 +1,7 @@
 // Unit tests for the internal-link audit (scripts/lib/linkaudit.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { auditSite, extractPage, mention, pagePath, resolve, formatReport } from '../scripts/lib/linkaudit.mjs';
+import { auditSite, extractPage, mention, pagePath, resolve, formatReport, linkScores, reportKeys, needsAttention } from '../scripts/lib/linkaudit.mjs';
 
 const page = (title, main, { nav = '', head = '' } = {}) => `<html><head><title>${title}</title>${head}</head><body><header><nav><a href="/">בית</a>${nav}</nav></header><main><h1>${title}</h1>${main}</main><footer></footer></body></html>`;
 const codes = (res, code) => res.findings.filter((f) => f.code === code).map((f) => f.path || f.detail);
@@ -70,4 +70,39 @@ test('mention() matches whole phrases, with a Hebrew prefix letter', () => {
   assert.equal(mention('סעיף יב', 'סעיף י'), -1);
   assert.equal(mention('בתיקון הכללי', 'תיקון הכללי'), 1);
   assert.equal(mention('הכתיקון הכללי', 'תיקון הכללי'), -1);
+});
+
+test('linkScores() ranks a page that many pages link to above one nobody links to', () => {
+  const out = new Map([['/', new Set(['/a/', '/b/'])], ['/a/', new Set(['/c/'])], ['/b/', new Set(['/c/'])], ['/c/', new Set(['/'])], ['/d/', new Set(['/'])]]);
+  const s = linkScores(['/', '/a/', '/b/', '/c/', '/d/'], out);
+  assert.ok(s.get('/c/') > s.get('/a/') && s.get('/a/') > s.get('/d/'));
+  assert.equal(Math.max(...s.values()), 100);
+  assert.equal(Math.min(...s.values()), 0);
+  assert.equal(linkScores([], new Map()).size, 0);
+});
+
+test('auditSite() applies the config: ignore, ignorePairs and aliases', () => {
+  const files = {
+    'index.html': page('בית', '<a href="/a/">א</a> <a href="/b/">ב</a> <a href="/o/">ג</a>'),
+    'a/index.html': page('הלכות נטילת ידיים', ''),
+    'b/index.html': page('על התפילה', 'מדברים על נטילה שחרית ועל הלכות נטילת ידיים'),
+    'o/index.html': page('יתום', ''),
+  };
+  const base = auditSite(files);
+  assert.equal(base.suggestions.length, 1);
+  assert.equal(auditSite(files, { config: { ignorePairs: [['/b/', '/a/']] } }).suggestions.length, 0);
+  assert.equal(auditSite(files, { config: { aliases: { '/a/': ['נטילה שחרית'] } } }).suggestions[0].anchor, 'הלכות נטילת ידיים');
+  const noOrphan = auditSite({ ...files, 'index.html': page('בית', '<a href="/a/">א</a> <a href="/b/">ב</a>') });
+  assert.equal(codes(noOrphan, 'orphan').length, 1);
+  assert.equal(codes(auditSite({ ...files, 'index.html': page('בית', '<a href="/a/">א</a> <a href="/b/">ב</a>') }, { config: { ignore: [{ code: 'orphan', path: '/o/' }] } }), 'orphan').length, 0);
+});
+
+test('reportKeys() and the report tell what is new, and info lines do not need a person', () => {
+  const files = { 'index.html': page('בית', '<a href="/a/">א</a>'), 'a/index.html': page('עמוד', '') };
+  const res = auditSite(files);
+  assert.equal(needsAttention(res), false);
+  const broken = auditSite({ ...files, 'a/index.html': page('עמוד', '<a href="/gone/">שבור</a>') });
+  assert.equal(needsAttention(broken), true);
+  assert.match(formatReport(broken, { previous: reportKeys(res) }), /חדש מאז הריצה הקודמת: 1/);
+  assert.match(formatReport(broken, { previous: reportKeys(broken) }), /לא נוספו בעיות חדשות/);
 });

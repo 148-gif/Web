@@ -4,6 +4,8 @@
 export const MAX_DEPTH = 3;
 // One click more is fine for the items of a paginated list (home > list > numbered page > item).
 export const isListItem = (path) => /^\/(shut|letters|halacha)\/\d+\/$/.test(path);
+// Pages that only exist because a list is cut into parts (items and numbered list pages): no suggestions or link-score findings for them.
+export const isMinor = (path) => isListItem(path) || /\/page\/\d+\/$/.test(path);
 export const MAX_LINKS = 100;
 // Anchors that say nothing about the target (Google's "link best practices"); compared after trimming punctuation.
 export const GENERIC = new Set(['כאן', 'לחצו כאן', 'לחץ כאן', 'קראו עוד', 'קרא עוד', 'עוד', 'המשך', 'להמשך', 'לכאן', 'לחצו', 'קישור', 'אתר', 'מאמר', 'עמוד', 'לעמוד', 'click here', 'here', 'read more', 'more', 'link']);
@@ -83,9 +85,37 @@ export function mention(text, title) {
   return -1;
 }
 
+// Internal PageRank (what Screaming Frog calls Link Score and Sitebulb URL Rank): a page is worth more when pages that are worth more link to it, and a page with many links gives each one less.
+// Returns Map(path -> 0..100), scaled on a log axis so that the weakest page is 0 and the strongest 100.
+export function linkScores(paths, out, { damping = 0.85, rounds = 40 } = {}) {
+  const n = paths.length;
+  if (!n) return new Map();
+  const set = new Set(paths);
+  let rank = new Map(paths.map((x) => [x, 1 / n]));
+  for (let r = 0; r < rounds; r++) {
+    const next = new Map(paths.map((x) => [x, (1 - damping) / n]));
+    let lost = 0;
+    for (const x of paths) {
+      const to = [...(out.get(x) || [])].filter((t) => set.has(t));
+      if (!to.length) { lost += rank.get(x); continue; }
+      const share = (damping * rank.get(x)) / to.length;
+      for (const t of to) next.set(t, next.get(t) + share);
+    }
+    for (const x of paths) next.set(x, next.get(x) + (damping * lost) / n);
+    rank = next;
+  }
+  const vals = [...rank.values()];
+  const lo = Math.log(Math.min(...vals)), hi = Math.log(Math.max(...vals));
+  return new Map(paths.map((x) => [x, hi === lo ? 100 : Math.round(((Math.log(rank.get(x)) - lo) / (hi - lo)) * 100)]));
+}
+
 const isGeneric = (a) => GENERIC.has(a.toLowerCase().replace(/[\s.,:;!?…«»"'״׳()\-–—>←→»]+/g, ' ').trim());
 
-export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle = 4, minSuggest = 8, suggestFor = (p) => !/^\/shut\/\d+\/?$/.test(p.path) } = {}) {
+export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle = 4, minSuggest = 8, config = {}, suggestFor = (p) => !isMinor(p.path) } = {}) {
+  // config (data/link-audit.json): ignore = [{ code, path }] silences one finding; ignorePairs = [[from, to]] silences a suggestion; aliases = { path: [phrases] } are other names of a page, matched like its title.
+  const ignored = new Set((config.ignore || []).map((x) => `${x.code}|${x.path}`));
+  const ignoredPairs = new Set((config.ignorePairs || []).map((x) => x.join('|')));
+  const aliases = config.aliases || {};
   const pages = new Map();
   for (const [file, html] of Object.entries(files)) {
     const p = extractPage(file, html, base);
@@ -146,6 +176,29 @@ export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle
   }
   for (const [a, m] of byAnchor) if (m.size > 1) add('info', 'ambiguous-anchor', '', `"${a}" → ${[...m.keys()].slice(0, 4).join(', ')}`);
 
+  // Link score and weakly linked pages (hubs only: the items of a list get their links from the list).
+  const score = linkScores(indexable.map((p) => p.path), out);
+  const dup = new Map();
+  for (const p of indexable) if (suggestFor(p) && p.title) dup.set(p.title, [...(dup.get(p.title) || []), p.path]);
+  for (const p of indexable) {
+    if (p.path === home || !suggestFor(p)) continue;
+    if (inAll.get(p.path).size === 1) add('info', 'single-inlink', p.path, `${[...inAll.get(p.path)][0]} → ${p.title}`);
+  }
+  for (const [title, paths] of dup) if (paths.length > 1) add('warn', 'duplicate-title', paths[0], `"${title}" ב-${paths.join(', ')}`);
+  // One anchor on nearly every link to a page looks forced; a few different natural phrasings are better (Linkilo, InLinks).
+  const anchorsTo = new Map();
+  for (const p of indexable) for (const l of p.links) {
+    if (l.region !== 'content' || !l.anchor || l.to === p.path || !suggestFor({ path: l.to }) || !suggestFor(p) || /^\d+$/.test(l.anchor)) continue;
+    if (!anchorsTo.has(l.to)) anchorsTo.set(l.to, new Map());
+    const m = anchorsTo.get(l.to);
+    m.set(l.anchor, (m.get(l.anchor) || 0) + 1);
+  }
+  for (const [to, m] of anchorsTo) {
+    const total = [...m.values()].reduce((a, b) => a + b, 0);
+    const [top, n] = [...m].sort((a, b) => b[1] - a[1])[0];
+    if (total >= 8 && n / total > 0.9) add('info', 'one-anchor', to, `"${top}" ב-${n} מתוך ${total} קישורים`);
+  }
+
   // Sitemap against the pages that really exist.
   if (sitemap.length) {
     const inMap = new Set(sitemap.map((u) => resolve(u, '/', base) || u));
@@ -153,26 +206,36 @@ export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle
     for (const p of indexable) if (!inMap.has(p.path) && !/^\/shut\/\d+\/?$/.test(p.path)) add('info', 'not-in-sitemap', p.path, p.title);
   }
 
-  // Suggestions: a page whose title is written in another page's text without a link to it. Only the first mention per pair.
+  // Suggestions: a page whose title (or alias) is written in another page's text without a link to it; the best phrase per pair, and a page that gets many suggestions is listed by its strongest sources first.
   const targets = indexable.filter((p) => suggestFor(p) && p.path !== home && (p.title || '').length >= minSuggest && p.title.split(' ').length >= 2 && p.title.split(' ').length <= 6);
+  const names = (t) => [t.title, ...(aliases[t.path] || [])];
   const titleCount = new Map();
   for (const t of targets) titleCount.set(t.title, (titleCount.get(t.title) || 0) + 1);
   const suggestions = [];
   for (const p of indexable) {
     const linked = out.get(p.path);
     for (const t of targets) {
-      if (t.path === p.path || linked.has(t.path) || titleCount.get(t.title) > 1) continue;
-      const at = mention(p.text, t.title);
-      if (at < 0) continue;
-      suggestions.push({ from: p.path, to: t.path, anchor: t.title, context: p.text.slice(Math.max(0, at - 30), at + t.title.length + 30) });
+      if (t.path === p.path || linked.has(t.path) || titleCount.get(t.title) > 1 || ignoredPairs.has(`${p.path}|${t.path}`)) continue;
+      for (const name of names(t)) {
+        const at = mention(p.text, name);
+        if (at < 0) continue;
+        suggestions.push({ from: p.path, to: t.path, anchor: name, context: p.text.slice(Math.max(0, at - 30), at + name.length + 30), score: score.get(p.path) });
+        break;
+      }
     }
   }
+  suggestions.sort((a, b) => b.score - a.score);
 
+  const kept = findings.filter((f) => !ignored.has(`${f.code}|${f.path}`));
+  findings.length = 0;
+  findings.push(...kept);
   const count = (sev) => findings.filter((f) => f.severity === sev).length;
   const stats = {
     pages: indexable.length,
     links: indexable.reduce((n, p) => n + p.links.length, 0),
     maxDepth: Math.max(0, ...depth.values()),
+    top: [...score].filter(([x]) => suggestFor({ path: x })).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([path, sc]) => ({ path, score: sc })),
+    weakest: [...score].filter(([x]) => suggestFor({ path: x }) && x !== home).sort((a, b) => a[1] - b[1]).slice(0, 10).map(([path, sc]) => ({ path, score: sc })),
     errors: count('error'), warnings: count('warn'), info: count('info'), suggestions: suggestions.length,
   };
   return { stats, findings, suggestions };
@@ -181,15 +244,28 @@ export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle
 const LABEL = {
   'broken-link': 'קישור פנימי שבור', orphan: 'עמוד יתום (אין קישור נכנס)', 'nav-only': 'מקושר רק מתפריט או תחתית', unreachable: 'לא מגיעים אליו מדף הבית',
   'too-deep': `עמוק מ-${MAX_DEPTH} לחיצות`, 'many-links': `מעל ${MAX_LINKS} קישורים`, 'generic-anchor': 'עוגן גנרי', 'empty-anchor': 'קישור בלי טקסט', 'not-crawlable': 'קישור שאינו a href',
-  'ambiguous-anchor': 'אותו עוגן ליעדים שונים', 'no-title': 'עמוד בלי כותרת', 'sitemap-missing-page': 'ב-sitemap אך אין עמוד', 'not-in-sitemap': 'עמוד שאינו ב-sitemap',
+  'ambiguous-anchor': 'אותו עוגן ליעדים שונים', 'no-title': 'עמוד בלי כותרת', 'sitemap-missing-page': 'ב-sitemap אך אין עמוד', 'single-inlink': 'קישור נכנס אחד בלבד', 'duplicate-title': 'שני עמודים באותה כותרת', 'one-anchor': 'עוגן אחד כמעט בכל הקישורים', 'not-in-sitemap': 'עמוד שאינו ב-sitemap',
 };
 
+// Stable keys of everything a report lists, to tell what is new since the previous run.
+export const reportKeys = (res) => [
+  ...res.findings.filter((f) => f.severity !== 'info').map((f) => `${f.code}|${f.path}|${f.detail}`),
+  ...res.suggestions.map((x) => `suggest|${x.from}|${x.to}`),
+];
+// What needs a person: errors, warnings and suggestions ("info" lines are only shown).
+export const needsAttention = (res) => res.stats.errors + res.stats.warnings + res.stats.suggestions > 0;
+
 // Markdown report in Hebrew, grouped by problem; long groups are cut to `limit` rows.
-export function formatReport(res, { limit = 25, date = '' } = {}) {
+export function formatReport(res, { limit = 25, date = '', previous = null } = {}) {
   const { stats, findings, suggestions } = res;
   const out = [`# דוח קישורים פנימיים${date ? ' ' + date : ''}`, '',
     `עמודים: ${stats.pages} · קישורים: ${stats.links} · עומק מרבי: ${stats.maxDepth}`,
     `שגיאות: ${stats.errors} · אזהרות: ${stats.warnings} · לידיעה: ${stats.info} · הצעות קישור: ${stats.suggestions}`, ''];
+  if (previous) {
+    const before = new Set(previous);
+    const fresh = reportKeys(res).filter((k) => !before.has(k));
+    out.push(fresh.length ? `**חדש מאז הריצה הקודמת: ${fresh.length}**` : 'לא נוספו בעיות חדשות מאז הריצה הקודמת.', '');
+  }
   const groups = new Map();
   for (const f of findings) { if (!groups.has(f.code)) groups.set(f.code, []); groups.get(f.code).push(f); }
   const order = { error: 0, warn: 1, info: 2 };
@@ -204,6 +280,9 @@ export function formatReport(res, { limit = 25, date = '' } = {}) {
     for (const s of suggestions.slice(0, limit)) out.push(`- \`${s.from}\` ← \`${s.to}\`: …${s.context}…`);
     if (suggestions.length > limit) out.push(`- …ועוד ${suggestions.length - limit}`);
     out.push('');
+  }
+  if (stats.top?.length) {
+    out.push('## דירוג קישורים פנימי (0 עד 100)', '', 'חזקים: ' + stats.top.slice(0, 5).map((x) => `\`${x.path}\` ${x.score}`).join(' · '), '', 'חלשים: ' + stats.weakest.slice(0, 5).map((x) => `\`${x.path}\` ${x.score}`).join(' · '), '');
   }
   if (!findings.length && !suggestions.length) out.push('לא נמצאו בעיות.', '');
   return out.join('\n');

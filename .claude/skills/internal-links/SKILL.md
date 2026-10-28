@@ -79,12 +79,32 @@ description: "קישורים פנימיים באתר היכל הקודש (SEO ו
 
 ## 4. הבדיקה האוטומטית
 
-- `node scripts/audit-links.mjs [--out report.md] [--json report.json] [--strict]` (או `npm run audit-links`) אחרי הבנייה. הלוגיקה ב-`scripts/lib/linkaudit.mjs`, בדיקות ב-`test/linkaudit.test.mjs`.
-- `--strict` (ב-`npm run check` ובבדיקת ה-PR): נכשל על **שגיאות** בלבד: קישור שבור, עמוד יתום, עוגן ריק, קישור שאינו `a href`, עמוד שב-sitemap ואינו קיים. אזהרות (עומק, עוגן גנרי, יותר מדי קישורים) והצעות לא מכשילות.
-- `.github/workflows/link-audit.yml` רץ כל יום ראשון (וביוזמה ידנית) ושומר את הדוח ב-Issue פתוח אחד עם התווית `link-audit`, מתעדכן במקום. הוא לא משנה תוכן.
-- עומק: 3 לחיצות, וארבע לפריטי רשימה מעומדת (בית ← רשימה ← עמוד ← פריט).
-- הצעות קישור: שם עמוד (שתי מילים ויותר) שמופיע בטקסט של עמוד אחר בלי קישור אליו. יש בהן תוצאות שגויות (למשל ציטוט פסוק שזהה לשם ספר), לכן ההחלטה לעורך. תוכן ספרי הצדיק לא נערך אוטומטית.
-- אחרי ההפעלה הראשונה נמצא: מעבר דפדוף "קודם/הבא" בלבד בשו״ת העמיק עד 141 לחיצות. תוקן ב-`pagerHtml`: קישורי מספרים (ראשון, אחרון, כל חמישי וחלון סביב הנוכחי).
+`node scripts/audit-links.mjs [--out report.md] [--json report.json] [--previous prev.json] [--config file] [--strict]` (או `npm run audit-links`) אחרי הבנייה. הלוגיקה ב-`scripts/lib/linkaudit.mjs`, בדיקות ב-`test/linkaudit.test.mjs`.
+
+**מה למדנו מהכלים הקיימים ומה מומש** (Screaming Frog, Sitebulb, Link Whisper, Linkilo, InLinks, LinkStorm, ClickFlow; חלק מהמידע מדפי היצרנים עצמם):
+
+| רעיון בכלים | אצלנו |
+|---|---|
+| דירוג קישורים פנימי (Link Score ב-Screaming Frog, URL Rank ב-Sitebulb): PageRank על גרף האתר | `linkScores()`: 0 עד 100, מוצג בדוח: החזקים והחלשים |
+| "קישור נכנס אחד בלבד" (Sitebulb) | `single-inlink` (לידיעה) |
+| עמודים יתומים, עומק (Screaming Frog, Link Whisper) | `orphan` (שגיאה), `too-deep`, `unreachable` |
+| גיוון עוגנים, מניעת עוגן אחד בכל הקישורים (Linkilo, InLinks) | `one-anchor` (לידיעה) |
+| שני עמודים מתחרים על אותו נושא (cannibalization ב-Linkilo) | `duplicate-title` |
+| מילות יעד ומילים נרדפות לכל עמוד (Link Whisper, InLinks) | `aliases` בקובץ התצורה |
+| רשימת התעלמות (Link Whisper) | `ignore` ו-`ignorePairs` בקובץ התצורה |
+| הצעות מדורגות לפי חוזק עמוד המקור (LinkStorm לפי GSC) | ההצעות ממוינות לפי הדירוג של עמוד המקור; GSC אחרי המעבר לדומיין |
+| אישור אנושי לכל הצעה (Link Whisper, Yoast, ClickFlow) | ההצעות הן דוח בלבד; אין הכנסה אוטומטית |
+
+**מה לא לקחנו:** הכנסת קישורים אוטומטית לפי מילת מפתח (Internal Link Juicer, LinkBoss), הזרקה ב-JavaScript (InLinks; לא נסרק אחרת), ומנגנוני מכסות/קרדיטים. הם מתנגשים עם הכלל שתוכן ספרי הצדיק לא נערך אוטומטית.
+
+**קובץ תצורה** `data/link-audit.json` (אופציונלי): `{ "ignore": [{ "code": "orphan", "path": "/x/" }], "ignorePairs": [["/from/", "/to/"]], "aliases": { "/to/": ["שם נוסף"] } }`. הצעה שנדחתה נכנסת ל-`ignorePairs` ולא תחזור.
+
+**ריצה שבועית** (`.github/workflows/link-audit.yml`, יום ראשון):
+- שגיאות מכשילות את הריצה (התראה במייל); `--strict` ב-`npm run check` ובבדיקת ה-PR חוסם אותן לפני המיזוג.
+- הדוח ב-Issue אחד עם התווית `link-audit`. הוא מתעדכן רק כשיש בעיה חדשה מאז הריצה הקודמת (המפתחות נשמרים כהערה בגוף ה-Issue), ונסגר כשאין שגיאות, אזהרות או הצעות. שורות "לידיעה" לא מחזיקות אותו פתוח.
+- עומק: 3 לחיצות, וארבע לפריטי רשימה מעומדת ולעמודי רשימה ממוספרים.
+- הצעות קישור: שם עמוד (שתי מילים ויותר) שמופיע בטקסט של עמוד אחר בלי קישור אליו. יש תוצאות שגויות (ציטוט פסוק זהה לשם ספר), ולכן ההחלטה לעורך.
+- נמצא בהרצה הראשונה: דפדוף "קודם/הבא" בלבד בשו״ת העמיק עד 141 לחיצות. תוקן ב-`pagerHtml`.
 
 ## מקורות
 - [Google: Link best practices](https://developers.google.com/search/docs/crawling-indexing/links-crawlable)

@@ -1,6 +1,7 @@
 name: Link audit
-# Weekly audit of the internal links of the published site (orphans, depth, anchors, suggestions).
-# The report goes to one open issue labelled "link-audit", updated in place; nothing in the content is changed.
+# Weekly audit of the internal links (orphans, depth, anchors, link score, suggestions).
+# The report lives in one open issue labelled "link-audit". The issue is only touched when something new appears,
+# and it is closed when nothing needs a person any more. Nothing in the content is changed.
 on:
   schedule:
     - cron: '41 5 * * 0'
@@ -25,18 +26,34 @@ jobs:
         env:
           SITE_BASE: /${{ github.event.repository.name }}
           SITE_ORIGIN: https://${{ github.repository_owner }}.github.io
-      - name: Audit
-        run: node scripts/audit-links.mjs --out report.md --json report.json
-        env:
-          SITE_BASE: /${{ github.event.repository.name }}
-      - name: Write the report to an issue
+      - name: Read the previous run from the issue
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh label create link-audit --description "Weekly internal-link audit" --color 5319e7 2>/dev/null || true
+          num=$(gh issue list --label link-audit --state open --json number --jq '.[0].number // empty')
+          echo "ISSUE=$num" >> "$GITHUB_ENV"
+          if [ -n "$num" ]; then
+            gh issue view "$num" --json body --jq .body | sed -n 's/.*audit-keys:\([A-Za-z0-9+\/=]*\).*/\1/p' | base64 -d > keys.json 2>/dev/null || true
+            [ -s keys.json ] && node -e "const k=JSON.parse(require('fs').readFileSync('keys.json','utf8'));require('fs').writeFileSync('prev.json',JSON.stringify({keys:k}))" || true
+          fi
+      - name: Audit
+        run: node scripts/audit-links.mjs --out report.md --json report.json --previous prev.json
+        env:
+          SITE_BASE: /${{ github.event.repository.name }}
+      - name: Update the issue only when needed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          attention=$(node -p "require('./report.json').attention")
+          fresh=$(node -p "require('./report.json').fresh")
           errors=$(node -p "require('./report.json').stats.errors")
           title="דוח קישורים פנימיים"
-          num=$(gh issue list --label link-audit --state open --json number --jq '.[0].number // empty')
-          if [ -n "$num" ]; then gh issue edit "$num" --title "$title" --body-file report.md; else gh issue create --title "$title" --label link-audit --body-file report.md; fi
-          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$attention" = "true" ]; then
+            if [ -z "$ISSUE" ]; then gh issue create --title "$title" --label link-audit --body-file report.md
+            elif [ "$fresh" != "0" ]; then gh issue edit "$ISSUE" --title "$title" --body-file report.md; fi
+          elif [ -n "$ISSUE" ]; then
+            gh issue close "$ISSUE" --comment "הבדיקה השבועית לא מצאה יותר דבר שדורש טיפול."
+          fi
           [ "$errors" = "0" ] || { echo "::error::$errors link errors"; exit 1; }
