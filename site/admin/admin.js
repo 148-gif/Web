@@ -882,7 +882,8 @@
     delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { refreshPending(); var gone = cur.path.replace(/^data\/pages\/|\.json$/g, ''), tp = cur.data.topic; note('pages', gone, null); cache.pages = null; cur = null; say(draft ? 'נמחק בטיוטה. הדף יוסר מהאתר אחרי פרסום.' : 'נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = kindOf((cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === tp; })[0]) === 'page' ? '#/pages' : '#/topic/' + tp; }, function (e) { say(e.message, 'bad'); });
   }
   // Preview with the site's own stylesheet, in the markup the build uses (scripts/lib/sections/pages.mjs).
-  function preview(p) {
+  function preview(p) { stagedMap(p).then(function (m) { previewWith(p, m); }); }
+  function previewWith(p, staged) {
     var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
     var ps = function (xs) { return (xs || []).map(function (x) { return '<p>' + esc(x) + '</p>'; }).join(''); };
     var sect = function (i, inner, b, wide) { return '<section class="band' + (i % 2 ? ' soft' : '') + '"><div class="wrap' + (wide ? '' : ' narrow') + '">' + (b.title ? '<h2 class="sh">' + esc(b.title) + '</h2>' : '') + inner + '</div></section>'; };
@@ -892,7 +893,7 @@
       if (b.type === 'faq') return sect(i, '<div class="faqs">' + (b.items || []).map(function (x, n) { return '<details class="faq"' + (n ? '' : ' open') + '><summary>' + esc(x.q) + '</summary><p>' + esc(x.a) + '</p></details>'; }).join('') + '</div>', b);
       if (b.type === 'quote') return '<section class="band quoteband"><div class="wrap"><blockquote class="pq small"><p>' + esc(b.text) + '</p>' + (b.by ? '<cite>' + esc(b.by) + '</cite>' : '') + '</blockquote></div></section>';
       if (MEDIA_BLOCK[b.type]) {
-        var u = esc(/^\//.test(b.src || '') ? new URL('..' + b.src, location.href).href : b.src || '');
+        var u = esc(staged[b.src] || (/^\//.test(b.src || '') ? new URL('..' + b.src, location.href).href : b.src || ''));
         if (b.type === 'image') return sect(i, '<figure class="media"><img src="' + u + '" alt="' + esc(b.alt) + '">' + (b.caption ? '<figcaption>' + esc(b.caption) + '</figcaption>' : '') + '</figure>', b);
         if (b.type === 'video') return sect(i, '<figure class="media"><video controls preload="metadata" src="' + u + '"></video><figcaption>' + esc(b.caption || b.title) + '</figcaption></figure>', b);
         if (b.type === 'audio') return sect(i, '<figure class="media audio"><figcaption>' + esc(b.title) + '</figcaption><audio controls src="' + u + '"></audio></figure>', b);
@@ -1165,11 +1166,12 @@
   }
   // Uploads several files one after another, with a progress row for each; calls done(item) for each success.
   function uploadMany(files, list, done) {
+    list.textContent = ''; // rows of an earlier batch (including failed ones) are cleared when a new one starts
     return Array.prototype.reduce.call(files, function (chain, file) {
       var bar = el('span', { class: 'bar' }), msg = el('small', { class: 'help' }), row = el('li', {}, el('span', { class: 'grow', text: file.name }), el('span', { class: 'prog' }, bar), msg);
       list.append(row);
       return chain.then(function () {
-        return uploadMedia(file, function (f) { bar.setAttribute('data-p', String(Math.round(f * 10))); msg.textContent = Math.round(f * 100) + '%'; }).then(function (item) { row.className = 'okrow'; msg.textContent = 'הועלה'; if (done) done(item); }, function (e) { row.className = 'badrow'; msg.textContent = e.message; });
+        return uploadMedia(file, function (f) { bar.setAttribute('data-p', String(Math.round(f * 10))); msg.textContent = Math.round(f * 100) + '%'; }).then(function (item) { row.className = 'okrow'; msg.textContent = 'הועלה'; setTimeout(function () { row.remove(); }, 3000); if (done) done(item); }, function (e) { row.className = 'badrow'; msg.textContent = e.message; });
       });
     }, Promise.resolve());
   }
@@ -1188,6 +1190,38 @@
       else show(item.store === 'github' ? '..' + item.url : item.url);
     }
     return box;
+  }
+  // View a file full size: an image, a video or audio player, or a link to a document. A file waiting for publish is shown
+  // from the draft the server holds; a published one from the site (which needs a minute or two, and its cache a few more).
+  function viewMedia(x) {
+    var live = x.status !== 'staged', src = x.store === 'github' ? new URL('..' + x.url, location.href).href : x.url;
+    var dlg = el('dialog', { class: 'dlg wide' }, el('h2', { class: 'mname', text: x.name }));
+    var body = el('div', { class: 'mview' }), note = el('p', { class: 'help' });
+    var put = function (url) {
+      body.textContent = '';
+      if (x.kind === 'image') body.append(el('img', { src: url, alt: x.name, onerror: function () { note.textContent = live ? 'התמונה עוד לא באתר. אחרי שהאתר מתעדכן (עד כמה דקות) היא תופיע כאן.' : 'לא הצלחנו להציג את התמונה: ייתכן שהקובץ פגום.'; } }));
+      else if (x.kind === 'video') body.append(el('video', { controls: true, preload: 'metadata', src: url }));
+      else if (x.kind === 'audio') body.append(el('audio', { controls: true, src: url }));
+      else body.append(el('a', { class: 'btn pri', href: url, download: x.name, target: '_blank', rel: 'noopener' }, icon('file'), 'פתיחה או הורדה של המסמך'));
+    };
+    note.textContent = live ? (x.store === 'github' && x.status === 'published' ? 'הקובץ באתר. אם פורסם הרגע, התצוגה תופיע כשהאתר יתעדכן.' : '') : 'עוד לא פורסם: זו תצוגה מהטיוטה.';
+    if (live) put(src); else { loading(body); stagedSrc(x).then(put, function () { body.textContent = ''; note.textContent = 'לא הצלחנו לטעון את הקובץ.'; }); }
+    dlg.append(body, note, el('p', { class: 'acts' }, live ? el('a', { class: 'btn ghost', href: src, target: '_blank', rel: 'noopener' }, 'פתיחה בלשונית חדשה') : null, el('button', { type: 'button', class: 'btn ghost', onclick: function () { dlg.close(); } }, 'סגירה')));
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    document.body.append(dlg); dlg.showModal();
+  }
+  // Images and audio of a page that are still waiting to be published, as data, for the page preview.
+  function stagedMap(p) {
+    var need = (p.blocks || []).filter(function (b) { return (b.type === 'image' || b.type === 'audio') && /^\/media\//.test(b.src || ''); });
+    if (!need.length || !draft) return Promise.resolve({});
+    return wapi('GET', '/media').then(function (j) {
+      var out = {}, jobs = [];
+      need.forEach(function (b) {
+        var it = j.items.filter(function (x) { return x.url === b.src && x.status === 'staged'; })[0];
+        if (it && !(b.src in out)) { out[b.src] = ''; jobs.push(stagedSrc(it).then(function (d) { out[b.src] = d; }, function () { /* stays empty */ })); }
+      });
+      return Promise.all(jobs).then(function () { return out; });
+    }, function () { return {}; });
   }
   function quotaBar(label, q, off) {
     var pct = q.max ? Math.min(100, Math.round(q.used / q.max * 100)) : 0;
@@ -1221,10 +1255,11 @@
       if (!hits.length) grid.append(el('p', { class: 'help center', text: data.items.length ? 'לא נמצא מה שחיפשתם.' : 'עדיין לא הועלו קבצים.' }));
       hits.forEach(function (x) {
         var st = x.status === 'staged' ? 'ממתין לפרסום' : x.status === 'removing' ? 'יוסר בפרסום' : '';
-        grid.append(el('div', { class: 'mcard' }, mediaThumb(x), el('div', { class: 'grow' }, el('b', { class: 'mname', text: x.name }), el('small', { class: 'help', text: MEDIA_KINDS[x.kind][0] + ' · ' + mbytes(x.size) + ' · ' + x.by }), st ? el('span', { class: 'tag draft', text: st }) : null),
+        grid.append(el('div', { class: 'mcard' }, el('button', { type: 'button', class: 'mthumbbtn', 'aria-label': 'צפייה ב' + x.name, onclick: function () { viewMedia(x); } }, mediaThumb(x)), el('div', { class: 'grow' }, el('b', { class: 'mname', text: x.name }), el('small', { class: 'help', text: MEDIA_KINDS[x.kind][0] + ' · ' + mbytes(x.size) + ' · ' + x.by }), st ? el('span', { class: 'tag draft', text: st }) : null),
           el('span', { class: 'acts' },
+            el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { viewMedia(x); } }, icon('eye'), 'צפייה'),
             el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { var full = x.store === 'github' ? new URL('..' + x.url, location.href).href : x.url; (navigator.clipboard ? navigator.clipboard.writeText(full) : Promise.reject()).then(function () { say('הקישור הועתק.', 'ok'); }, function () { prompt('הקישור:', full); }); } }, 'העתקת קישור'),
-            x.status === 'removing' ? null : el('button', { type: 'button', class: 'btn ghost sm dng', onclick: function () { removeMedia(x, load); } }, 'מחיקה'))));
+            x.status === 'removing' ? null : el('button', { type: 'button', class: 'btn ghost sm dng', onclick: function () { removeMedia(x, function () { list.textContent = ''; load(); }); } }, 'מחיקה'))));
       });
     };
     var load = function () { return wapi('GET', '/media').then(function (j) { data = j; draw(); refreshPending(); }, function (e) { say(e.message, 'bad'); }); };
