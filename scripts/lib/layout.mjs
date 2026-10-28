@@ -33,6 +33,7 @@ const CSP = [
   `style-src 'self' ${sha(SPLASH_CSS)}`,
   "font-src 'self'",
   "img-src 'self' data: https:",
+  "media-src 'self' https:",
   "connect-src 'self'",
   `frame-src ${frames.join(' ') || "'none'"}`,
   "form-action 'self'",

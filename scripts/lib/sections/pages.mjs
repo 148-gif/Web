@@ -14,6 +14,10 @@ const block = (b, i) => {
   if (b.type === 'faq') return sect(cls, faqHtml((b.items || []).map((x) => [x.q, x.a])));
   if (b.type === 'quote') return `<section class="band quoteband"><div class="wrap"><blockquote class="pq small"><p>${esc(b.text)}</p>${b.by ? `<cite>${esc(b.by)}</cite>` : ''}</blockquote></div></section>`;
   if (b.type === 'links') return sect(cls, ul((b.items || []).map((l) => `<a href="${url(l.url, ['https:'])}" rel="noopener">${esc(l.title)}</a>`)));
+  if (b.type === 'image') return `<section class="band${cls ? ' ' + cls : ''}" id="b${i + 1}"><div class="wrap narrow">${title ? `<h2 class="sh">${title}</h2>` : ''}<figure class="media"><img src="${url(b.src)}" alt="${esc(b.alt)}" loading="lazy" decoding="async">${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ''}</figure></div></section>`;
+  if (b.type === 'video') return sect(cls, `<figure class="media"><video controls preload="metadata" playsinline src="${url(b.src)}" aria-label="${esc(b.title)}"></video><figcaption>${esc(b.caption || b.title)}</figcaption></figure>`);
+  if (b.type === 'audio') return sect(cls, `<figure class="media audio"><figcaption>${esc(b.title)}</figcaption><audio controls preload="none" src="${url(b.src)}"></audio></figure>`);
+  if (b.type === 'file') return sect(cls, `<a class="filecard" href="${url(b.src)}" download><span class="fic">${icon('book', 'ico lg')}</span><span class="ftxt"><b>${esc(b.title)}</b>${b.desc ? `<span>${esc(b.desc)}</span>` : ''}</span><span class="btn">הורדה</span></a>`);
   return '';
 };
 const byTitle = (a, b) => a.title.localeCompare(b.title, 'he');

@@ -66,3 +66,16 @@ sup.fn a[aria-expanded="true"]{color:var(--on-gold);background:var(--gold2);bord
 .fnx:hover{background:var(--line);transform:none}
 .fnx:after{content:"";position:absolute;inset:-4px}
 @keyframes fnin{from{opacity:0;transform:translateY(-4px)}}
+
+/* Media blocks of editor-made pages: image, video, audio, downloadable file */
+.media{margin:0;text-align:center}
+.media img,.media video{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:var(--r-md);border:1px solid var(--line);background:var(--sunk)}
+.media figcaption{margin-top:8px;color:var(--mute);font:.9rem/1.5 var(--sans)}
+.media.audio{padding:16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+.media.audio figcaption{margin:0 0 8px;color:var(--ink);font-weight:700}
+.media audio{width:100%}
+.filecard{display:flex;align-items:center;gap:16px;padding:16px 20px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);text-decoration:none;box-shadow:var(--shadow)}
+.filecard:hover{border-color:var(--gold)}
+.filecard .fic{display:grid;place-items:center;width:52px;height:52px;flex:none;border-radius:var(--r-md);background:var(--sunk);color:var(--brand)}
+.filecard .ftxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-family:var(--sans)}.filecard .ftxt span{color:var(--mute);font-size:.9rem}
+@media (max-width:560px){.filecard{flex-wrap:wrap}.filecard .btn{width:100%;justify-content:center}}

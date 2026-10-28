@@ -1,5 +1,5 @@
 // Site settings, text helpers, data files and the page writer, shared by every section.
-import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
 const SITE = 'היכל הקודש';
@@ -103,7 +103,10 @@ const um = read('uman.json');
 const tk = read('tikkun.json');
 const tkText = read('books/tikkun-haklali.json');
 // Topics and pages made in the editor (/admin/): data/topics.json and data/pages/*.json. Checked here so a bad edit fails the build, not the site.
-const BLOCK_TYPES = ['text', 'cards', 'faq', 'quote', 'links'];
+const BLOCK_TYPES = ['text', 'cards', 'faq', 'quote', 'links', 'image', 'video', 'audio', 'file'];
+// Media blocks point at a file uploaded in the editor (/media/<name>, committed to site/media/) or at a link on the web.
+const MEDIA_EXT = { image: /\.(jpe?g|png|webp|gif|avif)$/i, video: /\.(mp4|webm|mov)$/i, audio: /\.(mp3|m4a|wav|ogg|aac)$/i, file: /\.(pdf|docx|xlsx|pptx|txt|epub)$/i };
+const mediaHere = (name) => existsSync(new URL(`../../site/media/${name}`, import.meta.url));
 const RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachman', 'uman', 'tikkun-haklali', 'moharash', 'yeshiva', 'print', 'yavniel', 'mikveh-malka', 'institutions', 'search', 'about', 'contact', 'accessibility', 'privacy', 'offline', 'fonts', 'img', 'books', 'idx', 'zmanim'];
 const topics = read('topics.json');
 const cmsPages = readdirSync(new URL('../../data/pages/', import.meta.url)).filter((f) => f.endsWith('.json')).map((f) => ({ slug: f.slice(0, -5), ...read(`pages/${f}`) }));
@@ -113,7 +116,7 @@ const cmsPages = readdirSync(new URL('../../data/pages/', import.meta.url)).filt
 // "pages" is the old name of a collection without categories, from before single pages existed.
 const TOPIC_KINDS = ['page', 'collection', 'pages'];
 const isSingle = (t) => t.kind === 'page';
-const validateCms = (topics, pages) => {
+const validateCms = (topics, pages, hasMedia = mediaHere) => {
   const bad = (m) => { throw new Error(`CMS: ${m}`); };
   const seen = new Set();
   for (const t of topics) {
@@ -131,7 +134,16 @@ const validateCms = (topics, pages) => {
     if (!seen.has(p.topic)) bad(`page ${p.slug}: unknown topic "${p.topic}"`);
     if (!p.title) bad(`page ${p.slug} has no title`);
     if (p.category != null && typeof p.category !== 'string') bad(`page ${p.slug}: invalid category`);
-    for (const b of p.blocks || []) if (!BLOCK_TYPES.includes(b.type)) bad(`page ${p.slug}: unknown block type "${b.type}"`);
+    for (const b of p.blocks || []) {
+      if (!BLOCK_TYPES.includes(b.type)) bad(`page ${p.slug}: unknown block type "${b.type}"`);
+      if (b.type in MEDIA_EXT) {
+        const m = /^\/media\/([a-z0-9][\w.-]{0,100})$/.exec(b.src || '');
+        if (!m && !/^https:\/\/[^\s"'<>]+$/.test(b.src || '')) bad(`page ${p.slug}: ${b.type} block needs a /media/ file or an https link`);
+        if (m && (!MEDIA_EXT[b.type].test(m[1]) || !hasMedia(m[1]))) bad(`page ${p.slug}: ${b.type} block points at ${b.src}, which is not an uploaded ${b.type} file`);
+        if (b.type === 'image' && !String(b.alt || '').trim()) bad(`page ${p.slug}: an image needs a description (alt) for screen readers`);
+        if (b.type !== 'image' && !String(b.title || '').trim()) bad(`page ${p.slug}: a ${b.type} block needs a title`);
+      }
+    }
   }
   for (const t of topics.filter(isSingle)) if (pages.filter((p) => p.topic === t.slug).length > 1) bad(`topic ${t.slug} is a single page, but has more than one page`);
   const keys = pages.map((p) => `${p.topic}/${p.slug}`);
