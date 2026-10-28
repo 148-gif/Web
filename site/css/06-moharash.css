@@ -19,3 +19,6 @@
 
 .lchips .chips,.lchips{margin:0 0 8px}.band .lchips a{color:var(--brand);border-color:var(--line);background:var(--surface)}.band .lchips a:hover{background:var(--sunk);color:var(--brand)}.libcat+.libcat{margin-top:12px}.libcat .subh{justify-content:flex-start}
 .soonlist{justify-content:center}.soonlist small{color:var(--mute);font-weight:400;margin-inline-start:4px}
+.cfilter{max-width:520px;margin:0 auto 20px}.cfilter .slabel{display:block;font-weight:600;margin-bottom:6px}.cfilter input{width:100%;min-height:48px;padding:10px 16px;border:1px solid var(--line);border-radius:999px;font:1rem var(--sans);background:var(--surface);color:var(--ink)}
+.cnone{text-align:center;color:var(--mute);padding:24px 0}
+[hidden].libcat,[hidden].card{display:none}

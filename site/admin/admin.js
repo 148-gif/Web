@@ -60,7 +60,7 @@
     ['לימוד', [['library.json', 'ספרייה', 'books', '/library/'], ['kuntresim.json', 'קונטרסים', 'book', '/library/kuntresim/'], ['halacha.json', 'שו״ת הלכתי', 'scale', '/halacha/']]],
     ['רבי נחמן מברסלב', [['rabbi-nachman.json', 'רבי נחמן', 'crown', '/rabbi-nachman/'], ['uman.json', 'אומן', 'pin', '/uman/'], ['tikkun.json', 'התיקון הכללי', 'lyre', '/tikkun-haklali/']]],
     ['הצדיק מיבנאל', [['moharash.json', 'הצדיק מיבנאל', 'flame', '/moharash/'], ['yeshiva.json', 'ישיבת בית מנחם', 'school', '/yeshiva/'], ['print.json', 'הדפסת אשר בנחל', 'print', '/print/']]],
-    ['יבנאל', [['yavniel.json', 'יבנאל', 'mountain', '/yavniel/'], ['mikveh.json', 'מקווה מלכה', 'drop', '/mikveh-malka/'], ['institutions.json', 'מוסדות הקהילה', 'heart', '/institutions/']]],
+    ['יבנאל עיר ברסלב', [['yavniel.json', 'יבנאל', 'mountain', '/yavniel/'], ['mikveh.json', 'מקווה מלכה', 'drop', '/mikveh-malka/'], ['institutions.json', 'מוסדות הקהילה', 'heart', '/institutions/']]],
   ];
   var FILE = {}; GROUPS.forEach(function (g) { g[1].forEach(function (f) { FILE[f[0]] = { name: f[1], icon: f[2], url: f[3] }; }); });
   FILE['site.json'] = { name: 'הגדרות האתר', icon: 'gear', url: '' };
@@ -107,9 +107,12 @@
   var RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachman', 'uman', 'tikkun-haklali', 'moharash', 'yeshiva', 'print', 'yavniel', 'mikveh-malka', 'institutions', 'search', 'about', 'contact', 'accessibility', 'privacy', 'offline', 'fonts', 'img', 'books', 'idx', 'zmanim'];
   var SLUG = /^[a-z0-9-]+$/;
 
+  var OTHER = 'נושאים נוספים'; // the menu group of a topic that names none
+  var KINDS = { pages: ['כמה דפים', 'דפים חופשיים בתוך הנושא, כמו ״אומן״'], collection: ['אוסף', 'הרבה פריטים מאותו סוג, מחולקים לנושאים, כמו הספרייה'] };
   var cfg, token, owner = false, me = '';
   var cur = null; // the open file: { path, sha, indent, data, orig }
   var cache = { topics: null, pages: null, shutIndex: null };
+  var local = {}; // pages created, changed or deleted in this session: the published list lags a minute or two behind
 
   // ---- GitHub, directly or through the editor server ----
   function api(path, opt) {
@@ -248,10 +251,20 @@
   function shell() {
     var nav = $('#nav'); nav.textContent = '';
     var link = function (hash, ic, text) { return el('a', { href: hash, 'data-h': hash }, icon(ic), el('span', { text: text })); };
-    nav.append(link('#/', 'home', 'לוח בקרה'), link('#/pages', 'page', 'דפים ונושאים'), link('#/shut', 'chat', 'שו״ת ברסלב'));
-    GROUPS.forEach(function (g) { nav.append(el('h3', { text: g[0] })); g[1].forEach(function (f) { nav.append(link('#/file/' + f[0], f[2], f[1])); }); });
+    var ts = (cache.topics && cache.topics.data) || [];
+    nav.append(link('#/', 'home', 'לוח בקרה'), link('#/pages', 'page', 'נושאים ודפים'));
+    groupTitles().forEach(function (title) {
+      var built = GROUPS.filter(function (g) { return g[0] === title; })[0];
+      var mine = ts.filter(function (t) { return (t.group || OTHER) === title; });
+      if (!built && !mine.length) return;
+      nav.append(el('h3', { text: title }));
+      if (title === 'לימוד') nav.append(link('#/shut', 'chat', 'שו״ת ברסלב'));
+      if (built) built[1].forEach(function (f) { nav.append(link('#/file/' + f[0], f[2], f[1])); });
+      mine.forEach(function (t) { nav.append(link('#/topic/' + t.slug, t.icon || 'book', t.title)); });
+    });
     nav.append(el('h3', { text: 'ניהול' }), link('#/file/site.json', 'gear', 'הגדרות האתר'));
     if (owner) nav.append(link('#/editors', 'users', 'עורכים'));
+    mark(location.hash || '#/');
   }
   function mark(hash) {
     document.querySelectorAll('#nav a').forEach(function (a) { var h = a.getAttribute('data-h'); a.classList.toggle('cur', h === hash || (h !== '#/' && hash.indexOf(h + '/') === 0) || (h === '#/pages' && /^#\/page\//.test(hash))); });
@@ -298,11 +311,28 @@
 
   // ---- data shared by several screens ----
   function topics(force) { if (cache.topics && !force) return Promise.resolve(cache.topics); return getFile('data/topics.json').then(function (f) { cache.topics = f; return f; }); }
+  function slowPages() {
+    return api('contents/data/pages' + ref()).catch(function () { return []; }).then(function (fs) {
+      return Promise.all(fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { var slug = x.name.replace(/\.json$/, ''); return getFile('data/pages/' + x.name).then(function (p) { return { slug: slug, title: p.data.title, topic: p.data.topic, category: p.data.category || '' }; }); }));
+    });
+  }
   function pages(force) {
     if (cache.pages && !force) return Promise.resolve(cache.pages);
-    return api('contents/data/pages' + ref()).catch(function () { return []; }).then(function (fs) {
-      return Promise.all(fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { var slug = x.name.replace(/\.json$/, ''); return getFile('data/pages/' + x.name).then(function (p) { return { slug: slug, title: p.data.title, topic: p.data.topic }; }); }));
-    }).then(function (ps) { cache.pages = ps; return ps; });
+    return fetch('pages/index.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('no index'); return r.json(); })
+      .then(function (rows) { return rows.map(function (r) { return { slug: r[0], topic: r[1], title: r[2], category: r[3] || '' }; }); }, slowPages)
+      .then(function (list) {
+        var m = {}; list.forEach(function (p) { m[p.slug] = p; });
+        Object.keys(local).forEach(function (k) { if (local[k] === null) delete m[k]; else m[k] = local[k]; });
+        cache.pages = Object.keys(m).map(function (k) { return m[k]; });
+        return cache.pages;
+      });
+  }
+  function pageEntry(slug, p) { local[slug] = { slug: slug, title: p.title, topic: p.topic, category: p.category || '' }; cache.pages = null; }
+  function groupTitles() {
+    var list = GROUPS.map(function (g) { return g[0]; }), ts = (cache.topics && cache.topics.data) || [];
+    ts.forEach(function (t) { var g = t.group || OTHER; if (list.indexOf(g) < 0) list.push(g); });
+    if (list.indexOf(OTHER) < 0) list.push(OTHER);
+    return list;
   }
 
   // ---- screens ----
@@ -311,8 +341,8 @@
     m.append(head('שלום' + (me ? ', ' + me.split('@')[0] : ''), 'מה תרצו לעשות היום?'));
     var tile = function (hash, ic, t, d, fn) { return el('a', { class: 'tile', href: hash || '#/', onclick: fn ? function (e) { e.preventDefault(); fn(); } : null }, el('span', { class: 'tic' }, icon(ic)), el('b', { text: t }), el('span', { text: d })); };
     m.append(el('div', { class: 'tiles' },
-      tile(null, 'plus', 'דף חדש', 'יצירת דף חדש באתר, בתוך נושא', newPage),
-      tile('#/pages', 'page', 'הדפים שלי', 'כל הדפים והנושאים שיצרתם'),
+      tile(null, 'plus', 'דף חדש', 'יצירת דף או פריט חדש בתוך נושא', function () { newPage(); }),
+      tile('#/pages', 'page', 'נושאים ודפים', 'הנושאים שיצרתם, והדפים בכל אחד'),
       tile('#/shut', 'chat', 'שו״ת ברסלב', 'חיפוש, עריכה והוספה של שאלות ותשובות'),
       tile('#/file/yavniel.json', 'mountain', 'זמני תפילות ושיעורים', 'עדכון המידע על יבנאל'),
       owner ? tile('#/editors', 'users', 'עורכים', 'הוספה והסרה של מי שיכול לערוך') : null,
@@ -330,75 +360,179 @@
     }, function (e) { say(e.message, 'bad'); });
   }
 
+  function kindLabel(t) { return (KINDS[t.kind || 'pages'] || KINDS.pages)[0]; }
   function pagesScreen() {
     var m = main();
-    m.append(head('דפים ונושאים', 'כל דף שייך לנושא. נושא מופיע בתפריט של האתר כשיש בו לפחות דף אחד.', [
-      el('button', { type: 'button', class: 'btn ghost', onclick: function () { topicDialog(); } }, icon('plus'), 'נושא חדש'),
-      el('button', { type: 'button', class: 'btn pri', onclick: function () { newPage(); } }, icon('plus'), 'דף חדש')]));
+    m.append(head('נושאים ודפים', 'כל נושא נמצא בקבוצה בתפריט של האתר, והוא או כמה דפים או אוסף של פריטים.', [
+      el('button', { type: 'button', class: 'btn pri', onclick: function () { topicDialog(); } }, icon('plus'), 'נושא חדש')]));
     var box = el('div'); m.append(box); loading(box);
     Promise.all([topics(true), pages(true)]).then(function (r) {
       box.textContent = '';
       var ts = r[0].data, ps = r[1];
-      if (!ts.length) box.append(el('div', { class: 'empty card' }, el('p', { text: 'עדיין אין נושאים. נושא הוא קבוצה של דפים, למשל ״פרשת השבוע״ או ״חגים״.' }), el('button', { type: 'button', class: 'btn pri', onclick: function () { topicDialog(); } }, icon('plus'), 'יצירת נושא ראשון')));
+      shell();
+      if (!ts.length) box.append(el('div', { class: 'empty card' }, el('p', { text: 'עדיין אין נושאים. נושא הוא מקום חדש באתר, למשל ״מתכונים״ או ״פרשת השבוע״.' }), el('button', { type: 'button', class: 'btn pri', onclick: function () { topicDialog(); } }, icon('plus'), 'יצירת נושא ראשון')));
       ts.forEach(function (t) {
         var mine = ps.filter(function (p) { return p.topic === t.slug; });
+        var unit = t.kind === 'collection' ? 'פריטים' : 'דפים';
         var card = el('section', { class: 'card topic' },
-          el('header', {}, el('span', { class: 'tic' }, icon(t.icon || 'book')), el('div', { class: 'grow' }, el('h2', { text: t.title }), el('p', { class: 'help', text: (t.desc ? t.desc + ' · ' : '') + (mine.length ? mine.length + ' דפים' : 'אין עדיין דפים, ולכן הנושא לא מופיע באתר') })),
-            el('span', { class: 'acts' },
-              mine.length ? viewLink('/' + t.slug + '/', 'באתר', 'sm') : null,
-              el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { topicDialog(t); } }, 'עריכה'),
-              mine.length ? null : el('button', { type: 'button', class: 'btn ghost sm dng', onclick: function () { delTopic(t); } }, 'מחיקה'))));
-        mine.forEach(function (p) { card.append(el('a', { class: 'row', href: '#/page/' + p.slug }, icon('page'), el('span', { text: p.title }), el('small', { class: 'ltr', text: '/' + t.slug + '/' + p.slug + '/' }))); });
-        card.append(el('button', { type: 'button', class: 'add', onclick: function () { newPage(t.slug); } }, icon('plus'), 'דף חדש בנושא הזה'));
+          el('header', {}, el('span', { class: 'tic' }, icon(t.icon || 'book')),
+            el('div', { class: 'grow' }, el('h2', {}, el('a', { href: '#/topic/' + t.slug, text: t.title })),
+              el('p', { class: 'help', text: kindLabel(t) + ' · בקבוצה ״' + (t.group || OTHER) + '״ · ' + (mine.length ? mine.length + ' ' + unit : 'עדיין ריק, ולכן לא מופיע באתר') })),
+            el('span', { class: 'acts' }, el('a', { class: 'btn ghost sm', href: '#/topic/' + t.slug }, 'פתיחה'))));
         box.append(card);
       });
     }, function (e) { box.textContent = ''; say(e.message, 'bad'); });
   }
 
+  // A topic: its items or pages, with search and (for a collection) a filter by category.
+  function topicScreen(slug) {
+    var m = main(); loading(m);
+    Promise.all([topics(true), pages(true)]).then(function (r) {
+      var t = r[0].data.filter(function (x) { return x.slug === slug; })[0];
+      m.textContent = '';
+      shell();
+      if (!t) { say('הנושא לא נמצא. אולי הוא נמחק.', 'bad'); location.hash = '#/pages'; return; }
+      var coll = t.kind === 'collection', all = r[1].filter(function (p) { return p.topic === slug; }).sort(function (a, b) { return a.title.localeCompare(b.title, 'he'); });
+      var cats = t.categories || [], word = coll ? 'פריט' : 'דף';
+      m.append(el('p', { class: 'crumbs' }, t.group || OTHER, ' › ', t.title));
+      m.append(head(t.title, (t.desc ? t.desc + ' · ' : '') + kindLabel(t) + ' · ' + all.length + (coll ? ' פריטים' : ' דפים'), [
+        all.length ? viewLink('/' + slug + '/', 'באתר') : null,
+        el('button', { type: 'button', class: 'btn ghost', onclick: function () { topicDialog(t); } }, 'הגדרות הנושא'),
+        all.length ? null : el('button', { type: 'button', class: 'btn ghost dng', onclick: function () { delTopic(t); } }, icon('trash'), 'מחיקת הנושא'),
+        el('button', { type: 'button', class: 'btn pri', onclick: function () { newPage(slug, sel.cat); } }, icon('plus'), word + ' חדש')]));
+      var sel = { cat: '', q: '' };
+      var q = el('input', { type: 'search', placeholder: 'חיפוש ב' + (coll ? 'פריטים' : 'דפים') + '…', 'aria-label': 'חיפוש' });
+      m.append(el('div', { class: 'findbar' }, icon('search'), q));
+      var chips = el('div', { class: 'chipbar' }); if (coll && cats.length) m.append(chips);
+      var res = el('div', { class: 'card results' }); m.append(res);
+      var drawChips = function () {
+        chips.textContent = '';
+        [['', 'הכול']].concat(cats.map(function (c) { return [c.id, c.title]; })).concat(cats.length ? [['-', 'ללא חלוקה']] : []).forEach(function (c) {
+          chips.append(el('button', { type: 'button', class: 'chipb', 'aria-pressed': String(sel.cat === c[0]), onclick: function () { sel.cat = c[0]; drawChips(); draw(); } }, c[1]));
+        });
+      };
+      var draw = function () {
+        res.textContent = '';
+        var words = q.value.trim().split(/\s+/).filter(Boolean);
+        var hits = all.filter(function (p) {
+          var okc = !sel.cat || (sel.cat === '-' ? !cats.some(function (c) { return c.id === p.category; }) : p.category === sel.cat);
+          return okc && words.every(function (w) { return p.title.indexOf(w) > -1; });
+        });
+        if (!hits.length) res.append(el('div', { class: 'empty' }, el('p', { class: 'help', text: all.length ? 'לא נמצא מה שחיפשתם.' : 'עדיין אין כאן ' + (coll ? 'פריטים' : 'דפים') + '.' }), all.length ? null : el('button', { type: 'button', class: 'btn pri', onclick: function () { newPage(slug); } }, icon('plus'), word + ' ראשון')));
+        hits.forEach(function (p) {
+          var c = cats.filter(function (x) { return x.id === p.category; })[0];
+          res.append(el('a', { class: 'row', href: '#/page/' + p.slug }, icon('page'), el('span', { class: 'grow', text: p.title }), c ? el('span', { class: 'tag', text: c.title }) : null));
+        });
+      };
+      q.addEventListener('input', draw);
+      drawChips(); draw();
+    }, function (e) { m.textContent = ''; say(e.message, 'bad'); });
+  }
+
+  // Create or edit a topic: where it is in the site's menu, whether it is a few pages or a collection, and its categories.
   function topicDialog(t) {
     var edit = !!t;
     var title = el('input', { type: 'text', required: true }); title.value = edit ? t.title : '';
     var desc = el('textarea', { rows: 2 }); desc.value = edit ? t.desc || '' : '';
     var slug = el('input', { type: 'text', class: 'ltr', dir: 'ltr', disabled: edit }); slug.value = edit ? t.slug : '';
-    var picked = edit ? t.icon || 'book' : 'book';
+    var picked = edit ? t.icon || 'book' : 'book', kind = edit ? t.kind || 'pages' : 'pages';
     var grid = el('div', { class: 'igrid', role: 'radiogroup', 'aria-label': 'סמל' });
     Object.keys(ICON_NAMES).forEach(function (n) { var b = el('button', { type: 'button', role: 'radio', 'aria-checked': String(n === picked), title: ICON_NAMES[n], 'aria-label': ICON_NAMES[n], onclick: function () { picked = n; grid.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-checked', String(x === b)); }); } }, icon(n)); grid.append(b); });
     if (!edit) title.addEventListener('input', function () { if (!slug.dataset.touched) slug.value = slugify(title.value); });
     slug.addEventListener('input', function () { slug.dataset.touched = 1; });
-    dialog(edit ? 'עריכת נושא' : 'נושא חדש', [
-      ['שם הנושא', title, 'כך הוא יופיע בתפריט של האתר'], ['תיאור קצר', desc], ['סמל', grid],
+    // kind
+    var kinds = el('div', { class: 'kinds', role: 'radiogroup', 'aria-label': 'סוג הנושא' }), catsBody;
+    Object.keys(KINDS).forEach(function (k) {
+      var b = el('button', { type: 'button', role: 'radio', 'aria-checked': String(k === kind), onclick: function () { kind = k; kinds.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-checked', String(x === b)); }); if (catsBody && catsBody.parentNode) catsBody.parentNode.hidden = kind !== 'collection'; } }, el('b', { text: KINDS[k][0] }), el('small', { text: KINDS[k][1] }));
+      kinds.append(b);
+    });
+    // menu group
+    var groupSel = el('select'), groupNew = el('input', { type: 'text', placeholder: 'שם הקבוצה החדשה', hidden: true, maxlength: '40' });
+    groupTitles().forEach(function (g) { groupSel.append(el('option', { value: g, text: g })); });
+    groupSel.append(el('option', { value: '\u0000new', text: '＋ קבוצה חדשה בתפריט…' }));
+    groupSel.value = edit ? t.group || OTHER : 'לימוד';
+    groupSel.addEventListener('change', function () { groupNew.hidden = groupSel.value !== '\u0000new'; if (!groupNew.hidden) groupNew.focus(); });
+    var groupBox = el('div', {}, groupSel, groupNew);
+    // categories of a collection
+    var rows = ((edit && t.categories) || []).map(function (c) { return { id: c.id, title: c.title }; });
+    var list = el('div', { class: 'catrows' });
+    var drawRows = function () {
+      list.textContent = '';
+      rows.forEach(function (c, i) {
+        var inp = el('input', { type: 'text', placeholder: 'שם הנושא' }); inp.value = c.title; inp.addEventListener('input', function () { c.title = inp.value; });
+        list.append(el('div', { class: 'catrow' }, inp, tools(rows, i, drawRows, 'נושא')));
+      });
+      list.append(el('button', { type: 'button', class: 'add', onclick: function () { rows.push({ id: '', title: '' }); drawRows(); var all = list.querySelectorAll('input'); all[all.length - 1].focus(); } }, icon('plus'), 'הוספת נושא'));
+    };
+    drawRows();
+    catsBody = el('div', {}, list);
+    dialog(edit ? 'הגדרות הנושא' : 'נושא חדש', [
+      ['שם הנושא', title, 'כך הוא יופיע בתפריט של האתר'], ['סוג הנושא', kinds], ['איפה בתפריט', groupBox, 'תחת איזו כותרת בתפריט הנושא יופיע'],
+      ['חלוקה לנושאים (לא חובה)', catsBody, 'כל פריט שייך לאחד הנושאים, והאתר מציג אותם מחולקים, כמו בספרייה.'],
+      ['תיאור קצר', desc], ['סמל', grid],
       ['כתובת באתר', slug, edit ? 'אי אפשר לשנות כתובת של נושא קיים' : 'באותיות לועזיות. נוצרת לבד מהשם, ואפשר לשנות.'],
     ], edit ? 'שמירה' : 'יצירה', function () {
       var s = slug.value.trim();
       if (!title.value.trim()) return 'חסר שם לנושא';
       if (!SLUG.test(s)) return 'הכתובת יכולה להכיל רק אותיות לועזיות קטנות, ספרות ומקף';
       if (!edit && RESERVED.indexOf(s) > -1) return 'הכתובת הזאת תפוסה על ידי חלק קיים באתר. בחרו אחרת.';
-      return topics(true).then(function (f) {
+      var group = groupSel.value === '\u0000new' ? groupNew.value.trim() : groupSel.value;
+      if (!group) return 'כתבו שם לקבוצה החדשה';
+      // categories: keep the id of a row that has one, make one for a new row
+      var cats = [], used = {};
+      if (kind === 'collection') {
+        rows.filter(function (c) { return c.title.trim(); }).forEach(function (c) { if (c.id) used[c.id] = 1; });
+        rows.filter(function (c) { return c.title.trim(); }).forEach(function (c) {
+          var id = c.id;
+          if (!id) { var base = slugify(c.title); id = base; for (var n = 2; used[id]; n++) id = base + '-' + n; used[id] = 1; }
+          cats.push({ id: id, title: c.title.trim() });
+        });
+      }
+      return Promise.all([topics(true), pages(true)]).then(function (r) {
+        var f = r[0], ps = r[1];
         if (!edit && f.data.some(function (x) { return x.slug === s; })) throw new Error('כבר יש נושא עם הכתובת הזאת');
-        var row = { slug: s, title: title.value.trim(), desc: desc.value.trim(), icon: picked };
+        // a category that still has items cannot be removed
+        var gone = (edit && t.categories || []).filter(function (c) { return !cats.some(function (x) { return x.id === c.id; }) && ps.some(function (p) { return p.topic === s && p.category === c.id; }); });
+        if (gone.length) throw new Error('יש פריטים בנושא ״' + gone[0].title + '״. העבירו אותם לנושא אחר לפני שמסירים אותו.');
+        var row = Object.assign({}, edit ? t : {}, { slug: s, title: title.value.trim(), desc: desc.value.trim(), icon: picked, kind: kind });
+        if (group === OTHER) delete row.group; else row.group = group;
+        if (kind === 'collection' && cats.length) row.categories = cats; else delete row.categories;
         if (edit) f.data = f.data.map(function (x) { return x.slug === s ? row : x; }); else f.data.push(row);
         return commit('data/topics.json', f.data, 2, f.sha, (edit ? 'עריכת נושא: ' : 'נושא חדש: ') + row.title);
-      }).then(function () { cache.topics = null; say(edit ? 'הנושא עודכן.' : 'הנושא נוצר. עכשיו הוסיפו לו דף.', 'ok'); if (location.hash === '#/pages') pagesScreen(); else location.hash = '#/pages'; });
+      }).then(function () {
+        cache.topics = null;
+        say(edit ? 'הנושא עודכן.' : 'הנושא נוצר. עכשיו הוסיפו לו ' + (kind === 'collection' ? 'פריט' : 'דף') + '.', 'ok');
+        return topics(true).then(function () { shell(); if (edit) route(true); else location.hash = '#/topic/' + s; });
+      });
     });
+    catsBody.parentNode.hidden = kind !== 'collection';
   }
   function delTopic(t) {
     if (!confirm('למחוק את הנושא ״' + t.title + '״?')) return;
     Promise.all([topics(true), pages(true)]).then(function (r) {
-      if (r[1].some(function (p) { return p.topic === t.slug; })) throw new Error('יש דפים בנושא הזה. מחקו או העבירו אותם קודם.');
+      if (r[1].some(function (p) { return p.topic === t.slug; })) throw new Error('יש בנושא הזה ' + (t.kind === 'collection' ? 'פריטים' : 'דפים') + '. מחקו או העבירו אותם קודם.');
       var f = r[0]; f.data = f.data.filter(function (x) { return x.slug !== t.slug; });
       return commit('data/topics.json', f.data, 2, f.sha, 'מחיקת נושא: ' + t.title);
-    }).then(function () { cache.topics = null; say('הנושא נמחק.', 'ok'); pagesScreen(); }, function (e) { say(e.message, 'bad'); });
+    }).then(function () { cache.topics = null; say('הנושא נמחק.', 'ok'); return topics(true).then(function () { shell(); location.hash = '#/pages'; }); }, function (e) { say(e.message, 'bad'); });
   }
-  function newPage(topicSlug) {
+  function newPage(topicSlug, category) {
     if (!leave()) return;
     topics().then(function (tf) {
       if (!tf.data.length) { say('קודם צרו נושא, ואז אפשר להוסיף לו דפים.', 'bad'); topicDialog(); return; }
       var topic = el('select'); tf.data.forEach(function (t) { topic.append(el('option', { value: t.slug, text: t.title })); });
       if (typeof topicSlug === 'string') topic.value = topicSlug;
+      var catSel = el('select'), catField = el('div', {}, catSel);
+      var fillCats = function () {
+        var tp = tf.data.filter(function (x) { return x.slug === topic.value; })[0], cs = (tp && tp.kind === 'collection' && tp.categories) || [];
+        catSel.textContent = ''; catSel.append(el('option', { value: '', text: 'ללא חלוקה' })); cs.forEach(function (c) { catSel.append(el('option', { value: c.id, text: c.title })); });
+        catSel.value = cs.some(function (c) { return c.id === category; }) ? category : '';
+        catField.parentNode && (catField.parentNode.hidden = !cs.length);
+      };
+      topic.addEventListener('change', function () { category = ''; fillCats(); });
       var title = el('input', { type: 'text', required: true }), slug = el('input', { type: 'text', class: 'ltr', dir: 'ltr' });
       title.addEventListener('input', function () { if (!slug.dataset.touched) slug.value = slugify(title.value); });
       slug.addEventListener('input', function () { slug.dataset.touched = 1; });
-      dialog('דף חדש', [['כותרת הדף', title], ['נושא', topic], ['כתובת באתר', slug, 'באותיות לועזיות. נוצרת לבד מהכותרת, ואפשר לשנות.']], 'יצירת הדף', function () {
+      dialog('דף חדש', [['כותרת', title], ['נושא', topic], ['חלוקה', catField], ['כתובת באתר', slug, 'באותיות לועזיות. נוצרת לבד מהכותרת, ואפשר לשנות.']], 'יצירה', function () {
         var s = slug.value.trim();
         if (!title.value.trim()) return 'חסרה כותרת';
         if (!SLUG.test(s)) return 'הכתובת יכולה להכיל רק אותיות לועזיות קטנות, ספרות ומקף';
@@ -406,9 +540,11 @@
         return exists(path).then(function (yes) {
           if (yes) throw new Error('כבר יש דף עם הכתובת הזאת. שנו אותה מעט.');
           var data = { topic: topic.value, title: title.value.trim(), lead: '', desc: '', blocks: [BLOCKS.text.make()] };
-          return commit(path, data, 2, null, 'דף חדש: ' + data.title);
-        }).then(function () { cache.pages = null; cur = null; say('הדף נוצר. עכשיו כתבו את התוכן.', 'ok'); location.hash = '#/page/' + s; });
+          if (catSel.value) data.category = catSel.value;
+          return commit(path, data, 2, null, 'דף חדש: ' + data.title).then(function () { pageEntry(s, data); });
+        }).then(function () { cur = null; say('נוצר. עכשיו כתבו את התוכן.', 'ok'); location.hash = '#/page/' + s; });
       });
+      fillCats();
     }, function (e) { say(e.message, 'bad'); });
   }
 
@@ -422,7 +558,7 @@
       cur.orig = JSON.stringify(p);
       m.textContent = '';
       var t = ts.filter(function (x) { return x.slug === p.topic; })[0];
-      m.append(el('p', { class: 'crumbs' }, el('a', { href: '#/pages', text: 'דפים ונושאים' }), ' › ', t ? t.title : p.topic));
+      m.append(el('p', { class: 'crumbs' }, el('a', { href: '#/pages', text: 'נושאים ודפים' }), ' › ', t ? el('a', { href: '#/topic/' + t.slug, text: t.title }) : p.topic));
       var col = el('div', { class: 'col' }), side = el('aside', { class: 'side' });
       m.append(el('div', { class: 'split' }, col, side));
       col.append(textInput(p, 'title', '', { cls: 'bigtitle', placeholder: 'כותרת הדף' }), textInput(p, 'lead', 'פתיח', { long: true, placeholder: 'משפט או שניים שמופיעים מתחת לכותרת' }));
@@ -453,11 +589,24 @@
       };
       draw();
       var topicSel = el('select', { id: 'ptopic' }); ts.forEach(function (x) { topicSel.append(el('option', { value: x.slug, text: x.title })); }); topicSel.value = p.topic;
-      topicSel.addEventListener('change', function () { p.topic = topicSel.value; touch(); });
+      // The category field exists only for a collection that has categories; moving to another topic clears it.
+      var catWrap = el('div');
+      var drawCat = function () {
+        catWrap.textContent = '';
+        var tp = ts.filter(function (x) { return x.slug === p.topic; })[0], cs = (tp && tp.kind === 'collection' && tp.categories) || [];
+        if (!cs.length) { delete p.category; return; }
+        var sel = el('select', { id: 'pcat' }, el('option', { value: '', text: 'ללא חלוקה' }));
+        cs.forEach(function (c) { sel.append(el('option', { value: c.id, text: c.title })); });
+        sel.value = cs.some(function (c) { return c.id === p.category; }) ? p.category : '';
+        sel.addEventListener('change', function () { if (sel.value) p.category = sel.value; else delete p.category; touch(); });
+        catWrap.append(el('div', { class: 'fld' }, el('label', { for: 'pcat', text: 'חלוקה' }), sel));
+      };
+      topicSel.addEventListener('change', function () { p.topic = topicSel.value; delete p.category; drawCat(); touch(); });
+      drawCat();
       var url = '/' + p.topic + '/' + slug + '/';
       side.append(saveBox(function () { savePage(slug); }),
         el('div', { class: 'card' }, el('h3', { text: 'הגדרות הדף' }),
-          el('div', { class: 'fld' }, el('label', { for: 'ptopic', text: 'נושא' }), topicSel),
+          el('div', { class: 'fld' }, el('label', { for: 'ptopic', text: 'נושא' }), topicSel), catWrap,
           textInput(p, 'desc', 'תיאור לחיפוש ולשיתוף', { long: true, help: 'מה יופיע בגוגל ובוואטסאפ. אם ריק, משתמשים בפתיח.' }),
           el('p', { class: 'help' }, 'כתובת: ', el('span', { class: 'ltr', text: url }))),
         el('div', { class: 'card stack' },
@@ -482,13 +631,13 @@
     if (p.blocks.some(function (b) { return b.type === 'links' && (b.items || []).some(function (l) { return !/^https:\/\/\S+$/.test(l.url || ''); }); })) return say('כל קישור צריך להתחיל ב־https://', 'bad');
     var f = cur, oldTopic = JSON.parse(f.orig).topic;
     commit(f.path, p, f.indent, f.sha, 'עריכת דף: ' + p.title).then(function (r) {
-      f.sha = r.content.sha; f.orig = JSON.stringify(p); cache.pages = null; status();
+      f.sha = r.content.sha; f.orig = JSON.stringify(p); pageEntry(slug, p); status();
       if (oldTopic !== p.topic) say('נשמר. שימו לב: הכתובת של הדף השתנתה ל־/' + p.topic + '/' + slug + '/', 'ok');
     }, function (e) { say(e.message, 'bad'); });
   }
   function delPage() {
-    if (!confirm('למחוק את הדף ״' + cur.data.title + '״ מהאתר? אי אפשר לבטל את זה מכאן.')) return;
-    delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { cur = null; cache.pages = null; say('הדף נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = '#/pages'; }, function (e) { say(e.message, 'bad'); });
+    if (!confirm('למחוק את ״' + cur.data.title + '״ מהאתר? אי אפשר לבטל את זה מכאן.')) return;
+    delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { var gone = cur.path.replace(/^data\/pages\/|\.json$/g, ''), tp = cur.data.topic; local[gone] = null; cache.pages = null; cur = null; say('נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = '#/topic/' + tp; }, function (e) { say(e.message, 'bad'); });
   }
   // Preview with the site's own stylesheet, in the markup the build uses (scripts/lib/sections/pages.mjs).
   function preview(p) {
@@ -701,6 +850,7 @@
     else if ((m = /^#\/file\/([\w.-]+\.json)$/.exec(h))) fileScreen(m[1]);
     else if ((m = /^#\/shut\/(new|[\w-]+)$/.exec(h))) shutItem(m[1]);
     else if (h === '#/shut') shutScreen();
+    else if ((m = /^#\/topic\/([a-z0-9-]+)$/.exec(h))) topicScreen(m[1]);
     else if (h === '#/pages') pagesScreen();
     else if (h === '#/editors' && owner) editorsScreen();
     else home();
@@ -728,9 +878,9 @@
   function enter(who) {
     return api('').then(function (r) {
       if (!r.permissions || !r.permissions.push) throw new Error(cfg.worker ? 'לשרת העריכה אין הרשאת כתיבה למאגר' : 'למפתח אין הרשאת כתיבה למאגר');
-      me = who || ''; $('#login').hidden = true; $('#app').hidden = false; $('#out').hidden = false; $('#burger').hidden = false; $('#who').textContent = who || cfg.repo;
-      shell(); here = ''; route(true);
-    }).catch(function (e) { $('#login').hidden = false; $('#app').hidden = true; $('#lerr').textContent = e.message; if (cfg.worker) google(); });
+      me = who || ''; document.body.classList.remove('out'); $('#login').hidden = true; $('#app').hidden = false; $('#out').hidden = false; $('#burger').hidden = false; $('#who').textContent = who || cfg.repo;
+      return topics().catch(function () { return null; }).then(function () { shell(); here = ''; route(true); });
+    }).catch(function (e) { document.body.classList.add('out'); $('#login').hidden = false; $('#app').hidden = true; $('#lerr').textContent = e.message; if (cfg.worker) google(); });
   }
   function remember(v, persist) {
     try { localStorage.removeItem('cms-token'); sessionStorage.removeItem('cms-token'); if (v) (persist ? localStorage : sessionStorage).setItem('cms-token', JSON.stringify(v)); } catch { /* storage blocked: kept for this page only */ }
@@ -739,27 +889,38 @@
   function signout(why) {
     cur = null; remember(null); token = '';
     if (!why) return location.reload();
-    $('#lerr').textContent = why; $('#login').hidden = false; $('#app').hidden = true; $('#out').hidden = true; $('#burger').hidden = true;
+    document.body.classList.add('out'); $('#lerr').textContent = why; $('#login').hidden = false; $('#app').hidden = true; $('#out').hidden = true; $('#burger').hidden = true;
     if (cfg.worker) google();
   }
-  // Google sign-in: Google's button gives an ID token; the editor server checks it and the email, and returns a 12-hour session.
-  var gStarted = false;
+  // Google sign-in, with the page's own button: Google's library opens its sign-in popup and gives back a short-lived access
+  // token for the account's email; the editor server checks it with Google (and that the email may edit), and returns a 12-hour session.
+  // (Google's own ready-made button needs inline styles, which this page's content policy does not allow.)
+  var gStarted = false, gAsk = null;
+  function gBusy(on) { var b = $('#gsign'); b.disabled = !!on; $('#gtxt').textContent = on ? 'מתחבר…' : 'המשך עם Google'; }
   function google() {
     $('#gbox').hidden = false;
     if (gStarted) return;
     gStarted = true;
+    $('#gsign').addEventListener('click', function () { $('#lerr').textContent = ''; if (gAsk) { gBusy(true); gAsk(); } });
     var s = document.createElement('script');
     s.src = 'https://accounts.google.com/gsi/client';
-    s.onerror = function () { $('#lerr').textContent = 'לא הצלחנו לטעון את ההתחברות של Google. בדקו את החיבור לאינטרנט.'; };
+    s.onerror = function () { $('#lerr').textContent = 'לא הצלחנו לטעון את ההתחברות של Google. בדקו את החיבור לאינטרנט ורעננו את הדף.'; };
     s.onload = function () {
-      window.google.accounts.id.initialize({ client_id: cfg.googleClientId, ux_mode: 'popup', callback: function (resp) {
-        $('#lerr').textContent = '';
-        fetch(cfg.worker.replace(/\/$/, '') + '/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: resp.credential }) })
-          .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'ההתחברות נכשלה'); return j; }); })
-          .then(function (j) { token = j.token; owner = !!j.owner; remember({ token: j.token, email: j.email, owner: owner }, $('#grem').checked); return enter(j.email); })
-          .catch(function (e) { $('#lerr').textContent = e.message; });
-      } });
-      window.google.accounts.id.renderButton($('#gbtn'), { theme: 'filled_blue', size: 'large', text: 'signin_with', locale: 'he', width: 280 });
+      var client = window.google.accounts.oauth2.initTokenClient({
+        client_id: cfg.googleClientId, scope: 'openid email',
+        callback: function (resp) {
+          if (!resp || resp.error || !resp.access_token) { gBusy(false); $('#lerr').textContent = 'ההתחברות עם Google לא הושלמה. נסו שוב.'; return; }
+          fetch(cfg.worker.replace(/\/$/, '') + '/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access_token: resp.access_token }) })
+            .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'ההתחברות נכשלה'); return j; }); })
+            .then(function (j) { token = j.token; owner = !!j.owner; remember({ token: j.token, email: j.email, owner: owner }, $('#grem').checked); return enter(j.email); })
+            .catch(function (e) { $('#lerr').textContent = e.message; })
+            .then(function () { gBusy(false); });
+        },
+        // The popup was closed, or the browser blocked it: nothing to show for the first, a hint for the second.
+        error_callback: function (err) { gBusy(false); if (err && err.type === 'popup_failed_to_open') $('#lerr').textContent = 'הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצ׳ים לאתר הזה ונסו שוב.'; },
+      });
+      gAsk = function () { client.requestAccessToken({ prompt: 'select_account' }); };
+      $('#gsign').disabled = false;
     };
     document.head.append(s);
   }
