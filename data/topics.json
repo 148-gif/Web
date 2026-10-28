@@ -3,6 +3,7 @@
     "slug": "matkonym",
     "title": "מתכונים",
     "desc": "מתכונים לנשים",
-    "icon": "book"
+    "icon": "book",
+    "kind": "pages"
   }
 ]
