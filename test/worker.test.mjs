@@ -320,6 +320,7 @@ test('translation has a daily ceiling per editor and for the whole site; the glo
 });
 
 // ---- media ----
+const PDF = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(40, 7)]);
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(40, 7)]);
 const fakeR2 = () => {
   const m = new Map();
@@ -375,14 +376,14 @@ test('sniff() checks that the first bytes match the extension', () => {
 test('an uploaded file waits as a pending change, then is published into site/media in the same single commit', async () => {
   const w = await world();
   assert.equal((await w.editor('POST', '/media/init', { name: 'page.html', size: 10 })).status, 400); // type not allowed
-  assert.equal((await w.editor('POST', '/media/init', { name: 'big.png', size: 9e6 })).status, 413); // over the repository file limit, no R2
-  const bad = await upload(w.editor, 'fake.png', Buffer.from('<html>not an image</html>'));
+  assert.equal((await w.editor('POST', '/media/init', { name: 'big.pdf', size: 9e6 })).status, 413); // over the repository file limit, no R2
+  const bad = await upload(w.editor, 'fake.pdf', Buffer.from('<html>not a document</html>'));
   assert.equal(bad.status, 400);
-  const big = Buffer.concat([PNG, Buffer.alloc(500000, 9)]); // two pieces
-  const done = await upload(w.editor, 'Hello World.png', big);
+  const big = Buffer.concat([PDF, Buffer.alloc(500000, 9)]); // two pieces
+  const done = await upload(w.editor, 'Hello World.pdf', big);
   assert.equal(done.status, 200);
   const item = done.body.item;
-  assert.match(item.key, /^site\/media\/[0-9a-f]{8}-hello-world\.png$/);
+  assert.match(item.key, /^site\/media\/[0-9a-f]{8}-hello-world\.pdf$/);
   assert.equal(item.url, '/media/' + item.key.slice('site/media/'.length));
   assert.equal(github.read(item.key), null); // nothing in the repository yet
   const ch = (await w.owner('GET', '/changes')).body.changes.find((c) => c.path === item.key);
@@ -399,9 +400,18 @@ test('an uploaded file waits as a pending change, then is published into site/me
   assert.equal(list.quota.r2.enabled, false);
 });
 
+test('a photo is never uploaded as a loose file: it goes through the photo library, which asks for its description, credit and approval', async () => {
+  const w = await world();
+  for (const name of ['a.jpg', 'a.jpeg', 'a.png', 'a.webp', 'a.gif', 'a.avif']) {
+    const r = await w.editor('POST', '/media/init', { name, size: 100 });
+    assert.equal(r.status, 400, name); assert.match(r.body.message, /ספריית התמונות/);
+  }
+  assert.equal((await w.editor('POST', '/media/init', { name: 'doc.pdf', size: 100 })).status, 200, 'other kinds still upload as before');
+});
+
 test('pending media can be discarded; a published file is removed at publish; only publishers delete what is live', async () => {
   const w = await world();
-  const a = (await upload(w.editor, 'a.png', PNG)).body.item, b = (await upload(w.editor, 'b.png', PNG)).body.item;
+  const a = (await upload(w.editor, 'a.pdf', PDF)).body.item, b = (await upload(w.editor, 'b.pdf', PDF)).body.item;
   assert.equal((await w.owner('POST', '/discard', { paths: [a.key] })).status, 200);
   assert.equal((await w.owner('GET', '/media')).body.items.length, 1);
   await w.publisher('POST', '/publish', { paths: [b.key] });

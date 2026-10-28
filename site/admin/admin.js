@@ -1186,13 +1186,16 @@
   // server decides, by type and size, and counts the free allowance of each place). A page points at a file by its link.
   var MEDIA_KINDS = { photo: ['קובץ של תמונה בספרייה', 'image'], image: ['תמונה', 'image'], video: ['סרטון', 'film'], audio: ['שמע', 'music'], doc: ['מסמך', 'file'] };
   var MEDIA_BLOCK = { video: 'video', audio: 'audio', file: 'doc' }; // page block type -> media kind
-  var MEDIA_ACCEPT = '.jpg,.jpeg,.png,.webp,.gif,.avif,.mp4,.webm,.mov,.mp3,.m4a,.wav,.ogg,.aac,.pdf,.docx,.xlsx,.pptx,.txt,.epub';
+  var MEDIA_ACCEPT = '.mp4,.webm,.mov,.mp3,.m4a,.wav,.ogg,.aac,.pdf,.docx,.xlsx,.pptx,.txt,.epub';
   var PIECE = 393216;
   // Isolated, so "2.3 MB" keeps its order inside right-to-left text.
   function mbytes(n) { return '\u2066' + (n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB') + '\u2069'; }
   function readB64(blob) { return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(String(r.result).replace(/^data:[^,]*,/, '')); }; r.onerror = function () { rej(new Error('לא הצלחנו לקרוא את הקובץ')); }; r.readAsDataURL(blob); }); }
   // Uploads one file; onProgress gets 0..1. Resolves with the new library item.
+  var IS_IMAGE = /\.(jpe?g|png|webp|gif|avif)$/i;
   function uploadMedia(file, onProgress) {
+    // A photo has to answer questions (description, credit, who is in it), which a loose file cannot: it goes through the photo library.
+    if (IS_IMAGE.test(file.name)) return Promise.reject(new Error('תמונות מעלים דרך ספריית התמונות'));
     return wapi('POST', '/media/init', { name: file.name, size: file.size }).then(function (init) {
       if (init.store === 'r2') {
         return new Promise(function (res, rej) {
@@ -1286,8 +1289,8 @@
     m.append(head('ספריית מדיה', 'תמונות, סרטונים, שמע ומסמכים להוספה לדפים. הקבצים הקטנים נשמרים עם האתר ויפורסמו בפרסום, והגדולים והסרטונים נשמרים באחסון נפרד.'));
     var quota = el('section', { class: 'card' }), list = el('ul', { class: 'upl' });
     var input = el('input', { type: 'file', multiple: true, accept: MEDIA_ACCEPT, id: 'mfile', hidden: true });
-    var pick = el('button', { type: 'button', class: 'btn pri', onclick: function () { input.click(); } }, icon('plus'), 'העלאת קבצים');
-    var drop = el('section', { class: 'card drop' }, el('p', { text: 'גררו לכאן קבצים, או לחצו על הכפתור.' }), pick, input, list);
+    var pick = el('p', { class: 'acts' }, el('button', { type: 'button', class: 'btn pri', onclick: function () { input.click(); } }, icon('plus'), 'העלאת קבצים'), el('button', { type: 'button', class: 'btn', onclick: function () { photoUpload(); } }, icon('image'), 'העלאת תמונה (עם תיאור וקרדיט)'));
+    var drop = el('section', { class: 'card drop' }, el('p', { text: 'גררו לכאן קבצים (סרטונים, שמע ומסמכים), או לחצו על הכפתור. תמונות מועלות דרך הכפתור השני: הן נבדקות ויש עליהן שאלות.' }), pick, input, list);
     var chips = el('div', { class: 'chipbar' }), grid = el('div', { class: 'mgrid' });
     var q = el('input', { type: 'search', placeholder: 'חיפוש לפי שם…', 'aria-label': 'חיפוש קובץ' });
     m.append(quota, drop, el('div', { class: 'findbar' }, icon('search'), q), chips, grid);
@@ -1312,7 +1315,11 @@
       });
     };
     var load = function () { return wapi('GET', '/media').then(function (j) { data = j; draw(); refreshPending(); }, function (e) { say(e.message, 'bad'); }); };
-    var go = function (files) { if (files && files.length) uploadMany(files, list).then(load); };
+    var go = function (files) {
+      var all = Array.prototype.slice.call(files || []), pics = all.filter(function (x) { return IS_IMAGE.test(x.name) || /^image\//.test(x.type); }), rest = all.filter(function (x) { return pics.indexOf(x) < 0; });
+      if (rest.length) uploadMany(rest, list).then(load);
+      if (pics.length) { say(pics.length > 1 ? 'תמונות מעלים אחת אחת, עם תיאור וקרדיט. נפתחה הראשונה.' : 'תמונות עוברות בדיקה ושאלות (תיאור, קרדיט, מי בתמונה). נפתח הטופס.', 'ok'); photoUpload(pics[0]); }
+    };
     input.addEventListener('change', function () { go(input.files); input.value = ''; });
     ['dragover', 'dragenter'].forEach(function (t) { drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
     ['dragleave', 'drop'].forEach(function (t) { drop.addEventListener(t, function () { drop.classList.remove('over'); }); });
@@ -1495,7 +1502,7 @@
     });
   }
   var slugOf = function (name) { return String(name).replace(/\.[^.]*$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30); };
-  function photoUpload() {
+  function photoUpload(first) {
     if (!RULES) return say('הכללים עוד נטענים. נסו שוב בעוד רגע.', 'bad');
     var dlg = el('dialog', { class: 'dlg wide' }, el('h2', { text: 'העלאת תמונה חדשה' })), body = el('div'), st = null, registry = [];
     var f = { id: '', alt: '', caption: '', credit: '', year: '', others: '', fx: 50, fy: 40 };
@@ -1558,19 +1565,20 @@
       });
     };
     doneBtn.addEventListener('click', run);
-    input.addEventListener('change', function () {
-      var file = input.files[0]; input.value = ''; if (!file) return;
+    var take = function (file) {
       errBox.textContent = ''; prog.textContent = 'בודק את התמונה…'; st = null; check();
       getFile('data/images.json').then(function (cur2) { registry = cur2.data; return inspectPhoto(file, registry); }).then(function (r) {
         st = r; prog.textContent = ''; f.id = slugOf(file.name); var base = f.id || 'photo', n = 1; while (registry.some(function (x) { return x.id === f.id; }) || !f.id) f.id = base + '-' + (++n);
         show();
       }).catch(function (e) { st = null; prog.textContent = ''; errBox.textContent = e.message; check(); });
-    });
+    };
+    input.addEventListener('change', function () { var file = input.files[0]; input.value = ''; if (file) take(file); });
     body.append(el('p', { class: 'help', text: 'בוחרים תמונה מהמכשיר (JPG, PNG או WebP, לפחות 800 פיקסלים ברוחב). התמונה נבדקת ומוכנת כאן, בלי לצאת מהדפדפן, ורק אחר כך עולה.' }),
       el('button', { type: 'button', class: 'btn pri', onclick: function () { input.click(); } }, icon('plus'), 'בחירת תמונה'), input);
     dlg.append(body, errBox, prog, el('p', { class: 'acts' }, doneBtn, el('button', { type: 'button', class: 'btn ghost', onclick: function () { dlg.close(); } }, 'ביטול')));
     dlg.addEventListener('close', function () { dlg.remove(); });
     document.body.append(dlg); dlg.showModal();
+    if (first) take(first);
   }
 
   // ---- pending changes, publishing, history, activity log ----

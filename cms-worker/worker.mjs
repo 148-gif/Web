@@ -295,6 +295,8 @@ async function mediaInit(env, me, b) {
   const name = String(b.name || '').trim().slice(0, 120), ext = (/\.([A-Za-z0-9]{1,5})$/.exec(name) || [])[1]?.toLowerCase(), size = Number(b.size);
   const kind = ext && kindOfExt(ext);
   if (!kind) throw fail('סוג הקובץ לא נתמך. אפשר: תמונות (jpg, png, webp, gif, avif), סרטונים (mp4, webm), שמע (mp3, m4a, wav, ogg) ומסמכים (pdf, docx, xlsx, pptx, txt, epub).', 400);
+  // A photo has rules (a description, a credit, who is in it, the owner's approval) that a loose file cannot carry.
+  if (kind === 'image') throw fail('תמונות מעלים דרך ספריית התמונות (תפריט ״תמונות״), שם שואלים על התיאור, הקרדיט והאנשים בתמונה.', 400);
   if (!Number.isInteger(size) || size < 1) throw fail('הקובץ ריק', 400);
   await env.DB.prepare("DELETE FROM media_chunks WHERE id IN (SELECT id FROM media WHERE status = 'uploading' AND created_at < ?)").bind(Date.now() - 36e5).run();
   await env.DB.prepare("DELETE FROM media WHERE status = 'uploading' AND created_at < ?").bind(Date.now() - 36e5).run();

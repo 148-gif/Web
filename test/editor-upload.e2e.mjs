@@ -21,6 +21,7 @@ const files = {
   narrow: await make('narrow.jpg', 'candle-writing', (s) => s.flop().resize({ width: 600 })),
   turned: await make('turned.jpg', 'black-hat', (s) => s.flop().withMetadata({ orientation: 6 })),
   people: await make('people.jpg', 'hand-on-forehead', (s) => s.flop()),
+  loose: await make('loose.jpg', 'bookshelf', (s) => s.flop()),
 };
 const ownerTok = w.tokens.owner, call = async (method, path, body) => { const r = await handle(new Request(`https://x.test${path}`, { method, headers: { Authorization: `Bearer ${ownerTok}`, Origin: w.origin }, body: body && JSON.stringify(body) }), w.env); return { status: r.status, body: await r.json().catch(() => ({})) }; };
 const rows = (sql, ...a) => w.env.DB.prepare(sql).bind(...a).all().then((r) => r.results);
@@ -93,6 +94,18 @@ const live = JSON.parse(w.github.read('data/images.json'));
 let verdict = 'ok'; try { validateImages(live.filter((x) => x.id === 'turned-hat'), new URL(`file://${out}/`)); } catch (e) { verdict = e.message; }
 t.ok(verdict === 'ok', `the files the editor made pass the build's own checks (${verdict})`);
 t.ok(live.length === registered.length + 1, 'the live registry has the new photo');
+
+// The general media library does not take photos: a photo chosen there goes to the form that asks about it, and cannot be sent as a loose file.
+const med = await w.open('editor');
+await med.go('#/media', '#mfile');
+t.ok(!(await med.page.locator('#mfile').getAttribute('accept')).includes('.jpg'), 'the media library does not offer photos to choose');
+t.ok(await med.page.getByRole('button', { name: /העלאת תמונה/ }).count() === 1, 'the media library has a button for photos');
+await med.page.locator('#mfile').setInputFiles(files.loose); await med.page.waitForTimeout(2000);
+t.ok(await med.page.locator('dialog').getByLabel(/תיאור לקוראי מסך/).count() === 1, 'a photo chosen in the media library opens the form with the questions');
+t.ok((await rows("SELECT id FROM media WHERE kind = 'image'")).length === 0, 'and nothing was sent as a loose file');
+const raw = await call('POST', '/media/init', { name: 'IMG-20261029-WA0008.jpg', size: 1000 });
+t.ok(raw.status === 400 && /ספריית התמונות/.test(raw.body.message), `the server refuses a photo as a loose file (${raw.body.message})`);
+await med.page.keyboard.press('Escape');
 
 // Children or other people: the owner must write down who agreed.
 const ed2 = await w.open('editor');
