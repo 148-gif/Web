@@ -3,6 +3,7 @@
 // library: a filter, chips and one section per category, each item with its own page).
 import { esc, url, write, topics, cmsPages, isSingle } from '../core.mjs';
 import { ICON, icon, orn, phead, layout } from '../layout.mjs';
+import { figure, gallery } from '../images.mjs';
 import { ps, ysect, faqHtml, faqLd, crumbs, ld, ul } from '../parts.mjs';
 
 const block = (b, i) => {
@@ -13,6 +14,9 @@ const block = (b, i) => {
   if (b.type === 'cards') return `<section class="band${cls ? ' ' + cls : ''}" id="b${i + 1}"><div class="wrap">${title ? `<h2 class="sh">${title}</h2>` : ''}<div class="grid notes">${(b.items || []).map((c) => `<div class="card"><h3>${esc(c.title)}</h3><p>${esc(c.text)}</p></div>`).join('')}</div></div></section>`;
   if (b.type === 'faq') return sect(cls, faqHtml((b.items || []).map((x) => [x.q, x.a])));
   if (b.type === 'quote') return `<section class="band quoteband"><div class="wrap"><blockquote class="pq small"><p>${esc(b.text)}</p>${b.by ? `<cite>${esc(b.by)}</cite>` : ''}</blockquote></div></section>`;
+  // The first block of a page is what the visitor sees first: a photo there is the lead photo (loaded at once); any other waits until it is near.
+  if (b.type === 'image') return sect(cls, figure(b.id, { size: b.size === 'side' ? 'side' : 'full', lead: i === 0 }));
+  if (b.type === 'gallery') return sect(cls, gallery(b.ids, b.title || undefined));
   if (b.type === 'links') return sect(cls, ul((b.items || []).map((l) => `<a href="${url(l.url, ['https:'])}" rel="noopener">${esc(l.title)}</a>`)));
   return '';
 };

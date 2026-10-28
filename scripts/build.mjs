@@ -27,4 +27,6 @@ await import('./lib/sections/home.mjs');
 await import('./lib/sections/info.mjs');
 await import('./lib/sections/offline.mjs');
 await import('./lib/sections/meta.mjs');
+// Photos are copied last, once every page has said which ones it uses.
+(await import('./lib/images.mjs')).emitImages();
 console.log(`built ${shut.length} Q&A pages, ${letters.length} letters, ${halacha.length} halacha, ${pages} list pages`);

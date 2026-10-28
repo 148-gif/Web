@@ -21,6 +21,10 @@ Topics and new pages live in `data/topics.json` and `data/pages/<slug>.json` (bl
 A topic is a place in the site: `group` is the menu group it joins (the title of one of the site's own groups, or a new one; none means "נושאים נוספים"), and `kind` is `page` (a single page, like אומן: its one page is built at the topic's own address, and `validateCms` allows no second page) or `collection` (many items of one kind, like the library: optional `categories` `[{ id, title }]`, and a page names its own in `category`; `pages` is the old name of a collection and is still read as one). Either way a topic is one menu entry that links to its own address (the page itself, or the collection's list with a filter, chips and a section per category); a topic with no page is never shown. Moving a topic between groups, or changing its kind or categories, is done in the editor's topic settings.
 The admin page has its own CSP (own scripts and styles only, no inline; Google's ready-made sign-in button needs inline styles, so the editor draws its own button and uses Google's token client); keep it strict.
 
+## Photos
+
+Photos are listed in `data/images.json` and live as ready sizes in `data/img/<id>/` (made by `node scripts/prepare-image.mjs`; the build itself uses no image library). The build fails on a missing or wrong-sized file, and on a page that shows a photo whose `rights` is not `approved`. Pages use the `image` and `gallery` blocks; `scripts/lib/images.mjs` writes them and `site/app.js` opens a gallery in a lightbox. Every rule (choosing, alt text, captions, children and groups, the editor) is in the `images` skill: `.claude/skills/images/SKILL.md`.
+
 ## Content that is missing or not ready
 
 Never show visitors an empty or unfinished section. When something is not ready:

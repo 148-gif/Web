@@ -5,7 +5,8 @@ import { createHash } from 'node:crypto';
 const SITE = 'היכל הקודש';
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when served from a sub-path
 const ORIGIN = (process.env.SITE_ORIGIN || '').replace(/\/$/, ''); // e.g. https://user.github.io; sitemap URLs must be absolute
-const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`) : h);
+// srcset holds several comma-separated paths, so each one that starts at the site root gets the base too.
+const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`).replace(/srcset="([^"]*)"/g, (m, v) => `srcset="${v.replace(/(^|,\s*)\//g, `$1${BASE}/`)}"`) : h);
 const PER_PAGE = 40;
 const BUILD = Date.now().toString(36);
 // Fonts carry a hash of their content (fonts/x.woff2?v=…), so they can be cached for a year and a changed file still reaches everyone.
@@ -103,7 +104,7 @@ const um = read('uman.json');
 const tk = read('tikkun.json');
 const tkText = read('books/tikkun-haklali.json');
 // Topics and pages made in the editor (/admin/): data/topics.json and data/pages/*.json. Checked here so a bad edit fails the build, not the site.
-const BLOCK_TYPES = ['text', 'cards', 'faq', 'quote', 'links'];
+const BLOCK_TYPES = ['text', 'cards', 'faq', 'quote', 'links', 'image', 'gallery'];
 const RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachman', 'uman', 'tikkun-haklali', 'moharash', 'yeshiva', 'print', 'yavniel', 'mikveh-malka', 'institutions', 'search', 'about', 'contact', 'accessibility', 'privacy', 'offline', 'fonts', 'img', 'books', 'idx', 'zmanim'];
 const topics = read('topics.json');
 const cmsPages = readdirSync(new URL('../../data/pages/', import.meta.url)).filter((f) => f.endsWith('.json')).map((f) => ({ slug: f.slice(0, -5), ...read(`pages/${f}`) }));
@@ -113,7 +114,7 @@ const cmsPages = readdirSync(new URL('../../data/pages/', import.meta.url)).filt
 // "pages" is the old name of a collection without categories, from before single pages existed.
 const TOPIC_KINDS = ['page', 'collection', 'pages'];
 const isSingle = (t) => t.kind === 'page';
-const validateCms = (topics, pages) => {
+const validateCms = (topics, pages, imgs = images) => {
   const bad = (m) => { throw new Error(`CMS: ${m}`); };
   const seen = new Set();
   for (const t of topics) {
@@ -131,16 +132,65 @@ const validateCms = (topics, pages) => {
     if (!seen.has(p.topic)) bad(`page ${p.slug}: unknown topic "${p.topic}"`);
     if (!p.title) bad(`page ${p.slug} has no title`);
     if (p.category != null && typeof p.category !== 'string') bad(`page ${p.slug}: invalid category`);
-    for (const b of p.blocks || []) if (!BLOCK_TYPES.includes(b.type)) bad(`page ${p.slug}: unknown block type "${b.type}"`);
+    for (const b of p.blocks || []) {
+      if (!BLOCK_TYPES.includes(b.type)) bad(`page ${p.slug}: unknown block type "${b.type}"`);
+      // A photo reaches visitors only with the owner's approval (see .claude/skills/images/SKILL.md).
+      const ids = b.type === 'image' ? [b.id] : b.type === 'gallery' ? (Array.isArray(b.ids) && b.ids.length && b.ids.length <= MAX_GALLERY ? b.ids : bad(`page ${p.slug}: a gallery needs 1 to ${MAX_GALLERY} image ids`)) : [];
+      for (const id of ids) {
+        const im = imgs.find((x) => x.id === id);
+        if (!im) bad(`page ${p.slug}: unknown image "${id}"`);
+        if (im.rights !== 'approved') bad(`page ${p.slug}: image "${id}" is not approved for publishing (rights: ${im.rights})`);
+      }
+    }
   }
   for (const t of topics.filter(isSingle)) if (pages.filter((p) => p.topic === t.slug).length > 1) bad(`topic ${t.slug} is a single page, but has more than one page`);
   const keys = pages.map((p) => `${p.topic}/${p.slug}`);
   if (new Set(keys).size !== keys.length) bad('duplicate page');
 };
+// Photos: data/images.json lists them; each one's files are data/img/<id>/<width>.webp (sizes, the largest is the whole photo) and
+// t360.webp / t720.webp (3:4 thumbnails cut around the face). scripts/prepare-image.mjs makes them. The editor writes only under data/.
+const IMG_RIGHTS = ['approved', 'pending'], IMG_WIDTHS = [480, 800, 1200, 1600], IMG_THUMBS = [360, 720], MAX_GALLERY = 24;
+const images = read('images.json');
+// Width and height from the header of a WebP file (lossy, lossless or extended), so no image library is needed to check them.
+const webpSize = (b) => {
+  if (b.length < 30 || b.toString('latin1', 0, 4) !== 'RIFF' || b.toString('latin1', 8, 12) !== 'WEBP') throw new Error('not a WebP file');
+  const k = b.toString('latin1', 12, 16);
+  if (k === 'VP8X') return [1 + b.readUIntLE(24, 3), 1 + b.readUIntLE(27, 3)];
+  if (k === 'VP8L') { const v = b.readUInt32LE(21); return [1 + (v & 0x3fff), 1 + ((v >> 14) & 0x3fff)]; }
+  if (k === 'VP8 ') return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
+  throw new Error('unknown WebP type');
+};
+const imgWidths = (im) => [...IMG_WIDTHS.filter((w) => w < im.w), im.w];
+const IMG_DIR = new URL('../../data/img/', import.meta.url);
+const validateImages = (list, dir = IMG_DIR) => {
+  const bad = (m) => { throw new Error(`Images: ${m}`); };
+  const seen = new Set();
+  for (const im of list) {
+    const at = `image "${im.id}"`;
+    if (!/^[a-z0-9-]+$/.test(im.id || '') || seen.has(im.id)) bad(`invalid or duplicate id "${im.id}"`);
+    seen.add(im.id);
+    if (!Number.isInteger(im.w) || !Number.isInteger(im.h) || im.w < 1 || im.h < 1) bad(`${at}: w and h must be whole numbers`);
+    if (typeof im.alt !== 'string' || (!im.alt.trim() && !im.decorative)) bad(`${at}: needs alt text (or decorative: true for an image that only decorates)`);
+    if (!IMG_RIGHTS.includes(im.rights)) bad(`${at}: rights must be one of ${IMG_RIGHTS.join(', ')}`);
+    for (const f of ['fx', 'fy']) if (typeof im[f] !== 'number' || im[f] < 0 || im[f] > 100) bad(`${at}: ${f} must be a number from 0 to 100`);
+    for (const f of ['caption', 'credit', 'year', 'note']) if (im[f] != null && typeof im[f] !== 'string') bad(`${at}: ${f} must be text`);
+    const size = (f) => { try { return webpSize(readFileSync(new URL(`${im.id}/${f}`, dir))); } catch (e) { return bad(`${at}: ${f}: ${e.code === 'ENOENT' ? 'file is missing' : e.message}`); } };
+    for (const w of imgWidths(im)) {
+      const [fw, fh] = size(`${w}.webp`);
+      // The browser reserves space from width/height, so every size must have the registered proportions.
+      if (fw !== w || Math.abs(fh - (w * im.h) / im.w) > 1.5) bad(`${at}: ${w}.webp is ${fw}x${fh}, expected ${w}x${Math.round((w * im.h) / im.w)}`);
+    }
+    for (const tw of IMG_THUMBS.filter((t) => t <= im.w)) {
+      const [fw, fh] = size(`t${tw}.webp`);
+      if (fw !== tw || fh !== Math.round((tw * 4) / 3)) bad(`${at}: t${tw}.webp must be ${tw}x${Math.round((tw * 4) / 3)}`);
+    }
+  }
+};
+validateImages(images);
 validateCms(topics, cmsPages);
 const regey = lib.books.find((b) => b.slug === 'regey-moharash');
 const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, MAX_GALLERY, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

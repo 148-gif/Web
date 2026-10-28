@@ -10,10 +10,26 @@ walk('dist');
 
 const errors = [];
 let links = 0;
+// Every path in a srcset (and every <img> with a srcset) must exist, and an <img> needs its size so the page does not jump while it loads.
+const fileOf = (raw) => {
+  let path = decodeURIComponent(raw.split(/[?#]/)[0]);
+  if (BASE && path.startsWith(BASE + '/')) path = path.slice(BASE.length);
+  return `dist${path}${path.endsWith('/') ? 'index.html' : ''}`;
+};
 for (const page of pages) {
   const html = readFileSync(page, 'utf8');
   // The CSP has no 'unsafe-inline' for styles, so a style attribute would be silently ignored by browsers.
   if (/<[a-z][^>]*\sstyle="/i.test(html)) errors.push(`${page}: inline style attribute (blocked by the CSP; use a class)`);
+  for (const [tag] of html.matchAll(/<img\s[^>]*>/g)) {
+    if (!/\swidth="\d+"/.test(tag) || !/\sheight="\d+"/.test(tag)) errors.push(`${page}: <img> without width and height: ${tag.slice(0, 80)}`);
+    if (!/\salt="/.test(tag)) errors.push(`${page}: <img> without alt: ${tag.slice(0, 80)}`);
+  }
+  for (const [, set] of html.matchAll(/\ssrcset="([^"]*)"/g)) for (const part of set.split(',')) {
+    const raw = part.trim().split(/\s+/)[0];
+    if (!raw.startsWith('/')) continue;
+    links++;
+    if (!existsSync(fileOf(raw))) errors.push(`${page}: broken srcset image ${raw}`);
+  }
   const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
   for (const [, , raw] of html.matchAll(/\s(href|src)="([^"]*)"/g)) {
     if (raw.startsWith('#')) {
