@@ -10,9 +10,13 @@
     "fx": 55,
     "fy": 38,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -26,9 +30,13 @@
     "fx": 54,
     "fy": 45,
     "rights": "approved",
-    "note": "צילום מסך מפייסבוק (המקור מקורי לא נמצא).",
+    "others": "none",
+    "consent": "",
+    "check": "",
+    "note": "צילום מסך מפייסבוק (נחתך), המקור לא נמצא.",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -42,9 +50,13 @@
     "fx": 49,
     "fy": 42,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -58,9 +70,13 @@
     "fx": 64,
     "fy": 60,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -74,6 +90,9 @@
     "fx": 47,
     "fy": 45,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
       "moharash"
@@ -90,9 +109,13 @@
     "fx": 60,
     "fy": 38,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -106,9 +129,13 @@
     "fx": 40,
     "fy": 35,
     "rights": "approved",
-    "note": "אדם נוסף מטושטש בקצה.",
+    "others": "background",
+    "consent": "",
+    "check": "",
+    "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -122,6 +149,9 @@
     "fx": 53,
     "fy": 45,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
       "moharash"
@@ -138,9 +168,13 @@
     "fx": 52,
     "fy": 50,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -154,9 +188,13 @@
     "fx": 52,
     "fy": 38,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -170,6 +208,9 @@
     "fx": 46,
     "fy": 45,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
       "moharash"
@@ -186,6 +227,9 @@
     "fx": 50,
     "fy": 48,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
       "moharash"
@@ -202,9 +246,13 @@
     "fx": 48,
     "fy": 40,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -218,6 +266,9 @@
     "fx": 45,
     "fy": 50,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
       "moharash"
@@ -234,9 +285,13 @@
     "fx": 53,
     "fy": 30,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -250,9 +305,13 @@
     "fx": 50,
     "fy": 41,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -266,6 +325,9 @@
     "fx": 51,
     "fy": 38,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "צילום של תמונה מודפסת.",
     "tags": [
       "moharash"
@@ -282,9 +344,13 @@
     "fx": 47,
     "fy": 40,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "",
     "tags": [
-      "moharash"
+      "moharash",
+      "featured"
     ]
   },
   {
@@ -298,6 +364,9 @@
     "fx": 46,
     "fy": 33,
     "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
     "note": "צילום של תמונה מודפסת.",
     "tags": [
       "moharash"
@@ -314,6 +383,9 @@
     "fx": 36,
     "fy": 35,
     "rights": "approved",
+    "others": "background",
+    "consent": "",
+    "check": "",
     "note": "אדם נוסף ברקע, קטן ולא ברור.",
     "tags": [
       "moharash"
@@ -330,7 +402,10 @@
     "fx": 36,
     "fy": 50,
     "rights": "approved",
-    "note": "המשתמש אישר לפרסם (יש בתמונה ילדים או אנשים נוספים).",
+    "others": "children",
+    "consent": "המשתמש אישר לפרסם (אוקטובר 2026)",
+    "check": "",
+    "note": "",
     "tags": [
       "moharash"
     ]
@@ -346,7 +421,10 @@
     "fx": 54,
     "fy": 38,
     "rights": "approved",
-    "note": "המשתמש אישר לפרסם (יש בתמונה ילדים או אנשים נוספים).",
+    "others": "children",
+    "consent": "המשתמש אישר לפרסם (אוקטובר 2026)",
+    "check": "",
+    "note": "",
     "tags": [
       "moharash"
     ]
@@ -362,7 +440,10 @@
     "fx": 72,
     "fy": 34,
     "rights": "approved",
-    "note": "המשתמש אישר לפרסם (יש בתמונה ילדים או אנשים נוספים). צילום של תמונה מודפסת.",
+    "others": "children",
+    "consent": "המשתמש אישר לפרסם (אוקטובר 2026)",
+    "check": "",
+    "note": "צילום של תמונה מודפסת.",
     "tags": [
       "moharash"
     ]
@@ -378,7 +459,10 @@
     "fx": 29,
     "fy": 44,
     "rights": "approved",
-    "note": "המשתמש אישר לפרסם (יש בתמונה ילדים או אנשים נוספים).",
+    "others": "adults",
+    "consent": "המשתמש אישר לפרסם (אוקטובר 2026)",
+    "check": "",
+    "note": "",
     "tags": [
       "moharash"
     ]
@@ -394,7 +478,10 @@
     "fx": 76,
     "fy": 49,
     "rights": "approved",
-    "note": "המשתמש אישר לפרסם (יש בתמונה ילדים או אנשים נוספים). לא בטוח איזה מהיושבים הוא מוהרא״ש (זוהה לפי הבגד): לאמת.",
+    "others": "adults",
+    "consent": "המשתמש אישר לפרסם (אוקטובר 2026)",
+    "check": "לאמת מי מהיושבים הוא מוהרא״ש (זוהה לפי הבגד).",
+    "note": "",
     "tags": [
       "moharash"
     ]
@@ -410,7 +497,10 @@
     "fx": 65,
     "fy": 45,
     "rights": "approved",
-    "note": "המשתמש אישר לפרסם (יש בתמונה ילדים או אנשים נוספים).",
+    "others": "adults",
+    "consent": "המשתמש אישר לפרסם (אוקטובר 2026)",
+    "check": "",
+    "note": "",
     "tags": [
       "moharash"
     ]

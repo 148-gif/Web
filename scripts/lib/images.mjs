@@ -3,6 +3,7 @@
 // Rules: .claude/skills/images/SKILL.md.
 import { readFileSync, mkdirSync, cpSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { galleryProblems } from '../../site/admin/image-rules.mjs';
 import { images, imgWidths, IMG_THUMBS, IMG_DIR, esc, escAttr } from './core.mjs';
 
 const byId = new Map(images.map((im) => [im.id, im]));
@@ -36,11 +37,23 @@ const figure = (id, { size = 'full', lead = false } = {}) => {
 };
 
 // Each thumbnail is a plain link to the big photo, so it still opens without the script; the script shows it in a dialog instead.
-const gallery = (ids, label = 'גלריית תמונות') => `<ul class="gal" data-gallery aria-label="${escAttr(label)}">${ids.map((id) => {
+// page: a page made only for the gallery may hold more photos than a gallery in the middle of a page (see image-rules.mjs).
+const gallery = (ids, label = 'גלריית תמונות', { page = false } = {}) => {
+  const problems = galleryProblems(ids, { page });
+  if (problems.length) throw new Error(`Images: gallery "${label}": ${problems.join('; ')}`);
+  if (ids.some((id) => byId.get(id)?.decorative)) throw new Error(`Images: gallery "${label}" has a decorative photo, which has no description to show`);
+  return galleryHtml(ids, label);
+};
+const galleryHtml = (ids, label) => `<ul class="gal" data-gallery aria-label="${escAttr(label)}">${ids.map((id) => {
   const im = get(id), ts = IMG_THUMBS.filter((t) => t <= im.w), ws = imgWidths(im), big = ws.filter((x) => x <= 1200).pop() || ws[0];
   const note = [im.caption, im.year, im.credit && `צילום: ${im.credit}`].filter(Boolean).join(' · ');
   return `<li><a href="${src(id, `${big}.webp`)}" data-w="${big}" data-h="${Math.round((big * im.h) / im.w)}"${note ? ` data-note="${escAttr(note)}"` : ''}><img src="${src(id, `t${ts[0]}.webp`)}" srcset="${set(id, ts, 't')}" sizes="(min-width: 800px) 200px, 45vw" width="${ts[0]}" height="${Math.round((ts[0] * 4) / 3)}" alt="${escAttr(im.alt)}" loading="lazy" decoding="async"></a></li>`;
 }).join('')}</ul>`;
 
-const emitImages = () => { for (const id of used) cpSync(new URL(`${id}/`, IMG_DIR), `dist/img/p/${id}`, { recursive: true }); if (!used.size) mkdirSync('dist/img/p', { recursive: true }); };
+// Not an error, but not forgotten either: a photo with a "check" note that a page shows is listed at the end of every build.
+const emitImages = () => {
+  for (const id of used) if (byId.get(id).check) console.warn(`to check: photo "${id}": ${byId.get(id).check}`);
+  for (const id of used) cpSync(new URL(`${id}/`, IMG_DIR), `dist/img/p/${id}`, { recursive: true });
+  if (!used.size) mkdirSync('dist/img/p', { recursive: true });
+};
 export { figure, gallery, emitImages };

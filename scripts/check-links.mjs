@@ -24,6 +24,9 @@ for (const page of pages) {
     if (!/\swidth="\d+"/.test(tag) || !/\sheight="\d+"/.test(tag)) errors.push(`${page}: <img> without width and height: ${tag.slice(0, 80)}`);
     if (!/\salt="/.test(tag)) errors.push(`${page}: <img> without alt: ${tag.slice(0, 80)}`);
   }
+  // Only the first photo on a page loads at once and with priority; a photo that is both lazy and urgent contradicts itself.
+  if ((html.match(/fetchpriority="high"/g) || []).length > 1) errors.push(`${page}: more than one <img> with fetchpriority="high" (only the lead photo gets it)`);
+  if (/<img\s[^>]*fetchpriority="high"[^>]*loading="lazy"|<img\s[^>]*loading="lazy"[^>]*fetchpriority="high"/.test(html)) errors.push(`${page}: an <img> is both lazy and high priority`);
   for (const [, set] of html.matchAll(/\ssrcset="([^"]*)"/g)) for (const part of set.split(',')) {
     const raw = part.trim().split(/\s+/)[0];
     if (!raw.startsWith('/')) continue;

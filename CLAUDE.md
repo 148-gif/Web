@@ -23,7 +23,7 @@ The admin page has its own CSP (own scripts and styles only, no inline; Google's
 
 ## Photos
 
-Photos are listed in `data/images.json` and live as ready sizes in `data/img/<id>/` (made by `node scripts/prepare-image.mjs`; the build itself uses no image library). The build fails on a missing or wrong-sized file, and on a page that shows a photo whose `rights` is not `approved`. Pages use the `image` and `gallery` blocks; `scripts/lib/images.mjs` writes them and `site/app.js` opens a gallery in a lightbox. Every rule (choosing, alt text, captions, children and groups, the editor) is in the `images` skill: `.claude/skills/images/SKILL.md`.
+Photos are listed in `data/images.json` and live as ready sizes in `data/img/<id>/` (made by `node scripts/prepare-image.mjs`; the build itself uses no image library). The build fails on a missing or wrong-sized file, and on a page that shows a photo whose `rights` is not `approved`. Pages use the `image` and `gallery` blocks; `scripts/lib/images.mjs` writes them and `site/app.js` opens a gallery in a lightbox. The rules that a program can check are code and fail the build: `site/admin/image-rules.mjs` (alt text, credit, who else is in the photo and the written approval, gallery size, file budgets), shared with the editor, which must import it rather than copy it. The rest (choosing, captions, children and groups) is in the `images` skill: `.claude/skills/images/SKILL.md`.
 
 ## Content that is missing or not ready
 

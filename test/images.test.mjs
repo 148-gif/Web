@@ -34,7 +34,7 @@ test('validateImages() fails on a missing file, a wrong size, no alt text and a 
     assert.throws(() => validateImages([entry({ h: sample.h * 2 })], asUrl(dir)), /expected/);
     assert.throws(() => validateImages([entry({ alt: ' ' })], asUrl(dir)), /alt/);
     assert.doesNotThrow(() => validateImages([entry({ alt: '', decorative: true })], asUrl(dir)));
-    assert.throws(() => validateImages([entry({ id: 'Bad Id' })], asUrl(dir)), /invalid or duplicate/);
+    assert.throws(() => validateImages([entry({ id: 'Bad Id' })], asUrl(dir)), /המזהה/);
     assert.throws(() => validateImages([entry({ rights: 'maybe' })], asUrl(dir)), /rights/);
     assert.throws(() => validateImages([entry({ fx: 120 })], asUrl(dir)), /fx/);
     assert.throws(() => validateImages([entry(), entry()], asUrl(dir)), /duplicate/);
@@ -48,12 +48,14 @@ test('validateImages() fails on a missing file, a wrong size, no alt text and a 
 test('a page may show only photos that are approved for publishing', () => {
   const topics = [{ slug: 'x', title: 'x', kind: 'page' }];
   const page = (blocks) => [{ slug: 'p', topic: 'x', title: 'p', blocks }];
-  const list = [entry({ id: 'ok' }), entry({ id: 'wait', rights: 'pending' })];
-  assert.doesNotThrow(() => validateCms(topics, page([{ type: 'image', id: 'ok' }, { type: 'gallery', ids: ['ok'] }]), list));
+  const list = [entry({ id: 'ok' }), entry({ id: 'ok2' }), entry({ id: 'wait', rights: 'pending' })];
+  assert.doesNotThrow(() => validateCms(topics, page([{ type: 'image', id: 'ok' }, { type: 'gallery', ids: ['ok2'] }]), list));
   assert.throws(() => validateCms(topics, page([{ type: 'image', id: 'wait' }]), list), /not approved/);
   assert.throws(() => validateCms(topics, page([{ type: 'gallery', ids: ['ok', 'wait'] }]), list), /not approved/);
   assert.throws(() => validateCms(topics, page([{ type: 'image', id: 'nope' }]), list), /unknown image/);
-  assert.throws(() => validateCms(topics, page([{ type: 'gallery', ids: [] }]), list), /gallery needs/);
+  assert.throws(() => validateCms(topics, page([{ type: 'gallery', ids: [] }]), list), /גלריה צריכה/);
+  assert.throws(() => validateCms(topics, page([{ type: 'image', id: 'ok' }, { type: 'gallery', ids: ['ok'] }]), list), /יותר מפעם אחת/);
+  assert.throws(() => validateCms(topics, page([{ type: 'gallery', ids: Array.from({ length: 13 }, () => 'ok') }]), list), /מקסימום 12/);
 });
 
 test('figure() gives the browser the size to reserve and the sizes to choose from; only the lead photo loads at once', () => {

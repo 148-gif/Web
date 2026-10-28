@@ -5,6 +5,7 @@ import { figure, gallery } from '../images.mjs';
 import { images } from '../core.mjs';
 import { ps, navBtns, anchors, ysect, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, person } from '../parts.mjs';
 
+const mine = images.filter((x) => x.tags.includes('moharash') && x.id !== 'portrait');
 
 write('moharash/index.html', layout(mo.title, `<section class="band"><div class="wrap"><div class="bio-top"><div class="about lead1">${figure('portrait', { lead: true })}${ps(mo.summary)}<p class="small">${esc(mo.acronym)}</p></div><aside class="factbox" aria-label="פרטים עיקריים"><h2>${esc(mo.name)}</h2>${facts(mo.facts)}</aside></div></div></section>
 <section class="band soft" id="life"><div class="wrap narrow"><h2 class="sh">תולדות חייו</h2><p class="shsub">מתל אביב וירושלים, דרך ניו יורק, ועד יבנאל</p><p class="snote c">${esc(mo.lifeLead)} <a href="/library/${regey.slug}/">לספר ←</a></p><ol class="tline">${mo.life.map(([t, d]) => `<li><b>${esc(t)}</b><p>${esc(d)}</p></li>`).join('')}</ol><p class="tnote">${esc(mo.community)}</p></div></section>
@@ -14,7 +15,7 @@ write('moharash/index.html', layout(mo.title, `<section class="band"><div class=
 <section class="band" id="books"><div class="wrap"><h2 class="sh">ספריו</h2><p class="shsub">ירושתו העיקרית: אלפי מכתבים ועשרות ספרים</p><ul class="inst-list books">${mo.books.map(([n, d]) => `<li>${icon('book', 'ico')}<span><b>${(lib.books.find((x) => x.title === n)) ? `<a href="/library/${lib.books.find((x) => x.title === n).slug}/">${esc(n)}</a>` : esc(n)}</b><small>${esc(d)}</small></span></li>`).join('')}</ul>
 <div class="svc two"><a class="card hl" href="/shut/">${icon('book', 'ico lg')}<h3>שו״ת ברסלב באתר</h3><p>${shut.length.toLocaleString('he-IL')} שאלות ותשובות שכתב מוהרא״ש, בעבודת ה׳, באמונה, בתפילה ובהתבודדות.</p><span class="go">לשאלות ולתשובות ←</span></a><a class="card" href="/print/">${icon('print', 'ico lg')}<h3>הדפסת ״אשר בנחל״</h3><p>שותפות בהדפסת ספרי הצדיק והפצתם, כבקשתו לפני פטירתו.</p><span class="go">להצטרפות ←</span></a></div></div></section>
 ${ysect('passing', 'soft', 'פטירתו', '', `<div class="about">${ps(mo.passing)}</div>`)}
-${ysect('photos', '', 'תמונות', 'מוהרא״ש בשנים שונות', gallery(images.filter((x) => x.tags.includes('moharash') && x.id !== 'portrait').map((x) => x.id), 'תמונות של מוהרא״ש'), false)}
+${ysect('photos', '', 'תמונות', 'מוהרא״ש בשנים שונות', `${gallery(mine.filter((x) => x.tags.includes('featured')).map((x) => x.id), 'תמונות נבחרות של מוהרא״ש')}<p class="snote c"><a href="/moharash/photos/">כל התמונות ←</a></p>`, false)}
 <section class="band" id="tziyun-cta"><div class="wrap"><a class="feature" href="/moharash/tziyun/"><span class="fic">${icon('flame', 'ico lg')}</span><span class="ftxt"><em>ציון הצדיק ביבנאל</em><b>ציון מוהרא״ש</b><span>ההבטחות לבאים אל קברו, ההילולה בי״ז בשבט ודרכי הגעה.</span></span><span class="btn">לדף הציון ←</span></a></div></section>
 <section class="band soft" id="faq"><div class="wrap narrow"><h2 class="sh">שאלות נפוצות</h2><p class="shsub">בקצרה, על הצדיק מיבנאל</p>${faqHtml(mo.faq)}</div></section>
 ${srcList(mo.sources)}`,
@@ -35,3 +36,8 @@ ${srcList(mo.sources.slice(0, 2))}
   { desc: 'ציון מוהרא״ש, קבר הצדיק מיבנאל: היכן נמצא, ההבטחה לרווקים ורווקות החרוטה על המצבה, ההילולה בי״ז בשבט ודרכי הגעה ליבנאל.', path: '/moharash/', self: '/moharash/tziyun/', full: true,
     head: phead('יבנאל · הגליל התחתון', esc(tz.title), esc(tz.lead), `<div class="navbtns hcta"><a class="btn" href="#visit">${icon('nav', 'ico sm')}ניווט לציון</a><a class="btn ghost" href="#vow">${icon('star', 'ico sm')}ההבטחה</a></div>`),
     head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': ['Cemetery', 'TouristAttraction'], name: tz.title, alternateName: ['קבר מוהרא״ש', 'ציון הצדיק מיבנאל', 'קבר הצדיק מיבנאל'], description: tz.summary[0], address: { '@type': 'PostalAddress', addressLocality: 'יבנאל', addressCountry: 'IL' }, containedInPlace: { '@type': 'Place', name: 'יבנאל' }, ...(absu('/moharash/tziyun/') ? { url: absu('/moharash/tziyun/') } : {}), subjectOf: person }, crumbs([['בית', '/'], [mo.title, '/moharash/'], ['ציון מוהרא״ש', '/moharash/tziyun/']]), faqLd(tz.faq)] }) }));
+
+// Every photo on a page of its own: a gallery in the middle of a page holds a dozen, this one holds them all.
+write('moharash/photos/index.html', layout('תמונות של מוהרא״ש', `<section class="band"><div class="wrap">${gallery(images.filter((x) => x.tags.includes('moharash')).map((x) => x.id), 'כל התמונות של מוהרא״ש', { page: true })}<p class="snote c"><a href="/moharash/">← לדף מוהרא״ש</a></p></div></section>`,
+  { desc: 'תמונות של מוהרא״ש, הצדיק מיבנאל, בשנים שונות.', path: '/moharash/', self: '/moharash/photos/', full: true,
+    head: phead(esc(mo.name), 'תמונות', 'מוהרא״ש בשנים שונות'), head_extra: ld({ '@context': 'https://schema.org', '@graph': [crumbs([['בית', '/'], [mo.title, '/moharash/'], ['תמונות', '/moharash/photos/']])] }) }));
