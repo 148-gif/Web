@@ -356,6 +356,7 @@
       var pl = link('#/changes', 'list', 'שינויים ממתינים'); pl.append(el('b', { id: 'hi-count', class: 'nb', text: String(pending.list.length) })); nav.append(pl);
       if (publisher) nav.append(link('#/log', 'clock', 'יומן פעילות'));
     }
+    var lk = link('#/links', 'link', 'קישורים ו־SEO'); lk.append(el('b', { id: 'lk-count', class: 'nb', text: '' })); nav.append(lk);
     nav.append(link('#/file/site.json', 'gear', 'הגדרות האתר'));
     if (owner) nav.append(link('#/editors', 'users', 'עורכים'));
     // On a phone the header keeps only the essentials; the rest is here.
@@ -364,6 +365,7 @@
       el('a', { href: '../', target: '_blank', rel: 'noopener', text: 'לאתר' }),
       el('button', { type: 'button', onclick: function () { $('#out').click(); }, text: 'יציאה' })));
     mark(location.hash || '#/');
+    auditBadge();
   }
   function mark(hash) {
     document.querySelectorAll('#nav a').forEach(function (a) { var h = a.getAttribute('data-h'); a.classList.toggle('cur', h === hash || (h !== '#/' && hash.indexOf(h + '/') === 0) || (h === '#/pages' && /^#\/page\//.test(hash))); });
@@ -539,6 +541,7 @@
       tile('#/shut', 'chat', 'שו״ת ברסלב', 'חיפוש, עריכה והוספה של שאלות ותשובות'),
       tile('#/file/yavniel.json', 'mountain', 'זמני תפילות ושיעורים', 'עדכון המידע על יבנאל'),
       draft ? tile('#/changes', 'list', 'שינויים ממתינים', publisher ? 'מה נשמר ועוד לא באתר, ופרסום' : 'מה נשמר ועוד לא פורסם') : null,
+      tile('#/links', 'link', 'קישורים ו־SEO', 'בדיקת קישורים, הצעות לחיבור עמודים ושאלות קשורות'),
       owner ? tile('#/editors', 'users', 'עורכים', 'הוספה והסרה של מי שיכול לערוך, ומי מפרסם') : null,
       el('a', { class: 'tile', href: '../', target: '_blank', rel: 'noopener' }, el('span', { class: 'tic' }, icon('eye')), el('b', { text: 'צפייה באתר' }), el('span', { text: 'נפתח בלשונית חדשה' }))));
     m.append(el('section', { class: 'card how' }, el('h2', { text: 'איך זה עובד' }), el('ol', {},
@@ -1116,6 +1119,7 @@
     var m;
     if ((m = PAGE_RX.exec(path))) return { kind: 'page', label: 'דף', title: m[1], href: '#/page/' + m[1], id: m[1] };
     if ((m = SHUT_RX.exec(path))) return { kind: 'shut', label: 'שו״ת', title: '#' + m[1], href: '#/shut/' + m[1], id: m[1] };
+    if (path === 'data/link-audit.json') return { kind: 'file', label: 'הגדרות', title: 'קישורים ו־SEO', href: '#/links' };
     if (path === 'data/topics.json') return { kind: 'topics', label: 'נושאים', title: 'רשימת הנושאים', href: '#/pages' };
     var name = path.replace(/^data\//, '');
     return { kind: 'file', label: 'תוכן', title: FILE[name] ? FILE[name].name : name, href: '#/file/' + name };
@@ -1270,6 +1274,158 @@
     load();
   }
 
+  // ---- links and SEO: the audit of the last build (admin/links.json) and the settings it reads (data/link-audit.json) ----
+  var AUDIT = {
+    'broken-link': ['קישור פנימי שבור', 'הקישור מוביל לעמוד שלא קיים. תקנו את הכתובת או הסירו את הקישור.'],
+    orphan: ['עמוד יתום', 'אף עמוד באתר לא מקשר אליו, ולכן גוגל ומנועי AI כמעט לא ימצאו אותו. הוסיפו אותו לרשימה או לדף של הנושא שלו.'],
+    'empty-anchor': ['קישור בלי טקסט', 'קישור צריך טקסט (או תמונה עם תיאור) כדי שיהיה ברור לאן הוא מוביל.'],
+    'not-crawlable': ['קישור שאינו a href', 'קישור שנבנה בלי כתובת אמיתית לא נסרק.'],
+    'sitemap-missing-page': ['ב־sitemap אך אין עמוד', 'כתובת ברשימת העמודים לחיפוש שאין לה עמוד.'],
+    'too-deep': ['עמוק מדי', 'צריך יותר מ־3 לחיצות מדף הבית. הוסיפו קישור מדף קרוב יותר.'],
+    unreachable: ['לא מגיעים אליו מדף הבית', 'יש אליו קישורים, אבל רק מעמודים שאי אפשר להגיע אליהם מדף הבית.'],
+    'many-links': ['הרבה קישורים בעמוד', 'עמוד עמוס בקישורים מחליש כל אחד מהם. כדאי לצמצם.'],
+    'generic-anchor': ['עוגן כללי', 'טקסט כמו ״כאן״ או ״קראו עוד״ לא אומר לקורא ולגוגל לאן הקישור מוביל. כתבו את שם היעד.'],
+    'duplicate-title': ['שני עמודים באותה כותרת', 'עמודים באותה כותרת מתחרים זה בזה בחיפוש. שנו אחת מהכותרות.'],
+    'no-title': ['עמוד בלי כותרת', 'לכל עמוד צריכה להיות כותרת.'],
+    'single-inlink': ['קישור נכנס אחד בלבד', 'רק עמוד אחד מקשר אליו. אפשר לחזק בעוד קישורים מעמודים קרובים בנושא.'],
+    'nav-only': ['מקושר רק מתפריט', 'אין אליו קישור מתוך תוכן. קישור בתוך טקסט שווה יותר.'],
+    'one-anchor': ['אותו עוגן בכל הקישורים', 'כשכל הקישורים אליו נראים אותו דבר זה נראה מלאכותי. נסחו בכמה דרכים טבעיות.'],
+    'ambiguous-anchor': ['אותו עוגן ליעדים שונים', 'אותו טקסט מוביל לעמודים שונים. הבדילו ביניהם.'],
+    'not-in-sitemap': ['לא ב־sitemap', 'עמוד שלא מופיע ברשימת העמודים לחיפוש.']
+  };
+  var AUDIT_ORDER = ['error', 'warn', 'info'];
+  function auditData(d) { d.ignore = d.ignore || []; d.ignorePairs = d.ignorePairs || []; d.aliases = d.aliases || {}; d.related = d.related || {}; return d; }
+  function auditTidy(src) {
+    var d = JSON.parse(JSON.stringify(src)), out = {};
+    if ((d.ignore || []).length) out.ignore = d.ignore;
+    if ((d.ignorePairs || []).length) out.ignorePairs = d.ignorePairs;
+    var al = {}; Object.keys(d.aliases || {}).forEach(function (k) { var v = (d.aliases[k] || []).map(function (x) { return x.trim(); }).filter(Boolean); if (k && v.length) al[k] = v; });
+    if (Object.keys(al).length) out.aliases = al;
+    var r = {}; if (d.related && d.related.count !== undefined && d.related.count !== '') r.count = Number(d.related.count);
+    if (d.related && (d.related.exclude || []).length) r.exclude = d.related.exclude;
+    if (Object.keys(r).length) out.related = r;
+    return out;
+  }
+  function linksProblem(d) {
+    var bad = Object.keys(d.aliases || {}).filter(function (k) { return (d.aliases[k] || []).some(function (t) { return t.trim() && t.trim().length < 3; }) || (k && !/^\/\S*$/.test(k)); });
+    if (bad.length) return 'שם נוסף צריך להיות לפחות 3 אותיות, והכתובת של העמוד צריכה להתחיל ב־/';
+    var ex = (d.related && d.related.exclude) || [];
+    if (ex.some(function (x) { return !/^[\w-]+$/.test(x); })) return 'מספרי שאלות להוצאה מ״שאלות קשורות״ צריכים להיות מספרים או מזהים בלבד';
+    return '';
+  }
+  function auditEdit(p) { var m = /^\/shut\/([\w-]+)\/$/.exec(p); return m ? '#/shut/' + m[1] : ''; }
+  function fetchAudit() { return fetch('links.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; }); }
+  function auditBadge() {
+    fetchAudit().then(function (a) {
+      var b = $('#lk-count'); if (!a || !b) return;
+      var n = a.stats.errors + a.stats.warnings + a.suggestions.length;
+      b.textContent = String(n); b.classList.toggle('bad', a.stats.errors > 0);
+    });
+  }
+  function linksScreen() {
+    var m = main(); loading(m);
+    var fresh = { path: 'data/link-audit.json', sha: null, indent: 2, data: {}, orig: '{}', fresh: true };
+    Promise.all([fetchAudit(), getFile('data/link-audit.json').catch(function (e) { if (e.status === 404) return fresh; throw e; })]).then(function (r) {
+      var a = r[0]; cur = r[1]; auditData(cur.data); cur.orig = JSON.stringify(cur.data);
+      cur.check = function () { return linksProblem(cur.data); }; cur.clean = auditTidy;
+      applyLocal(cur); auditData(cur.data);
+      m.textContent = '';
+      m.append(head('קישורים ו־SEO', 'בדיקה אוטומטית של הקישורים הפנימיים באתר, הצעות לחיבור עמודים, וההגדרות שלה.', [el('a', { class: 'btn ghost', href: 'https://github.com/' + cfg.repo + '/issues?q=is%3Aissue+label%3Alink-audit', target: '_blank', rel: 'noopener' }, icon('list'), 'הדוח השבועי ב־GitHub')]));
+      var col = el('div', { class: 'col' }), side = el('aside', { class: 'side' });
+      m.append(el('div', { class: 'split' }, col, side));
+      var body = el('div'); col.append(body);
+      var draw = function () {
+        var y = window.scrollY; body.textContent = '';
+        var d = cur.data;
+        var ign = {}; d.ignore.forEach(function (x) { ign[x.code + '|' + x.path] = 1; });
+        var pairs = {}; d.ignorePairs.forEach(function (x) { pairs[x.join('|')] = 1; });
+        if (!a) body.append(el('section', { class: 'card' }, el('h2', { text: 'עוד אין דוח' }), el('p', { class: 'help', text: 'הדוח נבנה עם כל פרסום של האתר. אחרי הפרסום הבא הוא יופיע כאן.' })));
+        else {
+          var fs = a.findings.filter(function (f) { return !ign[f.code + '|' + f.path]; }), sg = a.suggestions.filter(function (s) { return !pairs[s.from + '|' + s.to]; });
+          var cnt = function (sev) { return fs.filter(function (f) { return f.severity === sev; }).length; };
+          var when = new Date(a.generated).toLocaleString('he-IL');
+          body.append(el('section', { class: 'card' }, el('h2', { text: 'מצב הקישורים' }),
+            el('p', { class: 'help', text: 'נבדק בפרסום האחרון של האתר (' + when + '): ' + a.stats.pages.toLocaleString('he-IL') + ' עמודים, ' + a.stats.links.toLocaleString('he-IL') + ' קישורים, עומק מרבי ' + a.stats.maxDepth + ' לחיצות.' }),
+            el('div', { class: 'tiles' },
+              el('div', { class: 'tile' + (cnt('error') ? ' bad' : '') }, el('b', { text: String(cnt('error')) }), el('span', { text: 'שגיאות לתיקון' })),
+              el('div', { class: 'tile' }, el('b', { text: String(cnt('warn')) }), el('span', { text: 'אזהרות' })),
+              el('div', { class: 'tile' }, el('b', { text: String(sg.length) }), el('span', { text: 'הצעות לקישורים חדשים' })),
+              el('div', { class: 'tile' }, el('b', { text: String(cnt('info')) }), el('span', { text: 'הערות' })))));
+          var any = false;
+          AUDIT_ORDER.forEach(function (sev) {
+            var codes = {}; fs.filter(function (f) { return f.severity === sev; }).forEach(function (f) { (codes[f.code] = codes[f.code] || []).push(f); });
+            Object.keys(codes).forEach(function (code) {
+              any = true; var list = codes[code], info = AUDIT[code] || [code, ''];
+              var det = el('details', { class: 'card sec' + (sev === 'error' ? ' bad' : '') }, el('summary', {}, el('h2', { text: info[0] }), el('span', { class: 'cnt', text: String(list.length) })), el('p', { class: 'help', text: info[1] }));
+              list.slice(0, 40).forEach(function (f) {
+                var edit = auditEdit(f.path);
+                det.append(el('div', { class: 'row' }, el('span', { class: 'grow' }, el('b', { text: f.path || '—' }), f.detail ? el('small', { class: 'help', text: f.detail }) : null),
+                  f.path ? viewLink(f.path, 'באתר') : null, edit ? el('a', { class: 'btn ghost', href: edit }, 'עריכה') : null,
+                  el('button', { type: 'button', class: 'btn ghost', title: 'לא להציג שוב את הממצא הזה', onclick: function () { d.ignore.push({ code: f.code, path: f.path }); touch(); draw(); } }, 'התעלמות')));
+              });
+              if (list.length > 40) det.append(el('p', { class: 'help', text: 'ועוד ' + (list.length - 40) + '. הרשימה המלאה בדוח השבועי ב־GitHub.' }));
+              body.append(det);
+            });
+          });
+          if (!any) body.append(el('section', { class: 'card' }, el('h2', { text: 'הכול תקין' }), el('p', { class: 'help', text: 'אין כרגע ממצאים לטיפול.' })));
+          var box = el('section', { class: 'card' }, el('h2', {}, 'הצעות לקישורים חדשים ', el('span', { class: 'cnt', text: String(sg.length) })),
+            el('p', { class: 'help', text: 'שם של עמוד שמופיע בטקסט של עמוד אחר בלי קישור. ההצעות הן המלצה בלבד: שום דבר לא משתנה בלי שתעשו זאת בעצמכם. ״לא מתאים״ מסתיר את ההצעה לתמיד. תוכן ספרי הצדיק לא נערך אוטומטית.' }));
+          sg.slice(0, 40).forEach(function (s) {
+            var edit = auditEdit(s.from);
+            box.append(el('div', { class: 'row sug' }, el('span', { class: 'grow' }, el('b', { text: '«' + s.anchor + '»' }), el('small', { class: 'help', text: '…' + s.context + '…' }), el('small', { class: 'help', text: 'בעמוד ' + s.from + ' ← אל ' + s.to })),
+              viewLink(s.from, 'העמוד'), edit ? el('a', { class: 'btn ghost', href: edit }, 'עריכה') : null,
+              el('button', { type: 'button', class: 'btn ghost', onclick: function () { d.ignorePairs.push([s.from, s.to]); touch(); draw(); } }, 'לא מתאים / טופל')));
+          });
+          if (!sg.length) box.append(el('p', { class: 'help', text: 'אין הצעות כרגע.' }));
+          body.append(box);
+        }
+        // Settings
+        var rel = el('select', { id: 'rel-count' });
+        [['', 'ברירת מחדל (4)'], ['0', 'כבוי'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6']].forEach(function (o) { rel.append(el('option', { value: o[0], text: o[1] })); });
+        rel.value = d.related.count === undefined ? '' : String(d.related.count);
+        rel.addEventListener('change', function () { if (rel.value === '') delete d.related.count; else d.related.count = Number(rel.value); touch(); });
+        var exc = el('input', { type: 'text', id: 'rel-ex', dir: 'ltr', placeholder: 'למשל: 120, 305' }); exc.value = (d.related.exclude || []).join(', ');
+        exc.addEventListener('input', function () { d.related.exclude = exc.value.split(/[\s,]+/).filter(Boolean); touch(); });
+        body.append(el('section', { class: 'card' }, el('h2', { text: 'שאלות קשורות בשו״ת' }),
+          el('p', { class: 'help', text: 'בסוף כל תשובה מופיעות שאלות קרובות בנושא, שנבחרות אוטומטית לפי המילים. כך כל שאלה מקושרת לאחרות, וגם הגולש ממשיך לקרוא.' }),
+          el('div', { class: 'fld' }, el('label', { for: 'rel-count', text: 'כמה שאלות קשורות להציג' }), rel),
+          el('div', { class: 'fld' }, el('label', { for: 'rel-ex', text: 'שאלות שלא יציגו ״שאלות קשורות״ ולא יוצעו באחרות (מספרי שאלה)' }), exc, el('small', { class: 'help', text: 'לשאלות רגישות, למשל. המספר הוא מה שמופיע בכתובת השאלה.' }))));
+        var al = el('section', { class: 'card' }, el('h2', { text: 'שמות נוספים לעמודים' }),
+          el('p', { class: 'help', text: 'ההצעות מחפשות את כותרת העמוד בטקסט. אם עמוד נקרא גם בשמות אחרים, הוסיפו אותם כאן (מופרדים בפסיק), וגם הם ייחשבו. לפחות 3 אותיות.' }));
+        Object.keys(d.aliases).forEach(function (k) {
+          var p = el('input', { type: 'text', dir: 'ltr', placeholder: '/library/zot-hatorah/', 'aria-label': 'כתובת העמוד' }); p.value = k;
+          var t = el('input', { type: 'text', placeholder: 'שם נוסף, שם נוסף', 'aria-label': 'שמות נוספים' }); t.value = d.aliases[k].join(', ');
+          var sync = function () { var vals = t.value.split(/\s*,\s*/); delete d.aliases[k]; k = p.value.trim(); d.aliases[k] = vals; touch(); };
+          p.addEventListener('input', sync); t.addEventListener('input', sync);
+          al.append(el('div', { class: 'row' }, p, t, el('button', { type: 'button', class: 'btn ghost dng', 'aria-label': 'הסרה', onclick: function () { delete d.aliases[k]; touch(); draw(); } }, icon('trash'))));
+        });
+        al.append(el('button', { type: 'button', class: 'add', onclick: function () { d.aliases[''] = []; touch(); draw(); } }, icon('plus'), 'שם נוסף לעמוד'));
+        body.append(al);
+        var hidden = d.ignore.length + d.ignorePairs.length;
+        if (hidden) {
+          var ig = el('details', { class: 'card sec' }, el('summary', {}, el('h2', { text: 'מה הוסתר' }), el('span', { class: 'cnt', text: String(hidden) })), el('p', { class: 'help', text: 'ממצאים והצעות שסימנתם כלא רלוונטיים. ביטול מחזיר אותם לרשימה אחרי הפרסום הבא.' }));
+          d.ignore.forEach(function (x, i) { ig.append(el('div', { class: 'row' }, el('span', { class: 'grow', text: ((AUDIT[x.code] || [x.code])[0]) + ' · ' + (x.path || '—') }), el('button', { type: 'button', class: 'btn ghost', onclick: function () { d.ignore.splice(i, 1); touch(); draw(); } }, 'ביטול'))); });
+          d.ignorePairs.forEach(function (x, i) { ig.append(el('div', { class: 'row' }, el('span', { class: 'grow', text: 'הצעה: ' + x[0] + ' ← ' + x[1] }), el('button', { type: 'button', class: 'btn ghost', onclick: function () { d.ignorePairs.splice(i, 1); touch(); draw(); } }, 'ביטול'))); });
+          body.append(ig);
+        }
+        body.append(el('section', { class: 'card' }, el('h2', { text: 'איך מקבלים התראה' }), el('ul', { class: 'help' },
+          el('li', { text: 'בכל יום ראשון האתר נבדק מחדש. כשמופיעה בעיה חדשה נפתח או מתעדכן דיווח ב־GitHub (התווית link-audit), ו־GitHub שולח עליו מייל לכל מי שעוקב אחרי המאגר.' }),
+          el('li', { text: 'אם נמצאה שגיאה (קישור שבור או עמוד יתום), גם הבדיקה עצמה מסומנת ככישלון ונשלח מייל נוסף.' }),
+          el('li', { text: 'כשאין יותר מה לטפל, הדיווח נסגר לבד ולא נשלח דבר.' }),
+          el('li', { text: 'כדי לקבל או להפסיק לקבל את המיילים: בדף המאגר ב־GitHub לוחצים Watch ← Custom ← Issues, ובהגדרות החשבון ב־Notifications בוחרים מייל.' }),
+          el('li', { text: 'כתובות מייל לא נשמרות באתר או בקוד. הן נשארות בחשבון ה־GitHub של כל אחד.' }))));
+        window.scrollTo(0, y);
+      };
+      draw();
+      var saveLinks = function () {
+        var f = cur, bad = linksProblem(f.data); if (bad) return say(bad, 'bad');
+        commit(f.path, auditTidy(f.data), f.indent, f.sha, 'עריכת תוכן: הגדרות קישורים', '/').then(function (r) { f.sha = r.content.sha; f.fresh = false; f.orig = JSON.stringify(f.data); status(); }, saveFail(saveLinks));
+      };
+      side.append(saveBox(saveLinks));
+      status();
+    }, function (e) { m.textContent = ''; say(e.message, 'bad'); });
+  }
+
   // The name shown in the public history of the site's repository (never the email).
   function nameDialog() {
     var inp = el('input', { type: 'text', maxlength: '40', placeholder: 'למשל: יעקב כהן' }); inp.value = myName;
@@ -1296,6 +1452,7 @@
     else if (h === '#/pages') pagesScreen();
     else if (h === '#/changes' && draft) changesScreen();
     else if (h === '#/log' && draft && publisher) logScreen();
+    else if (h === '#/links') linksScreen();
     else if (h === '#/editors' && owner) editorsScreen();
     else home();
   }

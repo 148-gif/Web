@@ -109,6 +109,20 @@ export function linkScores(paths, out, { damping = 0.85, rounds = 40 } = {}) {
   return new Map(paths.map((x) => [x, hi === lo ? 100 : Math.round(((Math.log(rank.get(x)) - lo) / (hi - lo)) * 100)]));
 }
 
+// data/link-audit.json: what the editor's links screen saves. Fails the build on a shape the audit cannot read.
+export function validateAuditConfig(c) {
+  const bad = (m) => { throw new Error('data/link-audit.json: ' + m); };
+  if (!c || typeof c !== 'object' || Array.isArray(c)) bad('must be an object');
+  const path = (x) => typeof x === 'string' && /^\/[^\s]*$/.test(x);
+  for (const x of c.ignore || []) if (!x || typeof x.code !== 'string' || !(x.path === '' || path(x.path))) bad('ignore needs { code, path }');
+  for (const x of c.ignorePairs || []) if (!Array.isArray(x) || x.length !== 2 || !x.every(path)) bad('ignorePairs needs [from, to] paths');
+  for (const [k, v] of Object.entries(c.aliases || {})) if (!path(k) || !Array.isArray(v) || !v.every((t) => typeof t === 'string' && t.trim().length >= 3)) bad(`aliases["${k}"] needs a list of phrases of 3 letters or more`);
+  const n = c.related?.count;
+  if (n !== undefined && !(Number.isInteger(n) && n >= 0 && n <= 8)) bad('related.count must be a whole number from 0 to 8');
+  if (c.related?.exclude !== undefined && !(Array.isArray(c.related.exclude) && c.related.exclude.every((x) => /^[\w-]+$/.test(String(x))))) bad('related.exclude must be a list of question ids');
+  return c;
+}
+
 const isGeneric = (a) => GENERIC.has(a.toLowerCase().replace(/[\s.,:;!?…«»"'״׳()\-–—>←→»]+/g, ' ').trim());
 
 export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle = 4, minSuggest = 8, config = {}, suggestFor = (p) => !isMinor(p.path) } = {}) {

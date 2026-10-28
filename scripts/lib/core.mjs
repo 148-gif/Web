@@ -1,6 +1,7 @@
 // Site settings, text helpers, data files and the page writer, shared by every section.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { validateAuditConfig } from './linkaudit.mjs';
 
 const SITE = 'היכל הקודש';
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when served from a sub-path
@@ -79,6 +80,8 @@ const institutions = read('institutions.json').filter((i) => !/דוגמה/.test(
 const pr = read('print.json');
 const yeshiva = read('yeshiva.json');
 const site = read('site.json');
+// Settings of the link audit and of "related questions", saved by the editor's links screen; the file may not exist yet.
+const linkAudit = (() => { try { return validateAuditConfig(read('link-audit.json')); } catch (e) { if (e.code === 'ENOENT') return {}; throw e; } })();
 // Sections not ready for visitors (data/site.json "hidden"): no pages are built, menu entries and cards
 // pointing at them are dropped, and inline links to them become plain text. Tracked in TODO.md.
 const HIDDEN = (site.hidden || []).map((x) => x.path);
@@ -143,4 +146,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { linkAudit, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

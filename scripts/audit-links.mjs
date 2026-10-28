@@ -1,23 +1,18 @@
 // Internal-link audit of the built site in dist/ (run after the build): node scripts/audit-links.mjs [--out report.md] [--json report.json] [--strict]
 // --config file (default data/link-audit.json: ignore, ignorePairs, aliases) and --previous report.json (marks what is new) are optional.
 // --strict exits 1 on errors (broken links, orphans); warnings and suggestions never fail. Rules: .claude/skills/internal-links/SKILL.md
-import { readdirSync, readFileSync, statSync, writeFileSync, existsSync } from 'node:fs';
-import { join, relative } from 'node:path';
-import { auditSite, formatReport, reportKeys, needsAttention } from './lib/linkaudit.mjs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { auditSite, formatReport, reportKeys, needsAttention, validateAuditConfig } from './lib/linkaudit.mjs';
+import { readDist } from './lib/auditdist.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, '');
 
-const files = {};
-const walk = (d) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.html')) files[relative('dist', p).split('\\').join('/')] = readFileSync(p, 'utf8'); } };
-walk('dist');
-
-const sm = existsSync('dist/sitemap.xml') ? readFileSync('dist/sitemap.xml', 'utf8') : '';
-const sitemap = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].replace(/^https?:\/\/[^/]+/, ''));
+const { files, sitemap } = readDist();
 
 const cfgFile = opt('--config') || 'data/link-audit.json';
-const config = existsSync(cfgFile) ? JSON.parse(readFileSync(cfgFile, 'utf8')) : {};
+const config = existsSync(cfgFile) ? validateAuditConfig(JSON.parse(readFileSync(cfgFile, 'utf8'))) : {};
 const prevFile = opt('--previous');
 const previous = prevFile && existsSync(prevFile) ? JSON.parse(readFileSync(prevFile, 'utf8')).keys : null;
 
