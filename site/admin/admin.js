@@ -1,7 +1,8 @@
 // Site editor (/admin/): dashboard, pages and topics, the site's content files, the Q&A archive and the editors list.
-// Data lives in data/*.json in the GitHub repository; every save is a commit to the publishing branch, and the Pages
-// workflow then tests, builds and publishes it. Sign-in: with Google through the editor server (cms-worker/, when
-// config.json has "worker"), which holds the GitHub key and checks the email; otherwise with a personal GitHub token.
+// Data lives in data/*.json in the GitHub repository. Through the editor server (cms-worker/, when config.json has "worker";
+// sign-in with Google) a save is a draft that the site does not show; a publisher then publishes chosen drafts in one commit,
+// and the Pages workflow tests, builds and publishes it. Without a server (a personal GitHub token) every save is a commit
+// straight to the publishing branch.
 // Screens are addressed by the URL hash (#/pages, #/file/uman.json, #/shut/123 …), so the browser's back button works.
 (function () {
   'use strict';
@@ -51,6 +52,7 @@
     letter: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/>',
     sparkle: '<path d="M12 3l1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8z"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
   };
   function icon(n, cls) { var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'ico' + (cls ? ' ' + cls : '')); s.setAttribute('aria-hidden', 'true'); s.innerHTML = ICON[n] || ICON.page; return s; }
 
@@ -111,7 +113,9 @@
   var KINDS = { page: ['דף יחיד', 'דף אחד, כמו ״אומן״. בתפריט של האתר הוא נפתח ישר'], collection: ['אוסף', 'הרבה פריטים מאותו סוג, כמו הספרייה. אפשר לחלק לנושאים'] };
   // "pages" is the old name of a collection without categories.
   var kindOf = function (t) { return t && t.kind === 'page' ? 'page' : 'collection'; };
-  var cfg, token, owner = false, me = '';
+  var cfg, token, owner = false, publisher = false, me = '', myName = '';
+  var draft = false; // saves go to drafts (editor server) instead of straight to the branch
+  var pending = { list: [], at: 0 }; // unpublished drafts, as the server last said
   var cur = null; // the open file: { path, sha, indent, data, orig }
   var cache = { topics: null, pages: null, shutIndex: null };
   // What was just created, changed or removed here. The published lists (pages/index.json, shut/index.json) lag a minute or two
@@ -136,17 +140,30 @@
       return r.text().then(function (t) {
         var msg = ''; try { msg = JSON.parse(t).message; } catch { /* not JSON */ }
         var e = new Error(r.status === 409 || r.status === 422 ? 'מישהו אחר שמר את אותו תוכן בינתיים. טענו את הדף מחדש ונסו שוב.' : cfg.worker && msg && r.status !== 404 ? msg : r.status === 401 ? 'המפתח לא תקין או שפג תוקפו' : r.status === 404 ? 'לא נמצא' : 'שגיאה ' + r.status);
-        e.status = r.status; throw e;
+        e.status = r.status; try { e.body = JSON.parse(t); } catch { e.body = {}; } throw e;
       });
     });
+  }
+  // The editor server's own calls (changes, publish, history, log, names …).
+  function wapi(method, path, body) {
+    return fetch(cfg.worker.replace(/\/$/, '') + path, { method: method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
+      .then(function (r) {
+        return r.text().then(function (t) {
+          var j = {}; try { j = t ? JSON.parse(t) : {}; } catch { /* not JSON */ }
+          if (r.status === 401) signout('פג תוקף ההתחברות. התחברו שוב.');
+          if (!r.ok) { var e = new Error(j.message || 'שגיאה ' + r.status); e.status = r.status; e.body = j; throw e; }
+          return j;
+        });
+      });
   }
   var ref = function () { return '?ref=' + encodeURIComponent(cfg.branch); };
   function b64e(s) { var b = new TextEncoder().encode(s), r = ''; for (var i = 0; i < b.length; i += 0x8000) r += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(r); }
   function b64d(s) { return new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g, '')), function (c) { return c.charCodeAt(0); })); }
-  function getFile(path) { return api('contents/' + path + ref()).then(function (f) { var text = b64d(f.content); var m = /^\n?( +)"/m.exec(text); var data = JSON.parse(text); return { path: path, sha: f.sha, indent: m ? m[1].length : 2, data: data, orig: JSON.stringify(data) }; }); }
-  function putFile(path, data, indent, sha, msg) {
+  function getFile(path) { return api('contents/' + path + ref()).then(function (f) { var text = b64d(f.content); var m = /^\n?( +)"/m.exec(text); var data = JSON.parse(text); return { path: path, sha: f.sha, indent: m ? m[1].length : 2, data: data, orig: JSON.stringify(data), draft: !!f.draft }; }); }
+  function putFile(path, data, indent, sha, msg, auto) {
     var body = { message: msg, content: b64e(JSON.stringify(data, null, indent) + '\n'), branch: cfg.branch };
     if (sha) body.sha = sha;
+    if (auto) body.auto = true;
     return api('contents/' + path, { method: 'PUT', body: JSON.stringify(body) });
   }
   function delFile(path, sha, msg) { return api('contents/' + path, { method: 'DELETE', body: JSON.stringify({ message: msg, sha: sha, branch: cfg.branch }) }).then(function (r) { if (r && r.commit) published(r.commit.sha, null); return r; }); }
@@ -160,11 +177,51 @@
     clearTimeout(tm); tm = setTimeout(function () { m.hidden = true; }, kind === 'bad' || link ? 10000 : 5000);
   }
   function dirty() { return !!cur && JSON.stringify(cur.data) !== cur.orig; }
-  window.addEventListener('beforeunload', function (e) { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
-  function leave() { return !dirty() || confirm('יש שינויים שלא נשמרו. לצאת בלי לשמור?'); }
-  var stT;
-  function touch() { clearTimeout(stT); stT = setTimeout(status, 120); }
-  function status() { var s = $('#savestate'); if (!s) return; var d = dirty(); s.textContent = d ? 'יש שינויים שלא נשמרו' : 'כל השינויים שמורים'; s.className = 'state' + (d ? ' dirty' : ''); var u = $('#undo'); if (u) u.hidden = !d; }
+  window.addEventListener('beforeunload', function (e) { if (dirty()) { keepLocal(); e.preventDefault(); e.returnValue = ''; } });
+  function leave() { if (!dirty()) return true; if (!confirm('יש שינויים שלא נשמרו. לצאת בלי לשמור?')) return false; dropLocal(cur); return true; }
+  var stT, locT, autoT;
+  var AUTO_MS = 30000; // idle time before a long session is saved to the server as a draft (config.json "autosaveSeconds")
+  function touch() {
+    clearTimeout(stT); stT = setTimeout(status, 120);
+    clearTimeout(locT); locT = setTimeout(keepLocal, 2000);
+    clearTimeout(autoT); if (draft) autoT = setTimeout(autosave, AUTO_MS);
+  }
+  function status() {
+    var s = $('#savestate'); if (!s) return; var d = dirty();
+    s.textContent = d ? 'יש שינויים שלא נשמרו' : draft && cur && cur.draft ? 'נשמר כטיוטה, עוד לא פורסם' : 'כל השינויים שמורים'; s.className = 'state' + (d ? ' dirty' : '');
+    var u = $('#undo'); if (u) u.hidden = !d;
+    var dd = $('#undraft'); if (dd) dd.hidden = d || !(cur && cur.draft);
+  }
+  // A copy of what is being typed is kept in this browser every couple of seconds (and offered back if the tab was closed or
+  // the computer crashed); after ~30 seconds without typing it is also saved to the server as a draft, without a log entry.
+  var localKey = function (f) { return 'cms-draft:' + f.path; };
+  function keepLocal() {
+    if (!cur || cur.fresh) return;
+    try { if (dirty()) localStorage.setItem(localKey(cur), JSON.stringify({ base: cur.sha, t: Date.now(), data: cur.data })); else localStorage.removeItem(localKey(cur)); } catch { /* storage blocked: nothing kept */ }
+  }
+  function dropLocal(f) { try { if (f) localStorage.removeItem(localKey(f)); } catch { /* storage blocked */ } }
+  // Called when a screen has loaded a file: offer the copy kept in this browser, if it holds something the server does not.
+  function applyLocal(f) {
+    if (!f || f.fresh) return;
+    var k = localKey(f), v = null;
+    try { v = JSON.parse(localStorage.getItem(k) || 'null'); } catch { /* unreadable */ }
+    if (!v) return;
+    if (JSON.stringify(v.data) === JSON.stringify(f.data)) { dropLocal(f); return; }
+    var changed = v.base !== f.sha;
+    if (confirm('נמצאו שינויים שלא נשמרו מ־' + new Date(v.t).toLocaleString('he-IL') + '.' + (changed ? '\n\nשימו לב: מישהו שמר את הקובץ הזה מאז, ושמירה תדרוס את השינוי שלו.' : '') + '\n\nלשחזר אותם?')) f.data = v.data;
+    else dropLocal(f);
+  }
+  function autosave() {
+    var f = cur;
+    if (!draft || !f || saving || !dirty() || (f.check && f.check())) return;
+    var body = f.clean ? f.clean(f.data) : f.data, snapshot = JSON.stringify(f.data);
+    saving = true;
+    putFile(f.path, body, f.indent, f.sha, 'שמירה אוטומטית', true).then(function (r) {
+      f.sha = r.content.sha; f.draft = true; f.fresh = false;
+      if (cur === f) f.orig = snapshot; // typed since: still unsaved
+      dropLocal(f); refreshPending(); status();
+    }, function () { /* silent: the next edit tries again, and the copy in this browser stays */ }).then(function () { saving = false; });
+  }
 
   // ---- web addresses from Hebrew titles ----
   var TR = { 'א': 'a', 'ב': 'b', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'v', 'ז': 'z', 'ח': 'ch', 'ט': 't', 'י': 'y', 'כ': 'k', 'ך': 'k', 'ל': 'l', 'מ': 'm', 'ם': 'm', 'נ': 'n', 'ן': 'n', 'ס': 's', 'ע': 'a', 'פ': 'p', 'ף': 'f', 'צ': 'tz', 'ץ': 'tz', 'ק': 'k', 'ר': 'r', 'ש': 'sh', 'ת': 't' };
@@ -277,7 +334,12 @@
       if (built) built[1].forEach(function (f) { nav.append(link('#/file/' + f[0], f[2], f[1])); });
       mine.forEach(function (t) { nav.append(link('#/topic/' + t.slug, t.icon || 'book', t.title)); });
     });
-    nav.append(el('h3', { text: 'ניהול' }), link('#/file/site.json', 'gear', 'הגדרות האתר'));
+    nav.append(el('h3', { text: 'ניהול' }));
+    if (draft) {
+      var pl = link('#/changes', 'list', 'שינויים ממתינים'); pl.append(el('b', { id: 'hi-count', class: 'nb', text: String(pending.list.length) })); nav.append(pl);
+      if (publisher) nav.append(link('#/log', 'clock', 'יומן פעילות'));
+    }
+    nav.append(link('#/file/site.json', 'gear', 'הגדרות האתר'));
     if (owner) nav.append(link('#/editors', 'users', 'עורכים'));
     mark(location.hash || '#/');
   }
@@ -290,24 +352,82 @@
   function viewLink(p, text, cls) { return el('a', { class: 'btn ghost' + (cls ? ' ' + cls : ''), href: '..' + p, target: '_blank', rel: 'noopener' }, icon('eye'), text || 'צפייה באתר'); }
   function loading(m) { m.append(el('p', { class: 'loading', text: 'טוען…' })); }
 
-  // Publish box, shared by every editing screen: state, save, undo.
+  // Save box, shared by every editing screen. With the editor server a save is a draft and publishing is a separate step.
+  var preselect = null; // the file to tick first on the changes screen
   function saveBox(onSave) {
     saveBoxState();
-    return el('div', { class: 'card pub' },
-      el('h3', { text: 'פרסום' }),
+    var box = el('div', { class: 'card pub' },
+      el('h3', { text: draft ? 'שמירה ופרסום' : 'פרסום' }),
       el('p', { id: 'savestate', class: 'state', text: 'כל השינויים שמורים' }),
-      el('button', { type: 'button', class: 'btn pri wide', id: 'savebtn', onclick: onSave }, 'שמירה ופרסום'),
-      el('button', { type: 'button', class: 'btn ghost wide', id: 'undo', hidden: true, onclick: function () { if (confirm('לבטל את כל השינויים שלא נשמרו?')) { cur.data = JSON.parse(cur.orig); route(true); } } }, 'ביטול השינויים'),
+      el('button', { type: 'button', class: 'btn pri wide', id: 'savebtn', onclick: onSave }, draft ? 'שמירה' : 'שמירה ופרסום'));
+    if (draft) {
+      box.append(
+        publisher ? el('button', { type: 'button', class: 'btn ghost wide', id: 'topub', onclick: function () { if (dirty()) return say('שמרו קודם, ואז לחצו על ״לפרסום״.', 'bad'); preselect = cur && cur.path; location.hash = '#/changes'; } }, 'לפרסום…') : null,
+        el('button', { type: 'button', class: 'btn ghost wide', id: 'hist', onclick: function () { if (cur && !cur.fresh) historyDialog(cur); } }, icon('clock'), 'גרסאות קודמות'),
+        el('button', { type: 'button', class: 'btn ghost wide dng', id: 'undraft', hidden: true, onclick: dropDraft }, 'ביטול הטיוטה, חזרה למה שבאתר'));
+    }
+    box.append(
+      el('button', { type: 'button', class: 'btn ghost wide', id: 'undo', hidden: true, onclick: function () { if (confirm('לבטל את כל השינויים שלא נשמרו?')) { dropLocal(cur); cur.data = JSON.parse(cur.orig); route(true); } } }, 'ביטול השינויים'),
       el('p', { id: 'pubstate', class: 'pubstate', hidden: true }),
-      el('p', { class: 'help', text: 'אחרי השמירה האתר מתעדכן תוך דקה או שתיים. קיצור מקלדת: Ctrl+S' }));
+      el('p', { class: 'help', text: draft ? 'השמירה לא משנה את האתר: השינוי נשמר כטיוטה ומחכה לפרסום' + (publisher ? '.' : ' על ידי מי שמורשה לפרסם.') + ' קיצור מקלדת: Ctrl+S' : 'אחרי השמירה האתר מתעדכן תוך דקה או שתיים. קיצור מקלדת: Ctrl+S' }));
+    return box;
   }
-  // The publish state belongs to the last save, not to the screen: show it again on whichever screen opens next.
-  function saveBoxState() { setTimeout(showPub, 0); }
+  // The publish state belongs to the last publish, not to the screen: show it again on whichever screen opens next.
+  function saveBoxState() { setTimeout(function () { showPub(); status(); }, 0); }
+  function dropDraft() {
+    var f = cur;
+    if (!f || !confirm('לבטל את הטיוטה ולחזור למה שמופיע עכשיו באתר? אפשר יהיה לשחזר אותה רק מהגרסאות שפורסמו.')) return;
+    wapi('POST', '/discard', { paths: [f.path] }).then(function () { forget(); say('הטיוטה בוטלה.', 'ok'); refreshPending(); route(true); }, function (e) { say(e.message, 'bad'); });
+  }
+  // Lists built from the repository may now be out of date.
+  function forget() { cache.topics = null; cache.pages = null; cache.shutIndex = null; }
   var saving = false;
   function commit(path, data, indent, sha, msg, url) {
     if (saving) return Promise.reject(new Error('השמירה הקודמת עוד לא הסתיימה'));
     saving = true; var b = $('#savebtn'); if (b) { b.disabled = true; b.textContent = 'שומר…'; }
-    return putFile(path, data, indent, sha, msg).then(function (r) { published(r.commit.sha, url); return r; }).finally(function () { saving = false; if (b) { b.disabled = false; b.textContent = 'שמירה ופרסום'; } });
+    return putFile(path, data, indent, sha, msg).then(function (r) {
+      clearTimeout(locT); clearTimeout(autoT); dropLocal({ path: path });
+      if (draft) { refreshPending(); say('נשמר כטיוטה. האתר עוד לא השתנה, והשינוי יופיע בו אחרי פרסום.', 'ok'); } else published(r.commit.sha, url);
+      return r;
+    }).finally(function () { saving = false; if (b) { b.disabled = false; b.textContent = draft ? 'שמירה' : 'שמירה ופרסום'; } });
+  }
+  // A save that found the file changed meanwhile: the editor's text is kept; they choose to reload (their text is offered back)
+  // or to save over the other change.
+  function saveFail(retry) {
+    return function (e) {
+      if (!(draft && e.status === 409)) return say(e.message, 'bad');
+      keepLocal();
+      var dlg = el('dialog', { class: 'dlg' }, el('h2', { text: 'הקובץ השתנה בינתיים' }),
+        el('p', { text: 'מישהו אחר שמר את הקובץ הזה אחרי שפתחתם אותו. הטקסט שכתבתם נשמר בדפדפן ולא אבד.' }),
+        el('p', { class: 'acts' },
+          el('button', { type: 'button', class: 'btn pri', onclick: function () { dlg.close(); route(true); } }, 'טעינה מחדש (ואז אפשר לשחזר את הטקסט שלי)'),
+          el('button', { type: 'button', class: 'btn ghost dng', onclick: function () {
+            dlg.close();
+            api('contents/' + cur.path + ref()).then(function (f) { cur.sha = f.sha; retry(); }, function (x) { if (x.status === 404) { cur.sha = null; retry(); } else say(x.message, 'bad'); });
+          } }, 'שמירה בכל זאת, על חשבון השינוי של האחר'),
+          el('button', { type: 'button', class: 'btn ghost', onclick: function () { dlg.close(); } }, 'ביטול')));
+      dlg.addEventListener('close', function () { dlg.remove(); });
+      document.body.append(dlg); dlg.showModal();
+    };
+  }
+  // Header chip: how many drafts wait to be published, and a warning when they have waited for days.
+  var OLD_DAYS = 3;
+  function drawPend() {
+    var c = $('#pend'); if (!c) return;
+    c.hidden = !draft;
+    var n = pending.list.length, oldest = pending.list.reduce(function (a, x) { return Math.min(a, x.created || a); }, Date.now()), old = n && Date.now() - oldest > OLD_DAYS * 86400000;
+    c.textContent = n ? n + ' שינויים ממתינים לפרסום' : 'אין שינויים ממתינים';
+    c.className = 'hl pend' + (n ? ' has' : '') + (old ? ' old' : '');
+    c.title = old ? 'יש שינויים שממתינים לפרסום כבר ' + Math.floor((Date.now() - oldest) / 86400000) + ' ימים' : '';
+    var h = $('#hi-count'); if (h) h.textContent = String(n);
+  }
+  function refreshPending() {
+    if (!draft) return Promise.resolve();
+    return wapi('GET', '/changes').then(function (j) {
+      pending = { list: j.changes || [], at: Date.now() };
+      if (cur) cur.draft = pending.list.some(function (x) { return x.path === cur.path; });
+      drawPend(); status();
+    }, function () { /* the chip keeps its last number */ });
   }
   // After a save: follow it until it is really on the site, as Decap and CloudCannon show the state of the build.
   // The site's run for the commit says whether it waits, runs, failed, or was folded into a newer save (deploys are never cut
@@ -323,7 +443,7 @@
   function setPub(state, url) { pub = { state: state, url: url === undefined ? pub.url : url }; showPub(); }
   function published(sha, url) {
     mine.push(sha);
-    say('נשמר. האתר מתעדכן, זה לוקח דקה או שתיים…', 'ok');
+    say(draft ? 'פורסם. האתר מתעדכן, זה לוקח דקה או שתיים…' : 'נשמר. האתר מתעדכן, זה לוקח דקה או שתיים…', 'ok');
     setPub('wait', url || null);
     var t0 = Date.now(), done = false;
     var newest = function () { return mine[mine.length - 1] === sha; };
@@ -352,14 +472,15 @@
 
   // ---- data shared by several screens ----
   function topics(force) { if (cache.topics && !force) return Promise.resolve(cache.topics); return getFile('data/topics.json').then(function (f) { cache.topics = f; return f; }); }
-  function pageFromFile(slug) { return getFile('data/pages/' + slug + '.json').then(function (p) { return { slug: slug, title: p.data.title, topic: p.data.topic, category: p.data.category || '' }; }); }
+  function pageFromFile(slug) { return getFile('data/pages/' + slug + '.json').then(function (p) { return { slug: slug, title: p.data.title, topic: p.data.topic, category: p.data.category || '', draft: !!p.draft }; }); }
   // Which pages exist comes from the repository itself (always current, and a deleted page is gone at once); the published list
   // only supplies their titles and categories, and the notes above cover what changed since it was built.
   function pages(force) {
     if (cache.pages && !force) return Promise.resolve(cache.pages);
     var published = fetch('pages/index.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('no index'); return r.json(); })
       .then(function (rows) { var m = {}; rows.forEach(function (r) { m[r[0]] = { slug: r[0], topic: r[1], title: r[2], category: r[3] || '' }; }); return m; }, function () { return null; });
-    var listing = api('contents/data/pages' + ref()).then(function (fs) { return fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { return x.name.replace(/\.json$/, ''); }); }, function () { return null; });
+    var drafts = {};
+    var listing = api('contents/data/pages' + ref()).then(function (fs) { return fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { var n = x.name.replace(/\.json$/, ''); if (x.draft) drafts[n] = 1; return n; }); }, function () { return null; });
     return Promise.all([published, listing]).then(function (r) {
       var base = r[0] || {}, names = r[1];
       if (!names) names = Object.keys(base).filter(function (k) { return !(recent.pages[k] && recent.pages[k].e === null); }).concat(Object.keys(recent.pages).filter(function (k) { return recent.pages[k].e && !base[k]; }));
@@ -368,7 +489,8 @@
         var n = recent.pages[slug], mine = n && n.e;
         if (mine && base[slug] && base[slug].title === mine.title && base[slug].topic === mine.topic && base[slug].category === mine.category) { delete recent.pages[slug]; mine = null; } // the published list has caught up
         var e = mine || base[slug];
-        if (e) out.push(e); else missing.push(slug);
+        if (drafts[slug]) missing.push(slug); // an unpublished draft: its title and place come from the draft itself
+        else if (e) out.push(e); else missing.push(slug);
       });
       Object.keys(recent.pages).forEach(function (k) { if (recent.pages[k].e === null && names.indexOf(k) < 0) delete recent.pages[k]; });
       recentSave();
@@ -386,19 +508,21 @@
   // ---- screens ----
   function home() {
     var m = main();
-    m.append(head('שלום' + (me ? ', ' + me.split('@')[0] : ''), 'מה תרצו לעשות היום?'));
+    m.append(head('שלום' + (myName || me ? ', ' + (myName || me.split('@')[0]) : ''), 'מה תרצו לעשות היום?'));
     var tile = function (hash, ic, t, d, fn) { return el('a', { class: 'tile', href: hash || '#/', onclick: fn ? function (e) { e.preventDefault(); fn(); } : null }, el('span', { class: 'tic' }, icon(ic)), el('b', { text: t }), el('span', { text: d })); };
     m.append(el('div', { class: 'tiles' },
       tile(null, 'plus', 'נושא חדש', 'דף יחיד או אוסף חדש באתר', function () { topicDialog(); }),
       tile('#/pages', 'page', 'נושאים ודפים', 'הנושאים שיצרתם, והדפים בכל אחד'),
       tile('#/shut', 'chat', 'שו״ת ברסלב', 'חיפוש, עריכה והוספה של שאלות ותשובות'),
       tile('#/file/yavniel.json', 'mountain', 'זמני תפילות ושיעורים', 'עדכון המידע על יבנאל'),
-      owner ? tile('#/editors', 'users', 'עורכים', 'הוספה והסרה של מי שיכול לערוך') : null,
+      draft ? tile('#/changes', 'list', 'שינויים ממתינים', publisher ? 'מה נשמר ועוד לא באתר, ופרסום' : 'מה נשמר ועוד לא פורסם') : null,
+      owner ? tile('#/editors', 'users', 'עורכים', 'הוספה והסרה של מי שיכול לערוך, ומי מפרסם') : null,
       el('a', { class: 'tile', href: '../', target: '_blank', rel: 'noopener' }, el('span', { class: 'tic' }, icon('eye')), el('b', { text: 'צפייה באתר' }), el('span', { text: 'נפתח בלשונית חדשה' }))));
     m.append(el('section', { class: 'card how' }, el('h2', { text: 'איך זה עובד' }), el('ol', {},
       el('li', {}, el('b', { text: 'בוחרים' }), ' מהתפריט מה לערוך: דף שיצרתם, חלק קיים באתר, או שאלה מהשו״ת.'),
       el('li', {}, el('b', { text: 'משנים' }), ' את הטקסט בטופס. אפשר להוסיף, למחוק ולהזיז פריטים בחצים.'),
-      el('li', {}, el('b', { text: 'לוחצים ״שמירה ופרסום״' }), '. תוך דקה או שתיים השינוי מופיע באתר, ותופיע כאן הודעה שהאתר עודכן.'))));
+      draft ? el('li', {}, el('b', { text: 'שומרים' }), ' כטיוטה, ואחר כך ב״שינויים ממתינים״ בוחרים מה לפרסם. רק אחרי הפרסום השינוי מופיע באתר (תוך דקה או שתיים).')
+        : el('li', {}, el('b', { text: 'לוחצים ״שמירה ופרסום״' }), '. תוך דקה או שתיים השינוי מופיע באתר, ותופיע כאן הודעה שהאתר עודכן.'))));
     var recent = el('section', { class: 'card' }, el('h2', { text: 'הדפים שלכם' }));
     m.append(recent); loading(recent);
     pages().then(function (ps) {
@@ -476,7 +600,7 @@
         if (!hits.length) res.append(el('div', { class: 'empty' }, el('p', { class: 'help', text: all.length ? 'לא נמצא מה שחיפשתם.' : 'עדיין אין כאן ' + (coll ? 'פריטים' : 'דפים') + '.' }), all.length ? null : el('button', { type: 'button', class: 'btn pri', onclick: function () { newPage(slug); } }, icon('plus'), word + ' ראשון')));
         hits.forEach(function (p) {
           var c = cats.filter(function (x) { return x.id === p.category; })[0];
-          res.append(el('a', { class: 'row', href: '#/page/' + p.slug }, icon('page'), el('span', { class: 'grow', text: p.title }), c ? el('span', { class: 'tag', text: c.title }) : null));
+          res.append(el('a', { class: 'row', href: '#/page/' + p.slug }, icon('page'), el('span', { class: 'grow', text: p.title }), p.draft ? el('span', { class: 'tag draft', text: 'טיוטה' }) : null, c ? el('span', { class: 'tag', text: c.title }) : null));
         });
       };
       q.addEventListener('input', draw);
@@ -627,6 +751,8 @@
       if (!Array.isArray(p.blocks)) p.blocks = [];
       if (p.desc == null) p.desc = '';
       cur.orig = JSON.stringify(p);
+      cur.check = function () { return pageProblem(cur.data); };
+      applyLocal(cur); p = cur.data;
       m.textContent = '';
       var t = ts.filter(function (x) { return x.slug === p.topic; })[0];
       var single = kindOf(t) === 'page';
@@ -699,20 +825,24 @@
     Object.keys(BLOCKS).forEach(function (k) { menu.append(el('button', { type: 'button', onclick: function () { menu.hidden = true; onPick(k); } }, icon(BLOCKS[k].icon), el('b', { text: BLOCKS[k].name }), el('small', { text: BLOCKS[k].hint }))); });
     return el('div', { class: 'ins' }, btn, menu);
   }
+  function pageProblem(p) {
+    if (!p.title || !p.title.trim()) return 'חסרה כותרת לדף';
+    if ((p.blocks || []).some(function (b) { return b.type === 'links' && (b.items || []).some(function (l) { return !/^https:\/\/\S+$/.test(l.url || ''); }); })) return 'כל קישור צריך להתחיל ב־https://';
+    return '';
+  }
   function savePage(slug) {
-    var p = cur.data;
-    if (!p.title || !p.title.trim()) return say('חסרה כותרת לדף', 'bad');
-    if (p.blocks.some(function (b) { return b.type === 'links' && (b.items || []).some(function (l) { return !/^https:\/\/\S+$/.test(l.url || ''); }); })) return say('כל קישור צריך להתחיל ב־https://', 'bad');
+    var p = cur.data, bad = pageProblem(p);
+    if (bad) return say(bad, 'bad');
     var f = cur, oldTopic = JSON.parse(f.orig).topic;
     var tp = (cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === p.topic; })[0];
     commit(f.path, p, f.indent, f.sha, 'עריכת דף: ' + p.title, kindOf(tp) === 'page' ? '/' + p.topic + '/' : '/' + p.topic + '/' + slug + '/').then(function (r) {
       f.sha = r.content.sha; f.orig = JSON.stringify(p); pageEntry(slug, p); status();
       if (oldTopic !== p.topic) say('נשמר. שימו לב: הכתובת של הפריט השתנתה ל־/' + p.topic + '/' + slug + '/', 'ok');
-    }, function (e) { say(e.message, 'bad'); });
+    }, saveFail(function () { savePage(slug); }));
   }
   function delPage() {
     if (!confirm('למחוק את ״' + cur.data.title + '״ מהאתר? אי אפשר לבטל את זה מכאן.')) return;
-    delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { var gone = cur.path.replace(/^data\/pages\/|\.json$/g, ''), tp = cur.data.topic; note('pages', gone, null); cache.pages = null; cur = null; say('נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = kindOf((cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === tp; })[0]) === 'page' ? '#/pages' : '#/topic/' + tp; }, function (e) { say(e.message, 'bad'); });
+    delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { refreshPending(); var gone = cur.path.replace(/^data\/pages\/|\.json$/g, ''), tp = cur.data.topic; note('pages', gone, null); cache.pages = null; cur = null; say(draft ? 'נמחק בטיוטה. הדף יוסר מהאתר אחרי פרסום.' : 'נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = kindOf((cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === tp; })[0]) === 'page' ? '#/pages' : '#/topic/' + tp; }, function (e) { say(e.message, 'bad'); });
   }
   // Preview with the site's own stylesheet, in the markup the build uses (scripts/lib/sections/pages.mjs).
   function preview(p) {
@@ -740,6 +870,8 @@
     var m = main(); loading(m);
     getFile('data/' + name).then(function (f) {
       cur = f;
+      cur.check = function () { return fileProblem(name, cur.data); };
+      applyLocal(cur);
       m.textContent = '';
       var find = el('input', { type: 'search', placeholder: 'חיפוש בטקסט של העמוד…', 'aria-label': 'חיפוש בטקסט של העמוד' });
       m.append(head(meta.name, name === 'site.json' ? 'פרטי קשר, פרטי העמותה, נגישות, וחלקים שמוסתרים מהגולשים' : 'עריכת התוכן של העמוד הזה באתר', meta.url ? [viewLink(meta.url)] : null));
@@ -791,11 +923,15 @@
     dlg.addEventListener('close', function () { dlg.remove(); });
     document.body.append(dlg); dlg.showModal();
   }
+  function fileProblem(name, d) {
+    if (name === 'halacha.json' && d.some(function (x) { return !/^[\w-]+$/.test(String(x.id)) || !x.title; })) return 'לכל שאלה צריכה להיות כותרת';
+    if (name === 'site.json' && (d.hidden || []).some(function (h) { return !/^\/[\w/-]*$/.test(h.path || ''); })) return 'כל נתיב מוסתר צריך להתחיל ב־/';
+    return '';
+  }
   function saveFile(name) {
-    var f = cur;
-    if (name === 'halacha.json' && f.data.some(function (x) { return !/^[\w-]+$/.test(String(x.id)) || !x.title; })) return say('לכל שאלה צריכה להיות כותרת', 'bad');
-    if (name === 'site.json' && (f.data.hidden || []).some(function (h) { return !/^\/[\w/-]*$/.test(h.path || ''); })) return say('כל נתיב מוסתר צריך להתחיל ב־/', 'bad');
-    commit(f.path, f.data, f.indent, f.sha, 'עריכת תוכן: ' + (FILE[name] ? FILE[name].name : name), FILE[name] && FILE[name].url || '/').then(function (r) { f.sha = r.content.sha; f.orig = JSON.stringify(f.data); status(); }, function (e) { say(e.message, 'bad'); });
+    var f = cur, bad = fileProblem(name, f.data);
+    if (bad) return say(bad, 'bad');
+    commit(f.path, f.data, f.indent, f.sha, 'עריכת תוכן: ' + (FILE[name] ? FILE[name].name : name), FILE[name] && FILE[name].url || '/').then(function (r) { f.sha = r.content.sha; f.orig = JSON.stringify(f.data); status(); }, saveFail(function () { saveFile(name); }));
   }
 
   // ---- the Q&A archive: search in a light list, edit one entry at a time (data/shut-edits/<id>.json) ----
@@ -804,7 +940,14 @@
     return fetch('shut/index.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('רשימת השאלות עוד לא זמינה. נסו שוב בעוד כמה דקות.'); return r.json(); }).then(function (x) { cache.shutIndex = x; return x; });
   }
   // The published Q&A list with the notes laid over it: hidden questions are left out, edited ones show their new title, new ones are added.
-  function shutRows(idx) {
+  function shutDrafts() {
+    if (!draft) return Promise.resolve({});
+    return refreshPending().then(function () {
+      var its = pending.list.filter(function (x) { return /^data\/shut-edits\//.test(x.path) && x.status !== 'removed'; });
+      return Promise.all(its.map(function (it) { return getFile(it.path).then(function (f) { return [f.data.id, f.data.deleted ? { e: null } : { e: { kind: f.data.kind, title: f.data.title, date: f.data.date || '' } }]; }, function () { return null; }); }));
+    }).then(function (rows) { var o = {}; (Array.isArray(rows) ? rows : []).forEach(function (r) { if (r) o[String(r[0])] = r[1]; }); return o; });
+  }
+  function shutRows(idx, extra) {
     var byId = {}; idx.forEach(function (x) { byId[String(x[0])] = x; });
     Object.keys(recent.shut).forEach(function (id) {
       var n = recent.shut[id], row = byId[id];
@@ -812,8 +955,9 @@
       if (row && row[2] === n.e.title && row[3] === (n.e.date || '') && row[1] === n.e.kind) { delete recent.shut[id]; return; }
     });
     recentSave();
-    var out = idx.filter(function (x) { var n = recent.shut[String(x[0])]; return !(n && n.e === null); }).map(function (x) { var n = recent.shut[String(x[0])]; return n && n.e ? [x[0], n.e.kind, n.e.title, n.e.date || '', x[4]] : x; });
-    Object.keys(recent.shut).forEach(function (id) { if (recent.shut[id].e && !byId[id]) out.push([+id || id, recent.shut[id].e.kind, recent.shut[id].e.title, recent.shut[id].e.date || '', -1]); });
+    var ov = Object.assign({}, recent.shut, extra || {}); // drafts are newer than what was just published
+    var out = idx.filter(function (x) { var n = ov[String(x[0])]; return !(n && n.e === null); }).map(function (x) { var n = ov[String(x[0])]; return n && n.e ? [x[0], n.e.kind, n.e.title, n.e.date || '', x[4]] : x; });
+    Object.keys(ov).forEach(function (id) { if (ov[id].e && !byId[id]) out.push([+id || id, ov[id].e.kind, ov[id].e.title, ov[id].e.date || '', -1]); });
     return out;
   }
   function shutScreen() {
@@ -823,8 +967,8 @@
     m.append(head('שו״ת ברסלב', 'חפשו שאלה כדי לערוך אותה, או הוסיפו שאלה חדשה.', [el('a', { class: 'btn pri', href: '#/shut/new' }, icon('plus'), 'שאלה חדשה')]));
     m.append(el('div', { class: 'findbar big' }, icon('search'), q, kind));
     var res = el('div', { class: 'card results' }); m.append(res); loading(res);
-    shutIndex().then(function (published) {
-      var idx = shutRows(published);
+    Promise.all([shutIndex(), shutDrafts()]).then(function (r) {
+      var idx = shutRows(r[0], r[1]);
       var draw = function () {
         res.textContent = '';
         var words = q.value.trim().split(/\s+/).filter(Boolean);
@@ -859,12 +1003,14 @@
         });
       });
     }).then(function (f) {
-      cur = f; var x = f.data;
+      cur = f; cur.check = function () { return shutProblem(cur.data); }; cur.clean = shutClean; cur.fresh = isNew;
+      applyLocal(cur);
+      var x = f.data;
       m.textContent = '';
       m.append(el('p', { class: 'crumbs' }, el('a', { href: '#/shut', text: 'שו״ת ברסלב' }), ' › ', isNew ? 'שאלה חדשה' : '#' + x.id));
       if (x.deleted) {
         cur = null;
-        m.append(el('section', { class: 'card' }, el('h2', { text: 'השאלה הזאת מוסתרת מהאתר' }), el('button', { type: 'button', class: 'btn pri', onclick: function () { delFile(f.path, f.sha, 'החזרת שאלה ' + x.id).then(function () { cache.shutIndex = null; delete recent.shut[String(x.id)]; recentSave(); say('השאלה תחזור לאתר תוך דקה או שתיים.', 'ok'); location.hash = '#/shut'; }, function (e) { say(e.message, 'bad'); }); } }, 'החזרה לאתר')));
+        m.append(el('section', { class: 'card' }, el('h2', { text: 'השאלה הזאת מוסתרת מהאתר' }), el('button', { type: 'button', class: 'btn pri', onclick: function () { delFile(f.path, f.sha, 'החזרת שאלה ' + x.id).then(function () { refreshPending(); cache.shutIndex = null; delete recent.shut[String(x.id)]; recentSave(); say('השאלה תחזור לאתר תוך דקה או שתיים.', 'ok'); location.hash = '#/shut'; }, function (e) { say(e.message, 'bad'); }); } }, 'החזרה לאתר')));
         return;
       }
       var base = x.kind === 'letters' ? '/letters/' : '/shut/';
@@ -886,44 +1032,230 @@
       status();
     }).catch(function (e) { m.textContent = ''; say(e.message, 'bad'); });
   }
+  function shutClean(x) { return Object.assign({}, x, { q: x.q.filter(function (p) { return p.trim(); }), a: x.a.filter(function (p) { return p.trim(); }) }); }
+  function shutProblem(x) {
+    if (!String(x.title || '').trim()) return 'חסרה כותרת';
+    return shutClean(x).a.length ? '' : 'חסרה תשובה';
+  }
   function saveShut(isNew) {
-    var f = cur, x = f.data;
-    if (!String(x.title || '').trim()) return say('חסרה כותרת', 'bad');
-    var clean = Object.assign({}, x, { q: x.q.filter(function (p) { return p.trim(); }), a: x.a.filter(function (p) { return p.trim(); }) });
-    if (!clean.a.length) return say('חסרה תשובה', 'bad');
+    var f = cur, x = f.data, bad = shutProblem(x);
+    if (bad) return say(bad, 'bad');
+    var clean = shutClean(x);
     commit(f.path, clean, 2, f.sha, (isNew ? 'שאלה חדשה ' : 'עריכת שאלה ') + x.id + ': ' + x.title, (x.kind === 'letters' ? '/letters/' : '/shut/') + x.id + '/').then(function (r) {
       f.sha = r.content.sha; f.data = clean; f.orig = JSON.stringify(clean); note('shut', String(x.id), { kind: clean.kind, title: clean.title, date: clean.date || '' }); status();
       if (isNew) { cur = null; location.hash = '#/shut/' + x.id; }
-    }, function (e) { say(e.message, 'bad'); });
+    }, saveFail(function () { saveShut(isNew); }));
   }
   function hideShut() {
     var f = cur;
     if (!confirm('להסתיר את השאלה ״' + f.data.title + '״ מהאתר? אפשר להחזיר אותה אחר כך.')) return;
     var id = f.data.id;
-    commit(f.path, { id: id, deleted: true }, 2, f.sha, 'הסתרת שאלה ' + id).then(function () { note('shut', String(id), null); cur = null; say('השאלה תוסתר מהאתר תוך דקה או שתיים.', 'ok'); location.hash = '#/shut'; }, function (e) { say(e.message, 'bad'); });
+    commit(f.path, { id: id, deleted: true }, 2, f.sha, 'הסתרת שאלה ' + id).then(function () { note('shut', String(id), null); cur = null; say(draft ? 'השאלה תוסתר מהאתר אחרי פרסום.' : 'השאלה תוסתר מהאתר תוך דקה או שתיים.', 'ok'); location.hash = '#/shut'; }, function (e) { say(e.message, 'bad'); });
   }
 
   // ---- editors (site owners only; the server checks this too) ----
-  function editorsApi(method, email) {
-    return fetch(cfg.worker.replace(/\/$/, '') + '/editors', { method: method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: email ? JSON.stringify({ email: email }) : undefined })
-      .then(function (r) { return r.json().then(function (j) { if (r.status === 401) signout('פג תוקף ההתחברות. התחברו שוב.'); if (!r.ok) throw new Error(j.message || 'שגיאה ' + r.status); return j.editors; }); });
-  }
+  function editorsApi(method, body) { return wapi(method, '/editors', body).then(function (j) { return j.editors; }); }
   function editorsScreen() {
     var m = main();
-    m.append(head('עורכים', 'מי שברשימה יכול להתחבר עם חשבון ה־Google שלו ולערוך את האתר. בעלי האתר תמיד יכולים להיכנס, ורק הם רואים את המסך הזה.'));
+    m.append(head('עורכים', 'מי שברשימה יכול להתחבר עם חשבון ה־Google שלו ולערוך את האתר. בעלי האתר תמיד יכולים להיכנס ולפרסם, ורק הם רואים את המסך הזה.'));
     var card = el('section', { class: 'card' }); m.append(card); loading(card);
+    var fail = function (x) { say(x.message, 'bad'); };
     var drawList = function (list) {
       card.textContent = '';
       var inp = el('input', { id: 'newed', type: 'email', class: 'ltr', dir: 'ltr', autocomplete: 'off', placeholder: 'name@gmail.com', required: true });
-      var form = el('form', { class: 'addrow' }, el('div', { class: 'fld grow' }, el('label', { for: 'newed', text: 'הוספת עורך: כתובת Gmail (או חשבון Google אחר)' }), inp), el('button', { type: 'submit', class: 'btn pri' }, icon('plus'), 'הוספה'));
-      form.addEventListener('submit', function (e) { e.preventDefault(); var v = inp.value.trim(); if (!v) return; editorsApi('PUT', v).then(function (l) { say('העורך נוסף: ' + v, 'ok'); drawList(l); }, function (x) { say(x.message, 'bad'); }); });
-      card.append(form, el('p', { class: 'help', text: 'כל עוד אפליקציית ההתחברות ב־Google במצב בדיקה, צריך להוסיף את העורך גם שם: Google Auth Platform › Audience › Test users.' }));
+      var nm = el('input', { id: 'newname', type: 'text', maxlength: '40', placeholder: 'למשל: יעקב' });
+      var pb = el('input', { id: 'newpub', type: 'checkbox' });
+      var form = el('form', { class: 'addrow' },
+        el('div', { class: 'fld grow' }, el('label', { for: 'newed', text: 'הוספת עורך: כתובת Gmail (או חשבון Google אחר)' }), inp),
+        el('div', { class: 'fld grow' }, el('label', { for: 'newname', text: 'שם תצוגה (יופיע בהיסטוריה הציבורית)' }), nm),
+        el('label', { class: 'chk' }, pb, 'מפרסם'),
+        el('button', { type: 'submit', class: 'btn pri' }, icon('plus'), 'הוספה'));
+      form.addEventListener('submit', function (e) { e.preventDefault(); var v = inp.value.trim(); if (!v) return; editorsApi('PUT', { email: v, name: nm.value.trim(), publisher: pb.checked }).then(function (l) { say('העורך נוסף: ' + v, 'ok'); drawList(l); }, fail); });
+      card.append(form, el('p', { class: 'help', text: 'כל עוד אפליקציית ההתחברות ב־Google במצב בדיקה, צריך להוסיף את העורך גם שם: Google Auth Platform › Audience › Test users. מפרסם יכול לפרסם שינויים לאתר; עורך רגיל רק שומר טיוטות.' }));
       if (!list.length) card.append(el('p', { class: 'help', text: 'עדיין אין עורכים נוספים.' }));
       var ul = el('ul', { class: 'eds' });
-      list.forEach(function (mail) { ul.append(el('li', {}, el('span', { class: 'ltr', text: mail }), el('button', { type: 'button', class: 'btn ghost sm dng', onclick: function () { if (confirm('להסיר את ' + mail + ' מהעורכים?')) editorsApi('DELETE', mail).then(function (l) { say('העורך הוסר: ' + mail, 'ok'); drawList(l); }, function (x) { say(x.message, 'bad'); }); } }, 'הסרה'))); });
+      list.forEach(function (ed) {
+        var name = el('input', { type: 'text', maxlength: '40', placeholder: 'שם תצוגה', 'aria-label': 'שם התצוגה של ' + ed.email }); name.value = ed.name || '';
+        name.addEventListener('change', function () { editorsApi('PUT', { email: ed.email, name: name.value.trim() }).then(function () { say('השם נשמר.', 'ok'); }, fail); });
+        var pub = el('input', { type: 'checkbox', 'aria-label': 'מפרסם: ' + ed.email }); pub.checked = !!ed.publisher;
+        pub.addEventListener('change', function () { editorsApi('PUT', { email: ed.email, publisher: pub.checked }).then(function () { say(pub.checked ? 'העורך יכול עכשיו לפרסם.' : 'העורך כבר לא יכול לפרסם.', 'ok'); }, function (x) { pub.checked = !pub.checked; fail(x); }); });
+        ul.append(el('li', {}, el('span', { class: 'ltr grow', text: ed.email }), name, el('label', { class: 'chk' }, pub, 'מפרסם'),
+          el('button', { type: 'button', class: 'btn ghost sm dng', onclick: function () { if (confirm('להסיר את ' + ed.email + ' מהעורכים?')) editorsApi('DELETE', { email: ed.email }).then(function (l) { say('העורך הוסר: ' + ed.email, 'ok'); drawList(l); }, fail); } }, 'הסרה')));
+      });
       card.append(ul);
     };
     editorsApi('GET').then(drawList, function (e) { card.textContent = ''; say(e.message, 'bad'); });
+  }
+
+  // ---- pending changes, publishing, history, activity log ----
+  var PAGE_RX = /^data\/pages\/([\w-]+)\.json$/, SHUT_RX = /^data\/shut-edits\/([\w-]+)\.json$/;
+  var STATUS = { added: 'חדש', modified: 'שונה', removed: 'נמחק' };
+  var fmt = function (ts) { return new Date(ts).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }); };
+  function pathInfo(path) {
+    var m;
+    if ((m = PAGE_RX.exec(path))) return { kind: 'page', label: 'דף', title: m[1], href: '#/page/' + m[1], id: m[1] };
+    if ((m = SHUT_RX.exec(path))) return { kind: 'shut', label: 'שו״ת', title: '#' + m[1], href: '#/shut/' + m[1], id: m[1] };
+    if (path === 'data/topics.json') return { kind: 'topics', label: 'נושאים', title: 'רשימת הנושאים', href: '#/pages' };
+    var name = path.replace(/^data\//, '');
+    return { kind: 'file', label: 'תוכן', title: FILE[name] ? FILE[name].name : name, href: '#/file/' + name };
+  }
+  function readJson(path, published) {
+    return api('contents/' + path + (published ? '?src=published' : ref())).then(function (f) { return JSON.parse(b64d(f.content)); }, function (e) { if (e.status === 404) return null; throw e; });
+  }
+  // What a pending change is, in words: a page by its title, topics by what was added, removed or changed, and so on.
+  function describe(item) {
+    var info = pathInfo(item.path), gone = item.status === 'removed';
+    if (info.kind === 'topics') {
+      return Promise.all([readJson(item.path, true), gone ? null : readJson(item.path)]).then(function (r) {
+        var before = r[0] || [], after = r[1] || [], by = function (xs) { var o = {}; xs.forEach(function (t) { o[t.slug] = t; }); return o; }, a = by(after), b = by(before), out = [];
+        after.forEach(function (t) { if (!b[t.slug]) out.push('נוסף ״' + t.title + '״'); else if (JSON.stringify(t) !== JSON.stringify(b[t.slug])) out.push('שונה ״' + t.title + '״'); });
+        before.forEach(function (t) { if (!a[t.slug]) out.push('הוסר ״' + t.title + '״'); });
+        return { title: info.title, detail: out.join(', '), data: after };
+      });
+    }
+    return readJson(item.path, gone).then(function (d) {
+      if (!d) return { title: info.title, detail: '' };
+      if (info.kind === 'page') return { title: d.title || info.title, detail: d.topic ? 'בנושא ' + d.topic : '', data: d };
+      if (info.kind === 'shut') return { title: d.deleted ? 'הסתרת שאלה ' + d.id : d.title || info.title, detail: d.deleted ? 'השאלה תוסתר מהאתר' : d.kind === 'letters' ? 'מכתב' : 'שו״ת', data: d };
+      return { title: info.title, detail: '', data: d };
+    }, function () { return { title: info.title, detail: '' }; });
+  }
+  // After a publish the site's own lists lag a minute or two: lay the published items over them meanwhile.
+  function noteFor(item, d) {
+    var info = pathInfo(item.path);
+    if (info.kind === 'page') { if (item.status === 'removed') note('pages', info.id, null); else if (d) note('pages', info.id, { slug: info.id, title: d.title, topic: d.topic, category: d.category || '' }); }
+    if (info.kind === 'shut' && d) { if (d.deleted || item.status === 'removed') note('shut', String(info.id), null); else note('shut', String(info.id), { kind: d.kind, title: d.title, date: d.date || '' }); }
+  }
+
+  function changesScreen() {
+    var m = main();
+    m.append(head('שינויים ממתינים', publisher ? 'מה שנשמר כטיוטה ועוד לא באתר. בחרו מה לפרסם, ולחצו על ״פרסום״.' : 'מה שנשמר כטיוטה ועוד לא באתר. מי שמורשה לפרסם יראה את זה כאן ויפרסם.'));
+    m.append(el('p', { id: 'pubstate', class: 'pubstate', hidden: true }));
+    var box = el('div'); m.append(box); loading(box);
+    var load = function () {
+      wapi('GET', '/changes?check=1').then(function (j) {
+        pending = { list: j.changes, at: Date.now() }; drawPend();
+        box.textContent = '';
+        showPub();
+        if (!j.changes.length) { box.append(el('div', { class: 'empty card' }, el('p', { text: 'אין שינויים ממתינים. כל מה ששמרתם כבר באתר.' }))); return; }
+        var rows = j.changes.map(function (c) { return { c: c, cb: el('input', { type: 'checkbox', 'aria-label': pathInfo(c.path).title }), title: el('b', { text: pathInfo(c.path).title }), detail: el('small', { class: 'help' }), d: null }; });
+        rows.forEach(function (r) { r.cb.checked = preselect ? r.c.path === preselect : publisher; });
+        preselect = null;
+        var all = el('input', { type: 'checkbox', 'aria-label': 'בחירת הכול' }); all.checked = rows.every(function (r) { return r.cb.checked; });
+        all.addEventListener('change', function () { rows.forEach(function (r) { r.cb.checked = all.checked; }); sync(); });
+        var chosen = function () { return rows.filter(function (r) { return r.cb.checked; }); };
+        var pubBtn = publisher ? el('button', { type: 'button', class: 'btn pri', id: 'dopub', onclick: function () { publishDialog(chosen(), load); } }, 'פרסום הנבחרים…') : null;
+        var disBtn = el('button', { type: 'button', class: 'btn ghost dng', id: 'dodiscard', onclick: function () {
+          var ch = chosen(); if (!ch.length || !confirm('לבטל ' + ch.length + ' שינויים שנשמרו כטיוטה? האתר יישאר כמו שהוא.')) return;
+          wapi('POST', '/discard', { paths: ch.map(function (r) { return r.c.path; }) }).then(function () { forget(); say('השינויים בוטלו.', 'ok'); load(); }, function (e) { say(e.message, 'bad'); });
+        } }, 'ביטול הנבחרים');
+        var sync = function () { var n = chosen().length; if (pubBtn) pubBtn.disabled = !n; disBtn.disabled = !n; all.checked = n === rows.length; };
+        box.append(el('div', { class: 'card chgbar' }, el('label', { class: 'chk' }, all, 'בחירת הכול'), el('span', { class: 'grow' }), pubBtn, disBtn));
+        var ul = el('ul', { class: 'chg card' });
+        rows.forEach(function (r) {
+          var c = r.c, info = pathInfo(c.path);
+          r.cb.addEventListener('change', sync);
+          ul.append(el('li', { class: c.conflict ? 'conflict' : '' }, r.cb,
+            el('div', { class: 'grow' }, el('div', {}, el('span', { class: 'tag', text: info.label }), ' ', r.title, ' ', el('span', { class: 'tag st-' + c.status, text: STATUS[c.status] })), r.detail,
+              el('small', { class: 'help', text: 'נערך על ידי ' + c.name + ' · ' + fmt(c.ts) }),
+              c.conflict ? el('small', { class: 'warn', text: 'הקובץ הזה השתנה גם באתר מאז שהתחלתם לערוך אותו. בפרסום תתבקשו להחליט.' }) : null),
+            c.status === 'removed' ? null : el('a', { class: 'btn ghost sm', href: info.href }, 'פתיחה')));
+          describe(c).then(function (d) { r.d = d; r.title.textContent = d.title; r.detail.textContent = d.detail; }, function () { /* the path stays as the title */ });
+        });
+        box.append(ul);
+        sync();
+      }, function (e) { box.textContent = ''; say(e.message, 'bad'); });
+    };
+    load();
+  }
+
+  // "Publish?" with the full list of what goes out; a file changed on the site meanwhile must be confirmed on its own.
+  function publishDialog(rows, reload) {
+    if (!rows.length) return;
+    var dlg = el('dialog', { class: 'dlg wide' }, el('h2', { text: 'פרסום לאתר' }));
+    var note_ = el('input', { type: 'text', id: 'pubnote', maxlength: '40', placeholder: 'למשל: עדכון זמני התפילות' });
+    var ul = el('ul', { class: 'chg plain' });
+    rows.forEach(function (r) { ul.append(el('li', {}, el('span', { class: 'tag', text: pathInfo(r.c.path).label }), ' ', el('b', { text: r.title.textContent }), ' ', el('span', { class: 'tag st-' + r.c.status, text: STATUS[r.c.status] }), el('small', { class: 'help', text: ' · ' + r.c.name + ' · ' + fmt(r.c.ts) }))); });
+    var err = el('p', { class: 'err', role: 'alert' }), force = [];
+    var go = el('button', { type: 'button', class: 'btn pri', id: 'confirmpub' }, 'כן, לפרסם');
+    var run = function () {
+      err.textContent = ''; go.disabled = true; go.textContent = 'מפרסם…';
+      wapi('POST', '/publish', { paths: rows.map(function (r) { return r.c.path; }), force: force, note: note_.value.trim() }).then(function (res) {
+        dlg.close();
+        rows.forEach(function (r) { noteFor(r.c, r.d && r.d.data); });
+        forget();
+        if (res.sha) { mine.push(res.sha); published(res.sha, null); } else say('השינויים כבר היו באתר.', 'ok');
+        refreshPending(); reload();
+      }, function (e) {
+        go.disabled = false; go.textContent = 'כן, לפרסם';
+        if (e.status === 409 && e.body && e.body.conflicts) {
+          force = e.body.conflicts;
+          err.textContent = 'הקבצים האלה שונו באתר החי מאז שהתחלתם לערוך אותם: ' + force.map(function (p) { return pathInfo(p).title; }).join(', ') + '. אם תמשיכו, השינוי שנעשה באתר יוחלף בגרסה שלכם (אפשר לשחזר אותו מהגרסאות הקודמות).';
+          go.textContent = 'לפרסם בכל זאת';
+        } else err.textContent = e.message;
+      });
+    };
+    go.addEventListener('click', run);
+    dlg.append(el('p', { text: rows.length + (rows.length === 1 ? ' שינוי יפורסם באתר:' : ' שינויים יפורסמו באתר:') }), ul,
+      el('div', { class: 'fld' }, el('label', { for: 'pubnote', text: 'תיאור קצר (לא חובה, יירשם בהיסטוריה)' }), note_), err,
+      el('p', { class: 'acts' }, go, el('button', { type: 'button', class: 'btn ghost', onclick: function () { dlg.close(); } }, 'ביטול')));
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    document.body.append(dlg); dlg.showModal();
+  }
+
+  // Earlier versions of the open file: each publish is a version; bringing one back makes it a draft.
+  function historyDialog(f) {
+    var dlg = el('dialog', { class: 'dlg wide' }, el('h2', { text: 'גרסאות קודמות' }), el('p', { class: 'help', text: 'כל פרסום הוא גרסה. שחזור מחזיר את הגרסה כטיוטה, והאתר משתנה רק אחרי שתפרסמו.' }));
+    var body = el('div'); dlg.append(body, el('p', { class: 'acts' }, el('button', { type: 'button', class: 'btn ghost', onclick: function () { dlg.close(); } }, 'סגירה')));
+    loading(body);
+    wapi('GET', '/history?path=' + encodeURIComponent(f.path)).then(function (j) {
+      body.textContent = '';
+      if (!j.history.length) { body.append(el('p', { class: 'help', text: 'עדיין אין גרסאות קודמות לקובץ הזה.' })); return; }
+      var ul = el('ul', { class: 'chg plain' });
+      j.history.forEach(function (h, i) {
+        ul.append(el('li', {}, el('div', { class: 'grow' }, el('b', { text: fmt(h.date) }), i === 0 ? el('span', { class: 'tag', text: 'באתר עכשיו' }) : null, el('small', { class: 'help', text: h.name + (h.message ? ' · ' + h.message : '') })),
+          i === 0 ? null : el('button', { type: 'button', class: 'btn ghost sm', onclick: function () {
+            if (dirty()) return say('שמרו או בטלו את השינויים הנוכחיים לפני שחזור גרסה.', 'bad');
+            if (!confirm('לשחזר את הגרסה מ־' + fmt(h.date) + ' כטיוטה?')) return;
+            wapi('POST', '/restore', { path: f.path, sha: h.sha }).then(function () { dlg.close(); forget(); say('הגרסה שוחזרה כטיוטה. עוד לא באתר, ואפשר לפרסם אותה.', 'ok'); refreshPending(); route(true); }, function (e) { say(e.message, 'bad'); });
+          } }, 'שחזור')));
+      });
+      body.append(ul);
+    }, function (e) { body.textContent = ''; body.append(el('p', { class: 'err', text: e.message })); });
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    document.body.append(dlg); dlg.showModal();
+  }
+
+  var ACTIONS = { login: 'התחברות', save: 'שמירת טיוטה', delete: 'מחיקה בטיוטה', publish: 'פרסום', 'publish-all': 'פרסום (סיכום)', discard: 'ביטול טיוטה', restore: 'שחזור גרסה', name: 'שינוי שם', 'editor-add': 'הוספת עורך', 'editor-update': 'עדכון עורך', 'editor-remove': 'הסרת עורך' };
+  function logScreen() {
+    var m = main();
+    m.append(head('יומן פעילות', 'מי שמר, פרסם, ביטל או שחזר מה, ומתי.' + (owner ? '' : ' כתובות המייל מוצגות רק לבעלי האתר.')));
+    var card = el('section', { class: 'card' }), ul = el('ul', { class: 'chg plain', id: 'logrows' }), more = el('button', { type: 'button', class: 'btn ghost', hidden: true }, 'טעינת עוד');
+    card.append(ul, more); m.append(card); loading(ul);
+    var last = 0;
+    var load = function () {
+      wapi('GET', '/log?limit=50' + (last ? '&before=' + last : '')).then(function (j) {
+        var first = !last; if (first) ul.textContent = '';
+        j.log.forEach(function (r) {
+          last = r.id;
+          var what = r.path ? pathInfo(r.path).label + ' ' + pathInfo(r.path).title : '';
+          ul.append(el('li', {}, el('div', { class: 'grow' }, el('b', { text: (ACTIONS[r.action] || r.action) + (what ? ' · ' + what : '') }), el('small', { class: 'help', text: (r.summary ? r.summary + ' · ' : '') + (r.name || '') + (r.email ? ' (' + r.email + ')' : '') })), el('small', { class: 'help', text: fmt(r.ts) })));
+        });
+        if (first && !j.log.length) ul.append(el('li', { class: 'help', text: 'עדיין אין פעילות ביומן.' }));
+        more.hidden = j.log.length < 50;
+      }, function (e) { ul.textContent = ''; say(e.message, 'bad'); });
+    };
+    more.addEventListener('click', load);
+    load();
+  }
+
+  // The name shown in the public history of the site's repository (never the email).
+  function nameDialog() {
+    var inp = el('input', { type: 'text', maxlength: '40', placeholder: 'למשל: יעקב כהן' }); inp.value = myName;
+    dialog('איך לקרוא לכם?', [['שם תצוגה', inp, 'השם יופיע ביומן ובהיסטוריית הפרסומים של האתר, שהיא ציבורית. אל תכתבו כתובת מייל.']], 'שמירה', function () {
+      var v = inp.value.trim(); if (!v) return 'כתבו שם';
+      return wapi('PUT', '/me', { name: v }).then(function (j) { myName = j.name; $('#who').textContent = myName; say('השם נשמר.', 'ok'); });
+    });
   }
 
   // ---- router ----
@@ -941,6 +1273,8 @@
     else if (h === '#/shut') shutScreen();
     else if ((m = /^#\/topic\/([a-z0-9-]+)$/.exec(h))) topicScreen(m[1]);
     else if (h === '#/pages') pagesScreen();
+    else if (h === '#/changes' && draft) changesScreen();
+    else if (h === '#/log' && draft && publisher) logScreen();
     else if (h === '#/editors' && owner) editorsScreen();
     else home();
   }
@@ -964,11 +1298,24 @@
   }
 
   // ---- sign-in ----
+  var pollOn = false, reminded = false;
   function enter(who) {
-    return api('').then(function (r) {
+    draft = !!cfg.worker;
+    // Through the editor server: ask who this is now (role and name can change between visits).
+    var first = draft ? wapi('GET', '/me').then(function (j) { owner = !!j.owner; publisher = !!j.publisher; myName = j.name || ''; }) : Promise.resolve();
+    return first.then(function () { return api(''); }).then(function (r) {
       if (!r.permissions || !r.permissions.push) throw new Error(cfg.worker ? 'לשרת העריכה אין הרשאת כתיבה למאגר' : 'למפתח אין הרשאת כתיבה למאגר');
-      me = who || ''; document.body.classList.remove('out'); $('#login').hidden = true; $('#app').hidden = false; $('#out').hidden = false; $('#burger').hidden = false; $('#who').textContent = who || cfg.repo;
-      return topics().catch(function () { return null; }).then(function () { shell(); here = ''; route(true); });
+      me = who || ''; document.body.classList.remove('out'); $('#login').hidden = true; $('#app').hidden = false; $('#out').hidden = false; $('#burger').hidden = false; $('#who').textContent = myName || who || cfg.repo;
+      $('#rename').hidden = !draft; drawPend();
+      if (draft && !pollOn) { pollOn = true; setInterval(refreshPending, 60000); }
+      return Promise.all([topics().catch(function () { return null; }), refreshPending()]).then(function () {
+        shell(); here = ''; route(true);
+        if (draft && !myName) nameDialog();
+        else if (draft && !reminded) {
+          var oldest = pending.list.reduce(function (a, x) { return Math.min(a, x.created || a); }, Date.now());
+          if (pending.list.length && Date.now() - oldest > OLD_DAYS * 86400000) { reminded = true; say('תזכורת: יש ' + pending.list.length + ' שינויים שממתינים לפרסום כבר ' + Math.floor((Date.now() - oldest) / 86400000) + ' ימים. הם מופיעים ב״שינויים ממתינים״.', 'bad'); }
+        }
+      });
     }).catch(function (e) { document.body.classList.add('out'); $('#login').hidden = false; $('#app').hidden = true; $('#lerr').textContent = e.message; if (cfg.worker) google(); });
   }
   function remember(v, persist) {
@@ -978,7 +1325,7 @@
   function signout(why) {
     cur = null; remember(null); token = '';
     if (!why) return location.reload();
-    document.body.classList.add('out'); $('#lerr').textContent = why; $('#login').hidden = false; $('#app').hidden = true; $('#out').hidden = true; $('#burger').hidden = true;
+    document.body.classList.add('out'); $('#lerr').textContent = why; $('#login').hidden = false; $('#app').hidden = true; $('#out').hidden = true; $('#burger').hidden = true; $('#rename').hidden = true; $('#pend').hidden = true;
     if (cfg.worker) google();
   }
   // Google sign-in, with the page's own button: Google's library opens its sign-in popup and gives back a short-lived access
@@ -1017,6 +1364,8 @@
     cfg = c;
     var st = saved();
     $('#out').addEventListener('click', function () { if (leave()) signout(); });
+    $('#rename').addEventListener('click', nameDialog);
+    if (c.autosaveSeconds) AUTO_MS = c.autosaveSeconds * 1000;
     $('#burger').addEventListener('click', function () { document.body.classList.toggle('navopen'); });
     $('#scrim').addEventListener('click', function () { document.body.classList.remove('navopen'); });
     if (cfg.worker) {
