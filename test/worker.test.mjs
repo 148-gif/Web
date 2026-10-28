@@ -1,11 +1,13 @@
 // Unit tests for the editor login server (cms-worker/worker.mjs): who may sign in, and what an editor may change.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { route, verifyGoogle, verifyAccessToken, makeSession, readSession, handle, sha256 } from '../cms-worker/worker.mjs';
+import { route, verifyGoogle, verifyAccessToken, makeSession, readSession, handle, sha256, blobSha } from '../cms-worker/worker.mjs';
+import { makeD1 } from './helpers/d1.mjs';
+import { makeGithub } from './helpers/fake-github.mjs';
 
 // a@gmail.com owns the site; b@gmail.com is an editor the owner added (kept in the KV store).
 const kv = (init) => { const m = new Map(Object.entries(init)); return { get: async (k) => m.get(k) ?? null, put: async (k, v) => { m.set(k, v); } }; };
-const env = { GOOGLE_CLIENT_ID: 'cid', OWNERS: `${await sha256('a@gmail.com')}, ${await sha256('x@y.z')}`, EDITORS: kv({ editors: '["b@gmail.com"]' }), ALLOWED_ORIGIN: 'https://site.example', REPO: 'o/r', BRANCH: 'live', GITHUB_TOKEN: 'ghp' };
+const env = { GOOGLE_CLIENT_ID: 'cid', OWNERS: `${await sha256('a@gmail.com')}, ${await sha256('x@y.z')}`, EDITORS: kv({ editors: '["b@gmail.com"]' }), DB: makeD1(), ALLOWED_ORIGIN: 'https://site.example', REPO: 'o/r', BRANCH: 'live', GITHUB_TOKEN: 'ghp' };
 const b64url = (s) => Buffer.from(s).toString('base64url');
 
 // A Google-like signing key, served as Google's key set by a stubbed fetch.
@@ -16,23 +18,21 @@ const idToken = async (claims, kid = 'k1') => {
   return `${h}.${p}.${Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, new TextEncoder().encode(`${h}.${p}`))).toString('base64url')}`;
 };
 const good = { iss: 'https://accounts.google.com', aud: 'cid', exp: Date.now() / 1000 + 600, email: 'a@gmail.com', email_verified: true };
-const calls = [];
+let github = await makeGithub({ repo: 'o/r', branch: 'live', files: { 'data/pages/x.json': '{"a":1}\n' } });
 let tokeninfo = { status: 200, body: { aud: 'cid', email: 'a@gmail.com', email_verified: 'true', expires_in: '3000' } };
 globalThis.fetch = async (u, opt = {}) => {
   if (String(u).startsWith('https://oauth2.googleapis.com/tokeninfo?access_token=')) return new Response(JSON.stringify(tokeninfo.body), { status: tokeninfo.status });
   if (String(u).startsWith('https://www.googleapis.com/')) return new Response(JSON.stringify({ keys: [jwk] }));
-  calls.push({ u: String(u), ...opt });
-  return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  const r = await github.fetch(u, opt);
+  if (r) return r;
+  throw new Error(`unexpected fetch ${u}`);
 };
 
-test('route() lets editors read and write data files only', () => {
+test('route() lets editors read data files and run lists only; writes never go to GitHub directly', () => {
   assert.equal(route('GET', ''), '');
   assert.equal(route('GET', 'contents/data'), 'contents/data');
-  assert.equal(route('PUT', 'contents/data/pages/x.json'), 'contents/data/pages/x.json');
-  assert.equal(route('DELETE', 'contents/data/pages/x.json'), 'contents/data/pages/x.json');
   assert.equal(route('GET', 'actions/runs'), 'actions/runs');
-  assert.equal(route('PUT', 'contents/data/shut-edits/12.json'), 'contents/data/shut-edits/12.json'); // one Q&A entry, never shut.json itself
-  for (const [m, p] of [['PUT', 'contents/site/app.js'], ['PUT', 'contents/.github/workflows/pages.yml'], ['PUT', 'contents/data/../scripts/build.mjs'], ['PUT', 'contents/data/shut.json'], ['PUT', 'contents/data'], ['DELETE', ''], ['POST', 'contents/data/x.json'], ['GET', 'contents/scripts/build.mjs'], ['GET', 'collaborators']]) {
+  for (const [m, p] of [['PUT', 'contents/data/pages/x.json'], ['DELETE', 'contents/data/pages/x.json'], ['POST', 'contents/data/x.json'], ['GET', 'contents/site/app.js'], ['GET', 'contents/data/../scripts/build.mjs'], ['GET', 'collaborators']]) {
     assert.equal(route(m, p), null, `${m} ${p}`);
   }
 });
@@ -54,50 +54,12 @@ test('sessions expire, cannot be forged, and end when the email is removed', asy
   assert.equal(await readSession(s, env, Date.now() / 1000 + 13 * 3600), null);
   assert.equal(await readSession(s, { ...env, SESSION_SECRET: 'other' }), null);
   assert.equal(await readSession(s, { ...env, GITHUB_TOKEN: 'replaced' }), null);
-  assert.equal(await readSession(s, { ...env, EDITORS: kv({ editors: '[]' }) }), null);
+  assert.equal(await readSession(s, { ...env, EDITORS: kv({ people: '[]' }) }), null);
   assert.equal(await readSession(b64url(JSON.stringify({ email: 'a@gmail.com', exp: 9e9 })) + '.' + s.split('.')[1], env), null);
   assert.equal(await readSession('', env), null);
 });
 
 const req = (path, opt = {}) => new Request(`https://w.example${path}`, { ...opt, headers: { Origin: env.ALLOWED_ORIGIN, ...(opt.headers || {}) } });
-
-test('handle(): sign-in, allow-list and the proxied save', async () => {
-  assert.equal((await handle(req('/gh', { headers: { Origin: 'https://evil.example' } }), env)).status, 403);
-  let r = await handle(req('/session', { method: 'POST', body: JSON.stringify({ credential: await idToken({ ...good, email: 'stranger@gmail.com' }) }) }), env);
-  assert.equal(r.status, 403);
-  r = await handle(req('/session', { method: 'POST', body: JSON.stringify({ credential: await idToken(good) }) }), env);
-  assert.equal(r.status, 200);
-  const { token } = await r.json();
-  assert.equal((await handle(req('/gh'), env)).status, 401);
-  assert.equal((await handle(req('/gh/contents/site/app.js', { method: 'PUT', body: '{}', headers: { Authorization: `Bearer ${token}` } }), env)).status, 403);
-  r = await handle(req('/gh/contents/data/pages/x.json', { method: 'PUT', body: JSON.stringify({ message: 'דף חדש', content: 'e30=', branch: 'main' }), headers: { Authorization: `Bearer ${token}` } }), env);
-  assert.equal(r.status, 200);
-  const c = calls.at(-1), body = JSON.parse(c.body);
-  assert.equal(c.u, 'https://api.github.com/repos/o/r/contents/data/pages/x.json');
-  assert.equal(c.headers.Authorization, 'Bearer ghp');
-  assert.equal(body.branch, 'live'); // never the branch the browser asked for
-  assert.match(body.message, /נערך על ידי: a@gmail\.com$/);
-  await handle(req('/gh/contents/data?ref=main', { headers: { Authorization: `Bearer ${token}` } }), env);
-  assert.equal(calls.at(-1).u, 'https://api.github.com/repos/o/r/contents/data?ref=live');
-});
-
-test('handle(): only owners manage editors, and a new editor can then sign in', async () => {
-  const e = { ...env, EDITORS: kv({ editors: '["b@gmail.com"]' }) };
-  const login = async (email) => handle(req('/session', { method: 'POST', body: JSON.stringify({ credential: await idToken({ ...good, email }) }) }), e);
-  const owner = await (await login('A@gmail.com')).json();
-  assert.equal(owner.owner, true);
-  const editor = await (await login('b@gmail.com')).json();
-  assert.equal(editor.owner, false);
-  const call = (tok, method, body) => handle(req('/editors', { method, body: body && JSON.stringify(body), headers: { Authorization: `Bearer ${tok}` } }), e);
-  assert.equal((await call(editor.token, 'GET')).status, 403);
-  assert.equal((await call(editor.token, 'PUT', { email: 'c@gmail.com' })).status, 403);
-  assert.equal((await login('c@gmail.com')).status, 403);
-  assert.equal((await call(owner.token, 'PUT', { email: 'not an email' })).status, 400);
-  assert.deepEqual((await (await call(owner.token, 'PUT', { email: ' C@Gmail.com ' })).json()).editors, ['b@gmail.com', 'c@gmail.com']);
-  assert.equal((await login('c@gmail.com')).status, 200);
-  assert.deepEqual((await (await call(owner.token, 'DELETE', { email: 'b@gmail.com' })).json()).editors, ['c@gmail.com']);
-  assert.equal((await handle(req('/gh', { headers: { Authorization: `Bearer ${editor.token}` } }), e)).status, 401); // removed: signed out at once
-});
 
 test('verifyAccessToken() trusts only a live token Google issued to this app, with a verified email', async () => {
   tokeninfo = { status: 200, body: { aud: 'cid', email: 'a@gmail.com', email_verified: 'true', expires_in: '3000' } };
@@ -122,4 +84,198 @@ test('handle(): sign-in with an access token, and an editor who is not on the li
   assert.equal((await login('stranger@gmail.com')).status, 403);
   tokeninfo = { status: 400, body: {} };
   assert.equal((await handle(req('/session', { method: 'POST', body: JSON.stringify({ access_token: 'bad' }) }), env)).status, 401);
+});
+
+// ---- drafts, publishing, roles ----
+const world = async () => {
+  github = await makeGithub({ repo: 'o/r', branch: 'live', files: { 'data/pages/x.json': '{"a":1}\n', 'data/topics.json': '[]\n' } });
+  const e = { ...env, DB: makeD1(), EDITORS: kv({ people: JSON.stringify([{ email: 'b@gmail.com', name: 'בני', publisher: false }, { email: 'p@gmail.com', name: 'פנחס', publisher: true }]), 'owner-names': JSON.stringify({ [await sha256('a@gmail.com')]: 'אהרן' }) }) };
+  const login = async (email) => {
+    tokeninfo = { status: 200, body: { aud: 'cid', email, email_verified: 'true', expires_in: '3000' } };
+    const r = await handle(req('/session', { method: 'POST', body: JSON.stringify({ access_token: 't' }) }), e);
+    return r.status === 200 ? { ...(await r.json()), status: 200 } : { status: r.status };
+  };
+  const as = (tok) => async (method, path, body) => {
+    const r = await handle(req(path, { method, body: body === undefined ? undefined : JSON.stringify(body), headers: { Authorization: `Bearer ${tok}` } }), e);
+    return { status: r.status, body: await r.json() };
+  };
+  const owner = await login('a@gmail.com'), editor = await login('b@gmail.com'), publisher = await login('p@gmail.com'); // one by one: the stubbed tokeninfo is shared
+  return { e, login, owner: as(owner.token), editor: as(editor.token), publisher: as(publisher.token), info: { owner, editor, publisher } };
+};
+const put = (api, path, obj, sha, extra = {}) => api('PUT', `/gh/contents/${path}`, { message: 'שמירה', content: Buffer.from(JSON.stringify(obj) + '\n').toString('base64'), sha, ...extra });
+
+test('sign-in tells each person their role and shown name', async () => {
+  const w = await world();
+  assert.deepEqual([w.info.owner.owner, w.info.owner.publisher, w.info.owner.name], [true, true, 'אהרן']);
+  assert.deepEqual([w.info.editor.owner, w.info.editor.publisher, w.info.editor.name], [false, false, 'בני']);
+  assert.equal((await w.login('stranger@gmail.com')).status, 403);
+});
+
+test('a save is a draft: GitHub is not written, the saver sees it, the live file stays', async () => {
+  const w = await world();
+  const cur = (await w.editor('GET', '/gh/contents/data/pages/x.json')).body;
+  const before = github.log.length;
+  const r = await put(w.editor, 'data/pages/x.json', { a: 2 }, cur.sha);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.draft, true);
+  assert.ok(!github.log.slice(before).some((l) => /^(PUT|POST|PATCH)/.test(l)));
+  assert.equal(github.read('data/pages/x.json'), '{"a":1}\n');
+  const read = (await w.owner('GET', '/gh/contents/data/pages/x.json')).body;
+  assert.equal(JSON.parse(Buffer.from(read.content, 'base64')).a, 2);
+  assert.equal((await w.owner('GET', '/gh/contents/data/pages/x.json?src=published')).body.sha, cur.sha);
+  const list = (await w.owner('GET', '/gh/contents/data/pages')).body;
+  assert.equal(list.find((f) => f.name === 'x.json').draft, true);
+  const ch = (await w.owner('GET', '/changes')).body.changes;
+  assert.deepEqual(ch.map((c) => [c.path, c.status, c.name]), [['data/pages/x.json', 'modified', 'בני']]);
+});
+
+test('only data JSON files may be saved, and bad JSON is refused', async () => {
+  const w = await world();
+  assert.equal((await put(w.owner, 'site/app.json', {}, null)).status, 403);
+  assert.equal((await put(w.owner, 'data/shut.json', {}, null)).status, 403);
+  assert.equal((await w.owner('PUT', '/gh/contents/data/pages/y.json', { content: Buffer.from('{oops').toString('base64') })).status, 400);
+});
+
+test('a second editor saving over a changed file gets 409 and the work is kept', async () => {
+  const w = await world();
+  const cur = (await w.editor('GET', '/gh/contents/data/pages/x.json')).body;
+  assert.equal((await put(w.editor, 'data/pages/x.json', { a: 2 }, cur.sha)).status, 200);
+  const clash = await put(w.publisher, 'data/pages/x.json', { a: 3 }, cur.sha); // still holds the old id
+  assert.equal(clash.status, 409);
+  assert.equal(JSON.parse(Buffer.from((await w.owner('GET', '/gh/contents/data/pages/x.json')).body.content, 'base64')).a, 2);
+});
+
+test('saving the published content again removes the draft; new files and deletions are drafts too', async () => {
+  const w = await world();
+  const cur = (await w.owner('GET', '/gh/contents/data/pages/x.json')).body;
+  const r = await put(w.owner, 'data/pages/x.json', { a: 2 }, cur.sha);
+  const back = await w.owner('PUT', '/gh/contents/data/pages/x.json', { content: cur.content, sha: r.body.content.sha });
+  assert.equal(back.status, 200);
+  assert.deepEqual((await w.owner('GET', '/changes')).body.changes, []);
+  assert.equal((await put(w.owner, 'data/pages/new.json', { n: 1 }, null)).status, 200);
+  assert.equal((await w.owner('DELETE', '/gh/contents/data/pages/x.json', { sha: cur.sha, message: 'מחיקה' })).status, 200);
+  const ch = (await w.owner('GET', '/changes')).body.changes;
+  assert.deepEqual(ch.map((c) => [c.path, c.status]).sort(), [['data/pages/new.json', 'added'], ['data/pages/x.json', 'removed']]);
+  assert.equal((await w.owner('GET', '/gh/contents/data/pages/x.json')).status, 404);
+  assert.deepEqual((await w.owner('GET', '/gh/contents/data/pages')).body.map((f) => f.name), ['new.json']);
+});
+
+test('publishing: only publishers, one commit with display names only, drafts cleared', async () => {
+  const w = await world();
+  const cur = (await w.editor('GET', '/gh/contents/data/pages/x.json')).body;
+  await put(w.editor, 'data/pages/x.json', { a: 2 }, cur.sha);
+  await put(w.editor, 'data/pages/new.json', { n: 1 }, null);
+  assert.equal((await w.editor('POST', '/publish', { paths: ['data/pages/x.json'] })).status, 403);
+  const n0 = github.commits().length;
+  const r = await w.publisher('POST', '/publish', { paths: ['data/pages/x.json', 'data/pages/new.json'], note: 'עדכון הדף' });
+  assert.equal(r.status, 200);
+  assert.equal(github.commits().length, n0 + 1);
+  assert.equal(github.read('data/pages/x.json'), '{"a":2}\n');
+  assert.equal(github.read('data/pages/new.json'), '{"n":1}\n');
+  const c = github.commits().find((x) => x.sha === github.head);
+  assert.match(c.message, /^פרסום: עדכון הדף/);
+  assert.match(c.message, /פורסם על ידי: פנחס/);
+  assert.match(c.message, /נערך על ידי: בני/);
+  assert.ok(!/@/.test(c.message + JSON.stringify(c.author)) || /heichal\.invalid/.test(c.author.email));
+  assert.ok(!c.message.includes('gmail'));
+  assert.deepEqual((await w.owner('GET', '/changes')).body.changes, []);
+});
+
+test('publishing a subset leaves the rest as drafts; an unknown path publishes nothing', async () => {
+  const w = await world();
+  await put(w.owner, 'data/pages/a.json', { a: 1 }, null);
+  await put(w.owner, 'data/pages/b.json', { b: 1 }, null);
+  assert.equal((await w.owner('POST', '/publish', { paths: ['data/pages/zzz.json'] })).status, 400);
+  assert.equal((await w.owner('POST', '/publish', { paths: ['data/pages/a.json'] })).status, 200);
+  assert.equal(github.read('data/pages/b.json'), null);
+  assert.deepEqual((await w.owner('GET', '/changes')).body.changes.map((c) => c.path), ['data/pages/b.json']);
+});
+
+test('publishing a deleted file removes it from the branch', async () => {
+  const w = await world();
+  const cur = (await w.owner('GET', '/gh/contents/data/pages/x.json')).body;
+  await w.owner('DELETE', '/gh/contents/data/pages/x.json', { sha: cur.sha });
+  assert.equal((await w.owner('POST', '/publish', { paths: ['data/pages/x.json'] })).status, 200);
+  assert.equal(github.read('data/pages/x.json'), null);
+});
+
+test('a file changed on the live branch meanwhile is a conflict until the publisher forces it', async () => {
+  const w = await world();
+  const cur = (await w.owner('GET', '/gh/contents/data/pages/x.json')).body;
+  await put(w.owner, 'data/pages/x.json', { a: 2 }, cur.sha);
+  await github.commit({ 'data/pages/x.json': '{"a":9}\n' });
+  assert.equal((await w.owner('GET', '/changes?check=1')).body.changes[0].conflict, true);
+  const r = await w.owner('POST', '/publish', { paths: ['data/pages/x.json'] });
+  assert.equal(r.status, 409);
+  assert.deepEqual(r.body.conflicts, ['data/pages/x.json']);
+  assert.equal(github.read('data/pages/x.json'), '{"a":9}\n');
+  assert.equal((await w.owner('POST', '/publish', { paths: ['data/pages/x.json'], force: ['data/pages/x.json'] })).status, 200);
+  assert.equal(github.read('data/pages/x.json'), '{"a":2}\n');
+});
+
+test('discard: editors drop only their own work, publishers anyone\'s', async () => {
+  const w = await world();
+  await put(w.editor, 'data/pages/a.json', { a: 1 }, null);
+  await put(w.publisher, 'data/pages/b.json', { b: 1 }, null);
+  assert.equal((await w.editor('POST', '/discard', { paths: ['data/pages/b.json'] })).status, 403);
+  assert.equal((await w.editor('POST', '/discard', { paths: ['data/pages/a.json'] })).status, 200);
+  assert.equal((await w.owner('POST', '/discard', { all: true })).status, 200);
+  assert.deepEqual((await w.owner('GET', '/changes')).body.changes, []);
+});
+
+test('history lists earlier versions and restore brings one back as a draft', async () => {
+  const w = await world();
+  const old = github.head;
+  await github.commit({ 'data/pages/x.json': '{"a":5}\n' }, 'פרסום: שינוי\n\nפורסם על ידי: פנחס');
+  const h = (await w.editor('GET', '/history?path=data/pages/x.json')).body.history;
+  assert.equal(h.length, 2);
+  assert.equal(h[0].name, 'פנחס');
+  const r = await w.editor('POST', '/restore', { path: 'data/pages/x.json', sha: old });
+  assert.equal(r.status, 200);
+  assert.equal(JSON.parse(Buffer.from((await w.editor('GET', '/gh/contents/data/pages/x.json')).body.content, 'base64')).a, 1);
+  assert.equal(github.read('data/pages/x.json'), '{"a":5}\n');
+  assert.equal((await w.editor('POST', '/restore', { path: 'data/pages/x.json', sha: 'nothex' })).status, 400);
+  assert.equal((await w.editor('GET', '/history?path=site/app.js')).status, 403);
+});
+
+test('the log records who did what; emails are for owners only, editors cannot read it', async () => {
+  const w = await world();
+  await put(w.editor, 'data/pages/a.json', { a: 1 }, null);
+  await w.publisher('POST', '/publish', { paths: ['data/pages/a.json'] });
+  assert.equal((await w.editor('GET', '/log')).status, 403);
+  const pub = (await w.publisher('GET', '/log')).body.log;
+  assert.ok(pub.some((x) => x.action === 'save' && x.name === 'בני'));
+  assert.ok(pub.some((x) => x.action === 'publish' && x.name === 'פנחס'));
+  assert.ok(pub.every((x) => x.email === null));
+  assert.ok((await w.owner('GET', '/log')).body.log.some((x) => x.email === 'b@gmail.com'));
+});
+
+test('autosaves are not logged; names are set with /me', async () => {
+  const w = await world();
+  await put(w.editor, 'data/pages/a.json', { a: 1 }, null, { auto: true });
+  assert.ok(!(await w.owner('GET', '/log')).body.log.some((x) => x.action === 'save'));
+  assert.equal((await w.editor('PUT', '/me', { name: '   ' })).status, 400);
+  assert.equal((await w.editor('PUT', '/me', { name: 'בנימין' })).body.name, 'בנימין');
+  assert.equal((await w.editor('GET', '/me')).body.name, 'בנימין');
+  assert.equal((await w.owner('PUT', '/me', { name: 'אהרן כהן' })).body.name, 'אהרן כהן');
+});
+
+test('only owners manage editors, with names and the right to publish', async () => {
+  const w = await world();
+  assert.equal((await w.editor('GET', '/editors')).status, 403);
+  assert.equal((await w.publisher('PUT', '/editors', { email: 'c@gmail.com' })).status, 403);
+  assert.equal((await w.owner('PUT', '/editors', { email: 'not an email' })).status, 400);
+  const r = await w.owner('PUT', '/editors', { email: ' C@Gmail.com ', name: 'יעקב', publisher: true });
+  assert.deepEqual(r.body.editors.find((x) => x.email === 'c@gmail.com'), { email: 'c@gmail.com', name: 'יעקב', publisher: true });
+  assert.equal((await w.login('c@gmail.com')).publisher, true);
+  await w.owner('PUT', '/editors', { email: 'c@gmail.com', publisher: false });
+  assert.deepEqual([(await w.login('c@gmail.com')).publisher, (await w.login('c@gmail.com')).name], [false, 'יעקב']);
+  assert.ok(!(await w.owner('DELETE', '/editors', { email: 'b@gmail.com' })).body.editors.some((x) => x.email === 'b@gmail.com'));
+  assert.equal((await w.editor('GET', '/changes')).status, 401);
+});
+
+test('an old list of editor emails still works, and blobSha matches git', async () => {
+  const e = { ...env, DB: makeD1() };
+  assert.equal((await handle(req('/session', { method: 'POST', body: JSON.stringify({ credential: await idToken({ ...good, email: 'b@gmail.com' }) }) }), e)).status, 200);
+  assert.equal(await blobSha('hello\n'), 'ce013625030ba8dba906f756967f9e9ca394464a');
 });
