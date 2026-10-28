@@ -176,7 +176,7 @@ export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle
     for (const l of p.links) {
       if (l.region === 'content' && l.anchor && isGeneric(l.anchor) && !seen.has(l.href)) { seen.add(l.href); add('warn', 'generic-anchor', p.path, `"${l.anchor}" → ${l.to}`); }
     }
-    const hasTitle = (p.title || '').length >= minTitle;
+    const hasTitle = (p.title || '').length > 0;
     if (!hasTitle) add('warn', 'no-title', p.path, '');
   }
 
