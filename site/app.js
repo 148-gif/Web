@@ -274,3 +274,14 @@ document.querySelectorAll('sup.fn a').forEach((a) => {
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFn(true); });
 document.addEventListener('click', (e) => { if (fnOpen && !e.target.closest('.fnpop, sup.fn')) closeFn(false); });
 }
+
+// Filter on a topic's listing page (a collection made in the editor): hides the cards that do not match, and any section left empty.
+document.querySelectorAll('[data-cfilter]').forEach((box) => {
+  const cards = [...document.querySelectorAll('.libcat .card[data-t]')], none = document.querySelector('.cnone');
+  box.addEventListener('input', () => {
+    const words = box.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    cards.forEach((c) => { c.hidden = !words.every((w) => c.dataset.t.toLowerCase().includes(w)); });
+    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('.card:not([hidden])'); });
+    if (none) none.hidden = cards.some((c) => !c.hidden);
+  });
+});

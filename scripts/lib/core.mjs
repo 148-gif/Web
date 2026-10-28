@@ -107,18 +107,28 @@ const BLOCK_TYPES = ['text', 'cards', 'faq', 'quote', 'links'];
 const RESERVED = ['admin', 'shut', 'letters', 'library', 'halacha', 'rabbi-nachman', 'uman', 'tikkun-haklali', 'moharash', 'yeshiva', 'print', 'yavniel', 'mikveh-malka', 'institutions', 'search', 'about', 'contact', 'accessibility', 'privacy', 'offline', 'fonts', 'img', 'books', 'idx', 'zmanim'];
 const topics = read('topics.json');
 const cmsPages = readdirSync(new URL('../../data/pages/', import.meta.url)).filter((f) => f.endsWith('.json')).map((f) => ({ slug: f.slice(0, -5), ...read(`pages/${f}`) }));
+// A topic is a place in the site's menu: its menu group ("group", a title; the site's own groups or a new one), its kind
+// ("pages": a few free pages, or "collection": many items of one kind, like the library) and, for a collection,
+// its "categories" ([{ id, title }]). Each page may name one of its topic's categories in "category".
+const TOPIC_KINDS = ['pages', 'collection'];
 const validateCms = (topics, pages) => {
   const bad = (m) => { throw new Error(`CMS: ${m}`); };
   const seen = new Set();
   for (const t of topics) {
     if (!/^[a-z0-9-]+$/.test(t.slug || '') || RESERVED.includes(t.slug) || seen.has(t.slug)) bad(`invalid or duplicate topic slug "${t.slug}"`);
     if (!t.title) bad(`topic ${t.slug} has no title`);
+    if (t.kind != null && !TOPIC_KINDS.includes(t.kind)) bad(`topic ${t.slug}: unknown kind "${t.kind}"`);
+    if (t.group != null && (typeof t.group !== 'string' || t.group.length > 40)) bad(`topic ${t.slug}: invalid group`);
+    const cats = t.categories == null ? [] : t.categories;
+    if (!Array.isArray(cats) || cats.some((c) => !/^[a-z0-9-]+$/.test(c.id || '') || !c.title)) bad(`topic ${t.slug}: categories need an id (a-z, 0-9, -) and a title`);
+    if (new Set(cats.map((c) => c.id)).size !== cats.length) bad(`topic ${t.slug}: duplicate category id`);
     seen.add(t.slug);
   }
   for (const p of pages) {
     if (!/^[a-z0-9-]+$/.test(p.slug)) bad(`invalid page file name "${p.slug}"`);
     if (!seen.has(p.topic)) bad(`page ${p.slug}: unknown topic "${p.topic}"`);
     if (!p.title) bad(`page ${p.slug} has no title`);
+    if (p.category != null && typeof p.category !== 'string') bad(`page ${p.slug}: invalid category`);
     for (const b of p.blocks || []) if (!BLOCK_TYPES.includes(b.type)) bad(`page ${p.slug}: unknown block type "${b.type}"`);
   }
   const keys = pages.map((p) => `${p.topic}/${p.slug}`);
@@ -130,4 +140,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { TOPIC_KINDS, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

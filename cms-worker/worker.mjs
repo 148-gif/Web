@@ -1,4 +1,5 @@
-// Editor login server (Cloudflare Worker) for /admin/: signs editors in with Google and saves their edits to GitHub.
+// Editor login server (Cloudflare Worker) for /admin/: signs editors in with Google (the editor's own button gets an access
+// token, checked here with Google; an ID token is still accepted) and saves their edits to GitHub.
 // The GitHub key lives only here, as a secret; editors never see it. Only allowed emails may edit,
 // only files under data/ can be changed, and only on BRANCH. Setup and deploy: cms-worker/README.md.
 //
@@ -53,6 +54,18 @@ async function verifyGoogle(idToken, env, now = Date.now() / 1000) {
   return c.email;
 }
 
+// The editor's own sign-in button gets an access token for the account's email (scope "openid email"), not an ID token.
+// Google confirms it: who it was issued to (our client ID, so a token meant for another app is refused), and the verified email.
+async function verifyAccessToken(accessToken, env) {
+  const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(String(accessToken))}`);
+  if (!r.ok) throw new Error('bad token');
+  const c = await r.json();
+  if (c.aud !== env.GOOGLE_CLIENT_ID) throw new Error('bad audience');
+  if (!(Number(c.expires_in) > 0)) throw new Error('expired');
+  if (String(c.email_verified) !== 'true' || !c.email) throw new Error('email not verified');
+  return c.email;
+}
+
 // ---- our own session: {email, exp}, signed (see SESSION_SECRET above) ----
 const hmacKey = async (env) => crypto.subtle.importKey('raw', enc.encode(env.SESSION_SECRET || `session:${await sha256(String(env.GITHUB_TOKEN))}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 async function makeSession(email, env, now = Date.now()) {
@@ -90,7 +103,10 @@ async function handle(req, env) {
 
   if (url.pathname === '/session' && req.method === 'POST') {
     let email;
-    try { email = await verifyGoogle((await req.json()).credential, env); } catch { return json({ message: 'ההתחברות עם Google נכשלה' }, 401, cors); }
+    try {
+      const b = await req.json();
+      email = b.access_token ? await verifyAccessToken(b.access_token, env) : await verifyGoogle(b.credential, env);
+    } catch { return json({ message: 'ההתחברות עם Google נכשלה' }, 401, cors); }
     if (!(await allowed(env, email))) return json({ message: `לחשבון ${email} אין הרשאת עריכה. בקשו מבעל האתר להוסיף אתכם.` }, 403, cors);
     return json({ token: await makeSession(email, env), email, owner: await isOwner(env, email) }, 200, cors);
   }
@@ -139,4 +155,4 @@ export default {
     return json({ message: 'שגיאה בשרת העריכה' }, 500, origin === env.ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {});
   }),
 };
-export { route, verifyGoogle, makeSession, readSession, allowed, isOwner, sha256, handle };
+export { route, verifyGoogle, verifyAccessToken, makeSession, readSession, allowed, isOwner, sha256, handle };

@@ -1,7 +1,7 @@
 // Unit tests for the editor login server (cms-worker/worker.mjs): who may sign in, and what an editor may change.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { route, verifyGoogle, makeSession, readSession, handle, sha256 } from '../cms-worker/worker.mjs';
+import { route, verifyGoogle, verifyAccessToken, makeSession, readSession, handle, sha256 } from '../cms-worker/worker.mjs';
 
 // a@gmail.com owns the site; b@gmail.com is an editor the owner added (kept in the KV store).
 const kv = (init) => { const m = new Map(Object.entries(init)); return { get: async (k) => m.get(k) ?? null, put: async (k, v) => { m.set(k, v); } }; };
@@ -17,7 +17,9 @@ const idToken = async (claims, kid = 'k1') => {
 };
 const good = { iss: 'https://accounts.google.com', aud: 'cid', exp: Date.now() / 1000 + 600, email: 'a@gmail.com', email_verified: true };
 const calls = [];
+let tokeninfo = { status: 200, body: { aud: 'cid', email: 'a@gmail.com', email_verified: 'true', expires_in: '3000' } };
 globalThis.fetch = async (u, opt = {}) => {
+  if (String(u).startsWith('https://oauth2.googleapis.com/tokeninfo?access_token=')) return new Response(JSON.stringify(tokeninfo.body), { status: tokeninfo.status });
   if (String(u).startsWith('https://www.googleapis.com/')) return new Response(JSON.stringify({ keys: [jwk] }));
   calls.push({ u: String(u), ...opt });
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -95,4 +97,29 @@ test('handle(): only owners manage editors, and a new editor can then sign in', 
   assert.equal((await login('c@gmail.com')).status, 200);
   assert.deepEqual((await (await call(owner.token, 'DELETE', { email: 'b@gmail.com' })).json()).editors, ['c@gmail.com']);
   assert.equal((await handle(req('/gh', { headers: { Authorization: `Bearer ${editor.token}` } }), e)).status, 401); // removed: signed out at once
+});
+
+test('verifyAccessToken() trusts only a live token Google issued to this app, with a verified email', async () => {
+  tokeninfo = { status: 200, body: { aud: 'cid', email: 'a@gmail.com', email_verified: 'true', expires_in: '3000' } };
+  assert.equal(await verifyAccessToken('tok', env), 'a@gmail.com');
+  for (const [status, patch] of [[400, {}], [200, { aud: 'someone-else' }], [200, { expires_in: '0' }], [200, { email_verified: 'false' }], [200, { email: undefined }]]) {
+    tokeninfo = { status, body: { aud: 'cid', email: 'a@gmail.com', email_verified: 'true', expires_in: '3000', ...patch } };
+    await assert.rejects(verifyAccessToken('tok', env), undefined, JSON.stringify([status, patch]));
+  }
+  tokeninfo = { status: 200, body: { aud: 'cid', email: 'a@gmail.com', email_verified: 'true', expires_in: '3000' } };
+});
+
+test('handle(): sign-in with an access token, and an editor who is not on the list is refused', async () => {
+  const login = async (email) => {
+    tokeninfo = { status: 200, body: { aud: 'cid', email, email_verified: 'true', expires_in: '3000' } };
+    return handle(req('/session', { method: 'POST', body: JSON.stringify({ access_token: 'tok' }) }), env);
+  };
+  const ok = await login('a@gmail.com');
+  assert.equal(ok.status, 200);
+  const j = await ok.json();
+  assert.equal(j.email, 'a@gmail.com');
+  assert.equal(j.owner, true);
+  assert.equal((await login('stranger@gmail.com')).status, 403);
+  tokeninfo = { status: 400, body: {} };
+  assert.equal((await handle(req('/session', { method: 'POST', body: JSON.stringify({ access_token: 'bad' }) }), env)).status, 401);
 });

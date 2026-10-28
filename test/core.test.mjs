@@ -96,3 +96,17 @@ test('validateShutEdit() rejects edits that would break the site', () => {
     assert.throws(() => validateShutEdit(f, x), Error, JSON.stringify(x).slice(0, 40));
   }
 });
+
+test('validateCms() checks topic kind, group and categories, and a page category', () => {
+  const t = { slug: 'recipes', title: 'מתכונים', kind: 'collection', group: 'לימוד', categories: [{ id: 'meat', title: 'בשרי' }, { id: 'dairy', title: 'חלבי' }] };
+  const p = { slug: 'soup', topic: 'recipes', title: 'מרק', category: 'meat' };
+  assert.doesNotThrow(() => validateCms([t], [p]));
+  assert.doesNotThrow(() => validateCms([{ slug: 'a', title: 'א' }], [])); // topics made before kinds existed
+  assert.doesNotThrow(() => validateCms([t], [{ ...p, category: 'removed' }])); // an orphaned category must not stop the site
+  assert.throws(() => validateCms([{ ...t, kind: 'tree' }], []), /kind/);
+  assert.throws(() => validateCms([{ ...t, group: 'x'.repeat(41) }], []), /group/);
+  assert.throws(() => validateCms([{ ...t, categories: [{ id: 'Bad Id', title: 'x' }] }], []), /categories/);
+  assert.throws(() => validateCms([{ ...t, categories: [{ id: 'a', title: '' }] }], []), /categories/);
+  assert.throws(() => validateCms([{ ...t, categories: [{ id: 'a', title: 'x' }, { id: 'a', title: 'y' }] }], []), /duplicate category/);
+  assert.throws(() => validateCms([t], [{ ...p, category: 5 }]), /category/);
+});
