@@ -97,7 +97,7 @@ t.ok(live.length === registered.length + 1, 'the live registry has the new photo
 
 // The general media library does not take photos: a photo chosen there goes to the form that asks about it, and cannot be sent as a loose file.
 const med = await w.open('editor');
-await med.go('#/media', '#mfile');
+await med.go('#/media', 'text=העלאת קבצים');
 t.ok(!(await med.page.locator('#mfile').getAttribute('accept')).includes('.jpg'), 'the media library does not offer photos to choose');
 t.ok(await med.page.getByRole('button', { name: /העלאת תמונה/ }).count() === 1, 'the media library has a button for photos');
 await med.page.locator('#mfile').setInputFiles(files.loose); await med.page.waitForTimeout(2000);
