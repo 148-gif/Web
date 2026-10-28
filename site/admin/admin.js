@@ -1182,7 +1182,8 @@
   function mediaThumb(item) {
     var box = el('span', { class: 'mthumb' }, icon(MEDIA_KINDS[item.kind][1]));
     if (item.kind === 'image') {
-      var show = function (src) { box.textContent = ''; box.append(el('img', { src: src, alt: '', loading: 'lazy' })); };
+      // A file published a moment ago is not on the site yet (the site needs a minute or two, and its cache a few more): show the icon until it is.
+      var show = function (src) { box.textContent = ''; box.append(el('img', { src: src, alt: '', loading: 'lazy', onerror: function () { box.textContent = ''; box.title = 'התצוגה תופיע כשהאתר יתעדכן'; box.append(icon('image')); } })); };
       if (item.status === 'staged') stagedSrc(item).then(show, function () { /* icon stays */ });
       else show(item.store === 'github' ? '..' + item.url : item.url);
     }

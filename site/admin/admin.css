@@ -369,3 +369,7 @@ ul.upl .prog{flex:1 1 80px;width:auto;max-width:160px}
   .mcard .acts{flex-direction:row;width:100%}
   .mcard .acts .btn{flex:1}
 }
+
+/* the pending-changes rows: long names wrap inside their column, in their own text direction */
+ul.chg li>.grow{min-width:0;overflow-wrap:anywhere}
+ul.chg li b{unicode-bidi:plaintext}
