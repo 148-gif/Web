@@ -8,3 +8,6 @@ for (let i = 0; i * CHUNK < all.length; i++) write(`admin/shut/${i}.json`, JSON.
 
 // The pages made in the editor, as a light list [slug, topic, title, category], so the editor opens a topic with one request.
 write('admin/pages/index.json', JSON.stringify(cmsPages.map((p) => [p.slug, p.topic, p.title, p.category || ''])));
+
+// Which commit this build is: the editor polls it after a save, to tell when the change is really on the site.
+write('admin/build.json', JSON.stringify({ sha: process.env.GITHUB_SHA || '' }));

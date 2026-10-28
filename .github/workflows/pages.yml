@@ -4,9 +4,11 @@ on:
   push:
     branches: [claude/greeting-2i183o]
 permissions: {}
+# A deploy that started is never cancelled halfway (that left the site waiting); saves made meanwhile wait,
+# and only the newest of them is built next, since it carries all the changes before it.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest

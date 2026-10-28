@@ -140,12 +140,16 @@
     if (sha) body.sha = sha;
     return api('contents/' + path, { method: 'PUT', body: JSON.stringify(body) });
   }
-  function delFile(path, sha, msg) { return api('contents/' + path, { method: 'DELETE', body: JSON.stringify({ message: msg, sha: sha, branch: cfg.branch }) }); }
+  function delFile(path, sha, msg) { return api('contents/' + path, { method: 'DELETE', body: JSON.stringify({ message: msg, sha: sha, branch: cfg.branch }) }).then(function (r) { if (r && r.commit) published(r.commit.sha, null); return r; }); }
   function exists(path) { return api('contents/' + path + ref()).then(function () { return true; }, function (e) { if (e.status === 404) return false; throw e; }); }
 
   // ---- messages and unsaved changes ----
   var tm;
-  function say(t, kind) { var m = $('#msg'); m.textContent = t; m.className = 'toast' + (kind ? ' ' + kind : ''); m.hidden = false; clearTimeout(tm); tm = setTimeout(function () { m.hidden = true; }, kind === 'bad' ? 10000 : 5000); }
+  function say(t, kind, link) {
+    var m = $('#msg'); m.textContent = t; m.className = 'toast' + (kind ? ' ' + kind : ''); m.hidden = false;
+    if (link) m.append(' ', el('a', { href: '..' + link, target: '_blank', rel: 'noopener', text: 'לצפייה באתר ←' }));
+    clearTimeout(tm); tm = setTimeout(function () { m.hidden = true; }, kind === 'bad' || link ? 10000 : 5000);
+  }
   function dirty() { return !!cur && JSON.stringify(cur.data) !== cur.orig; }
   window.addEventListener('beforeunload', function (e) { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
   function leave() { return !dirty() || confirm('יש שינויים שלא נשמרו. לצאת בלי לשמור?'); }
@@ -279,34 +283,60 @@
 
   // Publish box, shared by every editing screen: state, save, undo.
   function saveBox(onSave) {
+    saveBoxState();
     return el('div', { class: 'card pub' },
       el('h3', { text: 'פרסום' }),
       el('p', { id: 'savestate', class: 'state', text: 'כל השינויים שמורים' }),
       el('button', { type: 'button', class: 'btn pri wide', id: 'savebtn', onclick: onSave }, 'שמירה ופרסום'),
       el('button', { type: 'button', class: 'btn ghost wide', id: 'undo', hidden: true, onclick: function () { if (confirm('לבטל את כל השינויים שלא נשמרו?')) { cur.data = JSON.parse(cur.orig); route(true); } } }, 'ביטול השינויים'),
+      el('p', { id: 'pubstate', class: 'pubstate', hidden: true }),
       el('p', { class: 'help', text: 'אחרי השמירה האתר מתעדכן תוך דקה או שתיים. קיצור מקלדת: Ctrl+S' }));
   }
+  // The publish state belongs to the last save, not to the screen: show it again on whichever screen opens next.
+  function saveBoxState() { setTimeout(showPub, 0); }
   var saving = false;
-  function commit(path, data, indent, sha, msg) {
+  function commit(path, data, indent, sha, msg, url) {
     if (saving) return Promise.reject(new Error('השמירה הקודמת עוד לא הסתיימה'));
     saving = true; var b = $('#savebtn'); if (b) { b.disabled = true; b.textContent = 'שומר…'; }
-    return putFile(path, data, indent, sha, msg).then(function (r) { published(r.commit.sha); return r; }).finally(function () { saving = false; if (b) { b.disabled = false; b.textContent = 'שמירה ופרסום'; } });
+    return putFile(path, data, indent, sha, msg).then(function (r) { published(r.commit.sha, url); return r; }).finally(function () { saving = false; if (b) { b.disabled = false; b.textContent = 'שמירה ופרסום'; } });
   }
-  // After a save: follow the publishing run, so the editor hears whether the site was actually updated.
-  function published(sha) {
+  // After a save: follow it until it is really on the site, as Decap and CloudCannon show the state of the build.
+  // The site's run for the commit says whether it waits, runs, failed, or was folded into a newer save (deploys are never cut
+  // short; saves made meanwhile wait, and only the newest is built). Then admin/build.json, written by each build, says which
+  // commit the site now serves: only then is it "on the site".
+  var pub = { state: '', url: null }, mine = []; // mine: the commits saved from this page, oldest first
+  function showPub() {
+    var p = $('#pubstate'); if (!p) return;
+    var text = { wait: '⏳ ממתין לפרסום…', run: '⏳ מתפרסם באתר… בדרך כלל דקה-שתיים', live: '✓ האתר עודכן', bad: '✕ הפרסום נכשל, והאתר נשאר כמו שהיה', slow: 'הפרסום לוקח יותר מהרגיל. אפשר להמשיך לעבוד, והאתר יתעדכן כשיסתיים.' }[pub.state];
+    p.hidden = !text; p.className = 'pubstate ' + (pub.state || ''); p.textContent = text || '';
+    if (pub.state === 'live' && pub.url) p.append(' · ', el('a', { href: '..' + pub.url, target: '_blank', rel: 'noopener', text: 'צפייה באתר' }));
+  }
+  function setPub(state, url) { pub = { state: state, url: url === undefined ? pub.url : url }; showPub(); }
+  function published(sha, url) {
+    mine.push(sha);
     say('נשמר. האתר מתעדכן, זה לוקח דקה או שתיים…', 'ok');
-    var tries = 0;
+    setPub('wait', url || null);
+    var t0 = Date.now(), done = false;
+    var newest = function () { return mine[mine.length - 1] === sha; };
+    var live = function () {
+      return fetch('build.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (b) {
+        var i = mine.indexOf(b.sha); return i >= mine.indexOf(sha) && i > -1; // this commit, or a later one from this page, is what the site serves
+      }, function () { return false; });
+    };
     (function poll() {
-      if (++tries > 40) return;
+      if (done) return;
+      if (Date.now() - t0 > 8 * 60000) { if (newest()) setPub('slow'); return; }
       setTimeout(function () {
-        api('actions/runs?head_sha=' + sha).then(function (r) {
-          var runs = r.workflow_runs || [];
-          var run = runs.filter(function (x) { return /Pages/.test(x.name); })[0] || runs[0];
-          if (!run || run.status !== 'completed') return poll();
-          if (run.conclusion === 'success') say('האתר עודכן ✓', 'ok');
-          else say('הפרסום נכשל, והאתר נשאר כמו שהיה. כנראה יש בעיה בתוכן ששמרתם. פנו למי שמתחזק את האתר.', 'bad');
-        }, function () { /* no permission to read runs: nothing more to report */ });
-      }, 10000);
+        Promise.all([api('actions/runs?head_sha=' + sha).catch(function () { return {}; }), live()]).then(function (r) {
+          if (r[1]) { done = true; if (newest()) { setPub('live'); say('האתר עודכן ✓', 'ok', pub.url); } return; }
+          var runs = (r[0] && r[0].workflow_runs) || [], run = runs.filter(function (x) { return /Pages/.test(x.name); })[0];
+          if (run && run.status === 'completed' && run.conclusion === 'failure') { done = true; if (newest()) { setPub('bad'); say('הפרסום נכשל, והאתר נשאר כמו שהיה. כנראה יש בעיה בתוכן ששמרתם. פנו למי שמתחזק את האתר.', 'bad'); } return; }
+          // cancelled: a newer save carries this change too, and its own poll reports it
+          if (run && run.status === 'completed' && run.conclusion === 'cancelled' && !newest()) { done = true; return; }
+          if (newest()) setPub(run && run.status === 'in_progress' ? 'run' : run && run.status === 'completed' ? 'run' : 'wait');
+          poll();
+        });
+      }, 6000);
     })();
   }
   document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'ד')) { var b = $('#savebtn'); if (b) { e.preventDefault(); b.click(); } } });
@@ -536,7 +566,7 @@
     var try_ = function (name, n) { return exists('data/pages/' + name + '.json').then(function (yes) { return yes ? try_(t.slug + '-' + (n + 1), n + 1) : name; }); };
     return try_(t.slug, 1).then(function (name) {
       var data = { topic: t.slug, title: t.title, lead: t.desc || '', desc: '', blocks: [BLOCKS.text.make()] };
-      return commit('data/pages/' + name + '.json', data, 2, null, 'דף חדש: ' + data.title).then(function () { pageEntry(name, data); cur = null; return name; });
+      return commit('data/pages/' + name + '.json', data, 2, null, 'דף חדש: ' + data.title, '/' + t.slug + '/').then(function () { pageEntry(name, data); cur = null; return name; });
     });
   }
   function newPage(topicSlug, category) {
@@ -566,7 +596,7 @@
           if (yes) throw new Error('כבר יש דף עם הכתובת הזאת. שנו אותה מעט.');
           var data = { topic: topic.value, title: title.value.trim(), lead: '', desc: '', blocks: [BLOCKS.text.make()] };
           if (catSel.value) data.category = catSel.value;
-          return commit(path, data, 2, null, 'דף חדש: ' + data.title).then(function () { pageEntry(s, data); });
+          return commit(path, data, 2, null, 'דף חדש: ' + data.title, '/' + data.topic + '/' + s + '/').then(function () { pageEntry(s, data); });
         }).then(function () { cur = null; say('נוצר. עכשיו כתבו את התוכן.', 'ok'); location.hash = '#/page/' + s; });
       });
       fillCats();
@@ -658,7 +688,8 @@
     if (!p.title || !p.title.trim()) return say('חסרה כותרת לדף', 'bad');
     if (p.blocks.some(function (b) { return b.type === 'links' && (b.items || []).some(function (l) { return !/^https:\/\/\S+$/.test(l.url || ''); }); })) return say('כל קישור צריך להתחיל ב־https://', 'bad');
     var f = cur, oldTopic = JSON.parse(f.orig).topic;
-    commit(f.path, p, f.indent, f.sha, 'עריכת דף: ' + p.title).then(function (r) {
+    var tp = (cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === p.topic; })[0];
+    commit(f.path, p, f.indent, f.sha, 'עריכת דף: ' + p.title, kindOf(tp) === 'page' ? '/' + p.topic + '/' : '/' + p.topic + '/' + slug + '/').then(function (r) {
       f.sha = r.content.sha; f.orig = JSON.stringify(p); pageEntry(slug, p); status();
       if (oldTopic !== p.topic) say('נשמר. שימו לב: הכתובת של הפריט השתנתה ל־/' + p.topic + '/' + slug + '/', 'ok');
     }, function (e) { say(e.message, 'bad'); });
@@ -748,7 +779,7 @@
     var f = cur;
     if (name === 'halacha.json' && f.data.some(function (x) { return !/^[\w-]+$/.test(String(x.id)) || !x.title; })) return say('לכל שאלה צריכה להיות כותרת', 'bad');
     if (name === 'site.json' && (f.data.hidden || []).some(function (h) { return !/^\/[\w/-]*$/.test(h.path || ''); })) return say('כל נתיב מוסתר צריך להתחיל ב־/', 'bad');
-    commit(f.path, f.data, f.indent, f.sha, 'עריכת תוכן: ' + (FILE[name] ? FILE[name].name : name)).then(function (r) { f.sha = r.content.sha; f.orig = JSON.stringify(f.data); status(); }, function (e) { say(e.message, 'bad'); });
+    commit(f.path, f.data, f.indent, f.sha, 'עריכת תוכן: ' + (FILE[name] ? FILE[name].name : name), FILE[name] && FILE[name].url || '/').then(function (r) { f.sha = r.content.sha; f.orig = JSON.stringify(f.data); status(); }, function (e) { say(e.message, 'bad'); });
   }
 
   // ---- the Q&A archive: search in a light list, edit one entry at a time (data/shut-edits/<id>.json) ----
@@ -830,7 +861,7 @@
     if (!String(x.title || '').trim()) return say('חסרה כותרת', 'bad');
     var clean = Object.assign({}, x, { q: x.q.filter(function (p) { return p.trim(); }), a: x.a.filter(function (p) { return p.trim(); }) });
     if (!clean.a.length) return say('חסרה תשובה', 'bad');
-    commit(f.path, clean, 2, f.sha, (isNew ? 'שאלה חדשה ' : 'עריכת שאלה ') + x.id + ': ' + x.title).then(function (r) {
+    commit(f.path, clean, 2, f.sha, (isNew ? 'שאלה חדשה ' : 'עריכת שאלה ') + x.id + ': ' + x.title, (x.kind === 'letters' ? '/letters/' : '/shut/') + x.id + '/').then(function (r) {
       f.sha = r.content.sha; f.data = clean; f.orig = JSON.stringify(clean); cache.shutIndex = null; status();
       if (isNew) { cur = null; location.hash = '#/shut/' + x.id; }
     }, function (e) { say(e.message, 'bad'); });

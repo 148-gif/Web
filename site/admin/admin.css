@@ -149,6 +149,9 @@ body.out .ah{display:none}
 .pub .state::before{content:"● ";}
 .pub .state.dirty{color:var(--warn)}
 .pub .btn+.btn{margin-top:8px}
+.pubstate{margin:12px 0 0;padding:9px 12px;border-radius:9px;background:var(--sunk);color:var(--mute);font-size:.9rem;font-weight:600}
+.pubstate.live{background:var(--ok-bg);color:var(--ok)}.pubstate.bad{background:var(--err-bg);color:var(--err)}
+.pubstate a,.toast a{color:inherit;font-weight:700}
 
 /* fields */
 .fld{margin:12px 0}
@@ -254,7 +257,8 @@ ul.eds li{display:flex;align-items:center;justify-content:space-between;gap:12px
   .side .pub h3,.side .pub .help{display:none}
   .side .pub .state{margin:0;font-size:.9rem}
   .side .pub .btn{width:auto;margin:0}
-  .side .pub #undo{grid-column:1/-1}
+  .side .pub #undo,.side .pub .pubstate{grid-column:1/-1}
+  .side .pub .pubstate{margin:0}
   .side .card:not(.pub){order:2;margin-top:16px}
 }
 @media (max-width:560px){.kinds{grid-template-columns:1fr}}
