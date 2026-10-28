@@ -19,3 +19,13 @@ BRANCH = "claude/greeting-2i183o"
 [[kv_namespaces]]
 binding = "EDITORS"
 id = "0457d5e9914b42e69d7f11ad77894d63"
+
+# Drafts and the activity log (D1; the tables are created by the worker on first use).
+[[d1_databases]]
+binding = "DB"
+database_name = "heichal-cms"
+database_id = "da698e66-6615-4d83-98ef-9cb77ccd6531"
+
+# Translates a Hebrew title into an English web address by meaning (Workers AI, pay per use with a daily free allowance).
+[ai]
+binding = "AI"
