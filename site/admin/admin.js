@@ -134,15 +134,39 @@
   var pending = { list: [], at: 0 }; // unpublished drafts, as the server last said
   var cur = null; // the open file: { path, sha, indent, data, orig }
   var cache = { topics: null, pages: null, shutIndex: null };
+  // Work belongs to the session that started it, even if another account signs in before it finishes.
+  var sessionEpoch = 0, requests = new Set(), transfers = new Set(), timers = new Set();
+  function endedSession() { var e = new Error('ההתחברות הסתיימה'); e.name = 'AbortError'; e.editorSessionEnded = true; return e; }
+  function sessionCheck(epoch) { if (epoch !== sessionEpoch || !token) throw endedSession(); }
+  function later(fn, ms) {
+    var epoch = sessionEpoch, id = setTimeout(function () { timers.delete(id); if (epoch === sessionEpoch && token) fn(); }, ms);
+    timers.add(id); return id;
+  }
+  function cancelLater(id) { clearTimeout(id); timers.delete(id); }
+  function sessionFetch(url, opt, read, anonymous) {
+    var epoch = sessionEpoch, credential = token, controller = new AbortController();
+    if (!anonymous && !credential) return Promise.reject(endedSession());
+    requests.add(controller);
+    var check = function () { if (epoch !== sessionEpoch || credential !== token) throw endedSession(); };
+    return fetch(url, Object.assign({}, opt, { signal: controller.signal })).then(function (r) { check(); return read(r); })
+      .then(function (value) { check(); return value; }, function (e) { check(); throw e; })
+      .finally(function () { requests.delete(controller); });
+  }
+  // Cancellation is expected when a session ends; other unhandled errors remain visible to diagnostics.
+  window.addEventListener('unhandledrejection', function (e) { if (e.reason && e.reason.editorSessionEnded) e.preventDefault(); });
   // What was just created, changed or removed here. The published lists (pages/index.json, shut/index.json) lag a minute or two
   // behind a save, so these notes are laid over them; they are kept in the browser, so a reload does not lose them, and
   // dropped once the published list agrees (or after 15 minutes).
   var RECENT_MS = 15 * 60000, recent = { pages: {}, shut: {} };
-  try {
-    var rr = JSON.parse(localStorage.getItem('cms-recent') || '{}');
-    ['pages', 'shut'].forEach(function (k) { Object.keys(rr[k] || {}).forEach(function (id) { if (Date.now() - rr[k][id].t < RECENT_MS) recent[k][id] = rr[k][id]; }); });
-  } catch { /* nothing kept */ }
-  function recentSave() { try { localStorage.setItem('cms-recent', JSON.stringify(recent)); } catch { /* storage blocked: kept for this page only */ } }
+  function storageScope() { return [cfg.repo, cfg.branch, cfg.worker || '', me].map(encodeURIComponent).join(':'); }
+  function recentLoad() {
+    recent = { pages: {}, shut: {} };
+    try {
+      var rr = JSON.parse(localStorage.getItem('cms-recent:' + storageScope()) || '{}');
+      ['pages', 'shut'].forEach(function (k) { Object.keys(rr[k] || {}).forEach(function (id) { if (Date.now() - rr[k][id].t < RECENT_MS) recent[k][id] = rr[k][id]; }); });
+    } catch { /* nothing kept */ }
+  }
+  function recentSave() { try { localStorage.setItem('cms-recent:' + storageScope(), JSON.stringify(recent)); } catch { /* storage blocked: kept for this page only */ } }
   function note(kind, id, entry) { recent[kind][id] = { t: Date.now(), e: entry }; recentSave(); }
 
   // ---- GitHub, directly or through the editor server ----
@@ -150,7 +174,7 @@
     opt = opt || {};
     var base = cfg.worker ? cfg.worker.replace(/\/$/, '') + '/gh' : 'https://api.github.com/repos/' + cfg.repo;
     var headers = cfg.worker ? { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } : { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
-    return fetch(base + (path ? '/' + path : ''), Object.assign({}, opt, { headers: headers })).then(function (r) {
+    return sessionFetch(base + (path ? '/' + path : ''), Object.assign({}, opt, { headers: headers }), function (r) {
       if (r.ok) return r.status === 204 ? null : r.json();
       if (r.status === 401 && cfg.worker) signout('פג תוקף ההתחברות. התחברו שוב.');
       return r.text().then(function (t) {
@@ -162,8 +186,7 @@
   }
   // The editor server's own calls (changes, publish, history, log, names …).
   function wapi(method, path, body) {
-    return fetch(cfg.worker.replace(/\/$/, '') + path, { method: method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
-      .then(function (r) {
+    return sessionFetch(cfg.worker.replace(/\/$/, '') + path, { method: method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) }, function (r) {
         return r.text().then(function (t) {
           var j = {}; try { j = t ? JSON.parse(t) : {}; } catch { /* not JSON */ }
           if (r.status === 401) signout('פג תוקף ההתחברות. התחברו שוב.');
@@ -188,9 +211,10 @@
   // ---- messages and unsaved changes ----
   var tm;
   function say(t, kind, link) {
+    if (!token) return;
     var m = $('#msg'); m.textContent = t; m.className = 'toast' + (kind ? ' ' + kind : ''); m.hidden = false;
     if (link) m.append(' ', el('a', { href: '..' + link, target: '_blank', rel: 'noopener', text: 'לצפייה באתר ←' }));
-    clearTimeout(tm); tm = setTimeout(function () { m.hidden = true; }, kind === 'bad' || link ? 10000 : 5000);
+    cancelLater(tm); tm = later(function () { m.hidden = true; }, kind === 'bad' || link ? 10000 : 5000);
   }
   function dirty() { return !!cur && JSON.stringify(cur.data) !== cur.orig; }
   window.addEventListener('beforeunload', function (e) { if (dirty()) { keepLocal(); e.preventDefault(); e.returnValue = ''; } });
@@ -198,9 +222,9 @@
   var stT, locT, autoT;
   var AUTO_MS = 30000; // idle time before a long session is saved to the server as a draft (config.json "autosaveSeconds")
   function touch() {
-    clearTimeout(stT); stT = setTimeout(status, 120);
-    clearTimeout(locT); locT = setTimeout(keepLocal, 2000);
-    clearTimeout(autoT); if (draft) autoT = setTimeout(autosave, AUTO_MS);
+    cancelLater(stT); stT = later(status, 120);
+    cancelLater(locT); locT = later(keepLocal, 2000);
+    cancelLater(autoT); if (draft) autoT = later(autosave, AUTO_MS);
   }
   function status() {
     var s = $('#savestate'); if (!s) return; var d = dirty();
@@ -210,33 +234,54 @@
   }
   // A copy of what is being typed is kept in this browser every couple of seconds (and offered back if the tab was closed or
   // the computer crashed); after ~30 seconds without typing it is also saved to the server as a draft, without a log entry.
-  var localKey = function (f) { return 'cms-draft:' + f.path; };
+  var localKey = function (f) { return 'cms-draft:' + storageScope() + ':' + (f.localPath || f.path); };
   function keepLocal() {
-    if (!cur || cur.fresh) return;
+    if (!cur) return;
     try { if (dirty()) localStorage.setItem(localKey(cur), JSON.stringify({ base: cur.sha, t: Date.now(), data: cur.data })); else localStorage.removeItem(localKey(cur)); } catch { /* storage blocked: nothing kept */ }
   }
   function dropLocal(f) { try { if (f) localStorage.removeItem(localKey(f)); } catch { /* storage blocked */ } }
   // Called when a screen has loaded a file: offer the copy kept in this browser, if it holds something the server does not.
   function applyLocal(f) {
-    if (!f || f.fresh) return;
-    var k = localKey(f), v = null;
-    try { v = JSON.parse(localStorage.getItem(k) || 'null'); } catch { /* unreadable */ }
+    if (!f) return;
+    var k = localKey(f), v = null, legacy = false;
+    try {
+      v = JSON.parse(localStorage.getItem(k) || 'null');
+      if (!v) { v = JSON.parse(localStorage.getItem('cms-draft:' + f.path) || 'null'); legacy = !!v; }
+    } catch { /* unreadable */ }
     if (!v) return;
-    if (JSON.stringify(v.data) === JSON.stringify(f.data)) { dropLocal(f); return; }
+    if (JSON.stringify(v.data) === JSON.stringify(f.data)) { if (!legacy) dropLocal(f); return; }
     var changed = v.base !== f.sha;
-    if (confirm('נמצאו שינויים שלא נשמרו מ־' + new Date(v.t).toLocaleString('he-IL') + '.' + (changed ? '\n\nשימו לב: מישהו שמר את הקובץ הזה מאז, ושמירה תדרוס את השינוי שלו.' : '') + '\n\nלשחזר אותם?')) f.data = v.data;
-    else dropLocal(f);
+    if (confirm('נמצאו שינויים שלא נשמרו מ־' + new Date(v.t).toLocaleString('he-IL') + '.' + (legacy ? '\nזו טיוטה מגרסה קודמת, שלא משויכת לחשבון. שחזרו רק אם אלה השינויים שלכם.' : '') + (changed ? '\n\nשימו לב: מישהו שמר את הקובץ הזה מאז, ושמירה תדרוס את השינוי שלו.' : '') + '\n\nלשחזר אותם?')) {
+      if (f.localPath && f.fresh) v.data.id = f.data.id; // a new question gets the currently available number
+      f.data = v.data;
+      if (legacy) { try { localStorage.setItem(k, JSON.stringify(v)); localStorage.removeItem('cms-draft:' + f.path); } catch { /* retain the old copy if storage is blocked */ } }
+    } else if (!legacy) dropLocal(f);
   }
   function autosave() {
-    var f = cur;
+    var f = cur, epoch = sessionEpoch;
     if (!draft || !f || saving || !dirty() || (f.check && f.check())) return;
     var body = f.clean ? f.clean(f.data) : f.data, snapshot = JSON.stringify(f.data);
     saving = true;
     putFile(f.path, body, f.indent, f.sha, 'שמירה אוטומטית', true).then(function (r) {
-      f.sha = r.content.sha; f.draft = true; f.fresh = false;
-      if (cur === f) f.orig = snapshot; // typed since: still unsaved
-      dropLocal(f); refreshPending(); status();
-    }, function () { /* silent: the next edit tries again, and the copy in this browser stays */ }).then(function () { saving = false; });
+      recordSaved(f, r, snapshot, epoch); refreshPending();
+    }, function () { /* silent: the next edit tries again, and the copy in this browser stays */ }).then(function () { if (epoch === sessionEpoch) saving = false; });
+  }
+  // Only the submitted snapshot is saved. Edits made while the request was in flight remain dirty and recoverable.
+  function recordSaved(f, r, snapshot, epoch) {
+    sessionCheck(epoch);
+    f.sha = r.content.sha; f.draft = draft; f.fresh = false; f.orig = snapshot;
+    dropLocal(f);
+    if (f.localPath) {
+      // Once a new question exists on the server, recovery reopens it instead of allocating another ID.
+      delete f.localPath;
+      if (cur === f) { here = '#/shut/' + f.data.id; history.replaceState(null, '', here); mark(here); }
+    }
+    if (cur === f) {
+      keepLocal();
+      if (!dirty()) { cancelLater(locT); cancelLater(autoT); }
+      else if (draft && !timers.has(autoT)) autoT = later(autosave, AUTO_MS);
+      status();
+    }
   }
 
   // ---- web addresses from Hebrew titles ----
@@ -249,10 +294,10 @@
       if (slugEl.dataset.touched) return;
       slugEl.value = slugify(titleEl.value);
       if (!draft) return;
-      clearTimeout(t);
+      cancelLater(t);
       var asked = titleEl.value.trim();
       if (!asked) return;
-      t = setTimeout(function () {
+      t = later(function () {
         wapi('POST', '/translate', { text: asked }).then(function (r) { if (r.slug && !slugEl.dataset.touched && titleEl.value.trim() === asked) slugEl.value = r.slug; }, function () { /* keeps the sound-based address */ });
       }, 600);
     });
@@ -372,6 +417,7 @@
 
   // ---- layout ----
   function shell() {
+    if (!token) return;
     var nav = $('#nav'); nav.textContent = '';
     var link = function (hash, ic, text) { return el('a', { href: hash, 'data-h': hash }, icon(ic), el('span', { text: text })); };
     var ts = (cache.topics && cache.topics.data) || [];
@@ -404,9 +450,15 @@
   }
   function mark(hash) {
     document.querySelectorAll('#nav a').forEach(function (a) { var h = a.getAttribute('data-h'); a.classList.toggle('cur', h === hash || (h !== '#/' && hash.indexOf(h + '/') === 0) || (h === '#/pages' && /^#\/page\//.test(hash))); });
-    document.body.classList.remove('navopen');
+    document.querySelectorAll('#nav a').forEach(function (a) { if (a.classList.contains('cur')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    navOpen(false);
   }
-  function main() { var m = $('#main'); m.textContent = ''; window.scrollTo(0, 0); return m; }
+  function navOpen(open, restoreFocus) {
+    document.body.classList.toggle('navopen', !!open);
+    $('#burger').setAttribute('aria-expanded', String(!!open));
+    if (restoreFocus) $('#burger').focus();
+  }
+  function main() { var m = token ? $('#main') : el('main'); m.textContent = ''; window.scrollTo(0, 0); return m; }
   function head(title, sub, actions) { return el('header', { class: 'phd' }, el('div', {}, el('h1', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), actions ? el('div', { class: 'acts' }, actions) : null); }
   function viewLink(p, text, cls) { return el('a', { class: 'btn ghost' + (cls ? ' ' + cls : ''), href: '..' + p, target: '_blank', rel: 'noopener' }, icon('eye'), text || 'צפייה באתר'); }
   function loading(m) { m.append(el('p', { class: 'loading', text: 'טוען…' })); }
@@ -432,7 +484,7 @@
     return box;
   }
   // The publish state belongs to the last publish, not to the screen: show it again on whichever screen opens next.
-  function saveBoxState() { setTimeout(function () { showPub(); status(); }, 0); }
+  function saveBoxState() { later(function () { showPub(); status(); }, 0); }
   function dropDraft() {
     var f = cur;
     if (!f || !confirm('לבטל את הטיוטה ולחזור למה שמופיע עכשיו באתר? אפשר יהיה לשחזר אותה רק מהגרסאות שפורסמו.')) return;
@@ -443,12 +495,11 @@
   var saving = false;
   function commit(path, data, indent, sha, msg, url) {
     if (saving) return Promise.reject(new Error('השמירה הקודמת עוד לא הסתיימה'));
-    saving = true; var b = $('#savebtn'); if (b) { b.disabled = true; b.textContent = 'שומר…'; }
+    saving = true; var epoch = sessionEpoch, b = $('#savebtn'); if (b) { b.disabled = true; b.textContent = 'שומר…'; }
     return putFile(path, data, indent, sha, msg).then(function (r) {
-      clearTimeout(locT); clearTimeout(autoT); dropLocal({ path: path });
       if (draft) { refreshPending(); say('נשמר כטיוטה. האתר עוד לא השתנה, והשינוי יופיע בו אחרי פרסום.', 'ok'); } else published(r.commit.sha, url);
       return r;
-    }).finally(function () { saving = false; if (b) { b.disabled = false; b.textContent = draft ? 'שמירה' : 'שמירה ופרסום'; } });
+    }).finally(function () { if (epoch !== sessionEpoch) return; saving = false; if (b) { b.disabled = false; b.textContent = draft ? 'שמירה' : 'שמירה ופרסום'; } });
   }
   // A save that found the file changed meanwhile: the editor's text is kept; they choose to reload (their text is offered back)
   // or to save over the other change.
@@ -483,7 +534,9 @@
   }
   function refreshPending() {
     if (!draft) return Promise.resolve();
+    var epoch = sessionEpoch;
     return wapi('GET', '/changes').then(function (j) {
+      sessionCheck(epoch);
       pending = { list: j.changes || [], at: Date.now() };
       if (cur) cur.draft = pending.list.some(function (x) { return x.path === cur.path; });
       drawPend(); status();
@@ -502,21 +555,23 @@
   }
   function setPub(state, url) { pub = { state: state, url: url === undefined ? pub.url : url }; showPub(); }
   function published(sha, url) {
+    var epoch = sessionEpoch;
     mine.push(sha);
     say(draft ? 'פורסם. האתר מתעדכן, זה לוקח דקה או שתיים…' : 'נשמר. האתר מתעדכן, זה לוקח דקה או שתיים…', 'ok');
     setPub('wait', url || null);
     var t0 = Date.now(), done = false;
     var newest = function () { return mine[mine.length - 1] === sha; };
     var live = function () {
-      return fetch('build.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (b) {
+      return sessionFetch('build.json?t=' + Date.now(), { cache: 'no-store' }, function (r) { return r.ok ? r.json() : {}; }).then(function (b) {
         var i = mine.indexOf(b.sha); return i >= mine.indexOf(sha) && i > -1; // this commit, or a later one from this page, is what the site serves
       }, function () { return false; });
     };
     (function poll() {
       if (done) return;
       if (Date.now() - t0 > 8 * 60000) { if (newest()) setPub('slow'); return; }
-      setTimeout(function () {
+      later(function () {
         Promise.all([api('actions/runs?head_sha=' + sha).catch(function () { return {}; }), live()]).then(function (r) {
+          sessionCheck(epoch);
           if (r[1]) { done = true; if (newest()) { setPub('live'); say('האתר עודכן ✓', 'ok', pub.url); } return; }
           var runs = (r[0] && r[0].workflow_runs) || [], run = runs.filter(function (x) { return /Pages/.test(x.name); })[0];
           if (run && run.status === 'completed' && run.conclusion === 'failure') { done = true; if (newest()) { setPub('bad'); say('הפרסום נכשל, והאתר נשאר כמו שהיה. כנראה יש בעיה בתוכן ששמרתם. פנו למי שמתחזק את האתר.', 'bad'); } return; }
@@ -531,17 +586,19 @@
   document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'ד')) { var b = $('#savebtn'); if (b) { e.preventDefault(); b.click(); } } });
 
   // ---- data shared by several screens ----
-  function topics(force) { if (cache.topics && !force) return Promise.resolve(cache.topics); return getFile('data/topics.json').then(function (f) { cache.topics = f; return f; }); }
+  function topics(force) { var epoch = sessionEpoch; if (cache.topics && !force) return Promise.resolve(cache.topics); return getFile('data/topics.json').then(function (f) { sessionCheck(epoch); cache.topics = f; return f; }); }
   function pageFromFile(slug) { return getFile('data/pages/' + slug + '.json').then(function (p) { return { slug: slug, title: p.data.title, topic: p.data.topic, category: p.data.category || '', draft: !!p.draft }; }); }
   // Which pages exist comes from the repository itself (always current, and a deleted page is gone at once); the published list
   // only supplies their titles and categories, and the notes above cover what changed since it was built.
   function pages(force) {
+    var epoch = sessionEpoch;
     if (cache.pages && !force) return Promise.resolve(cache.pages);
-    var published = fetch('pages/index.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('no index'); return r.json(); })
+    var published = sessionFetch('pages/index.json', { cache: 'no-cache' }, function (r) { if (!r.ok) throw new Error('no index'); return r.json(); })
       .then(function (rows) { var m = {}; rows.forEach(function (r) { m[r[0]] = { slug: r[0], topic: r[1], title: r[2], category: r[3] || '' }; }); return m; }, function () { return null; });
     var drafts = {};
     var listing = api('contents/data/pages' + ref()).then(function (fs) { return fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { var n = x.name.replace(/\.json$/, ''); if (x.draft) drafts[n] = 1; return n; }); }, function () { return null; });
     return Promise.all([published, listing]).then(function (r) {
+      sessionCheck(epoch);
       var base = r[0] || {}, names = r[1];
       if (!names) names = Object.keys(base).filter(function (k) { return !(recent.pages[k] && recent.pages[k].e === null); }).concat(Object.keys(recent.pages).filter(function (k) { return recent.pages[k].e && !base[k]; }));
       var out = [], missing = [];
@@ -554,7 +611,7 @@
       });
       Object.keys(recent.pages).forEach(function (k) { if (recent.pages[k].e === null && names.indexOf(k) < 0) delete recent.pages[k]; });
       recentSave();
-      return Promise.all(missing.map(pageFromFile)).then(function (more) { cache.pages = out.concat(more); return cache.pages; });
+      return Promise.all(missing.map(pageFromFile)).then(function (more) { sessionCheck(epoch); cache.pages = out.concat(more); return cache.pages; });
     });
   }
   function pageEntry(slug, p) { note('pages', slug, { slug: slug, title: p.title, topic: p.topic, category: p.category || '' }); cache.pages = null; }
@@ -804,8 +861,10 @@
 
   // Page editor, in the spirit of WordPress: title and lead on top, content blocks below, publishing and settings on the side.
   function pageScreen(slug) {
+    var epoch = sessionEpoch;
     var m = main(); loading(m);
     Promise.all([getFile('data/pages/' + slug + '.json'), topics()]).then(function (r) {
+      sessionCheck(epoch);
       cur = r[0]; var p = cur.data, ts = r[1].data;
       if (!Array.isArray(p.blocks)) p.blocks = [];
       if (p.desc == null) p.desc = '';
@@ -903,11 +962,11 @@
   function savePage(slug) {
     var p = cur.data, bad = pageProblem(p);
     if (bad) return say(bad, 'bad');
-    var f = cur, oldTopic = JSON.parse(f.orig).topic;
+    var f = cur, snapshot = JSON.stringify(p), submitted = JSON.parse(snapshot), epoch = sessionEpoch, oldTopic = JSON.parse(f.orig).topic;
     var tp = (cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === p.topic; })[0];
     commit(f.path, p, f.indent, f.sha, 'עריכת דף: ' + p.title, kindOf(tp) === 'page' ? '/' + p.topic + '/' : '/' + p.topic + '/' + slug + '/').then(function (r) {
-      f.sha = r.content.sha; f.orig = JSON.stringify(p); pageEntry(slug, p); status();
-      if (oldTopic !== p.topic) say('נשמר. שימו לב: הכתובת של הפריט השתנתה ל־/' + p.topic + '/' + slug + '/', 'ok');
+      recordSaved(f, r, snapshot, epoch); pageEntry(slug, submitted);
+      if (oldTopic !== submitted.topic) say('נשמר. שימו לב: הכתובת של הפריט השתנתה ל־/' + submitted.topic + '/' + slug + '/', 'ok');
     }, saveFail(function () { savePage(slug); }));
   }
   function delPage() {
@@ -915,7 +974,7 @@
     delFile(cur.path, cur.sha, 'מחיקת דף: ' + cur.data.title).then(function () { refreshPending(); var gone = cur.path.replace(/^data\/pages\/|\.json$/g, ''), tp = cur.data.topic; note('pages', gone, null); cache.pages = null; cur = null; say(draft ? 'נמחק בטיוטה. הדף יוסר מהאתר אחרי פרסום.' : 'נמחק. האתר יתעדכן תוך דקה או שתיים.', 'ok'); location.hash = kindOf((cache.topics && cache.topics.data || []).filter(function (x) { return x.slug === tp; })[0]) === 'page' ? '#/pages' : '#/topic/' + tp; }, function (e) { say(e.message, 'bad'); });
   }
   // Preview with the site's own stylesheet, in the markup the build uses (scripts/lib/sections/pages.mjs).
-  function preview(p) { stagedMap(p).then(function (m) { previewWith(p, m); }); }
+  function preview(p) { var epoch = sessionEpoch; stagedMap(p).then(function (m) { sessionCheck(epoch); previewWith(p, m); }); }
   function previewWith(p, staged) {
     var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
     var ps = function (xs) { return (xs || []).map(function (x) { return '<p>' + esc(x) + '</p>'; }).join(''); };
@@ -948,9 +1007,11 @@
 
   // A content file of the site (uman.json …): its simple fields first, then each list or section in a card that opens.
   function fileScreen(name) {
+    var epoch = sessionEpoch;
     var meta = FILE[name] || { name: name, url: '' };
     var m = main(); loading(m);
     getFile('data/' + name).then(function (f) {
+      sessionCheck(epoch);
       cur = f;
       cur.check = function () { return fileProblem(name, cur.data); };
       applyLocal(cur);
@@ -1023,20 +1084,23 @@
     return '';
   }
   function saveFile(name) {
-    var f = cur, bad = fileProblem(name, f.data);
+    var f = cur, snapshot = JSON.stringify(f.data), epoch = sessionEpoch, bad = fileProblem(name, f.data);
     if (bad) return say(bad, 'bad');
-    commit(f.path, f.data, f.indent, f.sha, 'עריכת תוכן: ' + (FILE[name] ? FILE[name].name : name), FILE[name] && FILE[name].url || '/').then(function (r) { f.sha = r.content.sha; f.orig = JSON.stringify(f.data); status(); }, saveFail(function () { saveFile(name); }));
+    commit(f.path, f.data, f.indent, f.sha, 'עריכת תוכן: ' + (FILE[name] ? FILE[name].name : name), FILE[name] && FILE[name].url || '/').then(function (r) { recordSaved(f, r, snapshot, epoch); }, saveFail(function () { saveFile(name); }));
   }
 
   // ---- the Q&A archive: search in a light list, edit one entry at a time (data/shut-edits/<id>.json) ----
   function shutIndex() {
+    var epoch = sessionEpoch;
     if (cache.shutIndex) return Promise.resolve(cache.shutIndex);
-    return fetch('shut/index.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('רשימת השאלות עוד לא זמינה. נסו שוב בעוד כמה דקות.'); return r.json(); }).then(function (x) { cache.shutIndex = x; return x; });
+    return sessionFetch('shut/index.json', { cache: 'no-cache' }, function (r) { if (!r.ok) throw new Error('רשימת השאלות עוד לא זמינה. נסו שוב בעוד כמה דקות.'); return r.json(); }).then(function (x) { sessionCheck(epoch); cache.shutIndex = x; return x; });
   }
   // The published Q&A list with the notes laid over it: hidden questions are left out, edited ones show their new title, new ones are added.
   function shutDrafts() {
     if (!draft) return Promise.resolve({});
+    var epoch = sessionEpoch;
     return refreshPending().then(function () {
+      sessionCheck(epoch);
       var its = pending.list.filter(function (x) { return /^data\/shut-edits\//.test(x.path) && x.status !== 'removed'; });
       return Promise.all(its.map(function (it) { return getFile(it.path).then(function (f) { return [f.data.id, f.data.deleted ? { e: null } : { e: { kind: f.data.kind, title: f.data.title, date: f.data.date || '' } }]; }, function () { return null; }); }));
     }).then(function (rows) { var o = {}; (Array.isArray(rows) ? rows : []).forEach(function (r) { if (r) o[String(r[0])] = r[1]; }); return o; });
@@ -1070,15 +1134,17 @@
         res.append(el('p', { class: 'help', text: words.length ? (hits.length ? hits.length + ' תוצאות' + (hits.length > 60 ? ' (מוצגות 60 הראשונות)' : '') : 'לא נמצאו תוצאות') : 'השאלות האחרונות שנוספו. ' + hits.length.toLocaleString('he-IL') + ' בסך הכול.' }));
         (words.length ? hits : hits.slice().reverse()).slice(0, 60).forEach(function (x) { res.append(el('a', { class: 'row', href: '#/shut/' + x[0] }, el('span', { class: 'num', text: '#' + x[0] }), el('span', { class: 'grow', text: x[2] }), el('small', { text: x[3] }))); });
       };
-      var t; q.addEventListener('input', function () { clearTimeout(t); t = setTimeout(draw, 150); }); kind.addEventListener('change', draw);
+      var t; q.addEventListener('input', function () { cancelLater(t); t = later(draw, 150); }); kind.addEventListener('change', draw);
       draw(); q.focus();
     }, function (e) { res.textContent = ''; res.append(el('p', { class: 'help', text: e.message })); });
   }
   function shutItem(id) {
+    var epoch = sessionEpoch;
     var m = main(); loading(m);
     var isNew = id === 'new';
     var path = function (x) { return 'data/shut-edits/' + x + '.json'; };
     shutIndex().then(function (idx) {
+      sessionCheck(epoch);
       if (isNew) {
         // Another new entry may have been saved since the list was built: take the first free number.
         var next = idx.reduce(function (a, x) { return Math.max(a, +x[0] || 0); }, 0) + 1;
@@ -1090,14 +1156,16 @@
       return getFile(path(id)).catch(function (e) {
         if (e.status !== 404) throw e;
         if (!row) throw new Error('השאלה לא נמצאה');
-        return fetch('shut/' + row[4] + '.json').then(function (r) { return r.json(); }).then(function (chunk) {
+        return sessionFetch('shut/' + row[4] + '.json', {}, function (r) { return r.json(); }).then(function (chunk) {
           var x = chunk.filter(function (y) { return String(y.id) === id; })[0];
           if (!x) throw new Error('השאלה לא נמצאה');
           return { path: path(id), sha: null, indent: 2, data: x, orig: JSON.stringify(x) };
         });
       });
     }).then(function (f) {
+      sessionCheck(epoch);
       cur = f; cur.check = function () { return shutProblem(cur.data); }; cur.clean = shutClean; cur.fresh = isNew;
+      if (isNew) cur.localPath = 'data/shut-edits/new.json';
       applyLocal(cur);
       var x = f.data;
       m.textContent = '';
@@ -1120,7 +1188,7 @@
       draw();
       var kindSel = el('select', { id: 'skind' }, el('option', { value: 'shut', text: 'שו״ת' }), el('option', { value: 'letters', text: 'מכתב' })); kindSel.value = x.kind;
       kindSel.addEventListener('change', function () { x.kind = kindSel.value; touch(); });
-      side.append(saveBox(function () { saveShut(isNew); }),
+      side.append(saveBox(function () { saveShut(f.fresh); }),
         el('div', { class: 'card' }, el('h3', { text: 'פרטים' }), textInput(x, 'date', 'תאריך', { placeholder: 'למשל: ה׳ שבט תשע״ה' }), el('div', { class: 'fld' }, el('label', { for: 'skind', text: 'סוג' }), kindSel), el('p', { class: 'help', text: 'מספר: ' + x.id })),
         isNew ? null : el('div', { class: 'card stack' }, viewLink(base + x.id + '/', 'צפייה באתר', 'wide'), el('button', { type: 'button', class: 'btn ghost wide dng', onclick: hideShut }, icon('trash'), 'הסתרה מהאתר')));
       status();
@@ -1132,19 +1200,23 @@
     return shutClean(x).a.length ? '' : 'חסרה תשובה';
   }
   function saveShut(isNew) {
-    var f = cur, x = f.data, bad = shutProblem(x);
+    var f = cur, x = f.data, snapshot = JSON.stringify(x), epoch = sessionEpoch, bad = shutProblem(x);
     if (bad) return say(bad, 'bad');
     var clean = shutClean(x);
     commit(f.path, clean, 2, f.sha, (isNew ? 'שאלה חדשה ' : 'עריכת שאלה ') + x.id + ': ' + x.title, (x.kind === 'letters' ? '/letters/' : '/shut/') + x.id + '/').then(function (r) {
-      f.sha = r.content.sha; f.data = clean; f.orig = JSON.stringify(clean); note('shut', String(x.id), { kind: clean.kind, title: clean.title, date: clean.date || '' }); status();
-      if (isNew) { cur = null; location.hash = '#/shut/' + x.id; }
+      recordSaved(f, r, snapshot, epoch); note('shut', String(x.id), { kind: clean.kind, title: clean.title, date: clean.date || '' });
+      if (isNew && cur === f && !dirty()) route(true);
     }, saveFail(function () { saveShut(isNew); }));
   }
   function hideShut() {
-    var f = cur;
+    var f = cur, epoch = sessionEpoch;
     if (!confirm('להסתיר את השאלה ״' + f.data.title + '״ מהאתר? אפשר להחזיר אותה אחר כך.')) return;
     var id = f.data.id;
-    commit(f.path, { id: id, deleted: true }, 2, f.sha, 'הסתרת שאלה ' + id).then(function () { note('shut', String(id), null); cur = null; say(draft ? 'השאלה תוסתר מהאתר אחרי פרסום.' : 'השאלה תוסתר מהאתר תוך דקה או שתיים.', 'ok'); location.hash = '#/shut'; }, function (e) { say(e.message, 'bad'); });
+    commit(f.path, { id: id, deleted: true }, 2, f.sha, 'הסתרת שאלה ' + id).then(function () {
+      sessionCheck(epoch); dropLocal(f); note('shut', String(id), null);
+      if (cur === f) { cancelLater(locT); cancelLater(autoT); cur = null; location.hash = '#/shut'; }
+      say(draft ? 'השאלה תוסתר מהאתר אחרי פרסום.' : 'השאלה תוסתר מהאתר תוך דקה או שתיים.', 'ok');
+    }, function (e) { say(e.message, 'bad'); });
   }
 
   // ---- editors (site owners only; the server checks this too) ----
@@ -1190,23 +1262,39 @@
   var PIECE = 393216;
   // Isolated, so "2.3 MB" keeps its order inside right-to-left text.
   function mbytes(n) { return '\u2066' + (n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB') + '\u2069'; }
-  function readB64(blob) { return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(String(r.result).replace(/^data:[^,]*,/, '')); }; r.onerror = function () { rej(new Error('לא הצלחנו לקרוא את הקובץ')); }; r.readAsDataURL(blob); }); }
+  function readB64(blob) {
+    var epoch = sessionEpoch;
+    return new Promise(function (res, rej) {
+      sessionCheck(epoch);
+      var r = new FileReader(); transfers.add(r);
+      r.onloadend = function () { transfers.delete(r); };
+      r.onload = function () { if (epoch !== sessionEpoch) return rej(endedSession()); res(String(r.result).replace(/^data:[^,]*,/, '')); };
+      r.onerror = function () { rej(new Error('לא הצלחנו לקרוא את הקובץ')); };
+      r.onabort = function () { rej(endedSession()); };
+      r.readAsDataURL(blob);
+    });
+  }
   // Uploads one file; onProgress gets 0..1. Resolves with the new library item.
   function uploadMedia(file, onProgress) {
+    var epoch = sessionEpoch;
     return wapi('POST', '/media/init', { name: file.name, size: file.size }).then(function (init) {
       if (init.store === 'r2') {
         return new Promise(function (res, rej) {
-          var x = new XMLHttpRequest();
+          sessionCheck(epoch);
+          var x = new XMLHttpRequest(); transfers.add(x);
           x.open('PUT', cfg.worker.replace(/\/$/, '') + '/media/r2?id=' + init.id);
           x.setRequestHeader('Authorization', 'Bearer ' + token);
-          x.upload.onprogress = function (e) { if (e.lengthComputable) onProgress(e.loaded / e.total); };
-          x.onload = function () { var j = {}; try { j = JSON.parse(x.responseText); } catch { /* not JSON */ } if (x.status === 401) signout('פג תוקף ההתחברות. התחברו שוב.'); if (x.status < 300) res(j.item); else rej(new Error(j.message || 'שגיאה ' + x.status)); };
+          x.upload.onprogress = function (e) { if (epoch === sessionEpoch && e.lengthComputable) onProgress(e.loaded / e.total); };
+          x.onload = function () { if (epoch !== sessionEpoch) return rej(endedSession()); var j = {}; try { j = JSON.parse(x.responseText); } catch { /* not JSON */ } if (x.status === 401) { signout('פג תוקף ההתחברות. התחברו שוב.'); return rej(endedSession()); } if (x.status >= 200 && x.status < 300) res(j.item); else rej(new Error(j.message || 'שגיאה ' + x.status)); };
           x.onerror = function () { rej(new Error('החיבור נפסק. נסו שוב.')); };
+          x.onabort = function () { rej(endedSession()); };
+          x.onloadend = function () { transfers.delete(x); };
           x.send(file);
         });
       }
       var n = Math.ceil(file.size / PIECE);
       var piece = function (i) {
+        sessionCheck(epoch);
         if (i >= n) return wapi('POST', '/media/done', { id: init.id }).then(function (j) { return j.item; });
         return readB64(file.slice(i * PIECE, (i + 1) * PIECE)).then(function (d) { return wapi('POST', '/media/chunk', { id: init.id, n: i, data: d }); }).then(function () { onProgress((i + 1) / n); return piece(i + 1); });
       };
@@ -1215,12 +1303,14 @@
   }
   // Uploads several files one after another, with a progress row for each; calls done(item) for each success.
   function uploadMany(files, list, done) {
+    var epoch = sessionEpoch;
     list.textContent = ''; // rows of an earlier batch (including failed ones) are cleared when a new one starts
     return Array.prototype.reduce.call(files, function (chain, file) {
       var bar = el('span', { class: 'bar' }), msg = el('small', { class: 'help' }), row = el('li', {}, el('span', { class: 'grow', text: file.name }), el('span', { class: 'prog' }, bar), msg);
       list.append(row);
       return chain.then(function () {
-        return uploadMedia(file, function (f) { bar.setAttribute('data-p', String(Math.round(f * 10))); msg.textContent = Math.round(f * 100) + '%'; }).then(function (item) { row.className = 'okrow'; msg.textContent = 'הועלה'; setTimeout(function () { row.remove(); }, 3000); if (done) done(item); }, function (e) { row.className = 'badrow'; msg.textContent = e.message; });
+        sessionCheck(epoch);
+        return uploadMedia(file, function (f) { bar.setAttribute('data-p', String(Math.round(f * 10))); msg.textContent = Math.round(f * 100) + '%'; }).then(function (item) { sessionCheck(epoch); row.className = 'okrow'; msg.textContent = 'הועלה'; later(function () { row.remove(); }, 3000); if (done) done(item); }, function (e) { if (e.editorSessionEnded) throw e; row.className = 'badrow'; msg.textContent = e.message; });
       });
     }, Promise.resolve());
   }
@@ -1279,9 +1369,10 @@
   function pagesUsing(src) {
     return api('contents/data/pages' + ref()).then(function (fs) {
       return Promise.all(fs.filter(function (x) { return /\.json$/.test(x.name); }).map(function (x) { return readJson('data/pages/' + x.name).then(function (d) { return d && JSON.stringify(d.blocks || []).indexOf(JSON.stringify(src).slice(1, -1)) > -1 ? d.title : null; }); }));
-    }).then(function (ts) { return ts.filter(Boolean); }, function () { return []; });
+    }).then(function (ts) { return ts.filter(Boolean); }, function (e) { if (e.editorSessionEnded) throw e; return []; });
   }
   function mediaScreen() {
+    var epoch = sessionEpoch;
     var m = main();
     m.append(head('ספריית מדיה', 'תמונות, סרטונים, שמע ומסמכים להוספה לדפים. הקבצים הקטנים נשמרים עם האתר ויפורסמו בפרסום, והגדולים והסרטונים נשמרים באחסון נפרד.'));
     var quota = el('section', { class: 'card' }), list = el('ul', { class: 'upl' });
@@ -1307,7 +1398,7 @@
         grid.append(el('div', { class: 'mcard' }, el('button', { type: 'button', class: 'mthumbbtn', 'aria-label': 'צפייה ב' + x.name, onclick: function () { viewMedia(x); } }, mediaThumb(x)), el('div', { class: 'grow' }, el('b', { class: 'mname', text: x.name }), el('small', { class: 'help', text: MEDIA_KINDS[x.kind][0] + ' · ' + mbytes(x.size) + ' · ' + x.by }), st ? el('span', { class: 'tag draft', text: st }) : null),
           el('span', { class: 'acts' },
             el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { viewMedia(x); } }, icon('eye'), 'צפייה'),
-            el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { var full = x.store === 'github' ? new URL('..' + x.url, location.href).href : x.url; (navigator.clipboard ? navigator.clipboard.writeText(full) : Promise.reject()).then(function () { say('הקישור הועתק.', 'ok'); }, function () { prompt('הקישור:', full); }); } }, 'העתקת קישור'),
+            el('button', { type: 'button', class: 'btn ghost sm', onclick: function () { var full = x.store === 'github' ? new URL('..' + x.url, location.href).href : x.url; (navigator.clipboard ? navigator.clipboard.writeText(full) : Promise.reject()).then(function () { sessionCheck(epoch); say('הקישור הועתק.', 'ok'); }, function () { sessionCheck(epoch); prompt('הקישור:', full); }); } }, 'העתקת קישור'),
             x.status === 'removing' ? null : el('button', { type: 'button', class: 'btn ghost sm dng', onclick: function () { removeMedia(x, function () { list.textContent = ''; load(); }); } }, 'מחיקה'))));
       });
     };
@@ -1322,9 +1413,12 @@
   }
   // A file used by a published page cannot be removed from the repository without breaking the build: say where it is used.
   function removeMedia(x, after) {
+    var epoch = sessionEpoch;
     pagesUsing(x.url).then(function (used) {
+      sessionCheck(epoch);
       if (used.length && x.store === 'github') return say('הקובץ בשימוש בדפים: ' + used.join(', ') + '. הסירו אותו משם קודם.', 'bad');
       if (!confirm('למחוק את ״' + x.name + '״?' + (used.length ? '\nשימו לב: הוא בשימוש בדפים: ' + used.join(', ') + '.' : '') + (x.status === 'published' && x.store === 'github' ? '\nהקובץ יוסר מהאתר בפרסום הבא.' : ''))) return;
+      sessionCheck(epoch);
       wapi('DELETE', '/media/' + x.id).then(function () { say('נמחק.', 'ok'); after(); }, function (e) { say(e.message, 'bad'); });
     });
   }
@@ -1364,10 +1458,10 @@
   var RULES = null, PHOTO_LIST = null, MAX_GALLERY = 12;
   import('./image-rules.mjs').then(function (m) { RULES = m; MAX_GALLERY = m.IMG_LIMITS.gallery; }, function () { RULES = null; });
   function loadPhotos() {
+    var epoch = sessionEpoch;
     if (PHOTO_LIST) return Promise.resolve(PHOTO_LIST);
-    return fetch('photos/index.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('רשימת התמונות עוד לא זמינה. נסו שוב בעוד כמה דקות.'); return r.json(); }).then(function (l) { PHOTO_LIST = l; return l; });
+    return sessionFetch('photos/index.json', { cache: 'no-cache' }, function (r) { if (!r.ok) throw new Error('רשימת התמונות עוד לא זמינה. נסו שוב בעוד כמה דקות.'); return r.json(); }).then(function (l) { sessionCheck(epoch); PHOTO_LIST = l; return l; });
   }
-  loadPhotos().catch(function () { /* asked for again when a photo is chosen */ });
   function photoOf(id) { return (PHOTO_LIST || []).filter(function (x) { return x.id === id; })[0]; }
   function phThumb(x) { return x && x.thumb ? el('img', { class: 'phthumb', alt: '', src: 'photos/' + x.id + '.webp' }) : el('span', { class: 'phthumb ph', text: x ? 'ממתינה' : '?' }); }
   // The photo chooser: only photos approved for publishing can be chosen; the others are shown with the reason.
@@ -1496,6 +1590,7 @@
   }
   var slugOf = function (name) { return String(name).replace(/\.[^.]*$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30); };
   function photoUpload() {
+    var epoch = sessionEpoch;
     if (!RULES) return say('הכללים עוד נטענים. נסו שוב בעוד רגע.', 'bad');
     var dlg = el('dialog', { class: 'dlg wide' }, el('h2', { text: 'העלאת תמונה חדשה' })), body = el('div'), st = null, registry = [];
     var f = { id: '', alt: '', caption: '', credit: '', year: '', others: '', fx: 50, fy: 40 };
@@ -1541,9 +1636,10 @@
       thumbs.forEach(function (t) { jobs.push(['t' + t + '.webp', function () { return toWebp(thumbOf(st.master, t, f.fx, f.fy), 't' + t + '.webp'); }]); });
       var i = 0;
       var next = function () {
+        sessionCheck(epoch);
         if (i >= jobs.length) return Promise.resolve();
         var job = jobs[i++]; prog.textContent = 'מכין ומעלה ' + i + ' מתוך ' + jobs.length + '…';
-        return job[1]().then(function (blob) { return uploadPhotoFile(f.id, job[0], blob, staged); }).then(next);
+        return job[1]().then(function (blob) { sessionCheck(epoch); return uploadPhotoFile(f.id, job[0], blob, staged); }).then(next);
       };
       return next().then(function () { return getFile('data/images.json'); }).then(function (cur2) {
         var entry = { id: f.id, w: st.W, h: st.H, alt: f.alt.trim(), caption: f.caption.trim(), credit: f.credit.trim(), year: f.year.trim(), fx: f.fx, fy: f.fy, dh: st.dh, rights: 'pending', others: f.others, consent: '',
@@ -1553,6 +1649,7 @@
         dlg.close(); refreshPending(); PHOTO_LIST = null; loadPhotos().catch(function () {});
         say('התמונה הועלתה וממתינה לאישור בעל האתר. היא תתפרסם בפרסום הבא, ותוצג בדפים רק אחרי שתאושר.', 'ok'); route(true);
       }).catch(function (e) {
+        if (epoch !== sessionEpoch || e.editorSessionEnded) return;
         // Files already sent are taken back, so a failed upload leaves nothing half-done in the waiting list.
         return Promise.all(staged.map(function (id) { return wapi('DELETE', '/media/' + id).catch(function () {}); })).then(function () { errBox.textContent = e.message; prog.textContent = ''; input.disabled = false; check(); });
       });
@@ -1620,12 +1717,14 @@
   }
 
   function changesScreen() {
+    var epoch = sessionEpoch;
     var m = main();
     m.append(head('שינויים ממתינים', publisher ? 'מה שנשמר כטיוטה ועוד לא באתר. בחרו מה לפרסם, ולחצו על ״פרסום״.' : 'מה שנשמר כטיוטה ועוד לא באתר. מי שמורשה לפרסם יראה את זה כאן ויפרסם.'));
     m.append(el('p', { id: 'pubstate', class: 'pubstate', hidden: true }));
     var box = el('div'); m.append(box); loading(box);
     var load = function () {
       wapi('GET', '/changes?check=1').then(function (j) {
+        sessionCheck(epoch);
         pending = { list: j.changes, at: Date.now() }; drawPend();
         box.textContent = '';
         showPub();
@@ -1803,7 +1902,7 @@
     return '';
   }
   function auditEdit(p) { var m = /^\/shut\/([\w-]+)\/$/.exec(p); return m ? '#/shut/' + m[1] : ''; }
-  function fetchAudit() { return fetch('links.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; }); }
+  function fetchAudit() { return sessionFetch('links.json?t=' + Date.now(), { cache: 'no-store' }, function (r) { return r.ok ? r.json() : null; }).catch(function (e) { if (e.editorSessionEnded) throw e; return null; }); }
   function auditBadge() {
     fetchAudit().then(function (a) {
       var b = $('#lk-count'); if (!a || !b) return;
@@ -1812,9 +1911,11 @@
     });
   }
   function linksScreen() {
+    var epoch = sessionEpoch;
     var m = main(); loading(m);
     var fresh = { path: 'data/link-audit.json', sha: null, indent: 2, data: {}, orig: '{}', fresh: true };
     Promise.all([fetchAudit(), getFile('data/link-audit.json').catch(function (e) { if (e.status === 404) return fresh; throw e; })]).then(function (r) {
+      sessionCheck(epoch);
       var a = r[0]; cur = r[1]; auditData(cur.data); cur.orig = JSON.stringify(cur.data);
       cur.check = function () { return linksProblem(cur.data); }; cur.clean = auditTidy;
       applyLocal(cur); auditData(cur.data);
@@ -1907,8 +2008,8 @@
       };
       draw();
       var saveLinks = function () {
-        var f = cur, bad = linksProblem(f.data); if (bad) return say(bad, 'bad');
-        commit(f.path, auditTidy(f.data), f.indent, f.sha, 'עריכת תוכן: הגדרות קישורים', '/').then(function (r) { f.sha = r.content.sha; f.fresh = false; f.orig = JSON.stringify(f.data); status(); }, saveFail(saveLinks));
+        var f = cur, snapshot = JSON.stringify(f.data), epoch = sessionEpoch, bad = linksProblem(f.data); if (bad) return say(bad, 'bad');
+        commit(f.path, auditTidy(f.data), f.indent, f.sha, 'עריכת תוכן: הגדרות קישורים', '/').then(function (r) { recordSaved(f, r, snapshot, epoch); }, saveFail(saveLinks));
       };
       side.append(saveBox(saveLinks));
       status();
@@ -1917,16 +2018,18 @@
 
   // The name shown in the public history of the site's repository (never the email).
   function nameDialog() {
+    var epoch = sessionEpoch;
     var inp = el('input', { type: 'text', maxlength: '40', placeholder: 'למשל: יעקב כהן' }); inp.value = myName;
     dialog('איך לקרוא לכם?', [['שם תצוגה', inp, 'השם יופיע ביומן ובהיסטוריית הפרסומים של האתר, שהיא ציבורית. אל תכתבו כתובת מייל.']], 'שמירה', function () {
       var v = inp.value.trim(); if (!v) return 'כתבו שם';
-      return wapi('PUT', '/me', { name: v }).then(function (j) { myName = j.name; $('#who').textContent = myName; say('השם נשמר.', 'ok'); });
+      return wapi('PUT', '/me', { name: v }).then(function (j) { sessionCheck(epoch); myName = j.name; $('#who').textContent = myName; say('השם נשמר.', 'ok'); });
     });
   }
 
   // ---- router ----
   var here = '';
   function route(force) {
+    if (!token) return;
     var h = location.hash || '#/';
     if (!force && h === here) return;
     if (!force && here && !leave()) { history.replaceState(null, '', here); return; }
@@ -1966,17 +2069,21 @@
   }
 
   // ---- sign-in ----
-  var pollOn = false, reminded = false;
+  var pollTimer = null, reminded = false;
   function enter(who) {
+    var epoch = sessionEpoch;
+    me = who || ''; recentLoad();
     draft = !!cfg.worker;
     // Through the editor server: ask who this is now (role and name can change between visits).
-    var first = draft ? wapi('GET', '/me').then(function (j) { owner = !!j.owner; publisher = !!j.publisher; myName = j.name || ''; }) : Promise.resolve();
-    return first.then(function () { return api(''); }).then(function (r) {
+    var first = draft ? wapi('GET', '/me').then(function (j) { sessionCheck(epoch); owner = !!j.owner; publisher = !!j.publisher; myName = j.name || ''; }) : Promise.resolve();
+    return first.then(function () { sessionCheck(epoch); return api(''); }).then(function (r) {
+      sessionCheck(epoch);
       if (!r.permissions || !r.permissions.push) throw new Error(cfg.worker ? 'לשרת העריכה אין הרשאת כתיבה למאגר' : 'למפתח אין הרשאת כתיבה למאגר');
       me = who || ''; document.body.classList.remove('out'); $('#login').hidden = true; $('#app').hidden = false; $('#out').hidden = false; $('#burger').hidden = false; $('#who').textContent = myName || who || cfg.repo;
       $('#rename').hidden = !draft; drawPend();
-      if (draft && !pollOn) { pollOn = true; setInterval(refreshPending, 60000); }
-      return Promise.all([topics().catch(function () { return null; }), refreshPending()]).then(function () {
+      if (draft && !pollTimer) { pollTimer = setInterval(function () { if (epoch === sessionEpoch && token) refreshPending(); }, 60000); }
+      return Promise.all([topics().catch(function () { return null; }), refreshPending(), loadPhotos().catch(function () { return null; })]).then(function () {
+        sessionCheck(epoch);
         shell(); here = ''; route(true);
         if (draft && !myName) nameDialog();
         else if (draft && !reminded) {
@@ -1984,28 +2091,46 @@
           if (pending.list.length && Date.now() - oldest > OLD_DAYS * 86400000) { reminded = true; say('תזכורת: יש ' + pending.list.length + ' שינויים שממתינים לפרסום כבר ' + Math.floor((Date.now() - oldest) / 86400000) + ' ימים. הם מופיעים ב״שינויים ממתינים״.', 'bad'); }
         }
       });
-    }).catch(function (e) { document.body.classList.add('out'); $('#login').hidden = false; $('#app').hidden = true; $('#lerr').textContent = e.message; if (cfg.worker) google(); });
+    }).catch(function (e) { if (epoch !== sessionEpoch || e.editorSessionEnded) return; signout(e.message); });
   }
   function remember(v, persist) {
     try { localStorage.removeItem('cms-token'); sessionStorage.removeItem('cms-token'); if (v) (persist ? localStorage : sessionStorage).setItem('cms-token', JSON.stringify(v)); } catch { /* storage blocked: kept for this page only */ }
   }
   function saved() { try { return JSON.parse(localStorage.getItem('cms-token') || sessionStorage.getItem('cms-token') || 'null'); } catch { return null; } }
   function signout(why) {
-    cur = null; remember(null); token = '';
-    if (!why) return location.reload();
-    document.body.classList.add('out'); $('#lerr').textContent = why; $('#login').hidden = false; $('#app').hidden = true; $('#out').hidden = true; $('#burger').hidden = true; $('#rename').hidden = true; $('#pend').hidden = true;
+    // Expiry must capture the last keystroke, even before the local-save debounce fires.
+    // Explicit logout has already asked leave() whether to discard unsaved changes.
+    if (why) keepLocal();
+    sessionEpoch++; remember(null); token = '';
+    requests.forEach(function (r) { r.abort(); }); requests.clear();
+    transfers.forEach(function (r) { r.abort(); }); transfers.clear();
+    timers.forEach(clearTimeout); timers.clear(); clearInterval(pollTimer); pollTimer = null;
+    document.querySelectorAll('dialog').forEach(function (dlg) { dlg.close(); dlg.remove(); });
+    // Detach the old screen: callbacks which still hold its nodes cannot refill the signed-out page.
+    var oldMain = $('#main'); oldMain.replaceWith(oldMain.cloneNode(false));
+    $('#nav').textContent = ''; $('#who').textContent = ''; $('#msg').textContent = ''; $('#msg').hidden = true;
+    $('#tok').value = ''; $('#pend').textContent = ''; $('#pend').title = '';
+    cur = null; owner = false; publisher = false; me = ''; myName = ''; draft = false; saving = false;
+    pending = { list: [], at: 0 }; cache = { topics: null, pages: null, shutIndex: null }; recent = { pages: {}, shut: {} };
+    PHOTO_LIST = null; preselect = null; pub = { state: '', url: null }; mine = []; here = ''; reminded = false;
+    navOpen(false);
+    document.body.classList.add('out'); $('#lerr').textContent = why || ''; $('#login').hidden = false; $('#app').hidden = true; $('#out').hidden = true; $('#burger').hidden = true; $('#rename').hidden = true; $('#pend').hidden = true;
     if (cfg.worker) google();
+    if (gAsk) gBusy(false);
+    var focus = cfg.worker ? (gAsk ? $('#gsign') : $('#lerr')) : $('#tok');
+    if (focus === $('#lerr')) focus.tabIndex = -1;
+    focus.focus();
   }
   // Google sign-in, with the page's own button: Google's library opens its sign-in popup and gives back a short-lived access
   // token for the account's email; the editor server checks it with Google (and that the email may edit), and returns a 12-hour session.
   // (Google's own ready-made button needs inline styles, which this page's content policy does not allow.)
-  var gStarted = false, gAsk = null;
+  var gStarted = false, gAsk = null, googleEpoch = 0;
   function gBusy(on) { var b = $('#gsign'); b.disabled = !!on; $('#gtxt').textContent = on ? 'מתחבר…' : 'המשך עם Google'; }
   function google() {
     $('#gbox').hidden = false;
     if (gStarted) return;
     gStarted = true;
-    $('#gsign').addEventListener('click', function () { $('#lerr').textContent = ''; if (gAsk) { gBusy(true); gAsk(); } });
+    $('#gsign').addEventListener('click', function () { $('#lerr').textContent = ''; if (gAsk) { googleEpoch = sessionEpoch; gBusy(true); gAsk(); } });
     var s = document.createElement('script');
     s.src = 'https://accounts.google.com/gsi/client';
     s.onerror = function () { $('#lerr').textContent = 'לא הצלחנו לטעון את ההתחברות של Google. בדקו את החיבור לאינטרנט ורעננו את הדף.'; };
@@ -2013,12 +2138,13 @@
       var client = window.google.accounts.oauth2.initTokenClient({
         client_id: cfg.googleClientId, scope: 'openid email',
         callback: function (resp) {
+          if (googleEpoch !== sessionEpoch) return;
           if (!resp || resp.error || !resp.access_token) { gBusy(false); $('#lerr').textContent = 'ההתחברות עם Google לא הושלמה. נסו שוב.'; return; }
-          fetch(cfg.worker.replace(/\/$/, '') + '/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access_token: resp.access_token }) })
-            .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'ההתחברות נכשלה'); return j; }); })
-            .then(function (j) { token = j.token; owner = !!j.owner; remember({ token: j.token, email: j.email, owner: owner }, $('#grem').checked); return enter(j.email); })
-            .catch(function (e) { $('#lerr').textContent = e.message; })
-            .then(function () { gBusy(false); });
+          var epoch = sessionEpoch;
+          sessionFetch(cfg.worker.replace(/\/$/, '') + '/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access_token: resp.access_token }) }, function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'ההתחברות נכשלה'); return j; }); }, true)
+            .then(function (j) { if (epoch !== sessionEpoch) throw endedSession(); token = j.token; owner = !!j.owner; remember({ token: j.token, email: j.email, owner: owner }, $('#grem').checked); return enter(j.email); })
+            .catch(function (e) { if (epoch === sessionEpoch && !e.editorSessionEnded) $('#lerr').textContent = e.message; })
+            .then(function () { if (epoch === sessionEpoch) gBusy(false); });
         },
         // The popup was closed, or the browser blocked it: nothing to show for the first, a hint for the second.
         error_callback: function (err) { gBusy(false); if (err && err.type === 'popup_failed_to_open') $('#lerr').textContent = 'הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצ׳ים לאתר הזה ונסו שוב.'; },
@@ -2035,8 +2161,11 @@
     $('#rename').addEventListener('click', nameDialog);
     $('#pend').addEventListener('click', function () { location.hash = '#/changes'; });
     if (c.autosaveSeconds) AUTO_MS = c.autosaveSeconds * 1000;
-    $('#burger').addEventListener('click', function () { document.body.classList.toggle('navopen'); });
-    $('#scrim').addEventListener('click', function () { document.body.classList.remove('navopen'); });
+    $('#burger').addEventListener('click', function () { navOpen(!document.body.classList.contains('navopen')); });
+    $('#scrim').addEventListener('click', function () { navOpen(false, true); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && document.body.classList.contains('navopen')) { e.preventDefault(); navOpen(false, true); } });
+    var skip = $('#skip');
+    if (skip) skip.addEventListener('click', function (e) { e.preventDefault(); navOpen(false); $('#main').focus(); $('#main').scrollIntoView({ block: 'start' }); });
     if (cfg.worker) {
       if (st && st.email) { token = st.token; owner = !!st.owner; enter(st.email); } else google();
       return;
