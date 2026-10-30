@@ -3,7 +3,7 @@
 // Needs Playwright (not a dependency of the repository) and a built dist/. Used by the test/*.e2e.mjs scripts.
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
-import { join, extname, relative } from 'node:path';
+import { join, extname, relative, resolve, sep } from 'node:path';
 import { createRequire } from 'node:module';
 import { handle, makeSession, sha256 } from '../../cms-worker/worker.mjs';
 import { makeD1 } from './d1.mjs';
@@ -18,32 +18,50 @@ export const repoFiles = () => Object.fromEntries(walk(join(ROOT, 'data')).filte
 
 export async function startWorld({ files = repoFiles(), extra = {} } = {}) {
   const { chromium } = createRequire(import.meta.url)('playwright');
+  const dist = resolve(ROOT, 'dist');
   const server = createServer((req, res) => {
-    let f = join(ROOT, 'dist', decodeURIComponent(req.url.split('?')[0]));
+    let f;
+    try { f = resolve(dist, `.${decodeURIComponent(req.url.split('?')[0])}`); }
+    catch { res.writeHead(400); return res.end(); }
+    if (f !== dist && !f.startsWith(dist + sep)) { res.writeHead(403); return res.end(); }
     if (existsSync(f) && statSync(f).isDirectory()) f = join(f, 'index.html');
     if (!existsSync(f)) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream' }); res.end(readFileSync(f));
   });
-  await new Promise((r) => server.listen(0, r));
-  const origin = `http://localhost:${server.address().port}`, WORKER = 'https://cms-test.workers.dev';
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const origin = `http://127.0.0.1:${server.address().port}`, WORKER = 'https://cms-test.workers.dev';
   const kv = (init) => { const m = new Map(Object.entries(init)); return { get: async (k) => m.get(k) ?? null, put: async (k, v) => { m.set(k, v); } }; };
   const github = await makeGithub({ repo: 'o/r', branch: 'live', files });
   const env = { GOOGLE_CLIENT_ID: 'cid', OWNERS: await sha256('owner@gmail.com'), ALLOWED_ORIGIN: origin, REPO: 'o/r', BRANCH: 'live', GITHUB_TOKEN: 'ghp', DB: makeD1(), ...extra,
     EDITORS: kv({ people: JSON.stringify([{ email: 'editor@gmail.com', name: 'עורך', publisher: false }, { email: 'pub@gmail.com', name: 'מפרסם', publisher: true }]), 'owner-names': JSON.stringify({ [await sha256('owner@gmail.com')]: 'בעל האתר' }) }) };
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async (u, opt = {}) => (await github.fetch(u, opt)) || realFetch(u, opt);
-  const browser = await chromium.launch();
+  globalThis.fetch = async (u, opt = {}) => {
+    const response = await github.fetch(u, opt);
+    if (!response) throw new Error(`Unexpected network request in isolated editor test: ${u}`);
+    return response;
+  };
+  let browser;
+  try { browser = await chromium.launch(process.env.CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH } : {}); }
+  catch (error) { globalThis.fetch = realFetch; server.close(); env.DB.raw.close(); throw error; }
   const tokens = { owner: await makeSession('owner@gmail.com', env), editor: await makeSession('editor@gmail.com', env), publisher: await makeSession('pub@gmail.com', env) };
   const emails = { owner: 'owner@gmail.com', editor: 'editor@gmail.com', publisher: 'pub@gmail.com' };
 
   // A browser tab signed in as one of the three people. Calls to the editor server run the real server code in this process.
   async function open(who = 'owner', { width = 1280, height = 900, dark = false } = {}) {
-    const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: dark ? 'dark' : 'light', acceptDownloads: true });
+    const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: dark ? 'dark' : 'light', acceptDownloads: true, serviceWorkers: 'block' });
     await ctx.addInitScript(([t, e, o]) => { localStorage.setItem('cms-token', JSON.stringify({ token: t, email: e, owner: o })); }, [tokens[who], emails[who], who === 'owner']);
     const page = await ctx.newPage(), problems = [];
     if (process.env.DEBUG_WORLD) { page.on('response', (r) => console.log('  <-', r.status(), r.url().slice(0, 120))); page.on('requestfailed', (r) => console.log('  xx', r.url().slice(0, 120), r.failure()?.errorText)); page.on('console', (m) => console.log('  console', m.type(), m.text().slice(0, 200))); }
     page.on('pageerror', (e) => problems.push(`script error: ${e}`));
     page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) problems.push(`console: ${m.text()}`); });
+    // Register first: the explicit fake API routes below take precedence. A bad
+    // config or accidental production URL must never escape this test world.
+    await page.route('**/*', (r) => {
+      if (new URL(r.request().url()).origin === origin) return r.continue();
+      if (r.request().url() === 'https://accounts.google.com/gsi/client') return r.fulfill({ contentType: 'text/javascript', body: '' });
+      problems.push(`blocked external request: ${r.request().url()}`);
+      return r.abort('blockedbyclient');
+    });
     await page.route('**/admin/config.json', (r) => r.fulfill({ json: { repo: 'o/r', branch: 'live', worker: WORKER, googleClientId: 'x' } }));
     await page.route(`${WORKER}/**`, async (r) => {
       const q = r.request(), cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE' };
@@ -56,7 +74,7 @@ export async function startWorld({ files = repoFiles(), extra = {} } = {}) {
     await page.waitForSelector('#app:not([hidden])', { timeout: 20000 });
     return { page, problems, go: async (hash, sel) => { await page.goto(`${origin}/admin/${hash}`); await page.reload(); if (sel) await page.waitForSelector(sel, { timeout: 15000 }); await page.waitForTimeout(400); } };
   }
-  return { open, env, github, origin, tokens, close: async () => { await browser.close(); server.close(); globalThis.fetch = realFetch; } };
+  return { open, env, github, origin, tokens, close: async () => { try { await browser.close(); } finally { server.close(); globalThis.fetch = realFetch; env.DB.raw.close(); } } };
 }
 
 // A tiny PASS/FAIL reporter for the e2e scripts.

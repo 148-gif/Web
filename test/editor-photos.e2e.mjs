@@ -3,27 +3,42 @@
 // stands in for GitHub (the editor's token mode), so nothing leaves the machine and nothing is really saved.
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
-import { join, extname } from 'node:path';
+import { join, extname, resolve, sep } from 'node:path';
 import { createRequire } from 'node:module';
 const { chromium } = createRequire(import.meta.url)('playwright');
 
 const ROOT = new URL('..', import.meta.url).pathname, MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png' };
+const dist = resolve(ROOT, 'dist');
 const server = createServer((req, res) => {
-  let f = join(ROOT, 'dist', decodeURIComponent(req.url.split('?')[0]));
+  let f;
+  try { f = resolve(dist, `.${decodeURIComponent(req.url.split('?')[0])}`); }
+  catch { res.writeHead(400); return res.end(); }
+  if (f !== dist && !f.startsWith(dist + sep)) { res.writeHead(403); return res.end(); }
   if (existsSync(f) && statSync(f).isDirectory()) f = join(f, 'index.html');
   if (!existsSync(f)) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream' }); res.end(readFileSync(f));
 });
-await new Promise((r) => server.listen(0, r));
-const base = `http://localhost:${server.address().port}/admin/`;
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const origin = `http://127.0.0.1:${server.address().port}`, base = `${origin}/admin/`;
 
 const puts = [];
 let failed = 0;
 const ok = (c, m) => { if (!c) failed++; console.log(`${c ? 'PASS' : 'FAIL'} ${m}`); };
-const browser = await chromium.launch(), ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+let browser;
+try { browser = await chromium.launch(process.env.CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH } : {}); }
+catch (error) { server.close(); throw error; }
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
 await ctx.addInitScript(() => localStorage.setItem('cms-token', JSON.stringify({ token: 't' })));
 const p = await ctx.newPage(), errs = [];
 p.on('pageerror', (e) => errs.push(String(e)));
+// Register the network boundary before the explicit fake routes. No unexpected
+// remote request is allowed to reach production, even if config changes.
+await ctx.route('**/*', (r) => {
+  if (new URL(r.request().url()).origin === origin) return r.continue();
+  if (r.request().url() === 'https://accounts.google.com/gsi/client') return r.fulfill({ contentType: 'text/javascript', body: '' });
+  errs.push(`blocked external request: ${r.request().url()}`);
+  return r.abort('blockedbyclient');
+});
 await p.route('**/admin/config.json', (r) => r.fulfill({ json: { repo: '148-gif/Web', branch: 'x' } }));
 let pending = null; // a photo shown as "not approved yet" in the chooser, for the test that needs one
 await p.route('**/admin/photos/index.json', async (r) => { const j = JSON.parse(readFileSync(join(ROOT, 'dist/admin/photos/index.json'), 'utf8')); if (pending) j.find((x) => x.id === pending).rights = 'pending'; r.fulfill({ json: j }); });
@@ -31,7 +46,11 @@ await p.route('https://api.github.com/**', async (r) => {
   const m = /\/repos\/148-gif\/Web(?:\/contents\/(.*))?$/.exec(new URL(r.request().url()).pathname);
   if (!m) return r.fulfill({ status: 404, json: { message: 'nf' } });
   if (!m[1]) return r.fulfill({ json: { permissions: { push: true } } });
-  const rel = decodeURIComponent(m[1]), f = join(ROOT, rel);
+  let rel;
+  try { rel = decodeURIComponent(m[1]); }
+  catch { return r.fulfill({ status: 400, json: { message: 'bad path' } }); }
+  const f = resolve(ROOT, rel), dataRoot = resolve(ROOT, 'data');
+  if (f !== dataRoot && !f.startsWith(dataRoot + sep)) return r.fulfill({ status: 404, json: { message: 'nf' } });
   if (r.request().method() === 'PUT') { puts.push({ path: rel, data: JSON.parse(Buffer.from(JSON.parse(r.request().postData()).content, 'base64').toString()) }); return r.fulfill({ json: { content: { sha: `new${puts.length}` }, commit: { sha: 'c' } } }); }
   if (existsSync(f) && statSync(f).isFile()) return r.fulfill({ json: { type: 'file', path: rel, sha: `sha-${rel}`, content: readFileSync(f).toString('base64') } });
   if (existsSync(f)) return r.fulfill({ json: readdirSync(f).map((n) => ({ type: 'file', name: n, path: `${rel}/${n}`, sha: 's' })) });
