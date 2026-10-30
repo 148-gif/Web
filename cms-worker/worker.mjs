@@ -30,6 +30,8 @@
 
 // The photo rules are the build's own and the editor's (one file, no file access), so what the editor refuses, this server refuses too.
 import { imageProblems, blockProblems, ownerOnlyChanges, registryShapeChanges, photoFiles, budgetFor } from '../site/admin/image-rules.mjs';
+import { boundedStream, readJsonBody, RequestBodyError } from './request-guards.mjs';
+import { loginLimit, writeLimit } from './rate-limit.mjs';
 
 const SESSION_HOURS = 12;
 const enc = new TextEncoder();
@@ -120,17 +122,38 @@ async function verifyAccessToken(accessToken, env) {
 }
 
 // ---- our own session: {email, exp}, signed (see SESSION_SECRET above) ----
-const hmacKey = async (env) => crypto.subtle.importKey('raw', enc.encode(env.SESSION_SECRET || `session:${await sha256(String(env.GITHUB_TOKEN))}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+const MAX_SESSION_LENGTH = 2048;
+const hmacKey = async (env) => {
+  const configured = (value) => typeof value === 'string' && value.trim().length > 0;
+  let secret;
+  if (configured(env.SESSION_SECRET)) secret = env.SESSION_SECRET;
+  else if (configured(env.GITHUB_TOKEN)) secret = `session:${await sha256(env.GITHUB_TOKEN)}`;
+  else throw new Error('Session signing is not configured');
+  return crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+};
 async function makeSession(email, env, now = Date.now()) {
+  if (typeof email !== 'string' || email.length > 254 || !EMAIL.test(email) || email !== norm(email)) throw new Error('Invalid session identity');
+  if (!Number.isFinite(now)) throw new Error('Invalid session time');
   const body = b64url(enc.encode(JSON.stringify({ email, exp: Math.floor(now / 1000) + SESSION_HOURS * 3600 })));
   return `${body}.${b64url(await crypto.subtle.sign('HMAC', await hmacKey(env), enc.encode(body)))}`;
 }
 async function readSession(token, env, now = Date.now() / 1000) {
-  const [body, sig] = String(token || '').split('.');
-  if (!sig || !(await crypto.subtle.verify('HMAC', await hmacKey(env), unb64url(sig), enc.encode(body)))) return null;
-  const s = JSON.parse(dec.decode(unb64url(body)));
+  if (typeof token !== 'string' || token.length > MAX_SESSION_LENGTH || !Number.isFinite(now)) return null;
+  const parts = /^([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]{43})$/.exec(token);
+  if (!parts) return null;
+  const [, body, sig] = parts;
+  let s, signature;
+  // Only malformed caller input is caught here. Signing/configuration and membership failures still propagate.
+  try {
+    const bytes = unb64url(body);
+    signature = unb64url(sig);
+    if (b64url(bytes) !== body || b64url(signature) !== sig) return null;
+    s = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  } catch { return null; }
+  if (!s || typeof s !== 'object' || Array.isArray(s) || typeof s.email !== 'string' || s.email.length > 254 || !EMAIL.test(s.email) || s.email !== norm(s.email) || !Number.isSafeInteger(s.exp) || s.exp <= now) return null;
+  if (!(await crypto.subtle.verify('HMAC', await hmacKey(env), signature, enc.encode(body)))) return null;
   // Re-checked on every request, so removing an editor takes effect at once.
-  return s.exp > now && (await allowed(env, s.email)) ? s.email : null;
+  return (await allowed(env, s.email)) ? s.email : null;
 }
 
 // ---- D1: drafts and the log ----
@@ -201,12 +224,25 @@ function toSlug(english) {
 }
 // May this editor use the model now? Counts the call when it is allowed. Limits: TRANSLATE_PER_USER (100) and TRANSLATE_PER_DAY (300) a day.
 async function aiQuota(env, email) {
-  const day = new Date().toISOString().slice(0, 10), perUser = Number(env.TRANSLATE_PER_USER) || 100, perDay = Number(env.TRANSLATE_PER_DAY) || 300;
-  const mine = (await env.DB.prepare('SELECT n FROM ai_usage WHERE day = ? AND email = ?').bind(day, email).first()) || { n: 0 };
-  const all = (await env.DB.prepare('SELECT COALESCE(SUM(n), 0) AS n FROM ai_usage WHERE day = ?').bind(day).first()).n;
-  if (mine.n >= perUser || all >= perDay) return false;
-  await env.DB.prepare('INSERT INTO ai_usage (day, email, n) VALUES (?, ?, 1) ON CONFLICT(day, email) DO UPDATE SET n = n + 1').bind(day, email).run();
-  return true;
+  const limit = (value, fallback) => {
+    if (value === undefined) return fallback;
+    if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d+$/.test(value.trim()))) return null;
+    const n = Number(value);
+    return Number.isSafeInteger(n) && n > 0 && n <= 10000 ? n : null;
+  };
+  const day = new Date().toISOString().slice(0, 10), perUser = limit(env.TRANSLATE_PER_USER, 100), perDay = limit(env.TRANSLATE_PER_DAY, 300);
+  // Explicit invalid settings disable model calls; they must not silently grant
+  // default spending. Each configured daily ceiling is a positive integer <=10,000.
+  if (perUser === null || perDay === null) return false;
+  // Test both budgets and claim the call in one statement, including the conflict
+  // update. Concurrent editors cannot both consume the last site-wide allowance.
+  const claimed = await env.DB.prepare(`INSERT INTO ai_usage (day, email, n)
+    SELECT ?, ?, 1
+    WHERE COALESCE((SELECT n FROM ai_usage WHERE day = ? AND email = ?), 0) < ?
+      AND (SELECT COALESCE(SUM(n), 0) FROM ai_usage WHERE day = ?) < ?
+    ON CONFLICT(day, email) DO UPDATE SET n = ai_usage.n + 1 RETURNING n`)
+    .bind(day, email, day, email, perUser, day, perDay).first();
+  return !!claimed;
 }
 async function slugFor(env, text, quota) {
   const t = String(text || '').trim().replace(/\s+/g, ' ').slice(0, 80);
@@ -257,7 +293,9 @@ const limits = (env) => ({
   r2File: mb(Number(env.MEDIA_R2_FILE_MB) || 90), r2Total: mb((Number(env.MEDIA_R2_TOTAL_GB) || 9) * 1024), r2: !!env.MEDIA,
 });
 async function mediaUsage(env) {
-  const rows = (await env.DB.prepare("SELECT store, COALESCE(SUM(size), 0) AS n, COUNT(*) AS c FROM media WHERE status != 'removing' GROUP BY store").all()).results;
+  // R2 deletion can fail after its exclusive claim. Count that reservation until
+  // storage is actually deleted and its row removed, including retries.
+  const rows = (await env.DB.prepare("SELECT store, COALESCE(SUM(size), 0) AS n, COUNT(*) AS c FROM media WHERE status != 'removing' OR store = 'r2' GROUP BY store").all()).results;
   const get = (st) => rows.find((r) => r.store === st) || { n: 0, c: 0 };
   return { github: get('github').n, r2: get('r2').n, githubCount: get('github').c, r2Count: get('r2').c };
 }
@@ -276,19 +314,63 @@ const mediaSlug = (name) => String(name).replace(/\.[^.]*$/, '').toLowerCase().r
 const mediaUrl = (env, row, origin) => (row.store === 'github' ? `/media/${row.key.replace(/^site\/media\//, '')}` : `${(env.MEDIA_PUBLIC_URL || `${origin}/m`).replace(/\/$/, '')}/${row.key}`);
 const mediaView = (env, r, origin) => ({ id: r.id, name: r.name, kind: r.kind, mime: r.mime, size: r.size, store: r.store, key: r.key, status: r.status, by: r.by_name, ts: r.created_at, url: mediaUrl(env, r, origin) });
 
+async function expireMediaReservations(env) {
+  const before = Date.now() - 36e5;
+  // D1 batches are transactional: a chunk/finalization/R2 claim cannot slip
+  // between deleting an abandoned upload's chunks and its reservation. Receiving
+  // or removing R2 rows may still own objects and must never expire by age alone.
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM media_chunks WHERE id IN (SELECT id FROM media WHERE status = 'uploading' AND created_at < ?)").bind(before),
+    env.DB.prepare("DELETE FROM media WHERE status = 'uploading' AND created_at < ?").bind(before),
+  ]);
+}
+
+async function reserveMedia(env, me, item, lim) {
+  // Choose the same tier order as chooseStore, but read its aggregate quota and
+  // reserve bytes in a single statement. Concurrent initializations cannot both
+  // spend the same free space. R2 removing rows still count until actual deletion.
+  return env.DB.prepare(`WITH requested AS (
+    SELECT ? AS id, ? AS name, ? AS kind, ? AS mime, ? AS size,
+      ? AS github_key, ? AS r2_key, ? AS email, ? AS by_name, ? AS created_at
+  ), usage AS (
+    SELECT COALESCE(SUM(CASE WHEN store = 'github' AND status != 'removing' THEN size ELSE 0 END), 0) AS github,
+      COALESCE(SUM(CASE WHEN store = 'r2' THEN size ELSE 0 END), 0) AS r2 FROM media
+  ), choice AS (
+    SELECT requested.*, CASE
+      WHEN ? AND size <= ? AND size <= ? - github THEN 'github'
+      WHEN ? AND size <= ? AND size <= ? - r2 THEN 'r2'
+      END AS selected FROM requested CROSS JOIN usage
+  ) INSERT INTO media (id, name, kind, mime, size, store, key, status, email, by_name, created_at)
+    SELECT id, name, kind, mime, size, selected,
+      CASE WHEN selected = 'github' THEN github_key ELSE r2_key END,
+      'uploading', email, by_name, created_at FROM choice
+    WHERE selected IS NOT NULL AND (? = 0 OR NOT EXISTS (
+      SELECT 1 FROM media WHERE key = choice.github_key AND status != 'removing'
+    )) RETURNING id, store`)
+    .bind(item.id, item.name, item.kind, item.mime, item.size, item.githubKey, item.r2Key, me.email, me.shown, Date.now(),
+      item.kind !== 'video' ? 1 : 0, lim.ghFile, lim.ghTotal,
+      lim.r2 && item.kind !== 'photo' ? 1 : 0, lim.r2File, lim.r2Total, item.kind === 'photo' ? 1 : 0).first();
+}
+
+async function reservationFailure(env, kind, size, lim) {
+  const pick = chooseStore(kind === 'photo' ? 'image' : kind, size, lim, await mediaUsage(env));
+  return fail(pick.error || (kind === 'photo' ? 'אין מקום לתמונה' : 'המכסה השתנתה בזמן ההעלאה. נסו שוב.'), 413);
+}
+
 // A photo's file, staged like any media but kept under data/img/<id>/ so that it is published with the photo's registry entry.
 async function photoInit(env, me, b) {
   const id = String(b.photo.id || ''), file = String(b.photo.file || ''), size = Number(b.size), key = `data/img/${id}/${file}`;
   if (!PHOTO_FILE.test(key)) throw fail('שם קובץ תמונה לא תקין', 400);
   if (!Number.isInteger(size) || size < 1 || size > budgetFor(file)) throw fail(`הקובץ ${file} גדול מדי (עד ${Math.round(budgetFor(file) / 1000)}KB). כווצו את התמונה.`, 413);
-  await env.DB.prepare("DELETE FROM media_chunks WHERE id IN (SELECT id FROM media WHERE status = 'uploading' AND created_at < ?)").bind(Date.now() - 36e5).run();
-  await env.DB.prepare("DELETE FROM media WHERE status = 'uploading' AND created_at < ?").bind(Date.now() - 36e5).run();
+  await expireMediaReservations(env);
   if (await env.DB.prepare("SELECT 1 AS x FROM media WHERE key = ? AND status != 'removing'").bind(key).first() || await publishedSha(env, key)) throw fail('תמונה בשם הזה כבר קיימת או ממתינה לפרסום', 409);
-  const pick = chooseStore('image', size, limits(env), await mediaUsage(env));
-  if (pick.store !== 'github') throw fail(pick.error || 'אין מקום לתמונה', 413);
-  const mid = hex(crypto.getRandomValues(new Uint8Array(4)));
-  await env.DB.prepare("INSERT INTO media (id, name, kind, mime, size, store, key, status, email, by_name, created_at) VALUES (?, ?, 'photo', 'image/webp', ?, 'github', ?, 'uploading', ?, ?, ?)").bind(mid, `${id}/${file}`, size, key, me.email, me.shown, Date.now()).run();
-  return { id: mid, store: 'github', chunk: CHUNK_B64 };
+  const mid = hex(crypto.getRandomValues(new Uint8Array(4))), lim = limits(env);
+  const reserved = await reserveMedia(env, me, { id: mid, name: `${id}/${file}`, kind: 'photo', mime: 'image/webp', size, githubKey: key, r2Key: key }, lim);
+  if (!reserved) {
+    if (await env.DB.prepare("SELECT 1 AS x FROM media WHERE key = ? AND status != 'removing'").bind(key).first()) throw fail('תמונה בשם הזה כבר קיימת או ממתינה לפרסום', 409);
+    throw await reservationFailure(env, 'photo', size, lim);
+  }
+  return { ...reserved, chunk: CHUNK_B64 };
 }
 async function mediaInit(env, me, b) {
   if (b.photo) return photoInit(env, me, b);
@@ -296,67 +378,143 @@ async function mediaInit(env, me, b) {
   const kind = ext && kindOfExt(ext);
   if (!kind) throw fail('סוג הקובץ לא נתמך. אפשר: תמונות (jpg, png, webp, gif, avif), סרטונים (mp4, webm), שמע (mp3, m4a, wav, ogg) ומסמכים (pdf, docx, xlsx, pptx, txt, epub).', 400);
   if (!Number.isInteger(size) || size < 1) throw fail('הקובץ ריק', 400);
-  await env.DB.prepare("DELETE FROM media_chunks WHERE id IN (SELECT id FROM media WHERE status = 'uploading' AND created_at < ?)").bind(Date.now() - 36e5).run();
-  await env.DB.prepare("DELETE FROM media WHERE status = 'uploading' AND created_at < ?").bind(Date.now() - 36e5).run();
-  const pick = chooseStore(kind, size, limits(env), await mediaUsage(env));
-  if (pick.error) throw fail(pick.error, 413);
-  const id = hex(crypto.getRandomValues(new Uint8Array(4))), file = `${id}-${mediaSlug(name)}.${ext}`, key = pick.store === 'github' ? `site/media/${file}` : file;
-  await env.DB.prepare("INSERT INTO media (id, name, kind, mime, size, store, key, status, email, by_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?, ?)").bind(id, name, kind, EXT[kind][ext], size, pick.store, key, me.email, me.shown, Date.now()).run();
-  return { id, store: pick.store, chunk: CHUNK_B64 };
+  await expireMediaReservations(env);
+  const id = hex(crypto.getRandomValues(new Uint8Array(4))), file = `${id}-${mediaSlug(name)}.${ext}`, lim = limits(env);
+  const reserved = await reserveMedia(env, me, { id, name, kind, mime: EXT[kind][ext], size, githubKey: `site/media/${file}`, r2Key: file }, lim);
+  if (!reserved) throw await reservationFailure(env, kind, size, lim);
+  return { ...reserved, chunk: CHUNK_B64 };
 }
 const uploading = async (env, me, id) => {
   const row = await env.DB.prepare('SELECT * FROM media WHERE id = ?').bind(String(id)).first();
   if (!row || row.status !== 'uploading' || row.email !== me.email) throw fail('ההעלאה לא נמצאה. התחילו מחדש.', 404);
   return row;
 };
+// Each index owns one fixed byte range in the declared file. Validate that range
+// before storing anything, including retries and the padding of the final piece.
+function validChunk(size, n, data) {
+  const bytesPerChunk = CHUNK_B64 / 4 * 3;
+  if (!Number.isSafeInteger(size) || size < 1 || !Number.isSafeInteger(n) || n < 0 || n >= Math.ceil(size / bytesPerChunk) || typeof data !== 'string') return false;
+  const bytes = Math.min(bytesPerChunk, size - n * bytesPerChunk);
+  if (data.length !== 4 * Math.ceil(bytes / 3) || !/^[A-Za-z0-9+/]+={0,2}$/.test(data) || b64Bytes(data) !== bytes) return false;
+  try { return btoa(atob(data)) === data; } catch { return false; }
+}
 async function mediaChunk(env, me, b) {
   const row = await uploading(env, me, b.id), n = Number(b.n), data = b.data;
-  if (row.store !== 'github' || !Number.isInteger(n) || n < 0 || typeof data !== 'string' || !data.length || data.length > CHUNK_B64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data)) throw fail('חלק לא תקין', 400);
+  if (row.store !== 'github' || !validChunk(row.size, n, data)) throw fail('חלק לא תקין', 400);
   if (n === 0) {
     const ext = row.key.split('.').pop();
-    if (!sniff(ext, Uint8Array.from(atob(data.slice(0, 24)), (c) => c.charCodeAt(0)))) { await mediaDrop(env, row); throw fail('תוכן הקובץ לא מתאים לסוג שלו', 400); }
+    if (!sniff(ext, Uint8Array.from(atob(data.slice(0, 24)), (c) => c.charCodeAt(0)))) { await dropUploading(env, row); throw fail('תוכן הקובץ לא מתאים לסוג שלו', 400); }
   }
-  await env.DB.prepare('INSERT INTO media_chunks (id, n, data) VALUES (?, ?, ?) ON CONFLICT(id, n) DO UPDATE SET data = excluded.data').bind(row.id, n, data).run();
+  // Check the upload state in the write itself. A delayed request cannot add
+  // orphan chunks after cancellation or change a file already being published.
+  // Identical retries are safe; replacing an accepted piece requires a new upload.
+  const written = await env.DB.prepare("INSERT INTO media_chunks (id, n, data) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM media WHERE id = ? AND status = 'uploading' AND email = ? AND store = 'github') ON CONFLICT(id, n) DO UPDATE SET data = excluded.data WHERE media_chunks.data = excluded.data RETURNING id")
+    .bind(row.id, n, data, row.id, me.email).first();
+  if (!written) throw fail('ההעלאה השתנתה בינתיים. התחילו אותה מחדש.', 409);
   return { ok: true };
+}
+async function dropUploading(env, row) {
+  // Remove the reservation first. Late chunk writes require it to still exist.
+  const removed = await env.DB.prepare("DELETE FROM media WHERE id = ? AND status = 'uploading' RETURNING id").bind(row.id).first();
+  if (removed) await env.DB.prepare('DELETE FROM media_chunks WHERE id = ?').bind(row.id).run();
 }
 async function mediaDone(env, me, b) {
   const row = await uploading(env, me, b.id);
   if (row.store !== 'github') throw fail('לא שייך להעלאה הזאת', 400);
   const parts = (await env.DB.prepare('SELECT n, LENGTH(data) AS len, data FROM media_chunks WHERE id = ? ORDER BY n').bind(row.id).all()).results;
-  const whole = parts.length && parts.every((p, i) => p.n === i && (i === parts.length - 1 ? p.data.length % 4 === 0 : p.len === CHUNK_B64));
-  if (!whole || parts.reduce((a, p) => a + b64Bytes(p.data), 0) !== row.size) { await mediaDrop(env, row); throw fail('ההעלאה לא הושלמה כראוי. נסו שוב.', 400); }
-  await env.DB.prepare("UPDATE media SET status = 'staged' WHERE id = ?").bind(row.id).run();
+  const whole = parts.length && parts.every((p, i) => p.n === i && validChunk(row.size, p.n, p.data));
+  if (!whole || parts.reduce((a, p) => a + b64Bytes(p.data), 0) !== row.size) { await dropUploading(env, row); throw fail('ההעלאה לא הושלמה כראוי. נסו שוב.', 400); }
+  const completed = await env.DB.prepare("UPDATE media SET status = 'staged' WHERE id = ? AND status = 'uploading' AND email = ? RETURNING id").bind(row.id, me.email).first();
+  if (!completed) throw fail('ההעלאה השתנתה בינתיים. התחילו אותה מחדש.', 409);
   await logEntry(env, me, 'media-upload', row.key, `${row.name} · ${row.size} בתים · ממתין לפרסום`);
   return { item: mediaView(env, { ...row, status: 'staged' }, '') };
 }
+// R2 needs a stream with a known length on Workers. Keep its FixedLengthStream
+// metadata while checking each incoming chunk before R2 can consume it. Other
+// runtimes can use the same backpressure/cancellation path via TransformStream.
+async function streamToR2(bucket, row, body) {
+  const guarded = boundedStream(body, { maxBytes: row.size, expectedBytes: row.size });
+  const bridge = typeof globalThis.FixedLengthStream === 'function' ? new globalThis.FixedLengthStream(row.size) : new TransformStream();
+  const abort = new AbortController();
+  let validationError;
+  const stop = (error) => {
+    if (!abort.signal.aborted) abort.abort(error);
+    // Once put rejects its reader has finished. Cancelling the readable also
+    // releases a pending transform write; aborting pipeTo alone can wait on it.
+    if (!bridge.readable.locked) void bridge.readable.cancel(error).catch(() => {});
+  };
+  const pipe = guarded.pipeTo(bridge.writable, { signal: abort.signal }).catch((error) => {
+    if (error instanceof RequestBodyError) validationError = error;
+    throw error;
+  });
+  const put = Promise.resolve().then(() => bucket.put(row.key, bridge.readable, {
+    httpMetadata: { contentType: row.mime, cacheControl: 'public, max-age=31536000, immutable' },
+  })).catch((error) => { stop(error); throw error; });
+  try { await Promise.all([pipe, put]); }
+  catch (error) {
+    stop(error);
+    await Promise.allSettled([pipe, put]);
+    // If cancelling the bridge already errored its writer, pipeTo may finish
+    // without forwarding the abort to its source. Its lock is now released.
+    if (!guarded.locked) void guarded.cancel(error).catch(() => {});
+    // R2 may wrap a stream failure; return the actual client size/shape error.
+    throw validationError || error;
+  }
+}
+
 // Large files go straight to R2 as one stream (and are live at once: they are only reachable by a link a page holds).
 async function mediaR2(env, me, id, body) {
-  const row = await uploading(env, me, id);
+  const row = await env.DB.prepare('SELECT * FROM media WHERE id = ?').bind(String(id)).first();
+  if (!row || row.email !== me.email) throw fail('ההעלאה לא נמצאה. התחילו מחדש.', 404);
+  if (row.status === 'receiving') throw fail('ההעלאה כבר מתבצעת. המתינו לסיומה.', 409);
+  if (row.status !== 'uploading') throw fail('ההעלאה לא נמצאה. התחילו מחדש.', 404);
   if (row.store !== 'r2' || !env.MEDIA || !body) throw fail('אחסון הקבצים הגדולים לא זמין', 400);
-  await env.MEDIA.put(row.key, body, { httpMetadata: { contentType: row.mime, cacheControl: 'public, max-age=31536000, immutable' } });
-  const head = await env.MEDIA.head(row.key), first = head && head.size ? await env.MEDIA.get(row.key, { range: { offset: 0, length: 16 } }) : null;
-  const ok = head && head.size === row.size && first && sniff(row.key.split('.').pop(), new Uint8Array(await first.arrayBuffer()));
-  if (!ok) { await env.MEDIA.delete(row.key); await mediaDrop(env, row); throw fail('ההעלאה לא הושלמה כראוי, או שהתוכן לא מתאים לסוג הקובץ', 400); }
-  await env.DB.prepare("UPDATE media SET status = 'published' WHERE id = ?").bind(row.id).run();
+  const claimed = await env.DB.prepare("UPDATE media SET status = 'receiving' WHERE id = ? AND status = 'uploading' AND email = ? AND store = 'r2' RETURNING id").bind(row.id, me.email).first();
+  if (!claimed) throw fail('ההעלאה כבר השתנתה. רעננו ונסו שוב.', 409);
+  try {
+    await streamToR2(env.MEDIA, row, body);
+    const head = await env.MEDIA.head(row.key), first = head && head.size ? await env.MEDIA.get(row.key, { range: { offset: 0, length: 16 } }) : null;
+    const ok = head && head.size === row.size && first && sniff(row.key.split('.').pop(), new Uint8Array(await first.arrayBuffer()));
+    if (!ok) throw new RequestBodyError('ההעלאה לא הושלמה כראוי, או שהתוכן לא מתאים לסוג הקובץ', 400);
+    const completed = await env.DB.prepare("UPDATE media SET status = 'published' WHERE id = ? AND status = 'receiving' RETURNING id").bind(row.id).first();
+    if (!completed) throw new Error('The upload reservation changed before completion');
+  } catch (error) {
+    // Keep the exclusive reservation until partial/invalid storage is removed.
+    // If deletion fails or the Worker stops, receiving remains reserved; recovery
+    // requires checking/deleting the object before resetting that row, never age alone.
+    try { await env.MEDIA.delete(row.key); }
+    catch (cause) { throw new Error('The failed upload could not be removed safely', { cause }); }
+    await env.DB.prepare("UPDATE media SET status = 'uploading' WHERE id = ? AND status = 'receiving'").bind(row.id).run();
+    throw error;
+  }
   await logEntry(env, me, 'media-upload', row.key, `${row.name} · ${row.size} בתים`);
   return { item: mediaView(env, { ...row, status: 'published' }, '') };
 }
 async function mediaDrop(env, row) {
-  await env.DB.prepare('DELETE FROM media_chunks WHERE id = ?').bind(row.id).run();
-  await env.DB.prepare('DELETE FROM media WHERE id = ?').bind(row.id).run();
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM media_chunks WHERE id = ?').bind(row.id),
+    env.DB.prepare('DELETE FROM media WHERE id = ?').bind(row.id),
+  ]);
 }
 async function mediaList(env, origin) {
   const lim = limits(env), used = await mediaUsage(env);
   // A photo's files belong to the photo library, not to the list of loose files.
-  const rows = (await env.DB.prepare("SELECT * FROM media WHERE status != 'uploading' AND kind != 'photo' ORDER BY created_at DESC").all()).results;
+  const rows = (await env.DB.prepare("SELECT * FROM media WHERE status IN ('staged', 'published', 'removing') AND kind != 'photo' ORDER BY created_at DESC").all()).results;
   return { items: rows.map((r) => mediaView(env, r, origin)), quota: { github: { used: used.github, max: lim.ghTotal, fileMax: lim.ghFile }, r2: { enabled: lim.r2, used: used.r2, max: lim.r2Total, fileMax: lim.r2File } } };
 }
 async function mediaRemove(env, me, id) {
   const row = await env.DB.prepare('SELECT * FROM media WHERE id = ?').bind(String(id)).first();
   if (!row) throw fail('הקובץ לא נמצא', 404);
+  if (row.status === 'receiving') throw fail('ההעלאה עדיין מתבצעת. המתינו לסיומה לפני המחיקה.', 409);
   if (row.status !== 'staged' && !me.publisher) throw fail('רק מפרסם יכול למחוק קובץ שכבר באתר', 403);
   if (row.status === 'staged' && row.email !== me.email && !me.publisher) throw fail('אפשר למחוק רק קובץ שהעליתם בעצמכם', 403);
-  if (row.store === 'r2') { if (env.MEDIA) await env.MEDIA.delete(row.key); await mediaDrop(env, row); }
+  if (row.store === 'r2') {
+    if (!env.MEDIA) throw fail('אחסון הקבצים הגדולים לא זמין כרגע. נסו שוב מאוחר יותר.', 503);
+    const claimed = await env.DB.prepare("UPDATE media SET status = 'removing' WHERE id = ? AND status = ? RETURNING id").bind(row.id, row.status).first();
+    if (!claimed) throw fail('ההעלאה כבר השתנתה. רעננו ונסו שוב.', 409);
+    await env.MEDIA.delete(row.key);
+    await mediaDrop(env, row);
+  }
   else if (row.status === 'published') await env.DB.prepare("UPDATE media SET status = 'removing', email = ?, by_name = ?, created_at = ? WHERE id = ?").bind(me.email, me.shown, Date.now(), row.id).run();
   else await mediaDrop(env, row);
   await logEntry(env, me, 'media-delete', row.key, row.name);
@@ -369,15 +527,25 @@ async function serveMedia(env, req, file) {
   if (!head) return new Response('not found', { status: 404 });
   let range;
   if (m && (m[1] || m[2])) { const start = m[1] ? Number(m[1]) : Math.max(0, head.size - Number(m[2])), end = m[1] && m[2] ? Math.min(Number(m[2]), head.size - 1) : head.size - 1; if (start > end || start >= head.size) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${head.size}` } }); range = { offset: start, length: end - start + 1 }; }
-  const obj = await env.MEDIA.get(file, range ? { range } : undefined);
   const h = { 'Content-Type': (head.httpMetadata && head.httpMetadata.contentType) || 'application/octet-stream', 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff', 'Content-Length': String(range ? range.length : head.size) };
   if (range) h['Content-Range'] = `bytes ${range.offset}-${range.offset + range.length - 1}/${head.size}`;
-  return new Response(req.method === 'HEAD' ? null : obj.body, { status: range ? 206 : 200, headers: h });
+  if (req.method === 'HEAD') return new Response(null, { status: range ? 206 : 200, headers: h });
+  const obj = await env.MEDIA.get(file, range ? { range } : undefined);
+  if (!obj) return new Response('not found', { status: 404 });
+  return new Response(obj.body, { status: range ? 206 : 200, headers: h });
 }
 
-const json = (o, status, cors) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...cors } });
+const json = (o, status, cors) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...cors } });
 const fail = (message, status, extra) => Object.assign(new Error(message), { status, extra });
-const bodyOf = async (req) => { try { return (await req.json()) || {}; } catch { return {}; } };
+// MAX_FILE counts UTF-16 code units. Preserve valid non-ASCII files: their UTF-8
+// base64 envelope can use four bytes per code unit, plus a small metadata budget.
+const bodyOf = (req) => {
+  const path = new URL(req.url).pathname;
+  const maxBytes = path === '/media/chunk' ? CHUNK_B64 + 16384
+    : path.startsWith('/gh/contents/data/') && req.method === 'PUT' ? MAX_FILE * 4 + 65536
+      : 1048576;
+  return readJsonBody(req, { maxBytes });
+};
 const label = (row) => (row.deleted ? 'נמחק' : row.base_sha ? 'שונה' : 'חדש');
 
 // ---- drafts: read ----
@@ -459,6 +627,28 @@ async function photoPreflight(env, rows, together) {
 }
 
 // ---- drafts: write ----
+// Match the complete row read by this request. The condition and mutation run
+// as one SQL statement, so concurrent editors cannot both replace that row.
+const DRAFT_MATCH = '(path = ? AND content IS ? AND deleted = ? AND base_sha IS ? AND created_at = ? AND updated_at = ? AND email = ? AND name = ?)';
+const draftValues = (r) => [r.path, r.content, r.deleted, r.base_sha, r.created_at, r.updated_at, r.email, r.name];
+const draftConflict = () => fail('מישהו אחר שמר את הקובץ הזה בינתיים. טענו אותו מחדש ונסו שוב.', 409);
+async function clearDraftSnapshot(env, path, row) {
+  const unchanged = row
+    ? await env.DB.prepare(`DELETE FROM drafts WHERE ${DRAFT_MATCH} RETURNING path`).bind(...draftValues(row)).first()
+    : await env.DB.prepare('SELECT 1 AS unchanged WHERE NOT EXISTS (SELECT 1 FROM drafts WHERE path = ?)').bind(path).first();
+  if (!unchanged) throw draftConflict();
+}
+async function writeDraftSnapshot(env, me, path, content, deleted, pub, row) {
+  // Strictly advance even when two requests share a millisecond and content.
+  const now = Math.max(Date.now(), row ? row.updated_at + 1 : 0);
+  const written = row
+    ? await env.DB.prepare(`UPDATE drafts SET content = ?, deleted = ?, updated_at = ?, email = ?, name = ? WHERE ${DRAFT_MATCH} RETURNING path`)
+      .bind(content, deleted, now, me.email, me.shown, ...draftValues(row)).first()
+    : await env.DB.prepare('INSERT INTO drafts (path, content, deleted, base_sha, created_at, updated_at, email, name) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(path) DO NOTHING RETURNING path')
+      .bind(path, content, deleted, pub, now, now, me.email, me.shown).first();
+  if (!written) throw draftConflict();
+}
+
 // Saves a file as a draft. expected is the id the editor last saw (null when it is making a new file): if the file has moved
 // on since, someone else saved it meanwhile and the editor is told, instead of overwriting their work.
 async function saveDraft(env, me, path, text, expected, { auto, restore, summary } = {}) {
@@ -467,15 +657,11 @@ async function saveDraft(env, me, path, text, expected, { auto, restore, summary
   try { JSON.parse(text); } catch { throw fail('הקובץ אינו JSON תקין', 400); }
   const row = await draftRow(env, path), pub = await publishedSha(env, path);
   const current = row ? (row.deleted ? null : await blobSha(row.content)) : pub;
-  if (!restore && (expected || null) !== (current || null)) throw fail('מישהו אחר שמר את הקובץ הזה בינתיים. טענו אותו מחדש ונסו שוב.', 409);
+  if (!restore && (expected || null) !== (current || null)) throw draftConflict();
   await photoRulesOnSave(env, me, path, text, row && !row.deleted ? row.content : null);
   const sha = await blobSha(text);
-  if (pub && sha === pub) await env.DB.prepare('DELETE FROM drafts WHERE path = ?').bind(path).run(); // back to what is published
-  else {
-    const now = Date.now();
-    await env.DB.prepare('INSERT INTO drafts (path, content, deleted, base_sha, created_at, updated_at, email, name) VALUES (?, ?, 0, ?, ?, ?, ?, ?) ON CONFLICT(path) DO UPDATE SET content = excluded.content, deleted = 0, updated_at = excluded.updated_at, email = excluded.email, name = excluded.name')
-      .bind(path, text, row ? row.base_sha : pub, row ? row.created_at : now, now, me.email, me.shown).run();
-  }
+  if (pub && sha === pub) await clearDraftSnapshot(env, path, row); // back to what is published
+  else await writeDraftSnapshot(env, me, path, text, 0, pub, row);
   if (restore) await logEntry(env, me, 'restore', path, summary);
   else if (!auto) await logEntry(env, me, 'save', path, summary);
   return { content: { sha, path }, draft: true };
@@ -484,13 +670,9 @@ async function deleteDraft(env, me, path, expected, summary) {
   if (!PATH_OK(path)) throw fail('הקובץ הזה לא ניתן למחיקה', 403);
   const row = await draftRow(env, path), pub = await publishedSha(env, path);
   const current = row ? (row.deleted ? null : await blobSha(row.content)) : pub;
-  if ((expected || null) !== (current || null)) throw fail('מישהו אחר שמר את הקובץ הזה בינתיים. טענו אותו מחדש ונסו שוב.', 409);
-  if (!pub) await env.DB.prepare('DELETE FROM drafts WHERE path = ?').bind(path).run(); // it was never published: nothing to remember
-  else {
-    const now = Date.now();
-    await env.DB.prepare('INSERT INTO drafts (path, content, deleted, base_sha, created_at, updated_at, email, name) VALUES (?, NULL, 1, ?, ?, ?, ?, ?) ON CONFLICT(path) DO UPDATE SET content = NULL, deleted = 1, updated_at = excluded.updated_at, email = excluded.email, name = excluded.name')
-      .bind(path, row ? row.base_sha : pub, row ? row.created_at : now, now, me.email, me.shown).run();
-  }
+  if ((expected || null) !== (current || null)) throw draftConflict();
+  if (!pub) await clearDraftSnapshot(env, path, row); // it was never published: nothing to remember
+  else await writeDraftSnapshot(env, me, path, null, 1, pub, row);
   await logEntry(env, me, 'delete', path, summary);
   return { content: null, draft: true };
 }
@@ -518,45 +700,65 @@ async function publish(env, me, paths, force, note) {
   const rows = dpaths.length ? (await env.DB.prepare(`SELECT * FROM drafts WHERE path IN (${marks(dpaths.length)})`).bind(...dpaths).all()).results : [];
   const media = mpaths.length ? (await env.DB.prepare(`SELECT * FROM media WHERE store = 'github' AND status IN ('staged', 'removing') AND key IN (${marks(mpaths.length)})`).bind(...mpaths).all()).results : [];
   if (!rows.length && !media.length) throw fail('אין שינויים לפרסם', 400);
-  // A page must not point at a file that is neither live nor published together with it: the build would fail.
   const together = new Set(media.filter((m) => m.status === 'staged').map((m) => m.key));
-  for (const r of rows.filter((x) => !x.deleted && PAGE_FILE.test(x.path))) {
-    let blocks = []; try { blocks = JSON.parse(r.content).blocks || []; } catch { /* checked when saved */ }
-    for (const b of blocks) {
-      const m = /^\/media\/([a-z0-9][\w.-]*)$/.exec(String(b && b.src || ''));
-      if (m && !together.has(`site/media/${m[1]}`) && !(await publishedSha(env, `site/media/${m[1]}`))) throw fail(`הדף ״${cleanName(JSON.parse(r.content).title)}״ משתמש בקובץ שעוד לא פורסם: ${m[1]}. סמנו גם אותו לפרסום.`, 400);
-    }
-  }
-  await photoPreflight(env, rows, together);
-  const pubs = new Map(await Promise.all(rows.map(async (r) => [r.path, await publishedSha(env, r.path)])));
   const shas = new Map(await Promise.all(rows.map(async (r) => [r.path, r.deleted ? null : await blobSha(r.content)])));
-  const conflicts = rows.filter((r) => pubs.get(r.path) !== (r.base_sha || null) && pubs.get(r.path) !== shas.get(r.path) && !force.includes(r.path)).map((r) => r.path);
-  if (conflicts.length) throw fail('חלק מהקבצים שונו גם באתר החי מאז שהתחלתם לערוך אותם', 409, { conflicts });
-  const blobs = new Map();
-  for (const r of rows) if (!r.deleted && pubs.get(r.path) !== shas.get(r.path)) blobs.set(r.path, (await gh(env, 'git/blobs', { method: 'POST', body: { content: toB64(r.content), encoding: 'base64' } })).sha);
-  const entries = rows.filter((r) => (r.deleted ? pubs.get(r.path) : blobs.has(r.path))).map((r) => ({ path: r.path, mode: '100644', type: 'blob', sha: r.deleted ? null : blobs.get(r.path) }));
-  for (const m of media) {
-    if (m.status === 'staged') {
-      const parts = (await env.DB.prepare('SELECT data FROM media_chunks WHERE id = ? ORDER BY n').bind(m.id).all()).results;
-      entries.push({ path: m.key, mode: '100644', type: 'blob', sha: (await gh(env, 'git/blobs', { method: 'POST', body: { content: parts.map((p) => p.data).join(''), encoding: 'base64' } })).sha });
-    } else if (await publishedSha(env, m.key)) entries.push({ path: m.key, mode: '100644', type: 'blob', sha: null });
-  }
+  const blobs = new Map(), mediaBlobs = new Map();
   const editors = [...new Set([...rows.map((r) => r.name), ...media.map((m) => m.by_name)])];
   const lines = [...rows.map((r) => `- ${label(r)}: ${r.path}`), ...media.map((m) => `- ${m.status === 'staged' ? 'קובץ חדש' : 'קובץ נמחק'}: ${m.key}`)];
   const total = rows.length + media.length;
   const subject = `פרסום: ${cleanName(note) || `${total} שינויים`}`;
   let sha = null;
-  if (entries.length) {
-    for (let attempt = 0; ; attempt++) {
-      const head = (await gh(env, `git/ref/heads/${env.BRANCH}`)).object.sha;
-      const tree = (await gh(env, `git/commits/${head}`)).tree.sha;
-      const next = await gh(env, 'git/trees', { method: 'POST', body: { base_tree: tree, tree: entries } });
-      const commit = await gh(env, 'git/commits', { method: 'POST', body: { message: `${subject}\n\n${lines.join('\n')}\n\nפורסם על ידי: ${me.shown}\nנערך על ידי: ${editors.join(', ')}`, tree: next.sha, parents: [head], author: { name: me.shown, email: 'editor@heichal.invalid', date: new Date().toISOString() } } });
-      try { await gh(env, `git/refs/heads/${env.BRANCH}`, { method: 'PATCH', body: { sha: commit.sha, force: false } }); sha = commit.sha; break; }
-      catch (e) { if (e.status !== 422 || attempt >= 2) throw e; } // the branch moved meanwhile: build again on the new head
+  for (let attempt = 0; ; attempt++) {
+    const head = (await gh(env, `git/ref/heads/${env.BRANCH}`)).object.sha;
+    // Every read in this attempt uses the same immutable commit, including
+    // photo/media dependencies. If the branch moves, validate again before retry.
+    const live = { ...env, BRANCH: head };
+    const pubs = new Map(await Promise.all(rows.map(async (r) => [r.path, await publishedSha(live, r.path)])));
+    const conflicts = rows.filter((r) => pubs.get(r.path) !== (r.base_sha || null) && pubs.get(r.path) !== shas.get(r.path) && !force.includes(r.path)).map((r) => r.path);
+    if (conflicts.length) throw fail('חלק מהקבצים שונו גם באתר החי מאז שהתחלתם לערוך אותם', 409, { conflicts });
+    // A page's referenced media must be in this commit or in the selected uploads.
+    for (const r of rows.filter((x) => !x.deleted && PAGE_FILE.test(x.path))) {
+      let blocks = []; try { blocks = JSON.parse(r.content).blocks || []; } catch { /* checked when saved */ }
+      for (const b of blocks) {
+        const m = /^\/media\/([a-z0-9][\w.-]*)$/.exec(String(b && b.src || ''));
+        if (m && !together.has(`site/media/${m[1]}`) && !(await publishedSha(live, `site/media/${m[1]}`))) throw fail(`הדף ״${cleanName(JSON.parse(r.content).title)}״ משתמש בקובץ שעוד לא פורסם: ${m[1]}. סמנו גם אותו לפרסום.`, 400);
+      }
     }
+    await photoPreflight(live, rows, together);
+    for (const r of rows) if (!r.deleted && pubs.get(r.path) !== shas.get(r.path) && !blobs.has(r.path)) blobs.set(r.path, (await gh(env, 'git/blobs', { method: 'POST', body: { content: toB64(r.content), encoding: 'base64' } })).sha);
+    const entries = rows.filter((r) => r.deleted ? pubs.get(r.path) : pubs.get(r.path) !== shas.get(r.path)).map((r) => ({ path: r.path, mode: '100644', type: 'blob', sha: r.deleted ? null : blobs.get(r.path) }));
+    for (const m of media) {
+      if (m.status === 'staged') {
+        if (!mediaBlobs.has(m.id)) {
+          const parts = (await env.DB.prepare('SELECT data FROM media_chunks WHERE id = ? ORDER BY n').bind(m.id).all()).results;
+          mediaBlobs.set(m.id, (await gh(env, 'git/blobs', { method: 'POST', body: { content: parts.map((p) => p.data).join(''), encoding: 'base64' } })).sha);
+        }
+        entries.push({ path: m.key, mode: '100644', type: 'blob', sha: mediaBlobs.get(m.id) });
+      } else if (await publishedSha(live, m.key)) entries.push({ path: m.key, mode: '100644', type: 'blob', sha: null });
+    }
+    if (!entries.length) {
+      if ((await gh(env, `git/ref/heads/${env.BRANCH}`)).object.sha === head) break;
+      if (attempt >= 2) throw fail('ענף הפרסום השתנה בינתיים. נסו לפרסם שוב.', 409);
+      continue;
+    }
+    const tree = (await gh(env, `git/commits/${head}`)).tree.sha;
+    const next = await gh(env, 'git/trees', { method: 'POST', body: { base_tree: tree, tree: entries } });
+    const commit = await gh(env, 'git/commits', { method: 'POST', body: { message: `${subject}\n\n${lines.join('\n')}\n\nפורסם על ידי: ${me.shown}\nנערך על ידי: ${editors.join(', ')}`, tree: next.sha, parents: [head], author: { name: me.shown, email: 'editor@heichal.invalid', date: new Date().toISOString() } } });
+    try { await gh(env, `git/refs/heads/${env.BRANCH}`, { method: 'PATCH', body: { sha: commit.sha, force: false } }); sha = commit.sha; break; }
+    catch (e) { if (e.status !== 422 || attempt >= 2) throw e; }
   }
-  if (rows.length) await env.DB.prepare(`DELETE FROM drafts WHERE path IN (${marks(rows.length)})`).bind(...rows.map((r) => r.path)).run();
+  // Git requests above can overlap a new save. Clear only the exact captured row,
+  // including its attribution, so a newer edit/deletion stays pending. Keep its
+  // existing base SHA for explicit conflict review rather than silently rebasing it.
+  const cleanup = [];
+  // Group predicates to avoid one D1 query per draft; 12 rows use 96 of the
+  // 100 allowed bound parameters while retaining atomic snapshot checks.
+  for (let i = 0; i < rows.length; i += 12) {
+    const group = rows.slice(i, i + 12);
+    cleanup.push(env.DB.prepare(`DELETE FROM drafts WHERE ${group.map(() => DRAFT_MATCH).join(' OR ')}`)
+      .bind(...group.flatMap(draftValues)));
+  }
+  if (cleanup.length) await env.DB.batch(cleanup);
   for (const m of media) {
     await env.DB.prepare('DELETE FROM media_chunks WHERE id = ?').bind(m.id).run();
     if (m.status === 'staged') await env.DB.prepare("UPDATE media SET status = 'published' WHERE id = ?").bind(m.id).run();
@@ -605,7 +807,12 @@ async function main(req, env, url, cors) {
   const email = await readSession((req.headers.get('Authorization') || '').replace(/^Bearer /, ''), env);
   if (!email) return json({ message: 'צריך להתחבר מחדש' }, 401, cors);
   const me = await who(env, email), p = url.pathname, q = url.searchParams;
+  if (!me) return json({ message: 'צריך להתחבר מחדש' }, 401, cors);
   await schema(env);
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    const admission = await writeLimit(env, email);
+    if (!admission.allowed) return json({ message: 'יותר מדי פעולות ברצף. המתינו מעט ונסו שוב.' }, 429, { ...cors, 'Retry-After': String(admission.retryAfter) });
+  }
 
   if (p === '/me') {
     if (req.method === 'PUT') {
@@ -697,9 +904,15 @@ async function handle(req, env) {
   if (!cors['Access-Control-Allow-Origin']) return json({ message: 'origin not allowed' }, 403, cors);
 
   if (url.pathname === '/session' && req.method === 'POST') {
-    let email;
+    let b, email;
+    try { b = await readJsonBody(req, { maxBytes: 16384, allowEmpty: false }); }
+    catch (error) {
+      if (error instanceof RequestBodyError) return json({ message: error.message }, error.status, cors);
+      throw error;
+    }
+    const admission = await loginLimit(req, env);
+    if (!admission.allowed) return json({ message: 'יותר מדי ניסיונות התחברות. המתינו מעט ונסו שוב.' }, 429, { ...cors, 'Retry-After': String(admission.retryAfter) });
     try {
-      const b = await req.json();
       email = b.access_token ? await verifyAccessToken(b.access_token, env) : await verifyGoogle(b.credential, env);
     } catch { return json({ message: 'ההתחברות עם Google נכשלה' }, 401, cors); }
     const me = await who(env, email);
