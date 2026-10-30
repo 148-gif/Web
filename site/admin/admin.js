@@ -1,7 +1,7 @@
 // Site editor (/admin/): dashboard, pages and topics, the site's content files, the Q&A archive and the editors list.
 // Data lives in data/*.json in the GitHub repository. Through the editor server (cms-worker/, when config.json has "worker";
 // sign-in with Google) a save is a draft that the site does not show; a publisher then publishes chosen drafts in one commit,
-// and the Pages workflow tests, builds and publishes it. Without a server (a personal GitHub token) every save is a commit
+// and the configured deployment process tests, builds and publishes it. Without a server (a personal GitHub token) every save is a commit
 // straight to the publishing branch.
 // Screens are addressed by the URL hash (#/pages, #/file/uman.json, #/shut/123 …), so the browser's back button works.
 (function () {
@@ -129,7 +129,7 @@
   var KINDS = { page: ['דף יחיד', 'דף אחד, כמו ״אומן״. בתפריט של האתר הוא נפתח ישר'], collection: ['אוסף', 'הרבה פריטים מאותו סוג, כמו הספרייה. אפשר לחלק לנושאים'] };
   // "pages" is the old name of a collection without categories.
   var kindOf = function (t) { return t && t.kind === 'page' ? 'page' : 'collection'; };
-  var cfg, token, owner = false, publisher = false, me = '', myName = '';
+  var cfg, deploymentTools, deploymentConfig, token, owner = false, publisher = false, me = '', myName = '';
   var draft = false; // saves go to drafts (editor server) instead of straight to the branch
   var pending = { list: [], at: 0 }; // unpublished drafts, as the server last said
   var cur = null; // the open file: { path, sha, indent, data, orig }
@@ -542,42 +542,52 @@
       drawPend(); status();
     }, function () { /* the chip keeps its last number */ });
   }
-  // After a save: follow it until it is really on the site, as Decap and CloudCannon show the state of the build.
-  // The site's run for the commit says whether it waits, runs, failed, or was folded into a newer save (deploys are never cut
-  // short; saves made meanwhile wait, and only the newest is built). Then admin/build.json, written by each build, says which
-  // commit the site now serves: only then is it "on the site".
+  // Track the configured destination. Pages uses its served build marker; cPanel
+  // additionally requires the promoter's live status for that same served commit.
   var pub = { state: '', url: null }, mine = []; // mine: the commits saved from this page, oldest first
   function showPub() {
     var p = $('#pubstate'); if (!p) return;
-    var text = { wait: '⏳ ממתין לפרסום…', run: '⏳ מתפרסם באתר… בדרך כלל דקה-שתיים', live: '✓ האתר עודכן', bad: '✕ הפרסום נכשל, והאתר נשאר כמו שהיה', slow: 'הפרסום לוקח יותר מהרגיל. אפשר להמשיך לעבוד, והאתר יתעדכן כשיסתיים.' }[pub.state];
-    p.hidden = !text; p.className = 'pubstate ' + (pub.state || ''); p.textContent = text || '';
+    var text = { wait: '⏳ ממתין לפרסום…', run: '⏳ הפרסום באתר בתהליך…', building: '⏳ בונה ובודק את העדכון…', staging: '⏳ מכין את הקבצים לפרסום…', deploying: '⏳ מעדכן את האתר ומאמת את הפרסום…', live: '✓ האתר עודכן', bad: '✕ תהליך הפרסום נכשל. יש לבדוק את מצב האתר.', unknown: 'עדיין לא ניתן לאמת שהעדכון עלה לאתר.', slow: 'הפרסום לוקח יותר מהרגיל, ועדיין לא אומת באתר. אפשר להמשיך לעבוד ולבדוק שוב בהמשך.' }[pub.state];
+    var style = { building: 'run', staging: 'run', deploying: 'run', unknown: 'slow' }[pub.state] || pub.state;
+    p.hidden = !text; p.className = 'pubstate ' + (style || ''); p.textContent = text || '';
     if (pub.state === 'live' && pub.url) p.append(' · ', el('a', { href: '..' + pub.url, target: '_blank', rel: 'noopener', text: 'צפייה באתר' }));
   }
   function setPub(state, url) { pub = { state: state, url: url === undefined ? pub.url : url }; showPub(); }
   function published(sha, url) {
     var epoch = sessionEpoch;
     mine.push(sha);
-    say(draft ? 'פורסם. האתר מתעדכן, זה לוקח דקה או שתיים…' : 'נשמר. האתר מתעדכן, זה לוקח דקה או שתיים…', 'ok');
+    say(deploymentConfig.target === 'cpanel' ? 'השינויים נשמרו לפרסום. נעקוב כאן עד לאימות העדכון באתר.' : draft ? 'פורסם. האתר מתעדכן, זה לוקח דקה או שתיים…' : 'נשמר. האתר מתעדכן, זה לוקח דקה או שתיים…', 'ok');
     setPub('wait', url || null);
     var t0 = Date.now(), done = false;
     var newest = function () { return mine[mine.length - 1] === sha; };
-    var live = function () {
-      return sessionFetch('build.json?t=' + Date.now(), { cache: 'no-store' }, function (r) { return r.ok ? r.json() : {}; }).then(function (b) {
-        var i = mine.indexOf(b.sha); return i >= mine.indexOf(sha) && i > -1; // this commit, or a later one from this page, is what the site serves
-      }, function () { return false; });
+    var marker = function () {
+      return sessionFetch('build.json?t=' + Date.now(), { cache: 'no-store' }, deploymentTools.readBuildMarker).catch(function () { return null; });
+    };
+    var deployment = function () {
+      if (!deploymentConfig.statusPath) return Promise.resolve(null);
+      return sessionFetch(deploymentConfig.statusPath + '?t=' + Date.now(), { cache: 'no-store' }, deploymentTools.readDeploymentStatus).catch(function () { return null; });
     };
     (function poll() {
       if (done) return;
       if (Date.now() - t0 > 8 * 60000) { if (newest()) setPub('slow'); return; }
       later(function () {
-        Promise.all([api('actions/runs?head_sha=' + sha).catch(function () { return {}; }), live()]).then(function (r) {
+        Promise.all([api('actions/runs?head_sha=' + sha).catch(function () { return {}; }), marker(), deployment()]).then(function (r) {
           sessionCheck(epoch);
-          if (r[1]) { done = true; if (newest()) { setPub('live'); say('האתר עודכן ✓', 'ok', pub.url); } return; }
-          var runs = (r[0] && r[0].workflow_runs) || [], run = runs.filter(function (x) { return /Pages/.test(x.name); })[0];
-          if (run && run.status === 'completed' && run.conclusion === 'failure') { done = true; if (newest()) { setPub('bad'); say('הפרסום נכשל, והאתר נשאר כמו שהיה. כנראה יש בעיה בתוכן ששמרתם. פנו למי שמתחזק את האתר.', 'bad'); } return; }
-          // cancelled: a newer save carries this change too, and its own poll reports it
-          if (run && run.status === 'completed' && run.conclusion === 'cancelled' && !newest()) { done = true; return; }
-          if (newest()) setPub(run && run.status === 'in_progress' ? 'run' : run && run.status === 'completed' ? 'run' : 'wait');
+          var progress = deploymentTools.deploymentProgress({ settings: deploymentConfig, commit: sha, savedCommits: mine, build: r[1], status: r[2], runs: r[0] && r[0].workflow_runs });
+          if (progress.done) {
+            done = true;
+            if (newest() && !progress.superseded) {
+              setPub(progress.state);
+              if (progress.state === 'live') say('האתר עודכן ✓', 'ok', pub.url);
+              else say('תהליך הפרסום נכשל. מצב האתר לא אומת; פנו למי שמתחזק את האתר לפני ניסיון נוסף.', 'bad');
+            }
+            return;
+          }
+          if (newest()) setPub(progress.state);
+          poll();
+        }).catch(function (error) {
+          if (error.editorSessionEnded || epoch !== sessionEpoch) return;
+          if (newest()) setPub('unknown');
           poll();
         });
       }, 6000);
@@ -2154,7 +2164,8 @@
     };
     document.head.append(s);
   }
-  fetch('config.json').then(function (r) { return r.json(); }).then(function (c) {
+  Promise.all([fetch('config.json').then(function (r) { return r.json(); }), import('./deployment-status.mjs')]).then(function (loaded) {
+    var c = loaded[0]; deploymentTools = loaded[1]; deploymentConfig = deploymentTools.deploymentSettings(c.deployment);
     cfg = c;
     var st = saved();
     $('#out').addEventListener('click', function () { if (leave()) signout(); });
@@ -2178,5 +2189,5 @@
     });
     $('#tok').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('#go').click(); });
     if (st && st.token) { token = st.token; enter(); }
-  });
+  }).catch(function () { $('#lerr').textContent = 'לא ניתן לטעון את הגדרות לוח הניהול. רעננו את הדף או פנו למי שמתחזק את האתר.'; });
 })();
