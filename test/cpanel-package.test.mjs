@@ -66,6 +66,7 @@ test('staging artifact preserves exact source SHA, contains only public/runtime 
   }
   const config = JSON.parse(await readFile(join(options.output, 'public/admin/config.json'), 'utf8'));
   assert.equal(config.worker, options.apiOrigin); assert.equal(config.branch, 'main');
+  assert.deepEqual(config.deployment, { target: 'cpanel', workflow: 'cpanel-release.yml', statusPath: 'deployment.json' });
   const index = await readFile(join(options.output, 'public/index.html'), 'utf8');
   assert.match(index, /name="robots" content="noindex,nofollow"/); assert.doesNotMatch(index, /content="index,follow"/);
   const admin = await readFile(join(options.output, 'public/admin/index.html'), 'utf8');
