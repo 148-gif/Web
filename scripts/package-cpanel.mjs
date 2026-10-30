@@ -117,6 +117,7 @@ export async function packageCpanel({ sourceRoot = REPO, commit, branch, output,
     // Only this isolated build changes; the checked-out public source retains its
     // current Pages configuration and indexing policy.
     config.branch = branch; config.worker = apiUrl;
+    config.deployment = { target: 'cpanel', workflow: 'cpanel-release.yml', statusPath: 'deployment.json' };
     await writeFile(configFile, JSON.stringify(config, null, 2) + '\n');
     let admin = await readFile(adminFile, 'utf8');
     let policies = 0;
@@ -151,7 +152,7 @@ export async function packageCpanel({ sourceRoot = REPO, commit, branch, output,
     publicFiles = await treeFiles(dist);
     const runtimeFiles = entries.filter((path) => /^server\/[^/]+\.(?:mjs|sql)$/.test(path) || /^cms-worker\/[^/]+\.mjs$/.test(path) || [
       'site/admin/image-rules.mjs', 'package.json', 'package-lock.json', 'passenger.cjs',
-      'scripts/check-cpanel-readiness.mjs', 'scripts/prepare-mysql-migration.mjs', 'scripts/import-mysql-migration.mjs', 'scripts/smoke-cpanel.mjs',
+      'scripts/check-cpanel-readiness.mjs', 'scripts/prepare-mysql-migration.mjs', 'scripts/import-mysql-migration.mjs', 'scripts/smoke-cpanel.mjs', 'scripts/publish-cpanel.mjs',
     ].includes(path));
     for (const required of ['server/start.mjs', 'server/runtime.mjs', 'server/mysql-store.mjs', 'server/mysql-kv.mjs', 'server/mysql-rate-limit.mjs', 'package.json', 'package-lock.json', 'passenger.cjs']) if (!runtimeFiles.includes(required)) throw new Error('Source commit lacks a required Node runtime file');
     if (runtimeFiles.some(forbidden)) throw new Error('Runtime selection contains a prohibited path');
@@ -165,7 +166,7 @@ export async function packageCpanel({ sourceRoot = REPO, commit, branch, output,
       runtime: { entrypoint: 'server/start.mjs', passengerEntrypoint: 'passenger.cjs', node: '24', mysql: '8.4+', publicationEnabledByDefault: false, stagingNoindexByDefault: true },
       apacheBaselineSha256: digest(baselineBytes),
       preserveHostPaths: ['.well-known', 'cgi-bin', 'php.ini', '.user.ini'],
-      outstanding: ['Install pinned production dependencies in the private app directory', 'Import and verify the separate database/media backup before activation', 'Verify hosting routing, TLS, proxy identity, Google origins and all-file noindex headers', 'Configure the recurring cPanel publication process; enabling CMS_PUBLISH_ENABLED alone does not provide it'],
+      outstanding: ['Install pinned production dependencies in the private app directory', 'Import and verify the separate database/media backup before activation', 'Verify hosting routing, TLS, proxy identity, Google origins and all-file noindex headers', 'Configure and verify the gated cPanel build workflow and private Cron runner; CMS_PUBLISH_ENABLED alone does not activate them'],
       files: [],
     };
     for (const path of await treeFiles(canonical)) {
