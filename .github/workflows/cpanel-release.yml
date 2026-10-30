@@ -1,0 +1,51 @@
+name: Build cPanel release
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/greeting-2i183o]
+permissions:
+  contents: read
+# This builds an artifact only. A separately configured private host runner
+# verifies the current default-branch head and successful run before promotion.
+concurrency:
+  group: cpanel-release
+  cancel-in-progress: false
+jobs:
+  build:
+    if: vars.CPANEL_RELEASE_ENABLED == 'true' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - run: npm test && npm run lint
+      - name: Package exact source commit
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_DIRECTORY: ${{ runner.temp }}/cpanel-release
+          APACHE_BASELINE: ${{ runner.temp }}/empty-apache-baseline
+        run: |
+          git branch -- "$SOURCE_BRANCH" "$SOURCE_SHA"
+          touch "$APACHE_BASELINE"
+          node scripts/package-cpanel.mjs \
+            --commit "$SOURCE_SHA" --source-branch "$SOURCE_BRANCH" \
+            --out "$RELEASE_DIRECTORY" \
+            --site-origin https://hichal.yoterberama.com \
+            --api-url https://hichal.yoterberama.com/cms-api \
+            --apache-baseline "$APACHE_BASELINE"
+      - name: Store verified release
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cpanel-${{ github.sha }}
+          path: ${{ runner.temp }}/cpanel-release/
+          if-no-files-found: error
+          include-hidden-files: true
+          compression-level: 0
+          retention-days: 14
