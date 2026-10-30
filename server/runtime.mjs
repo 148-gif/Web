@@ -5,6 +5,7 @@ import { isAbsolute, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCmsServer } from './http.mjs';
 import { createFileMedia } from './file-media.mjs';
+import { createWorkersAi, WorkersAiConfigurationError, WORKERS_AI_PROVIDER } from './workers-ai.mjs';
 import worker from '../cms-worker/worker.mjs';
 
 const APP_ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -78,8 +79,14 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
     try { trustedProxyIps = JSON.parse(values.CMS_TRUSTED_PROXY_IPS); } catch { invalid('CMS_TRUSTED_PROXY_IPS', 'must be a JSON array of exact verified proxy IPs'); }
     if (!Array.isArray(trustedProxyIps) || trustedProxyIps.length > 16 || trustedProxyIps.some((ip) => typeof ip !== 'string' || !isIP(ip))) invalid('CMS_TRUSTED_PROXY_IPS', 'must be a JSON array of at most16 exact verified proxy IPs');
   }
+  let ai;
+  try { ai = createWorkersAi(values); }
+  catch (error) {
+    if (error instanceof WorkersAiConfigurationError) throw new RuntimeConfigurationError(error.message);
+    throw error;
+  }
   return {
-    publicOrigin, apiBasePath, env, bindHost, trustedProxyIps, staging: env.CMS_STAGING, port: integer(values, 'PORT', 3000),
+    publicOrigin, apiBasePath, env, ai, bindHost, trustedProxyIps, staging: env.CMS_STAGING, port: integer(values, 'PORT', 3000),
     publishEnabled: flag(values, 'CMS_PUBLISH_ENABLED'), readOnly: flag(values, 'CMS_READ_ONLY'),
     mediaRoot: text(values, 'CMS_MEDIA_ROOT'), publicRoot: text(values, 'CMS_PUBLIC_ROOT'),
     mediaMaxBytes: Number(env.MEDIA_R2_FILE_MB || 90) * 1024 ** 2,
@@ -162,11 +169,11 @@ export async function createRuntime({ values = process.env, nodeVersion = proces
   try {
     const store = makeStore(pool);
     await store.ensureSchema();
-    const env = { ...config.env, DATA_STORE: store, EDITORS: makeKv(pool), RATE_LIMIT_STORE: makeRate(pool), MEDIA: createFileMedia({ root: paths.CMS_MEDIA_ROOT, maxBytes: config.mediaMaxBytes }) };
+    const env = { ...config.env, ...(config.ai ? { AI: config.ai } : {}), DATA_STORE: store, EDITORS: makeKv(pool), RATE_LIMIT_STORE: makeRate(pool), MEDIA: createFileMedia({ root: paths.CMS_MEDIA_ROOT, maxBytes: config.mediaMaxBytes }) };
     server = createCmsServer({ env, publicOrigin: config.publicOrigin, basePath: config.apiBasePath, trustedProxyIps: config.trustedProxyIps, noIndex: config.staging, handleRequest: runtimeHandler(config, dependencies.handleRequest || worker.fetch) });
     return {
       server, close,
-      status: { publicationEnabled: config.publishEnabled, readOnly: config.readOnly, slugAiAvailable: false, schemaVerified: true },
+      status: { publicationEnabled: config.publishEnabled, readOnly: config.readOnly, slugAiAvailable: Boolean(config.ai), slugAiProvider: config.ai ? WORKERS_AI_PROVIDER : 'disabled', slugAiVerified: false, schemaVerified: true },
       async listen() {
         if (closing || server.listening) throw new Error('Runtime cannot be started in its current state');
         try {

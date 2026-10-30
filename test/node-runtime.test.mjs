@@ -7,6 +7,7 @@ import { createServer } from 'node:net';
 import { EventEmitter } from 'node:events';
 import { createRuntime, runtimeConfiguration, runtimeHandler, installShutdownHandlers } from '../server/runtime.mjs';
 import { mysqlEnabled, withMysqlDatabase } from './helpers/mysql.mjs';
+import { WORKERS_AI_ACCOUNT_ID, WORKERS_AI_MODEL, WORKERS_AI_PROVIDER } from '../server/workers-ai.mjs';
 
 async function fixture(t) {
   const base = await mkdtemp(join(tmpdir(), 'cms-runtime-'));
@@ -63,6 +64,55 @@ test('remote MySQL connections verify both the certificate chain and its DNS ide
   const runtime = await createRuntime({ ...options, values: { ...values, MYSQL_HOST: 'db.example.test' } });
   t.after(() => runtime.close());
   assert.deepEqual(state.mysql.ssl, { rejectUnauthorized: true, verifyIdentity: true });
+});
+
+test('runtime keeps AI disabled by default and rejects partial activation before database setup', async (t) => {
+  const { options, values, state } = await fixture(t);
+  let providerCalls = 0;
+  t.mock.method(globalThis, 'fetch', async () => { providerCalls++; throw new Error('No provider calls are allowed in startup'); });
+  assert.equal(runtimeConfiguration(values).ai, undefined);
+  await assert.rejects(createRuntime({ ...options, values: { ...values, CMS_AI_PROVIDER: WORKERS_AI_PROVIDER } }), /CLOUDFLARE_AI_ACCOUNT_ID/);
+  await assert.rejects(createRuntime({ ...options, values: { ...values, CLOUDFLARE_AI_ACCOUNT_ID: WORKERS_AI_ACCOUNT_ID } }), /CMS_AI_PROVIDER/);
+  assert.equal(state.constructed, 0);
+  const runtime = await createRuntime(options);
+  try {
+    assert.equal(runtime.status.slugAiAvailable, false);
+    assert.equal(runtime.status.slugAiProvider, 'disabled');
+    assert.equal(runtime.status.slugAiVerified, false);
+    assert.equal(providerCalls, 0);
+  } finally { await runtime.close(); }
+});
+
+test('explicit AI configuration attaches only a private binding and performs no startup probe', async (t) => {
+  const { options, values, dependencies } = await fixture(t), localFetch = globalThis.fetch;
+  const token = 'fixture-only-runtime-workers-ai-token';
+  let providerCalls = 0;
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    assert.equal(url, `https://api.cloudflare.com/client/v4/accounts/${WORKERS_AI_ACCOUNT_ID}/ai/run/${WORKERS_AI_MODEL}`);
+    providerCalls++;
+    return Response.json({ success: true, result: { translated_text: 'Test topic' }, errors: [] });
+  });
+  const runtime = await createRuntime({ ...options, values: { ...values,
+    CMS_AI_PROVIDER: WORKERS_AI_PROVIDER, CLOUDFLARE_AI_ACCOUNT_ID: WORKERS_AI_ACCOUNT_ID, CLOUDFLARE_AI_API_TOKEN: token,
+  }, dependencies: {
+    ...dependencies,
+    handleRequest: async (_request, env) => {
+      assert.equal(env.CLOUDFLARE_AI_API_TOKEN, undefined);
+      assert.equal(env.CLOUDFLARE_AI_ACCOUNT_ID, undefined);
+      return Response.json(await env.AI.run(WORKERS_AI_MODEL, { text: 'נושא לבדיקה', source_lang: 'he', target_lang: 'en' }));
+    },
+  } });
+  t.after(() => runtime.close());
+  assert.equal(providerCalls, 0);
+  assert.equal(runtime.status.slugAiAvailable, true);
+  assert.equal(runtime.status.slugAiProvider, WORKERS_AI_PROVIDER);
+  assert.equal(runtime.status.slugAiVerified, false);
+  assert.equal(JSON.stringify(runtime.status).includes(token), false);
+  await runtime.listen();
+  assert.equal(providerCalls, 0);
+  const response = await localFetch(`http://127.0.0.1:${values.PORT}/me`);
+  assert.deepEqual(await response.json(), { translated_text: 'Test topic' });
+  assert.equal(providerCalls, 1);
 });
 
 test('invalid directory isolation fails before a database pool is constructed', async (t) => {
