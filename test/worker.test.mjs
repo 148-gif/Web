@@ -1,7 +1,7 @@
 // Unit tests for the editor login server (cms-worker/worker.mjs): who may sign in, and what an editor may change.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { toSlug, slugFor, route, verifyGoogle, verifyAccessToken, makeSession, readSession, handle, sha256, blobSha } from '../cms-worker/worker.mjs';
+import { MEDIA_OK, chooseStore, sniff, toSlug, slugFor, route, verifyGoogle, verifyAccessToken, makeSession, readSession, handle, sha256, blobSha } from '../cms-worker/worker.mjs';
 import { makeD1 } from './helpers/d1.mjs';
 import { makeGithub } from './helpers/fake-github.mjs';
 
@@ -318,3 +318,229 @@ test('translation has a daily ceiling per editor and for the whole site; the glo
   assert.equal((await ask(p, 'חמישה')).limited, true); // the site is done for today
   assert.equal(runs, 3);
 });
+
+// ---- media ----
+const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(40, 7)]);
+const fakeR2 = () => {
+  const m = new Map();
+  return {
+    m,
+    put: async (k, body, o) => { const b = Buffer.from(await new Response(body).arrayBuffer()); m.set(k, { b, meta: o && o.httpMetadata }); },
+    head: async (k) => (m.has(k) ? { size: m.get(k).b.length, httpMetadata: m.get(k).meta } : null),
+    get: async (k, o) => { const e = m.get(k); if (!e) return null; const r = o && o.range ? e.b.subarray(o.range.offset, o.range.offset + o.range.length) : e.b; return { body: r, arrayBuffer: async () => r.buffer.slice(r.byteOffset, r.byteOffset + r.length) }; },
+    delete: async (k) => { m.delete(k); },
+  };
+};
+const upload = async (api, name, bytes) => {
+  const init = await api('POST', '/media/init', { name, size: bytes.length });
+  if (init.status !== 200) return init;
+  const full = bytes.toString('base64');
+  for (let n = 0; n * 524288 < full.length; n++) {
+    const r = await api('POST', '/media/chunk', { id: init.body.id, n, data: full.slice(n * 524288, (n + 1) * 524288) });
+    if (r.status !== 200) return r;
+  }
+  return api('POST', '/media/done', { id: init.body.id });
+};
+
+test('chooseStore() keeps small files in the repository, sends big ones and video to R2, and refuses with a reason when it cannot', () => {
+  const lim = { ghFile: 8e6, ghTotal: 250e6, r2File: 90e6, r2Total: 9e9, r2: true }, used = { github: 0, r2: 0 };
+  assert.equal(chooseStore('image', 1e6, lim, used).store, 'github');
+  assert.equal(chooseStore('video', 1e6, lim, used).store, 'r2');
+  assert.equal(chooseStore('audio', 20e6, lim, used).store, 'r2');
+  assert.equal(chooseStore('image', 1e6, lim, { github: 249.5e6, r2: 0 }).store, 'r2'); // the repository allowance is full: spill over
+  assert.match(chooseStore('video', 200e6, lim, used).error, /גדול מדי/);
+  assert.match(chooseStore('image', 1e6, lim, { github: 250e6, r2: 9e9 }).error, /המכסה/);
+  const none = { ...lim, r2: false };
+  assert.equal(chooseStore('image', 1e6, none, used).store, 'github');
+  assert.match(chooseStore('video', 1e6, none, used).error, /R2/);
+  assert.match(chooseStore('image', 1e6, none, { github: 250e6, r2: 0 }).error, /המכסה/);
+});
+
+test('MEDIA_OK() allows only plain file names under site/media', () => {
+  assert.equal(MEDIA_OK('site/media/ab12cd34-photo.png'), true);
+  for (const bad of ['site/media/', 'site/media/../data/x.json', 'site/media/a/b.png', 'site/other/a.png', 'data/x.json', 'site/media/.hidden', null]) assert.equal(MEDIA_OK(bad), false, String(bad));
+});
+
+test('sniff() checks that the first bytes match the extension', () => {
+  assert.equal(sniff('png', PNG), true);
+  assert.equal(sniff('jpg', PNG), false);
+  assert.equal(sniff('pdf', Buffer.from('%PDF-1.7')), true);
+  assert.equal(sniff('png', Buffer.from('<html><script>')), false);
+  assert.equal(sniff('docx', Buffer.from([0x50, 0x4b, 3, 4])), true);
+  assert.equal(sniff('mp4', Buffer.from('....ftypisom')), true);
+  assert.equal(sniff('txt', Buffer.from([65, 0, 66])), false);
+  assert.equal(sniff('svg', PNG), false);
+});
+
+test('an uploaded file waits as a pending change, then is published into site/media in the same single commit', async () => {
+  const w = await world();
+  assert.equal((await w.editor('POST', '/media/init', { name: 'page.html', size: 10 })).status, 400); // type not allowed
+  assert.equal((await w.editor('POST', '/media/init', { name: 'big.png', size: 9e6 })).status, 413); // over the repository file limit, no R2
+  const bad = await upload(w.editor, 'fake.png', Buffer.from('<html>not an image</html>'));
+  assert.equal(bad.status, 400);
+  const big = Buffer.concat([PNG, Buffer.alloc(500000, 9)]); // two pieces
+  const done = await upload(w.editor, 'Hello World.png', big);
+  assert.equal(done.status, 200);
+  const item = done.body.item;
+  assert.match(item.key, /^site\/media\/[0-9a-f]{8}-hello-world\.png$/);
+  assert.equal(item.url, '/media/' + item.key.slice('site/media/'.length));
+  assert.equal(github.read(item.key), null); // nothing in the repository yet
+  const ch = (await w.owner('GET', '/changes')).body.changes.find((c) => c.path === item.key);
+  assert.deepEqual([ch.status, ch.media, ch.name], ['added', true, 'בני']);
+  assert.equal((await w.editor('POST', '/publish', { paths: [item.key] })).status, 403);
+  const n0 = github.commits().length;
+  assert.equal((await w.publisher('POST', '/publish', { paths: [item.key], note: 'תמונה' })).status, 200);
+  assert.equal(github.commits().length, n0 + 1);
+  assert.ok(github.readBytes(item.key).equals(big), 'the published bytes are exactly the uploaded bytes');
+  assert.deepEqual((await w.owner('GET', '/changes')).body.changes, []);
+  const list = (await w.owner('GET', '/media')).body;
+  assert.equal(list.items[0].status, 'published');
+  assert.equal(list.quota.github.used, big.length);
+  assert.equal(list.quota.r2.enabled, false);
+});
+
+test('pending media can be discarded; a published file is removed at publish; only publishers delete what is live', async () => {
+  const w = await world();
+  const a = (await upload(w.editor, 'a.png', PNG)).body.item, b = (await upload(w.editor, 'b.png', PNG)).body.item;
+  assert.equal((await w.owner('POST', '/discard', { paths: [a.key] })).status, 200);
+  assert.equal((await w.owner('GET', '/media')).body.items.length, 1);
+  await w.publisher('POST', '/publish', { paths: [b.key] });
+  assert.ok(github.readBytes(b.key));
+  assert.equal((await w.editor('DELETE', `/media/${b.id}`)).status, 403);
+  assert.equal((await w.publisher('DELETE', `/media/${b.id}`)).body.pending, true);
+  assert.ok(github.readBytes(b.key), 'still live until the removal is published');
+  const ch = (await w.owner('GET', '/changes')).body.changes.find((c) => c.path === b.key);
+  assert.equal(ch.status, 'removed');
+  await w.publisher('POST', '/publish', { paths: [b.key] });
+  assert.equal(github.readBytes(b.key), null);
+  assert.equal((await w.owner('GET', '/media')).body.items.length, 0);
+});
+
+test('large files and video go to R2 when it exists, are checked, and are served with ranges', async () => {
+  const w = await world();
+  const R2 = fakeR2(), e = { ...w.e, MEDIA: R2, MEDIA_PUBLIC_URL: '' };
+  const call = async (method, path, body, tok = w.info.editor.token, raw) => { const r = await handle(req(path, { method, body: raw || (body === undefined ? undefined : JSON.stringify(body)), headers: { Authorization: `Bearer ${tok}` } }), e); return { status: r.status, body: await r.json() }; };
+  const mp4 = Buffer.concat([Buffer.from('\0\0\0 ftypisom'), Buffer.alloc(5000, 1)]);
+  const init = await call('POST', '/media/init', { name: 'movie.mp4', size: mp4.length });
+  assert.equal(init.body.store, 'r2');
+  const bad = await call('POST', '/media/init', { name: 'x.mp4', size: 100 });
+  assert.equal((await call('PUT', `/media/r2?id=${bad.body.id}`, undefined, undefined, Buffer.from('not a video at all'.padEnd(100)))).status, 400);
+  const put = await call('PUT', `/media/r2?id=${init.body.id}`, undefined, undefined, mp4);
+  assert.equal(put.status, 200);
+  assert.equal(put.body.item.status, 'published');
+  assert.match(put.body.item.url, /\/m\/[0-9a-f]{8}-movie\.mp4$/);
+  const file = put.body.item.key;
+  const full = await handle(new Request(`https://w.example/m/${file}`), e);
+  assert.deepEqual([full.status, full.headers.get('Content-Type'), full.headers.get('Accept-Ranges')], [200, 'video/mp4', 'bytes']);
+  const part = await handle(new Request(`https://w.example/m/${file}`, { headers: { Range: 'bytes=0-9' } }), e);
+  assert.deepEqual([part.status, part.headers.get('Content-Range')], [206, `bytes 0-9/${mp4.length}`]);
+  assert.equal((await handle(new Request('https://w.example/m/missing.mp4'), e)).status, 404);
+  assert.equal((await call('DELETE', `/media/${init.body.id}`)).status, 403);
+  assert.equal((await call('DELETE', `/media/${init.body.id}`, undefined, w.info.publisher.token)).status, 200);
+  assert.equal(R2.m.size, 0);
+});
+
+test('a page that points at a media file (a document) is published only together with that file', async () => {
+  const w = await world();
+  const item = (await upload(w.editor, 'doc.pdf', Buffer.from('%PDF-1.4\n' + 'x'.repeat(200)))).body.item, name = item.key.replace('site/media/', '');
+  const page = { topic: 't', title: 'דף עם מסמך', blocks: [{ type: 'file', src: `/media/${name}`, title: 'מסמך' }] };
+  await put(w.editor, 'data/pages/withpic.json', page, null);
+  const early = await w.publisher('POST', '/publish', { paths: ['data/pages/withpic.json'] });
+  assert.equal(early.status, 400);
+  assert.match(early.body.message, new RegExp(name));
+  assert.equal(github.read('data/pages/withpic.json'), null);
+  const n0 = github.commits().length;
+  assert.equal((await w.publisher('POST', '/publish', { paths: ['data/pages/withpic.json', item.key] })).status, 200);
+  assert.equal(github.commits().length, n0 + 1);
+  assert.ok(github.readBytes(item.key) && github.read('data/pages/withpic.json'));
+  await put(w.editor, 'data/pages/again.json', { ...page, title: 'עוד' }, null);
+  assert.equal((await w.publisher('POST', '/publish', { paths: ['data/pages/again.json'] })).status, 200); // the file is live by now
+});
+
+// ---- photos: the editor server refuses what the build would refuse ----
+{
+  const { readFileSync } = await import('node:fs');
+  const reg = JSON.parse(readFileSync(new URL('../data/images.json', import.meta.url), 'utf8')), armchair = reg.find((x) => x.id === 'armchair');
+  const webp = (f, id = 'armchair') => readFileSync(new URL(`../data/img/${id}/${f}`, import.meta.url));
+  const files = { 'data/pages/x.json': '{"a":1}\n', 'data/topics.json': '[]\n', 'data/images.json': JSON.stringify([armchair], null, 2) + '\n' };
+  const photoWorld = async () => {
+    const w = await world();
+    github = await makeGithub({ repo: 'o/r', branch: 'live', files: { ...files, ...Object.fromEntries(['480', '800', '1002', 't360', 't720'].map((f) => [`data/img/armchair/${f}.webp`, webp(`${f}.webp`)])) } });
+    const photo = async (api, id, file, bytes = webp(file)) => {
+      const init = await api('POST', '/media/init', { photo: { id, file }, size: bytes.length });
+      if (init.status !== 200) return init;
+      const b64 = bytes.toString('base64');
+      for (let n = 0; n * 524288 < b64.length; n++) await api('POST', '/media/chunk', { id: init.body.id, n, data: b64.slice(n * 524288, (n + 1) * 524288) });
+      return api('POST', '/media/done', { id: init.body.id });
+    };
+    const sha = async (path) => { const r = await w.owner('GET', `/gh/contents/${path}`); return r.body.sha; };
+    return { ...w, photo, sha, list: async (api = w.owner) => JSON.parse(Buffer.from((await api('GET', '/gh/contents/data/images.json')).body.content, 'base64').toString()) };
+  };
+  const NAMES = ['480.webp', '800.webp', '1002.webp', 't360.webp', 't720.webp'];
+
+  test('registry: an editor may fix a description but not approve a photo, write who agreed, add, remove or resize one', async () => {
+    const w = await photoWorld();
+    const cur = await w.list(), sha = await w.sha('data/images.json');
+    const save = (api, list, s) => put(api, 'data/images.json', list, s);
+    assert.equal((await save(w.editor, [{ ...cur[0], alt: 'תיאור חדש' }], sha)).status, 200, 'description: any editor');
+    let s2 = await w.sha('data/images.json');
+    const denied = await save(w.editor, [{ ...cur[0], alt: 'תיאור חדש', consent: 'אני אישרתי', others: 'children' }], s2);
+    assert.equal(denied.status, 403); assert.match(denied.body.message, /בעל האתר/);
+    assert.equal((await save(w.editor, [{ ...cur[0], alt: 'תיאור חדש', rights: 'pending' }], s2)).status, 403, 'taking an approval back');
+    assert.equal((await save(w.editor, [], s2)).status, 400, 'removing a photo');
+    assert.equal((await save(w.editor, [{ ...cur[0], alt: 'תיאור חדש', w: 5000 }], s2)).status, 400, 'resizing');
+    assert.equal((await save(w.editor, [{ ...cur[0], alt: 'תיאור חדש', alt2: 1 }, { ...cur[0], id: 'other', rights: 'approved' }], s2)).status, 403, 'a new photo already approved');
+    for (const [over, what] of [[{ alt: 'תמונה של הרב' }, 'a photo of'], [{ credit: '' }, 'no credit'], [{ others: 'adults', consent: '' }, 'people without approval'], [{ dh: 'zz' }, 'no signature']]) {
+      const r = await save(w.owner, [{ ...cur[0], ...over }], s2);
+      assert.equal(r.status, 400, what);
+    }
+    assert.equal((await save(w.owner, [{ ...cur[0], alt: 'תיאור חדש', others: 'adults', consent: 'בעל האתר' }], s2)).status, 200, 'the owner may');
+  });
+
+  test('a new photo: its files are staged out of the media list, and publish only together with its entry', async () => {
+    const w = await photoWorld();
+    assert.equal((await w.photo(w.editor, 'newpic', '480.webp')).status, 200);
+    assert.equal((await w.editor('GET', '/media')).body.items.length, 0, 'photo files are not loose media');
+    assert.equal((await w.photo(w.editor, 'newpic', '480.webp')).status, 409, 'the same file twice');
+    assert.equal((await w.photo(w.editor, 'armchair', '480.webp')).status, 409, 'a file that is already live');
+    for (const bad of [{ id: 'new pic', file: '480.webp' }, { id: 'newpic', file: 'x.webp' }, { id: 'newpic', file: '480.jpg' }, { id: '../x', file: '480.webp' }]) {
+      assert.equal((await w.editor('POST', '/media/init', { photo: bad, size: 100 })).status, 400, JSON.stringify(bad));
+    }
+    assert.equal((await w.editor('POST', '/media/init', { photo: { id: 'big', file: '480.webp' }, size: 90000 })).status, 413, 'over the size limit for 480');
+    for (const f of NAMES.slice(1)) assert.equal((await w.photo(w.editor, 'newpic', f)).status, 200, f);
+    const entry = { ...armchair, id: 'newpic', rights: 'pending', alt: '', credit: '', others: '', consent: '' };
+    const ch = await w.owner('GET', '/changes');
+    assert.ok(ch.body.changes.some((c) => c.path === 'data/img/newpic/480.webp'), 'the staged file is among the changes');
+    const sha = await w.sha('data/images.json'), cur = await w.list();
+    assert.equal((await put(w.editor, 'data/images.json', [...cur, entry], sha)).status, 200, 'a new entry, not approved, unfinished');
+    const early = await w.publisher('POST', '/publish', { paths: ['data/images.json'] });
+    assert.equal(early.status, 400); assert.match(early.body.message, /newpic.*עוד לא פורסם/);
+    const n0 = github.commits().length;
+    const all = ['data/images.json', ...NAMES.map((f) => `data/img/newpic/${f}`)];
+    assert.equal((await w.publisher('POST', '/publish', { paths: all })).status, 200);
+    assert.equal(github.commits().length, n0 + 1, 'one commit');
+    assert.ok(github.readBytes('data/img/newpic/1002.webp') && JSON.parse(github.read('data/images.json')).some((x) => x.id === 'newpic'));
+  });
+
+  test('a page may show only registered, approved photos whose files are live; an image block names a photo, never a file', async () => {
+    const w = await photoWorld();
+    const page = (blocks) => ({ topic: 't', title: 'דף תמונות', blocks });
+    const save = (blocks, s = null) => put(w.editor, 'data/pages/pics.json', page(blocks), s);
+    assert.equal((await save([{ type: 'image', src: '/media/x.png', alt: 'x' }])).status, 400, 'a file instead of a photo');
+    assert.equal((await save([{ type: 'image', id: '' }])).status, 400, 'no photo chosen');
+    assert.equal((await save([{ type: 'image', id: 'armchair' }, { type: 'gallery', ids: ['armchair'] }])).status, 400, 'the same photo twice');
+    assert.equal((await save([{ type: 'gallery', ids: Array.from({ length: 13 }, (_, i) => `p${i}`) }])).status, 400, 'a gallery of 13');
+    assert.equal((await save([{ type: 'image', id: 'nope' }])).status, 200, 'the draft may be saved; publishing is where it is checked');
+    const bad = await w.publisher('POST', '/publish', { paths: ['data/pages/pics.json'] });
+    assert.equal(bad.status, 400); assert.match(bad.body.message, /אינה בספרייה: nope/);
+    assert.equal((await save([{ type: 'image', id: 'armchair', size: 'side' }], (await w.editor('GET', '/gh/contents/data/pages/pics.json')).body.sha)).status, 200);
+    assert.equal((await w.publisher('POST', '/publish', { paths: ['data/pages/pics.json'] })).status, 200, 'an approved photo that is live');
+    // a photo that is in the registry but not approved
+    const cur = await w.list(), s = await w.sha('data/images.json');
+    assert.equal((await put(w.owner, 'data/images.json', [...cur, { ...armchair, id: 'waiting', rights: 'pending' }], s)).status, 200);
+    await w.publisher('POST', '/publish', { paths: ['data/images.json', ...NAMES.map((f) => `data/img/waiting/${f}`)] });
+    await put(w.editor, 'data/pages/two.json', page([{ type: 'image', id: 'waiting' }]), null);
+    const pend = await w.publisher('POST', '/publish', { paths: ['data/pages/two.json'] });
+    assert.equal(pend.status, 400);
+  });
+}

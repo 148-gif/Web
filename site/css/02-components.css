@@ -70,7 +70,7 @@ a.card:hover{transform:translateY(-3px);border-color:var(--gold2)}a.card:hover:b
 .empty{background:var(--surface);border:1.5px dashed var(--line);border-radius:var(--r);padding:40px 24px;text-align:center;max-width:620px;margin:0 auto}.empty>.ico{color:var(--gold)}.empty h2{margin:8px 0 0}.empty p{margin:8px 0}
 
 /* Pager */
-.pager{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:40px 0 0;font-family:var(--sans);color:var(--mute)}
+.pager{margin:40px 0 0;font-family:var(--sans);color:var(--mute)}.pager-step{display:flex;justify-content:space-between;align-items:center;gap:12px}.pager-nums{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;list-style:none;margin:20px 0 0;padding:0}.pager-nums a,.pager-nums span{display:inline-block;min-width:36px;padding:6px 8px;text-align:center;border:1px solid var(--line);border-radius:8px;color:inherit;text-decoration:none}.pager-nums [aria-current]{background:var(--gold);color:var(--on-gold);border-color:var(--gold)}
 
 /* Q&A reading */
 .page:has(.qa){padding-top:0}
@@ -85,6 +85,7 @@ a.card:hover{transform:translateY(-3px);border-color:var(--gold2)}a.card:hover:b
 
 .opening{text-align:center;color:var(--mute);font-size:1rem;margin:0 0 4px!important}.opening+p:not(.opening){margin-top:24px}
 .closing{text-align:center;font-weight:700;color:var(--brand);margin-top:24px!important}
+.related{margin-top:32px;font-family:var(--sans)}.related h2{font-size:1.125rem;margin:0 0 8px}.related ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.related a{display:block;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);color:inherit;text-decoration:none}.related a:hover{border-color:var(--gold)}
 .qnav{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px}
 .qnav a{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:16px 16px;text-decoration:none;color:var(--brand);font-weight:700;line-height:1.45;font-size:1rem}.qnav a:hover{border-color:var(--gold2)}
 .qnav small{font:600 .875rem var(--sans);color:var(--mute);margin-bottom:2px}.qnav .next{text-align:end}

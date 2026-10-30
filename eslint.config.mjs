@@ -7,6 +7,8 @@ export default [
   js.configs.recommended,
   // Build scripts and tests: Node, ES modules.
   { files: ['**/*.mjs'], languageOptions: { sourceType: 'module', globals: globals.node } },
+  // Browser tests: Node, plus the browser's globals for the functions that run inside the page.
+  { files: ['test/**/*.e2e.mjs', 'test/helpers/editor-world.mjs'], languageOptions: { sourceType: 'module', globals: { ...globals.node, ...globals.browser } } },
   // Code that runs in the visitor's browser: classic scripts.
   { files: ['site/**/*.js'], languageOptions: { sourceType: 'script', globals: globals.browser } },
   { files: ['scripts/lib/sw.js'], languageOptions: { sourceType: 'script', globals: globals.serviceworker } },
