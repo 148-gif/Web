@@ -205,10 +205,12 @@ test('Git contents and object bytes are external unverified dependencies, never 
 test('schema is explicit MySQL 8.4 preparation; no permissive creation or destructive cleanup', () => {
   const sql = readFileSync(new URL('../server/mysql-schema.sql', import.meta.url), 'utf8');
   const executable = sql.split('\n').filter((line) => !line.trimStart().startsWith('--')).join('\n');
-  assert.equal((executable.match(/CREATE TABLE /g) || []).length, 7);
-  assert.equal((executable.match(/COLLATE=utf8mb4_0900_bin/g) || []).length, 7);
+  assert.equal((executable.match(/CREATE TABLE /g) || []).length, 8);
+  assert.equal((executable.match(/COLLATE=utf8mb4_0900_bin/g) || []).length, 8);
   assert.doesNotMatch(executable, /IF NOT EXISTS|DROP TABLE|TRUNCATE|ON DELETE CASCADE|\bJSON\s+(?:NULL|NOT NULL)/);
   assert.match(executable, /scope VARCHAR\(80\)/);
   assert.match(executable, /clients MEDIUMTEXT/);
+  assert.match(executable, /CREATE TABLE cms_locks/);
+  assert.match(executable, /INSERT INTO cms_locks/);
   // This checks artifact intent only; it does not claim a MySQL engine ran it.
 });

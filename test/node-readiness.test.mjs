@@ -8,13 +8,13 @@ import { inspectReadiness } from '../server/readiness.mjs';
 async function setup(t) {
   const base = await mkdtemp(join(tmpdir(), 'cms-readiness-'));
   t.after(() => rm(base, { recursive: true, force: true }));
-  await mkdir(join(base, 'private')); await mkdir(join(base, 'public'));
+  await mkdir(join(base, 'private')); await mkdir(join(base, 'public')); await mkdir(join(base, 'app'));
   const values = {
     CMS_PUBLIC_ORIGIN: 'https://api.example.test', ALLOWED_ORIGIN: 'https://site.example.test',
-    REPO: 'owner/repo', BRANCH: 'main', GOOGLE_CLIENT_ID: 'client',
-    GITHUB_TOKEN: 'do-not-print-github-secret', SESSION_SECRET: 'do-not-print-session-secret',
+    REPO: 'owner/repo', BRANCH: 'main', OWNERS: 'a'.repeat(64), GOOGLE_CLIENT_ID: 'client',
+    GITHUB_TOKEN: 'do-not-print-github-secret', SESSION_SECRET: 'do-not-print-session-secret-at-least32-bytes',
     MYSQL_HOST: '127.0.0.1', MYSQL_DATABASE: 'private-db', MYSQL_USER: 'private-user', MYSQL_PASSWORD: 'do-not-print-mysql-password',
-    CMS_MEDIA_ROOT: join(base, 'private'), CMS_PUBLIC_ROOT: join(base, 'public'),
+    CMS_MEDIA_ROOT: join(base, 'private'), CMS_PUBLIC_ROOT: join(base, 'public'), CMS_APP_ROOT: join(base, 'app'),
   };
   return { base, values };
 }
