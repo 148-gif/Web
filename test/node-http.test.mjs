@@ -105,6 +105,122 @@ test('the real worker CORS and private response boundary remain intact', async (
   assert.match(preflight.headers['access-control-allow-methods'], /PUT/);
 });
 
+const sameOriginFetch = () => ({
+  Host: 'api.example', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Dest': 'empty',
+});
+
+test('same-origin browser GET and HEAD reach real Worker authentication without weakening it', async (t) => {
+  const w = await world(t, undefined, { ALLOWED_ORIGIN: PUBLIC });
+  for (const method of ['GET', 'HEAD']) {
+    for (const mode of ['cors', 'same-origin']) {
+      const res = await w.send({ method, path: '/me', headers: {
+        ...sameOriginFetch(), Host: 'API.EXAMPLE', 'Sec-Fetch-Mode': mode, Authorization: 'Bearer invalid-session',
+      } });
+      assert.equal(res.status, 401, `${method} ${mode} still requires a valid session`);
+      assert.equal(res.headers['access-control-allow-origin'], PUBLIC);
+      assert.equal(res.headers['cache-control'], 'no-store');
+      assert.equal(res.headers['x-content-type-options'], 'nosniff');
+      if (method === 'HEAD') assert.equal(res.body.length, 0);
+    }
+  }
+});
+
+test('missing, foreign, ambiguous or hop-filtered Fetch Metadata never supplies an Origin', async (t) => {
+  const w = await world(t, undefined, { ALLOWED_ORIGIN: PUBLIC });
+  const cases = [
+    ['all metadata missing', { Host: 'api.example' }],
+    ...['Sec-Fetch-Site', 'Sec-Fetch-Mode', 'Sec-Fetch-Dest'].map((name) => {
+      const headers = sameOriginFetch(); delete headers[name]; return [`missing ${name}`, headers];
+    }),
+    ...['cross-site', 'same-site', 'none', ''].map((value) => [`site ${value}`, { ...sameOriginFetch(), 'Sec-Fetch-Site': value }]),
+    ...['navigate', 'no-cors', 'websocket', ''].map((value) => [`mode ${value}`, { ...sameOriginFetch(), 'Sec-Fetch-Mode': value }]),
+    ...['document', 'image', ''].map((value) => [`dest ${value}`, { ...sameOriginFetch(), 'Sec-Fetch-Dest': value }]),
+    ...['Sec-Fetch-Site', 'Sec-Fetch-Mode', 'Sec-Fetch-Dest'].map((name) => [`hop ${name}`, { ...sameOriginFetch(), Connection: name }]),
+    ...['Sec-Fetch-Site', 'Sec-Fetch-Mode', 'Sec-Fetch-Dest'].map((name) => {
+      const headers = sameOriginFetch(); headers[name] = [headers[name], headers[name]]; return [`duplicate ${name}`, headers];
+    }),
+  ];
+  for (const [label, headers] of cases) {
+    const res = await w.send({ path: '/me', headers });
+    assert.equal(res.status, 403, label);
+    assert.equal(res.headers['access-control-allow-origin'], undefined, label);
+  }
+});
+
+test('present Origin values are never repaired, including duplicates and hop-filtered values', async (t) => {
+  const w = await world(t, undefined, { ALLOWED_ORIGIN: PUBLIC });
+  const cases = [
+    ['empty', { Origin: '' }],
+    ['opaque', { Origin: 'null' }],
+    ['foreign', { Origin: 'https://attacker.example' }],
+    ['duplicate allowed', { Origin: [PUBLIC, PUBLIC] }],
+    ['duplicate foreign', { Origin: [PUBLIC, 'https://attacker.example'] }],
+    ['hop allowed', { Origin: PUBLIC, Connection: 'origin' }],
+    ['hop empty', { Origin: '', Connection: 'origin' }],
+    ['hop foreign', { Origin: 'https://attacker.example', Connection: 'origin' }],
+  ];
+  for (const [label, extra] of cases) {
+    const res = await w.send({ path: '/me', headers: { ...sameOriginFetch(), ...extra } });
+    assert.equal(res.status, 403, label);
+    assert.equal(res.headers['access-control-allow-origin'], undefined, label);
+  }
+  // Node limits parsed headers, but the raw original Origin must still prevent
+  // inference even when it appears beyond that limit.
+  const crowded = sameOriginFetch();
+  for (let i = 0; i < 70; i++) crowded[`X-Padding-${i}`] = 'x';
+  crowded.Origin = PUBLIC;
+  const crowdedResult = await w.send({ path: '/me', headers: crowded });
+  assert.ok([403, 431].includes(crowdedResult.status), 'header overflow must fail closed, including Node parser rejection');
+
+  const existing = await w.send({ path: '/me', headers: { Origin: PUBLIC, Host: 'foreign.example' } });
+  assert.equal(existing.status, 401, 'explicit allowed Origin keeps its existing authentication behavior');
+  assert.equal(existing.headers['access-control-allow-origin'], PUBLIC);
+});
+
+test('Origin inference requires the single actual Host and ignores forwarded host claims', async (t) => {
+  const w = await world(t, undefined, { ALLOWED_ORIGIN: PUBLIC });
+  const cases = [
+    ['foreign', { Host: 'foreign.example' }],
+    ['port mismatch', { Host: 'api.example:443' }],
+    ['trailing dot', { Host: 'api.example.' }],
+    ['hop', { Connection: 'Host' }],
+    ['forwarded spoof', { Host: 'foreign.example', 'X-Forwarded-Host': 'api.example', 'X-Forwarded-Proto': 'https', Forwarded: 'host=api.example;proto=https' }],
+  ];
+  for (const [label, extra] of cases) {
+    const res = await w.send({ path: '/me', headers: { ...sameOriginFetch(), ...extra } });
+    assert.equal(res.status, 403, label);
+    assert.equal(res.headers['access-control-allow-origin'], undefined, label);
+  }
+  const duplicate = await w.send({ path: '/me', headers: [...Object.entries(sameOriginFetch()).flat(), 'Host', 'api.example'] });
+  assert.ok([400, 403].includes(duplicate.status), 'duplicate Host must fail closed, including Node parser rejection');
+  assert.equal(duplicate.headers['access-control-allow-origin'], undefined);
+});
+
+test('same-origin metadata cannot supply Origin for writes, session creation or preflight', async (t) => {
+  const w = await world(t, undefined, { ALLOWED_ORIGIN: PUBLIC });
+  for (const [method, path] of [['POST', '/session'], ['POST', '/publish'], ['PUT', '/me'], ['DELETE', '/editors']]) {
+    const res = await w.send({ method, path, headers: { ...sameOriginFetch(), 'Content-Length': '2' }, chunks: ['{}'] });
+    assert.equal(res.status, 403, `${method} ${path}`);
+    assert.equal(res.headers['access-control-allow-origin'], undefined);
+  }
+  const options = await w.send({ method: 'OPTIONS', path: '/me', headers: sameOriginFetch() });
+  assert.equal(options.status, 204);
+  assert.equal(options.headers['access-control-allow-origin'], undefined);
+  const unsupported = await w.send({ method: 'PATCH', path: '/me', headers: sameOriginFetch() });
+  assert.equal(unsupported.status, 405);
+  assert.equal(unsupported.headers['access-control-allow-origin'], undefined);
+});
+
+test('a dedicated cross-origin API never infers its separately configured editor Origin', async (t) => {
+  const w = await world(t);
+  const missing = await w.send({ path: '/me', headers: sameOriginFetch() });
+  assert.equal(missing.status, 403);
+  assert.equal(missing.headers['access-control-allow-origin'], undefined);
+  const explicit = await w.send({ path: '/me', headers: { ...sameOriginFetch(), Origin: ORIGIN, 'Sec-Fetch-Site': 'cross-site' } });
+  assert.equal(explicit.status, 401);
+  assert.equal(explicit.headers['access-control-allow-origin'], ORIGIN);
+});
+
 test('bounded chunked requests can return 413 without their cancellation destroying the response socket', async (t) => {
   const w = await world(t, async (req) => {
     try { return Response.json(await readJsonBody(req, { maxBytes: 32 })); }

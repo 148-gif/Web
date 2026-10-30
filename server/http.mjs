@@ -18,12 +18,26 @@ function originOf(value) {
   return url;
 }
 
-function requestHeaders(incoming, origin) {
+function requestHeaders(incoming, origin, allowedOrigin) {
   const headers = new Headers();
   const hop = new Set([...HOP_HEADERS, ...String(incoming.headers.connection || '').toLowerCase().split(',').map((part) => part.trim())]);
   for (const [name, value] of Object.entries(incoming.headers)) {
     if (value === undefined || hop.has(name) || name === 'host' || name === 'forwarded' || name === 'cf-connecting-ip' || name === 'true-client-ip' || name === 'x-real-ip' || name.startsWith('x-forwarded-')) continue;
     for (const item of Array.isArray(value) ? value : [value]) headers.append(name, item);
+  }
+  // Browsers omit Origin on same-origin GET/HEAD fetches. Only this Node
+  // boundary may supply it, using the actual Host and browser Fetch Metadata;
+  // no forwarded host, Referer, absent metadata or write method is sufficient.
+  // Inspect raw names too: a present Origin must never become an inferred one
+  // after hop-header filtering or Node's header-count limit.
+  const rawNames = incoming.rawHeaders.filter((_, index) => index % 2 === 0).map((name) => name.toLowerCase());
+  const unique = (name) => rawNames.filter((item) => item === name).length === 1;
+  if (['GET', 'HEAD'].includes(incoming.method) && allowedOrigin === origin.origin &&
+      !Object.hasOwn(incoming.headers, 'origin') && !rawNames.includes('origin') &&
+      unique('host') && !hop.has('host') && typeof incoming.headers.host === 'string' && incoming.headers.host.toLowerCase() === origin.host.toLowerCase() &&
+      ['sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest'].every(unique) &&
+      headers.get('sec-fetch-site') === 'same-origin' && ['cors', 'same-origin'].includes(headers.get('sec-fetch-mode')) && headers.get('sec-fetch-dest') === 'empty') {
+    headers.set('Origin', origin.origin);
   }
   headers.set('Host', origin.host);
   return headers;
@@ -129,7 +143,7 @@ export function createCmsServer({ env, publicOrigin, handleRequest = worker.fetc
       if (!hasBody && (incoming.headers['transfer-encoding'] || Number(incoming.headers['content-length'] || 0) !== 0)) return sendError(outgoing, incoming, env, 400);
       request = new Request(new URL(apiTarget, origin), {
         method: incoming.method,
-        headers: requestHeaders(incoming, origin),
+        headers: requestHeaders(incoming, origin, env.ALLOWED_ORIGIN),
         signal: abort.signal,
         ...(hasBody ? { body: incomingBody(incoming), duplex: 'half' } : {}),
       });
