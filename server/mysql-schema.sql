@@ -88,3 +88,11 @@ CREATE TABLE request_limits (
   CHECK (window_start <= 9007199254740991 AND n <= 9007199254740991),
   CHECK (JSON_VALID(clients))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+
+-- Stable row locks coordinate aggregate quotas across Node processes. These
+-- configuration rows are created once with the fresh schema, never per request.
+CREATE TABLE cms_locks (
+  name VARCHAR(32) NOT NULL PRIMARY KEY,
+  CHECK (name IN ('media', 'ai', 'kv:people', 'kv:editors', 'kv:owner-names'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+INSERT INTO cms_locks (name) VALUES ('media'), ('ai'), ('kv:people'), ('kv:editors'), ('kv:owner-names');
