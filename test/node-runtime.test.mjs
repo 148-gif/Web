@@ -92,6 +92,46 @@ test('enabled local authentication verifies its separate schema and closes the p
   assert.equal(f.state.ended, 1);
 });
 
+test('managed Google setup is opt-in and missing addon schema fails startup closed', async (t) => {
+  const f = await fixture(t);
+  assert.equal(runtimeConfiguration(f.values).googleSetupEnabled, false);
+  assert.throws(() => runtimeConfiguration({ ...f.values, CMS_GOOGLE_SETUP_ENABLED: 'true' }), /requires local/);
+  Object.assign(f.values, { CMS_LOCAL_AUTH_ENABLED: 'true', CMS_GOOGLE_SETUP_ENABLED: 'true', ALLOWED_ORIGIN: f.values.CMS_PUBLIC_ORIGIN });
+  delete f.values.GOOGLE_CLIENT_ID;
+  assert.equal(runtimeConfiguration(f.values).env.GOOGLE_CLIENT_ID, '');
+  f.dependencies.createAuthStore = (pool, options) => {
+    assert.deepEqual(options, { googleSetup: true });
+    return { async ensureSchema() { throw new Error('managed Google schema missing'); } };
+  };
+  await assert.rejects(createRuntime(f.options), /managed Google schema missing/);
+  assert.equal(f.state.ended, 1);
+});
+
+test('Google setup read-only exceptions require both flags and exact POST routes', async () => {
+  const env = { ALLOWED_ORIGIN: 'https://example.test', CMS_STAGING: true };
+  for (const [localAuthEnabled, googleSetupEnabled] of [[true, true], [true, false], [false, true]]) {
+    const handle = runtimeHandler({ readOnly: true, publishEnabled: false, localAuthEnabled, googleSetupEnabled }, async () => new Response(null, { status: 204 }));
+    for (const path of ['/auth/google/prepare', '/auth/google/verify', '/auth/google/activate']) {
+      assert.equal((await handle(new Request('https://example.test' + path, { method: 'POST' }), env)).status, localAuthEnabled && googleSetupEnabled ? 204 : 503);
+      for (const method of ['PUT', 'DELETE']) assert.equal((await handle(new Request('https://example.test' + path, { method }), env)).status, 503);
+      assert.equal((await handle(new Request('https://example.test' + path + '/', { method: 'POST' }), env)).status, 503);
+    }
+    for (const path of ['/auth/google/anything', '/publish', '/editors', '/gh/contents/data/topics.json']) {
+      assert.equal((await handle(new Request('https://example.test' + path, { method: 'POST' }), env)).status, 503);
+    }
+  }
+});
+
+test('legacy Node Google discovery works without an auth table and refuses foreign origins', async () => {
+  const env = { ALLOWED_ORIGIN: 'https://example.test', CMS_STAGING: true };
+  const handle = runtimeHandler({ readOnly: true, publishEnabled: false, localAuthEnabled: false, googleEnabled: true }, () => { throw new Error('Discovery must not delegate'); });
+  const response = await handle(new Request('https://example.test/auth/options', { headers: { Origin: env.ALLOWED_ORIGIN } }), env);
+  assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow');
+  assert.deepEqual(await response.json(), { localEnabled: false, googleEnabled: true, settingsAvailable: false, readOnly: true, publishEnabled: false });
+  assert.equal((await handle(new Request('https://example.test/auth/options', { headers: { Origin: 'https://foreign.test' } }), env)).status, 403);
+});
+
 test('remote MySQL connections verify both the certificate chain and its DNS identity', async (t) => {
   const { options, values, state } = await fixture(t);
   const runtime = await createRuntime({ ...options, values: { ...values, MYSQL_HOST: 'db.example.test' } });
