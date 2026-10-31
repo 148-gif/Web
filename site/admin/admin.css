@@ -106,6 +106,19 @@ body.out .ah{display:none}
 .auth-status{padding:var(--s2) var(--s3);border-radius:var(--r-sm);background:var(--ok-bg);color:var(--ok);font-weight:600}
 .auth-status:empty{display:none}
 .auth-settings .auth-password-fields{max-width:460px}
+.google-setup{overflow-wrap:anywhere}
+.google-setup h3{margin-block:var(--s4) var(--s2)}
+.google-setup-links{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4)}
+.google-setup-links a{min-height:44px;display:inline-flex;align-items:center;font-weight:600}
+.google-setup-steps li+li{margin-top:var(--s2)}
+.google-origin-row{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.google-origin-row input{flex:1 1 240px;min-width:0}
+.google-origin-row .btn{flex:0 1 auto}
+.google-active-client bdi{overflow-wrap:anywhere}
+.google-proof-button{min-height:44px;margin-block:var(--s3);max-width:100%}
+.google-setup .auth-status{margin-block:var(--s3)}
+#google-setup-cancel{margin-block-start:var(--s3)}
+#auth-discovery-retry{margin-block-end:var(--s3)}
 .preview-state{margin:0;padding:var(--s3) var(--s4);background:var(--warnbg);color:var(--warn);border-bottom:1px solid var(--line);font-weight:600}
 @media (max-width:860px){
   .auth{grid-template-columns:minmax(0,1fr);align-content:start}
