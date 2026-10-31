@@ -1,0 +1,36 @@
+Adding a second local owner without repeating bootstrap
+
+This is a separate, opt-in Node/cPanel feature. It does not change Cloudflare authentication, Google account membership, the first local owner, existing passwords or sessions, content, media, or the consumed initial-bootstrap flag. A local owner identity is anchored to an existing SHA256(trim(lowercase(email))) value in the private OWNERS allowlist. This association is a local authorization decision, not proof of control of a Google account or mailbox.
+
+Operator preparation
+
+1. Complete the original owner's initial bootstrap and verify a normal local login. Never clear bootstrap_consumed, delete the first account, re-run initial setup, or use arm-local-auth to add another user.
+2. Retain a fresh private backup including all local_auth_* tables, existing configuration and current runtime/admin files. Preserve the protected Apache configuration, including the live sw.js no-cache/no-store/must-revalidate rule. The SW privacy patch must be activated and historical private caches purged before any password entry.
+3. Confirm the intended new owner's identity with the authorization already provided. Append its normalized email hash to private OWNERS, keeping every existing owner hash. Do not commit emails or the real allowlist to this repository. Revocation or changes to this process configuration require a confirmed fresh runtime, including scoped draining of detached old lsnode processes; Selector restart receipts alone are insufficient.
+4. Run node scripts/setup-local-invitations.mjs without apply. This produces the reviewed schema SHA256 and plan without opening a database connection. The optional feature remains disabled until the additive schema is verified.
+5. Apply the exact reviewed schema once against the existing target database, using the setup tool's explicit --apply --database and --schema-sha256 arguments. Put Node's --env-file=<private-file> option before the script filename. Use the existing private one-shot Cron/Run JS Script operational pattern with umask 077, a new exclusive lock directory, private output and exit files, no shell tracing, and no secrets in arguments. Remove the Cron and verify there are no recurring jobs afterward. Never run a content import or reset any authentication table.
+6. Deploy the matching immutable runtime/admin release, keeping the prior release for rollback. Set CMS_LOCAL_AUTH_ENABLED=true and CMS_LOCAL_INVITATIONS_ENABLED=true only after schema verification. Keep CMS_GOOGLE_AUTH_ENABLED=false, CMS_READ_ONLY=true and CMS_PUBLISH_ENABLED=false. The combined release also includes the optional private environment and installed-runtime identity foundation documented in docs/runtime-foundation.txt. Existing Selector-only configuration remains supported; do not silently switch its secret source. Do not expose candidate endpoints for credential entry before canonical promotion and identity checks.
+
+Owner and recipient flow
+
+The current local owner opens the authentication settings and enters the new owner's authorized email plus the current owner's password. The server checks the exact Origin, CSRF token, local owner role, configured allowlist and fresh password proof. It rechecks the live session and password version under the authentication transaction lock after password verification.
+
+An invitation lasts 15 minutes. Its random capability is returned once to the owner's private settings screen; the database stores only its hash. The setup URL contains no invitation code. Share the code privately with the intended recipient, separately from the public setup URL. Do not put it into a URL, chat logs, command line, analytics or browser storage. A replacement invitation for the same target invalidates the previous unconsumed code.
+
+The recipient opens the secure invitation page and enters the code, a local username, display name and their own password. The password is never chosen or supplied by the operator. Usernames use the existing local username rules and do not contain @. The server hashes the password with the existing bounded password KDF, then rechecks expiry, one-time consumption, configured target ownership, issuer status/version and duplicate accounts transactionally. It inserts the fixed server-side owner role and consumes the invitation in the same transaction.
+
+The recipient then signs in normally. Verify that both original and new owner logins work, that the original user's password/session state remains intact, and that content writes and publishing remain blocked. Invitation acceptance does not automatically establish a session or enable another login provider.
+
+Security and lifecycle
+
+Only an authenticated local owner can issue invitations; a Google session cannot. No client-provided role, owner flag or owner hash is trusted. Public acceptance failures do not disclose whether an account exists. Attempts share the existing bounded atomic rate-limiting policy and password-KDF concurrency limits. Passwords and codes are submitted only in POST JSON bodies; the no-JavaScript form cannot leak them via GET URLs. Credential pages use no third-party scripts, no-store and no-referrer.
+
+Issuance in flight fails if the owner's session expires or is logged out before the final transaction. Once issued, an invitation survives a routine issuer logout so the recipient can use a separate browser or account. Changing the issuer's password/version, disabling that owner, removing either required owner hash, or disabling local authentication makes a pending invitation unusable. A successful acceptance cannot be replayed. Neither acceptance nor reissuance resets initial bootstrap. Only one local account is created for the invited owner identity by this flow.
+
+Rollback
+
+Keep the additive invitation table and all users/authentication state. Disable CMS_LOCAL_INVITATIONS_ENABLED and restore the prior verified runtime/admin configuration under the same admission and scoped-process-drain procedure. Do not restore an older database merely to roll code back; that would discard an account created after the backup. Earlier local-login code continues to read the same local_auth_users records. Retain the new owner's authorized hash if that account should remain usable. Do not activate publishing or disconnect the old data source as part of this change.
+
+Validation
+
+MYSQL_TEST_CONFIG points only to a private loopback MySQL fixture. Run the invitation unit/integration tests with node --test test/local-auth-invitations.test.mjs test/mysql-local-invitations-store.integration.test.mjs test/local-invitations-setup.test.mjs test/local-invitations-runtime.test.mjs. npm run e2e:local-invitations is the explicit real Chromium + MySQL browser flow and requires the existing Playwright/Chromium test environment. These are separate from a live account smoke test and never use production credentials. The optional MySQL tests do not silently establish hosting readiness when skipped in CI.

@@ -3,17 +3,31 @@
 import { createRequire } from 'node:module';
 import { realpath, stat } from 'node:fs/promises';
 import { isAbsolute, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { runtimeConfiguration } from './runtime.mjs';
+import { loadRuntimeEnvironment } from './runtime-env.mjs';
 
 const require = createRequire(import.meta.url);
+const APP_ROOT = fileURLToPath(new URL('../', import.meta.url));
 const origin = (value) => {
   try { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) && !u.username && !u.password && u.pathname === '/' && !u.search && !u.hash; }
   catch { return false; }
 };
 const isInside = (a, b) => a === b || a.startsWith(b + sep);
 
-export async function inspectReadiness({ values = process.env, nodeVersion = process.versions.node, resolveDriver = () => require.resolve('mysql2/promise') } = {}) {
+export async function inspectReadiness({ values = process.env, applicationRoot = APP_ROOT, nodeVersion = process.versions.node, resolveDriver = () => require.resolve('mysql2/promise') } = {}) {
   const checks = [], add = (name, status, detail) => checks.push({ name, status, detail });
+  try {
+    values = await loadRuntimeEnvironment({ inherited: values, applicationRoot });
+    add('runtime_environment', 'pass', 'Application settings were loaded; private-file mode enforces the runtime allowlist and collision policy');
+  } catch {
+    // Do not continue with inherited or partially loaded values after a private
+    // file failure. Even filesystem paths and parser details remain private.
+    add('runtime_environment', 'blocked', 'Private runtime configuration is invalid or unavailable; no fallback, connection or provisioning was attempted');
+    return { format: 'heichal-cms-node-readiness', version: 1, deploymentReady: false,
+      databaseConnected: false, filesCreated: false, checks,
+      outstanding: ['Correct the private environment file, permissions and conflicting inherited settings before repeating preflight'] };
+  }
   add('node', Number(nodeVersion.split('.')[0]) >= 24 ? 'pass' : 'blocked', `Observed Node ${nodeVersion}; this preparation is tested on Node24 or newer`);
   try { resolveDriver(); add('mysql_driver', 'pass', 'mysql2/promise resolves; no connection was opened'); }
   catch { add('mysql_driver', 'blocked', 'mysql2/promise is not installed; no package installation was attempted'); }
@@ -50,6 +64,7 @@ export async function inspectReadiness({ values = process.env, nodeVersion = pro
     databaseConnected: false, filesCreated: false, checks,
     outstanding: [
       'Run startup schema verification against the imported target; preflight does not connect to MySQL',
+      'Verify installed runtime identity during startup; preflight does not attest installed source bytes',
       'Rehearse the actual snapshot/media import and backup/restore in an isolated target',
       'Verify cPanel startup routing, trusted proxy identity, upload timeouts and Google/GitHub connectivity',
       'Set the admin API origin, exact CSP hosts and Google origin configuration together; preserve existing media URLs',

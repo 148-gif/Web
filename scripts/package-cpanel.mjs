@@ -7,6 +7,7 @@ import { readFile, writeFile, realpath, mkdir, mkdtemp, rm, readdir, lstat, chmo
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { runtimeIdentityDocument, RUNTIME_IDENTITY_FILE } from '../server/runtime-identity.mjs';
 
 const run = promisify(execFile);
 const REPO = fileURLToPath(new URL('../', import.meta.url));
@@ -153,13 +154,19 @@ export async function packageCpanel({ sourceRoot = REPO, commit, branch, output,
     const runtimeFiles = entries.filter((path) => /^server\/[^/]+\.(?:mjs|sql)$/.test(path) || /^cms-worker\/[^/]+\.mjs$/.test(path) || [
       'site/admin/image-rules.mjs', 'package.json', 'package-lock.json', 'passenger.cjs',
       'scripts/check-cpanel-readiness.mjs', 'scripts/prepare-mysql-migration.mjs', 'scripts/import-mysql-migration.mjs', 'scripts/smoke-cpanel.mjs', 'scripts/publish-cpanel.mjs',
-      'scripts/setup-local-auth.mjs', 'scripts/arm-local-auth.mjs', 'scripts/setup-google-auth.mjs',
+      'scripts/setup-local-auth.mjs', 'scripts/arm-local-auth.mjs', 'scripts/setup-google-auth.mjs', 'scripts/setup-local-invitations.mjs',
     ].includes(path));
     for (const required of ['server/start.mjs', 'server/runtime.mjs', 'server/mysql-store.mjs', 'server/mysql-kv.mjs', 'server/mysql-rate-limit.mjs', 'package.json', 'package-lock.json', 'passenger.cjs']) if (!runtimeFiles.includes(required)) throw new Error('Source commit lacks a required Node runtime file');
     if (runtimeFiles.some(forbidden)) throw new Error('Runtime selection contains a prohibited path');
     await mkdir(canonical, { mode: 0o700 });
     await copyFiles(dist, join(canonical, 'public'), publicFiles);
     await copyFiles(snapshot, join(canonical, 'app'), runtimeFiles);
+    const runtimeEntries = [];
+    for (const path of runtimeFiles) {
+      const bytes = await readFile(join(canonical, 'app', path));
+      runtimeEntries.push({ path, bytes: bytes.length, sha256: digest(bytes) });
+    }
+    await writeFile(join(canonical, 'app', RUNTIME_IDENTITY_FILE), JSON.stringify(runtimeIdentityDocument({ commit, files: runtimeEntries }), null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     const manifest = {
       format: 'heichal-cpanel-release', version: 1, commit, branch, siteOrigin, siteBase, apiOrigin, apiBasePath, apiUrl, staging,
       databaseIncluded: false, secretsIncluded: false, deploymentPerformed: false, deploymentReady: false,

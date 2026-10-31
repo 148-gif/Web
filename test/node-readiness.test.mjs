@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, symlink, readdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, symlink, readdir, writeFile, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { inspectReadiness } from '../server/readiness.mjs';
+import { renderRuntimeEnvironment } from '../server/runtime-env.mjs';
 
 async function setup(t) {
   const base = await mkdtemp(join(tmpdir(), 'cms-readiness-'));
@@ -70,4 +71,42 @@ test('managed Google configuration uses the database client and requires local a
   assert.equal(report.checks.some((c) => c.status === 'blocked'), false);
   const invalid = await inspectReadiness({ values: { ...managed, CMS_LOCAL_AUTH_ENABLED: 'false' }, resolveDriver: () => 'present' });
   assert.equal(invalid.checks.find((c) => c.name === 'runtime_configuration').status, 'blocked');
+});
+
+test('private-file preflight loads the same application configuration without claiming database or identity readiness', async (t) => {
+  const { values, base } = await setup(t), privateRoot = join(base, 'configuration');
+  await mkdir(privateRoot, { mode: 0o700 });
+  const filePath = join(privateRoot, 'runtime-private-sentinel.env');
+  const record = { ...values, ALLOWED_ORIGIN: values.CMS_PUBLIC_ORIGIN, CMS_LOCAL_AUTH_ENABLED: 'true', CMS_LOCAL_INVITATIONS_ENABLED: 'true', CMS_GOOGLE_AUTH_ENABLED: 'false' };
+  delete record.GOOGLE_CLIENT_ID;
+  await writeFile(filePath, renderRuntimeEnvironment(record), { mode: 0o600 });
+  const inherited = Object.freeze({ CMS_ENV_FILE: filePath, PORT: '41234' }); let resolved = 0;
+  const report = await inspectReadiness({ values: inherited, applicationRoot: values.CMS_APP_ROOT, resolveDriver: () => { resolved++; return 'present'; } });
+  assert.equal(resolved, 1); assert.equal(report.checks.some((c) => c.status === 'blocked'), false);
+  assert.equal(report.checks.find((c) => c.name === 'runtime_configuration').status, 'pass');
+  assert.equal(report.deploymentReady, false); assert.equal(report.databaseConnected, false); assert.equal(report.filesCreated, false);
+  assert.equal(report.schemaVerified, undefined); assert.equal(report.runtimeIdentity, undefined);
+  for (const value of [filePath, values.GITHUB_TOKEN, values.MYSQL_PASSWORD, values.SESSION_SECRET]) assert.equal(JSON.stringify(report).includes(value), false);
+  assert.deepEqual(inherited, { CMS_ENV_FILE: filePath, PORT: '41234' });
+});
+
+test('invalid private-file preflight fails closed without inherited fallback, path leakage or resolving a driver', async (t) => {
+  const { values, base } = await setup(t), privateRoot = join(base, 'configuration');
+  await mkdir(privateRoot, { mode: 0o700 });
+  const filePath = join(privateRoot, 'runtime-private-sentinel.env');
+  await writeFile(filePath, renderRuntimeEnvironment(values), { mode: 0o600 });
+  let resolutions = 0;
+  const check = async (inherited) => {
+    const report = await inspectReadiness({ values: inherited, applicationRoot: values.CMS_APP_ROOT, resolveDriver: () => { resolutions++; return 'present'; } });
+    assert.equal(report.databaseConnected, false); assert.equal(report.deploymentReady, false); assert.equal(report.filesCreated, false);
+    assert.equal(report.checks.length, 1); assert.equal(report.checks[0].name, 'runtime_environment'); assert.equal(report.checks[0].status, 'blocked');
+    for (const value of [filePath, 'private-collision-sentinel', values.GITHUB_TOKEN, values.MYSQL_PASSWORD]) assert.equal(JSON.stringify(report).includes(value), false);
+  };
+  await check({ CMS_ENV_FILE: filePath, MYSQL_PASSWORD: 'private-collision-sentinel' });
+  await check({ CMS_ENV_FILE: filePath, CMS_LOCAL_INVITATIONS_ENABLED: 'true' });
+  await chmod(filePath, 0o644);
+  await check({ ...values, CMS_ENV_FILE: filePath });
+  await chmod(filePath, 0o600); await writeFile(filePath, 'NODE_OPTIONS=private-collision-sentinel\n');
+  await check({ ...values, CMS_ENV_FILE: filePath });
+  assert.equal(resolutions, 0);
 });

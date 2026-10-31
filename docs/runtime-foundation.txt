@@ -1,0 +1,37 @@
+Installed runtime identity and optional private environment foundation
+
+This foundation is shipped with the reviewed authentication update so the next installed application can identify its exact runtime bytes. It does not install or enable the separate cPanel operator, create Cron jobs, change routing, import data, run schema migration automatically, enable publication or retire the old site.
+
+1. Exact release identity
+
+The canonical packager generates app/app-release.json from the requested immutable Git commit and every selected runtime source file. The release manifest also hashes app-release.json; there is no circular digest. Do not hand-edit, copy from another release, regenerate on the host, or omit this file.
+
+After existing schema verification, startup verifies the identity file, every declared byte/hash and the exact source inventory. A missing identity is tolerated only for legacy Selector-only installations; a present invalid identity always fails startup. CMS_ENV_FILE mode requires a valid identity. Filesystem/identity errors are redacted, and no configuration values are exposed.
+
+Do not put operational probe scripts or secret/configuration files inside the immutable app directory. Only the narrowly allowed host-generated root entries node_modules, tmp, logs, stderr.log and .npmrc are excluded from source identity. They are not evidence of verified dependency contents; install and validate pinned dependencies separately. Keep operational scripts, private configurations, receipts and backups outside the app and outside the public document root. Source directories/files must not be symlinks or hard-linked substitutes.
+
+GET /cms-api/version returns only the commit, runtimeManifestSha256, verified/schemaVerified indicators and deploymentCandidate flag. It is no-store, uses staging noindex, supports HEAD and rejects a foreign Origin. It never includes secrets, environment, local paths or database contents. The returned hash must equal the package's app manifest fingerprint. This proves the runtime checked its packaged files at startup; it is not an independent trust anchor or a replacement for verifying the transferred archive, dependencies and host process identity.
+
+2. Preserve or explicitly switch the configuration source
+
+The first combined rollout may keep the existing approved Selector variables without CMS_ENV_FILE. Preserve all existing secrets/owner hashes and match the new CMS_APP_ROOT and API base path. This avoids forcing a secret-storage migration into the same activation step.
+
+An operator can separately select file mode by setting CMS_ENV_FILE to an absolute, existing private file OUTSIDE app and document root. Its immediate directory must be owned by the account and mode0700; the file must be owned by that account, mode0600, a regular single-link file, without symbolic-link paths. CMS_APP_ROOT in the file must match the running app, and CMS_PUBLIC_ROOT must resolve to the separate public tree. Never put this file into a release ZIP or Git.
+
+Only server/runtime-env.mjs RUNTIME_ENV_KEYS are accepted, including CMS_LOCAL_INVITATIONS_ENABLED. This is a strict format: one KEY=raw-value or KEY="JSON string" per line, optional whole-line comments; no shell interpolation, multiline values, inline comments, duplicate keys or arbitrary NODE_OPTIONS/LD_PRELOAD. Use renderRuntimeEnvironment() in the reviewed private provisioning helper to encode values; never log its return value.
+
+If an application setting also exists in the Selector environment it must be present and byte-for-byte identical in the private file. Missing or conflicting settings fail closed rather than inheriting stale configuration. Leave the hosting-provided Passenger PORT and required process environment intact; file mode cannot set PORT or arbitrary process options. Record a fresh private Selector snapshot before changing application settings.
+
+Do not assume this strict JSON-value file is a general dotenv file accepted identically by node --env-file. The existing legacy dotenv backup may still be used by existing one-time CLI tools. For a new private-file deployment, any separately reviewed schema/probe wrapper must call loadRuntimeEnvironment({ inherited, applicationRoot }) and pass the returned values directly to the tool API, never stringify secrets into argv or stdout. Startup and the preflight helper use the same safe loader. There are no automatic schema writes.
+
+3. Candidate mode and rollout
+
+Set CMS_DEPLOYMENT_CANDIDATE=true for the staged application, together with CMS_READ_ONLY=true and CMS_PUBLISH_ENABLED=false. Candidate mode rejects other combinations. Its outer gate runs before authentication handlers and rate counters: all mutations, initial bootstrap, invitation creation/acceptance, password changes and provider setup remain blocked. Only reviewed GET/HEAD /version and /me routes and OPTIONS reach the candidate smoke path. This protects the shared auth/content database while both application roots exist.
+
+Keep credential entry on the verified canonical runtime. During promotion, close admission for the exact canonical/candidate URIs, stop the exact applications, and prove that the matching detached lsnode processes exited. Previous hosting evidence shows Selector Stop/Restart alone is insufficient. Preserve rollback roots, PHP directives, root sw.js Cache-Control and admin no-store directives. Obtain a complete fresh live Apache baseline before rehearsing the separate operator; do not reuse a pre-Passenger or pre-SW baseline.
+
+Promote the immutable release with its matching environment and API base, remove candidate mode only for the canonical process, and confirm a freshly spawned process plus /version, /me, local login, no-store/noindex and content-write denial. Restore the corresponding admin files under the access policy. Never roll authentication tables back just to undo code or a URI switch. Google remains disabled and content remains read-only until the separately coordinated final data transition.
+
+4. Automatic publication remains separate
+
+The reviewed private operator is delivered independently and remains disabled until its measured host contract, URI transitions, process drain, static switch and rollback have been rehearsed. The foundation does not itself poll GitHub or apply updates. Runtime/schema compatibility gates must be updated deliberately; schema mismatches must stop deployment, not invoke DDL or import automatically. A real master merge must later be observed updating both the expected static and runtime identities without manual intervention before claiming automatic publication works.

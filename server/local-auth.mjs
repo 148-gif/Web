@@ -8,6 +8,8 @@ import { hashPassword, verifyPassword, passwordAcceptable, normalizeUsername, ra
 import { renderAuthSetup } from './auth-setup.mjs';
 import { googleSessionEnvironment } from './google-auth-proof.mjs';
 import { createGoogleSetup, googleSetupView, clearGooglePending } from './google-auth-setup.mjs';
+import { createLocalInvitations, validateLocalCredentialInput, localCredentialErrorFields } from './local-auth-invitations.mjs';
+import { renderAuthInvitation } from './auth-invitation.mjs';
 
 const COOKIE = '__Host-heichal_local';
 const SESSION_MS = 8 * 3600_000;
@@ -23,7 +25,7 @@ const setCookie = (token, clear = false) => `${COOKIE}=${clear ? '' : token}; Pa
 const fail = (message, status) => Object.assign(new Error(message), { status });
 const actorOf = (user) => ({ email: `local:${user.id}`, name: user.display_name, shown: user.display_name, owner: user.role === 'owner', publisher: ['owner', 'publisher'].includes(user.role) });
 
-export function createLocalAuth({ store, config, clock = Date.now, googleProofVerifier }) {
+export function createLocalAuth({ store, config, clock = Date.now, googleProofVerifier, invitationPasswordHasher }) {
   const owners = new Set(config.env.OWNERS.split(',').map((s) => s.trim()));
   const validUser = (user) => user && !user.disabled && owners.has(user.owner_hash) && ['owner', 'editor', 'publisher'].includes(user.role);
   const headers = (request) => ({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', ...(config.staging ? { 'X-Robots-Tag': 'noindex, nofollow' } : {}), ...(request.headers.get('origin') === config.env.ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': config.env.ALLOWED_ORIGIN, Vary: 'Origin' } : {}) });
@@ -86,8 +88,9 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       if (!(await verifyPassword(body.currentPassword, authenticated.user.password_hash))) throw fail(AUTH_FAILURE, 401);
     }
   }
-  const viewSettings = (s, auth, google) => ({ ...enabled(s, google), googleAvailable: config.googleEnabled, method: auth.method, ...(auth.user ? { username: auth.user.username } : {}), canDisableGoogle: s.local_enabled && s.local_verified && auth.method === 'local', canDisableLocal: enabled(s, google).googleEnabled && s.google_verified_until > clock() && auth.method === 'google' && recentGoogle(auth.bearer), ...(config.googleSetupEnabled ? { googleSetup: googleSetupView(google, auth, config, clock()) } : {}) });
+  const viewSettings = (s, auth, google) => ({ ...enabled(s, google), googleAvailable: config.googleEnabled, method: auth.method, invitationsAvailable: Boolean(config.localInvitationsEnabled && auth.method === 'local' && auth.actor.owner), ...(auth.user ? { username: auth.user.username } : {}), canDisableGoogle: s.local_enabled && s.local_verified && auth.method === 'local', canDisableLocal: enabled(s, google).googleEnabled && s.google_verified_until > clock() && auth.method === 'google' && recentGoogle(auth.bearer), ...(config.googleSetupEnabled ? { googleSetup: googleSetupView(google, auth, config, clock()) } : {}) });
   const googleSetup = config.googleSetupEnabled ? createGoogleSetup({ store, config, clock, validUser, reauthenticate, admission, verifyProof: googleProofVerifier }) : null;
+  const invitations = config.localInvitationsEnabled ? createLocalInvitations({ store, config, clock, admission, passwords: invitationPasswordHasher }) : null;
 
   async function handle(request, env, next) {
     const path = new URL(request.url).pathname, method = request.method;
@@ -96,8 +99,9 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       // delegates only the pre-existing read route, never an auth/write route.
       if (['GET', 'HEAD'].includes(method) && path.startsWith('/m/')) return next(request, env);
       if (method === 'OPTIONS' && !path.startsWith('/auth/')) return next(request, env);
-      // Setup navigation is the only HTML route; no key in URL or third-party
-      // resources. Serving its form alone never grants bootstrap authority.
+      // Setup and invitation pages contain no capability or third-party
+      // resources. Serving either form alone never grants authority.
+      if (!invitations && ['/auth/invitation', '/auth/invitations', '/auth/invitations/accept'].includes(path)) return json(request, { message: 'לא נמצא' }, 404);
       const settings = await store.getSettings();
       const google = config.googleSetupEnabled ? await store.getGoogleConfig() : null;
       if (google?.active_client_id) env = googleSessionEnvironment(env, { clientId: google.active_client_id, activeVersion: google.active_version, origin: config.publicOrigin });
@@ -106,16 +110,20 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
         const nonce = randomBytes(18).toString('base64url');
         return new Response(renderAuthSetup({ apiBasePath: config.apiBasePath, nonce }), { headers: { ...headers(request), 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'` } });
       }
+      if (invitations && path === '/auth/invitation' && method === 'GET') {
+        const nonce = randomBytes(18).toString('base64url');
+        return new Response(renderAuthInvitation({ apiBasePath: config.apiBasePath, nonce }), { headers: { ...headers(request), 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'` } });
+      }
       if (request.headers.get('origin') !== config.env.ALLOWED_ORIGIN || config.publicOrigin !== config.env.ALLOWED_ORIGIN) return json(request, { message: 'origin not allowed' }, 403);
       if (path.startsWith('/auth/') && method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...headers(request), 'Access-Control-Allow-Methods': 'GET, POST, PUT', 'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, Authorization' } });
       if (path === '/auth/options' && method === 'GET') return json(request, { ...enabled(settings, google), settingsAvailable: true, readOnly: config.readOnly, publishEnabled: config.publishEnabled, ...(config.googleSetupEnabled ? { googleManaged: true, googleClientId: enabled(settings, google).googleEnabled ? google.active_client_id : '', googleRevision: google.active_version } : {}) });
+      if (invitations && path === '/auth/invitations/accept' && method === 'POST') return json(request, await invitations.accept(request, env, await bodyOf(request)), 201);
       if (path === '/auth/bootstrap' && method === 'POST') {
         const body = await bodyOf(request);
         await admission(request, env, 'bootstrap');
+        const { username, displayName: name } = validateLocalCredentialInput(body);
         const permitted = (s) => !s.bootstrap_consumed && s.bootstrap_hash && s.bootstrap_expires > clock() && owners.has(s.bootstrap_owner_hash) && typeof body.code === 'string' && body.code.length === 43 && safeEqualStrings(digestToken(body.code), s.bootstrap_hash);
         if (!permitted(settings)) throw fail('ההגדרה הראשונית אינה זמינה או שקוד ההפעלה אינו תקין', 403);
-        const username = normalizeUsername(body.username), name = typeof body.displayName === 'string' ? body.displayName.trim() : '';
-        if (!username || !passwordAcceptable(body.password) || !name || [...name].length > 40 || /[\p{Cc}<>]/u.test(name)) throw fail('בדקו את שם המשתמש, השם המוצג והסיסמה. הסיסמה צריכה להכיל 15–128 תווים.', 400);
         const passwordHash = await hashPassword(body.password);
         await store.atomic(async (tx) => {
           const s = await tx.getSettings();
@@ -142,6 +150,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       const authenticated = await current(request, env, settings, google);
       if (path === '/auth/session' && method === 'GET') return authenticated?.method === 'local' ? json(request, sessionBody(authenticated.user, authenticated.token)) : json(request, { message: 'צריך להתחבר מחדש' }, 401);
       if (MUTATION(method)) requireCsrf(request, authenticated);
+      if (invitations && path === '/auth/invitations' && method === 'POST') return json(request, await invitations.create(request, env, authenticated, await bodyOf(request)), 201);
       if (googleSetup && method === 'POST' && ['/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path)) {
         return json(request, await googleSetup.handle(path, request, env, authenticated, await bodyOf(request)));
       }
@@ -228,6 +237,8 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       }
       return next(request, env);
     } catch (error) {
+      const fieldErrors = localCredentialErrorFields(error);
+      if (fieldErrors) return json(request, { message: error.message, fieldErrors }, 400);
       if (error instanceof RequestBodyError) return json(request, { message: error.message }, error.status);
       if (error instanceof LocalAuthBusyError) return json(request, { message: 'יותר מדי ניסיונות. המתינו מעט ונסו שוב.' }, 429);
       if (Number.isInteger(error.status) && error.status >= 400 && error.status < 500) return json(request, { message: error.message }, error.status);
