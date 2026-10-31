@@ -14,9 +14,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
-      - run: node --test test/*.test.mjs
-      # Lint needs the pinned dev tools from package-lock.json; the build itself has no dependencies.
+      # Authentication tests and lint need the pinned dependencies from package-lock.json.
       - run: npm ci --ignore-scripts
+      - run: node --test test/*.test.mjs
       - run: npx eslint .
       # Same settings as the deploy, so links are checked exactly as they will be published.
       - run: node scripts/build.mjs
