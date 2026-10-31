@@ -751,9 +751,13 @@ async function restore(env, me, path, sha) {
 }
 
 async function main(req, env, url, cors) {
-  const email = await readSession((req.headers.get('Authorization') || '').replace(/^Bearer /, ''), env);
+  // Only the Node composition root can provide this function. HTTP headers,
+  // request JSON and Worker string bindings cannot supply a local principal.
+  const local = typeof env.LOCAL_PRINCIPAL === 'function' ? await env.LOCAL_PRINCIPAL(req) : null;
+  if (local && (!/^local:[a-f0-9]{32}$/.test(local.email) || typeof local.owner !== 'boolean' || typeof local.publisher !== 'boolean')) throw new Error('Invalid local principal');
+  const email = local ? local.email : await readSession((req.headers.get('Authorization') || '').replace(/^Bearer /, ''), env);
   if (!email) return json({ message: 'צריך להתחבר מחדש' }, 401, cors);
-  const me = await who(env, email), p = url.pathname, q = url.searchParams;
+  const me = local || await who(env, email), p = url.pathname, q = url.searchParams;
   if (!me) return json({ message: 'צריך להתחבר מחדש' }, 401, cors);
   await schema(env);
   if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
@@ -765,7 +769,10 @@ async function main(req, env, url, cors) {
     if (req.method === 'PUT') {
       const name = cleanName((await bodyOf(req)).name);
       if (!name) return json({ message: 'כתבו שם' }, 400, cors);
-      if (me.owner) {
+      if (local) {
+        if (typeof env.LOCAL_UPDATE_NAME !== 'function') throw new Error('Local name update unavailable');
+        await env.LOCAL_UPDATE_NAME(name);
+      } else if (me.owner) {
         const hash = await sha256(me.email);
         await updateKvJson(env, 'owner-names', {}, (names) => ({ ...names, [hash]: name }));
       } else await updatePeople(env, (list) => {

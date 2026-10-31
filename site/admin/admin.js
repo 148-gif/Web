@@ -130,6 +130,8 @@
   // "pages" is the old name of a collection without categories.
   var kindOf = function (t) { return t && t.kind === 'page' ? 'page' : 'collection'; };
   var cfg, deploymentTools, deploymentConfig, token, owner = false, publisher = false, me = '', myName = '';
+  // Cookie credentials never enter browser storage or an Authorization header.
+  var cookieSession = false, csrfToken = '', authOptions = null;
   var draft = false; // saves go to drafts (editor server) instead of straight to the branch
   var pending = { list: [], at: 0 }; // unpublished drafts, as the server last said
   var cur = null; // the open file: { path, sha, indent, data, orig }
@@ -148,7 +150,7 @@
     if (!anonymous && !credential) return Promise.reject(endedSession());
     requests.add(controller);
     var check = function () { if (epoch !== sessionEpoch || credential !== token) throw endedSession(); };
-    return fetch(url, Object.assign({}, opt, { signal: controller.signal })).then(function (r) { check(); return read(r); })
+    return fetch(url, Object.assign({}, opt, { credentials: 'same-origin', signal: controller.signal })).then(function (r) { check(); return read(r); })
       .then(function (value) { check(); return value; }, function (e) { check(); throw e; })
       .finally(function () { requests.delete(controller); });
   }
@@ -170,10 +172,18 @@
   function note(kind, id, entry) { recent[kind][id] = { t: Date.now(), e: entry }; recentSave(); }
 
   // ---- GitHub, directly or through the editor server ----
+  function contentReadOnly() { return !!(authOptions && authOptions.readOnly); }
+  function editorHeaders(method) {
+    var headers = { 'Content-Type': 'application/json' };
+    if (cookieSession) {
+      if (!/^(GET|HEAD|OPTIONS)$/.test(method || 'GET') && csrfToken) headers['X-CSRF-Token'] = csrfToken;
+    } else if (token) headers.Authorization = 'Bearer ' + token;
+    return headers;
+  }
   function api(path, opt) {
     opt = opt || {};
     var base = cfg.worker ? cfg.worker.replace(/\/$/, '') + '/gh' : 'https://api.github.com/repos/' + cfg.repo;
-    var headers = cfg.worker ? { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } : { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+    var headers = cfg.worker ? editorHeaders(opt.method) : { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
     return sessionFetch(base + (path ? '/' + path : ''), Object.assign({}, opt, { headers: headers }), function (r) {
       if (r.ok) return r.status === 204 ? null : r.json();
       if (r.status === 401 && cfg.worker) signout('פג תוקף ההתחברות. התחברו שוב.');
@@ -186,7 +196,7 @@
   }
   // The editor server's own calls (changes, publish, history, log, names …).
   function wapi(method, path, body) {
-    return sessionFetch(cfg.worker.replace(/\/$/, '') + path, { method: method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) }, function (r) {
+    return sessionFetch(cfg.worker.replace(/\/$/, '') + path, { method: method, headers: editorHeaders(method), body: body === undefined ? undefined : JSON.stringify(body) }, function (r) {
         return r.text().then(function (t) {
           var j = {}; try { j = t ? JSON.parse(t) : {}; } catch { /* not JSON */ }
           if (r.status === 401) signout('פג תוקף ההתחברות. התחברו שוב.');
@@ -224,7 +234,7 @@
   function touch() {
     cancelLater(stT); stT = later(status, 120);
     cancelLater(locT); locT = later(keepLocal, 2000);
-    cancelLater(autoT); if (draft) autoT = later(autosave, AUTO_MS);
+    cancelLater(autoT); if (draft && !contentReadOnly()) autoT = later(autosave, AUTO_MS);
   }
   function status() {
     var s = $('#savestate'); if (!s) return; var d = dirty();
@@ -440,9 +450,10 @@
     var lk = link('#/links', 'link', 'קישורים ו־SEO'); lk.append(el('b', { id: 'lk-count', class: 'nb', text: '' })); nav.append(lk);
     nav.append(link('#/file/site.json', 'gear', 'הגדרות האתר'));
     if (owner) nav.append(link('#/editors', 'users', 'עורכים'));
+    if (owner && authOptions && authOptions.settingsAvailable) nav.append(link('#/auth', 'gear', 'הגדרות התחברות'));
     // On a phone the header keeps only the essentials; the rest is here.
     nav.append(el('div', { class: 'navfoot' },
-      draft ? el('button', { type: 'button', onclick: nameDialog, text: 'השם שלי' }) : null,
+      draft && !contentReadOnly() ? el('button', { type: 'button', onclick: nameDialog, text: 'השם שלי' }) : null,
       el('a', { href: '../', target: '_blank', rel: 'noopener', text: 'לאתר' }),
       el('button', { type: 'button', onclick: function () { $('#out').click(); }, text: 'יציאה' })));
     mark(location.hash || '#/');
@@ -470,10 +481,10 @@
     var box = el('div', { class: 'card pub' },
       el('h3', { text: draft ? 'שמירה ופרסום' : 'פרסום' }),
       el('p', { id: 'savestate', class: 'state', text: 'כל השינויים שמורים' }),
-      el('button', { type: 'button', class: 'btn pri wide', id: 'savebtn', onclick: onSave }, draft ? 'שמירה' : 'שמירה ופרסום'));
+      el('button', { type: 'button', class: 'btn pri wide', id: 'savebtn', disabled: contentReadOnly(), onclick: onSave }, draft ? 'שמירה' : 'שמירה ופרסום'));
     if (draft) {
       box.append(
-        publisher ? el('button', { type: 'button', class: 'btn ghost wide', id: 'topub', onclick: function () { if (dirty()) return say('שמרו קודם, ואז לחצו על ״לפרסום״.', 'bad'); preselect = cur && cur.path; location.hash = '#/changes'; } }, 'לפרסום…') : null,
+        publisher ? el('button', { type: 'button', class: 'btn ghost wide', id: 'topub', disabled: contentReadOnly() || !!(authOptions && authOptions.publishEnabled === false), onclick: function () { if (dirty()) return say('שמרו קודם, ואז לחצו על ״לפרסום״.', 'bad'); preselect = cur && cur.path; location.hash = '#/changes'; } }, 'לפרסום…') : null,
         el('button', { type: 'button', class: 'btn ghost wide', id: 'hist', onclick: function () { if (cur && !cur.fresh) historyDialog(cur); } }, icon('clock'), 'גרסאות קודמות'),
         el('button', { type: 'button', class: 'btn ghost wide dng', id: 'undraft', hidden: true, onclick: dropDraft }, 'ביטול הטיוטה, חזרה למה שבאתר'));
     }
@@ -1293,7 +1304,8 @@
           sessionCheck(epoch);
           var x = new XMLHttpRequest(); transfers.add(x);
           x.open('PUT', cfg.worker.replace(/\/$/, '') + '/media/r2?id=' + init.id);
-          x.setRequestHeader('Authorization', 'Bearer ' + token);
+          if (cookieSession) x.setRequestHeader('X-CSRF-Token', csrfToken);
+          else x.setRequestHeader('Authorization', 'Bearer ' + token);
           x.upload.onprogress = function (e) { if (epoch === sessionEpoch && e.lengthComputable) onProgress(e.loaded / e.total); };
           x.onload = function () { if (epoch !== sessionEpoch) return rej(endedSession()); var j = {}; try { j = JSON.parse(x.responseText); } catch { /* not JSON */ } if (x.status === 401) { signout('פג תוקף ההתחברות. התחברו שוב.'); return rej(endedSession()); } if (x.status >= 200 && x.status < 300) res(j.item); else rej(new Error(j.message || 'שגיאה ' + x.status)); };
           x.onerror = function () { rej(new Error('החיבור נפסק. נסו שוב.')); };
@@ -1750,7 +1762,7 @@
           var ch = chosen(); if (!ch.length || !confirm('לבטל ' + ch.length + ' שינויים שנשמרו כטיוטה? האתר יישאר כמו שהוא.')) return;
           wapi('POST', '/discard', { paths: ch.map(function (r) { return r.c.path; }) }).then(function () { forget(); say('השינויים בוטלו.', 'ok'); load(); }, function (e) { say(e.message, 'bad'); });
         } }, 'ביטול הנבחרים');
-        var sync = function () { var n = chosen().length; if (pubBtn) pubBtn.disabled = !n; disBtn.disabled = !n; all.checked = n === rows.length; };
+        var sync = function () { var n = chosen().length; if (pubBtn) pubBtn.disabled = !n || contentReadOnly() || !!(authOptions && authOptions.publishEnabled === false); disBtn.disabled = !n || contentReadOnly(); all.checked = n === rows.length; };
         box.append(el('div', { class: 'card chgbar' }, el('label', { class: 'chk' }, all, 'בחירת הכול'), el('span', { class: 'grow' }), pubBtn, disBtn));
         var ul = el('ul', { class: 'chg card' });
         rows.forEach(function (r) {
@@ -2057,6 +2069,7 @@
     else if (h === '#/log' && draft && publisher) logScreen();
     else if (h === '#/links') linksScreen();
     else if (h === '#/editors' && owner) editorsScreen();
+    else if (h === '#/auth' && owner && authOptions && authOptions.settingsAvailable) authSettingsScreen();
     else home();
   }
   window.addEventListener('hashchange', function () { route(); });
@@ -2078,6 +2091,152 @@
     var first = form.querySelector('input,select,textarea'); if (first) first.focus();
   }
 
+  // ---- Node password sign-in and owner authentication settings ----
+  // Method discovery is confined to this site's API. A legacy Worker continues
+  // to use its existing Google flow, without probing new endpoints there.
+  var authLoginBusy = false;
+  function authCall(path, method, body, anonymous) {
+    return sessionFetch(cfg.worker.replace(/\/$/, '') + '/auth' + path,
+      { method: method || 'GET', headers: anonymous ? { 'Content-Type': 'application/json' } : editorHeaders(method), cache: 'no-store', body: body === undefined ? undefined : JSON.stringify(body) },
+      function (r) { return r.text().then(function (text) {
+        var result = {}; try { result = text ? JSON.parse(text) : {}; } catch { /* safe generic error below */ }
+        if (!r.ok) { var error = new Error(result.message || 'לא ניתן להשלים את הפעולה כרגע. נסו שוב.'); error.status = r.status; throw error; }
+        return result;
+      }); }, !!anonymous);
+  }
+  function validCookieSession(result) {
+    return result && result.method === 'local' && result.user && typeof result.user.email === 'string' &&
+      typeof result.csrfToken === 'string' && result.csrfToken.length >= 32;
+  }
+  function acceptCookieSession(result) {
+    if (!validCookieSession(result)) throw new Error('לא ניתן להשלים את ההתחברות. נסו שוב.');
+    remember(null); cookieSession = true; csrfToken = result.csrfToken;
+    // This object is only a liveness marker for the editor's cancellation logic;
+    // it is never persisted or included in a request header or request body.
+    token = {}; owner = !!result.user.owner;
+  }
+  function showLoginMethods() {
+    var local = !!(authOptions && authOptions.localEnabled), googleEnabled = !authOptions || authOptions.googleEnabled;
+    if (local) $('#local-login').action = cfg.worker.replace(/\/$/, '') + '/auth/login';
+    $('#local-login').hidden = !local; $('#gbox').hidden = !googleEnabled;
+    $('#auth-divider').hidden = !(local && googleEnabled);
+    if (googleEnabled) google();
+  }
+  function startAuthentication(stored) {
+    var sameOrigin = false;
+    try { sameOrigin = new URL(cfg.worker, location.href).origin === location.origin; } catch { /* legacy configuration error follows existing handling */ }
+    var discover = sameOrigin ? authCall('/options', 'GET', undefined, true).then(function (options) {
+      if (typeof options.localEnabled === 'boolean' && typeof options.googleEnabled === 'boolean' && typeof options.settingsAvailable === 'boolean') authOptions = options;
+    }).catch(function () { /* No local feature: retain the existing Google sign-in. */ }) : Promise.resolve();
+    return discover.then(function () {
+      if (!authOptions || !authOptions.settingsAvailable) return null;
+      return authCall('/session', 'GET', undefined, true).then(function (result) { return validCookieSession(result) ? result : null; }).catch(function () { return null; });
+    }).then(function (session) {
+      if (session) { acceptCookieSession(session); return enter(session.user.email); }
+      if (stored && stored.email && stored.token && (!authOptions || authOptions.googleEnabled)) {
+        token = stored.token; owner = !!stored.owner; return enter(stored.email);
+      }
+      showLoginMethods();
+    });
+  }
+  function localLogin(event) {
+    event.preventDefault();
+    if (authLoginBusy || !authOptions || !authOptions.localEnabled) return;
+    var form = $('#local-login'); if (!form.reportValidity()) return;
+    var epoch = sessionEpoch, password = $('#local-password').value;
+    authLoginBusy = true; $('#local-signin').disabled = true; $('#local-signin').textContent = 'מתחבר…';
+    $('#gsign').disabled = true; $('#lerr').textContent = '';
+    authCall('/login', 'POST', { username: $('#local-user').value.trim(), password: password }, true)
+      .then(function (result) { if (epoch !== sessionEpoch) throw endedSession(); acceptCookieSession(result); return enter(result.user.email); })
+      .catch(function (error) { if (epoch === sessionEpoch && !error.editorSessionEnded) $('#lerr').textContent = error.message; })
+      .finally(function () {
+        password = ''; $('#local-password').value = ''; authLoginBusy = false;
+        $('#local-signin').disabled = false; $('#local-signin').textContent = 'כניסה עם סיסמה';
+        if (gAsk) gBusy(false);
+      });
+  }
+  function logout() {
+    if (!cookieSession) { signout(); return; }
+    $('#out').disabled = true;
+    authCall('/logout', 'POST', {}).then(function () { signout(); }, function (error) {
+      if (error.editorSessionEnded) return;
+      if (error.status === 401) { signout(); return; }
+      say('היציאה לא הושלמה. בדקו את החיבור ונסו שוב.', 'bad');
+    }).finally(function () { $('#out').disabled = false; });
+  }
+  function authSettingsScreen() {
+    var screen = main(), epoch = sessionEpoch;
+    screen.append(head('הגדרות התחברות', 'ניהול דרכי הכניסה למערכת והסיסמה שלכם.'));
+    var content = el('div', { class: 'auth-settings' }); screen.append(content); loading(content);
+    authCall('/settings').then(function (settings) {
+      sessionCheck(epoch); if (!screen.isConnected) return;
+      content.textContent = '';
+      var methods = el('form', { class: 'card', id: 'auth-methods', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/settings' }, el('h2', { text: 'דרכי כניסה' }),
+        el('p', { text: 'כדי לכבות דרך כניסה, יש לאמת קודם דרך חלופית. תמיד תישאר דרך פעילה לכניסת מנהל.' }));
+      function method(name, title, description, enabled, canDisable) {
+        var input = el('input', { type: 'checkbox', id: name, disabled: enabled && !canDisable }); input.checked = enabled;
+        methods.append(el('div', { class: 'auth-method' }, el('label', { class: 'sw', for: name }, input,
+          el('span', { class: 'track', 'aria-hidden': 'true' }), el('span', {}, el('b', { text: title }), el('small', { text: description })))));
+        return input;
+      }
+      var local = method('auth-local-enabled', 'שם משתמש וסיסמה', settings.username ? 'חשבון מנהל: ' + settings.username : 'כניסה באמצעות חשבון מקומי שאושר.', !!settings.localEnabled, !!settings.canDisableLocal);
+      var googleAvailable = settings.googleAvailable !== false;
+      var googleEnabled = method('auth-google-enabled', 'Google', googleAvailable ? 'ההרשאות של חשבונות Google נשארות כפי שהוגדרו ברשימת העורכים.' : 'Google אינו מופעל באתר הזה. ניתן להפעילו לאחר השלמת ההגדרה באחסון.', !!settings.googleEnabled, !!settings.canDisableGoogle);
+      if (!googleAvailable) googleEnabled.disabled = true;
+      var currentPassword = null;
+      if (settings.method === 'local') {
+        currentPassword = el('input', { id: 'auth-method-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '128' });
+        methods.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'auth-method-password', text: 'הסיסמה הנוכחית לאישור השינוי' }), currentPassword));
+      } else methods.append(el('p', { class: 'help', text: 'שינוי ההגדרות דורש התחברות עדכנית עם Google. אם תתבקשו, צאו והתחברו שוב.' }));
+      var methodError = el('p', { class: 'err', role: 'alert' }), methodSave = el('button', { type: 'submit', class: 'btn pri', text: 'שמירת דרכי הכניסה' });
+      methods.append(methodError, methodSave);
+      methods.addEventListener('submit', function (event) {
+        event.preventDefault(); if (!methods.reportValidity()) return;
+        methodError.textContent = ''; methodSave.disabled = true;
+        authCall('/settings', 'PUT', { localEnabled: local.checked, googleEnabled: googleEnabled.checked, currentPassword: currentPassword ? currentPassword.value : undefined })
+          .then(function (result) {
+            sessionCheck(epoch);
+            authOptions.localEnabled = local.checked; authOptions.googleEnabled = googleEnabled.checked;
+            if ((settings.method === 'local' && !local.checked) || (settings.method === 'google' && !googleEnabled.checked)) { signout('ההגדרות נשמרו. התחברו בדרך הכניסה הפעילה.'); return; }
+            if (validCookieSession(result)) {
+              signout(); acceptCookieSession(result); return enter(result.user.email).then(function () { say('דרכי הכניסה נשמרו.', 'ok'); });
+            }
+            authSettingsScreen(); say('דרכי הכניסה נשמרו.', 'ok');
+          }).catch(function (error) { if (!error.editorSessionEnded && epoch === sessionEpoch) methodError.textContent = error.message; })
+          .finally(function () { if (currentPassword) currentPassword.value = ''; methodSave.disabled = false; });
+      });
+      content.append(methods);
+      if (settings.method !== 'local') return;
+      var passwords = el('form', { class: 'card', id: 'auth-password-change', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/password' }, el('h2', { text: 'שינוי סיסמה' }),
+        el('p', { text: 'בחרו סיסמה ארוכה וייחודית, עם 15 תווים לפחות. החלפת הסיסמה תוציא את החשבון משאר ההתחברויות.' }));
+      var fields = {};
+      [['currentPassword', 'הסיסמה הנוכחית', 'current-password'], ['newPassword', 'סיסמה חדשה', 'new-password'], ['confirmation', 'הסיסמה החדשה שוב', 'new-password']].forEach(function (field) {
+        var id = 'auth-password-' + field[0], input = el('input', { id: id, name: field[0], type: 'password', autocomplete: field[2], dir: 'ltr', required: true, maxlength: '128', minlength: field[0] === 'currentPassword' ? undefined : '15' });
+        fields[field[0]] = input;
+        passwords.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: id, text: field[1] }), input));
+      });
+      var passwordError = el('p', { class: 'err', role: 'alert' }), passwordSave = el('button', { type: 'submit', class: 'btn pri', text: 'החלפת סיסמה' }); passwords.append(passwordError, passwordSave);
+      passwords.addEventListener('submit', function (event) {
+        event.preventDefault(); passwordError.textContent = '';
+        if (!passwords.reportValidity()) return;
+        if (fields.newPassword.value !== fields.confirmation.value) { passwordError.textContent = 'הסיסמאות החדשות אינן זהות.'; return; }
+        passwordSave.disabled = true;
+        authCall('/password', 'POST', { currentPassword: fields.currentPassword.value, newPassword: fields.newPassword.value })
+          .then(function (result) {
+            sessionCheck(epoch); if (!validCookieSession(result)) throw new Error('לא ניתן להשלים את ההתחברות מחדש.');
+            // Password rotation invalidates old work and restarts the current
+            // editor with the fresh cookie/CSRF pair returned by the server.
+            signout(); acceptCookieSession(result); return enter(result.user.email).then(function () { say('הסיסמה הוחלפה. שאר ההתחברויות לחשבון הסתיימו.', 'ok'); });
+          }).catch(function (error) { if (!error.editorSessionEnded && epoch === sessionEpoch) passwordError.textContent = error.message; })
+          .finally(function () { Object.keys(fields).forEach(function (key) { fields[key].value = ''; }); passwordSave.disabled = false; });
+      });
+      content.append(passwords);
+    }).catch(function (error) {
+      if (error.editorSessionEnded || epoch !== sessionEpoch || !screen.isConnected) return;
+      content.textContent = ''; content.append(el('p', { class: 'alert', role: 'alert', text: error.message }));
+    });
+  }
+
   // ---- sign-in ----
   var pollTimer = null, reminded = false;
   function enter(who) {
@@ -2090,12 +2249,15 @@
       sessionCheck(epoch);
       if (!r.permissions || !r.permissions.push) throw new Error(cfg.worker ? 'לשרת העריכה אין הרשאת כתיבה למאגר' : 'למפתח אין הרשאת כתיבה למאגר');
       me = who || ''; document.body.classList.remove('out'); $('#login').hidden = true; $('#app').hidden = false; $('#out').hidden = false; $('#burger').hidden = false; $('#who').textContent = myName || who || cfg.repo;
-      $('#rename').hidden = !draft; drawPend();
+      $('#rename').hidden = !draft || contentReadOnly(); drawPend();
+      var preview = $('#preview-state');
+      preview.textContent = authOptions && authOptions.readOnly ? 'האתר בתצוגת בדיקה ובמצב קריאה בלבד. עריכת תוכן ופרסום עדיין אינם זמינים.' : authOptions && authOptions.publishEnabled === false ? 'אפשר לשמור תוכן בטיוטות. הפרסום לאתר עדיין אינו זמין.' : '';
+      preview.hidden = !preview.textContent;
       if (draft && !pollTimer) { pollTimer = setInterval(function () { if (epoch === sessionEpoch && token) refreshPending(); }, 60000); }
       return Promise.all([topics().catch(function () { return null; }), refreshPending(), loadPhotos().catch(function () { return null; })]).then(function () {
         sessionCheck(epoch);
         shell(); here = ''; route(true);
-        if (draft && !myName) nameDialog();
+        if (draft && !myName && !contentReadOnly()) nameDialog();
         else if (draft && !reminded) {
           var oldest = pending.list.reduce(function (a, x) { return Math.min(a, x.created || a); }, Date.now());
           if (pending.list.length && Date.now() - oldest > OLD_DAYS * 86400000) { reminded = true; say('תזכורת: יש ' + pending.list.length + ' שינויים שממתינים לפרסום כבר ' + Math.floor((Date.now() - oldest) / 86400000) + ' ימים. הם מופיעים ב״שינויים ממתינים״.', 'bad'); }
@@ -2111,23 +2273,24 @@
     // Expiry must capture the last keystroke, even before the local-save debounce fires.
     // Explicit logout has already asked leave() whether to discard unsaved changes.
     if (why) keepLocal();
-    sessionEpoch++; remember(null); token = '';
+    sessionEpoch++; remember(null); token = ''; cookieSession = false; csrfToken = '';
     requests.forEach(function (r) { r.abort(); }); requests.clear();
     transfers.forEach(function (r) { r.abort(); }); transfers.clear();
     timers.forEach(clearTimeout); timers.clear(); clearInterval(pollTimer); pollTimer = null;
     document.querySelectorAll('dialog').forEach(function (dlg) { dlg.close(); dlg.remove(); });
     // Detach the old screen: callbacks which still hold its nodes cannot refill the signed-out page.
     var oldMain = $('#main'); oldMain.replaceWith(oldMain.cloneNode(false));
+    $('#preview-state').hidden = true;
     $('#nav').textContent = ''; $('#who').textContent = ''; $('#msg').textContent = ''; $('#msg').hidden = true;
-    $('#tok').value = ''; $('#pend').textContent = ''; $('#pend').title = '';
+    $('#tok').value = ''; $('#local-password').value = ''; $('#pend').textContent = ''; $('#pend').title = '';
     cur = null; owner = false; publisher = false; me = ''; myName = ''; draft = false; saving = false;
     pending = { list: [], at: 0 }; cache = { topics: null, pages: null, shutIndex: null }; recent = { pages: {}, shut: {} };
     PHOTO_LIST = null; preselect = null; pub = { state: '', url: null }; mine = []; here = ''; reminded = false;
     navOpen(false);
     document.body.classList.add('out'); $('#lerr').textContent = why || ''; $('#login').hidden = false; $('#app').hidden = true; $('#out').hidden = true; $('#burger').hidden = true; $('#rename').hidden = true; $('#pend').hidden = true;
-    if (cfg.worker) google();
+    if (cfg.worker) showLoginMethods();
     if (gAsk) gBusy(false);
-    var focus = cfg.worker ? (gAsk ? $('#gsign') : $('#lerr')) : $('#tok');
+    var focus = cfg.worker ? (authOptions && authOptions.localEnabled ? $('#local-user') : gAsk ? $('#gsign') : $('#lerr')) : $('#tok');
     if (focus === $('#lerr')) focus.tabIndex = -1;
     focus.focus();
   }
@@ -2135,12 +2298,13 @@
   // token for the account's email; the editor server checks it with Google (and that the email may edit), and returns a 12-hour session.
   // (Google's own ready-made button needs inline styles, which this page's content policy does not allow.)
   var gStarted = false, gAsk = null, googleEpoch = 0;
-  function gBusy(on) { var b = $('#gsign'); b.disabled = !!on; $('#gtxt').textContent = on ? 'מתחבר…' : 'המשך עם Google'; }
+  function gBusy(on) { var b = $('#gsign'); b.disabled = !!on || authLoginBusy; $('#local-signin').disabled = !!on || authLoginBusy; $('#gtxt').textContent = on ? 'מתחבר…' : 'המשך עם Google'; }
   function google() {
+    if (authOptions && !authOptions.googleEnabled) { $('#gbox').hidden = true; return; }
     $('#gbox').hidden = false;
     if (gStarted) return;
     gStarted = true;
-    $('#gsign').addEventListener('click', function () { $('#lerr').textContent = ''; if (gAsk) { googleEpoch = sessionEpoch; gBusy(true); gAsk(); } });
+    $('#gsign').addEventListener('click', function () { if (authLoginBusy) return; $('#lerr').textContent = ''; if (gAsk) { googleEpoch = sessionEpoch; gBusy(true); gAsk(); } });
     var s = document.createElement('script');
     s.src = 'https://accounts.google.com/gsi/client';
     s.onerror = function () { $('#lerr').textContent = 'לא הצלחנו לטעון את ההתחברות של Google. בדקו את החיבור לאינטרנט ורעננו את הדף.'; };
@@ -2160,7 +2324,7 @@
         error_callback: function (err) { gBusy(false); if (err && err.type === 'popup_failed_to_open') $('#lerr').textContent = 'הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצ׳ים לאתר הזה ונסו שוב.'; },
       });
       gAsk = function () { client.requestAccessToken({ prompt: 'select_account' }); };
-      $('#gsign').disabled = false;
+      $('#gsign').disabled = authLoginBusy;
     };
     document.head.append(s);
   }
@@ -2168,7 +2332,9 @@
     var c = loaded[0]; deploymentTools = loaded[1]; deploymentConfig = deploymentTools.deploymentSettings(c.deployment);
     cfg = c;
     var st = saved();
-    $('#out').addEventListener('click', function () { if (leave()) signout(); });
+    $('#out').addEventListener('click', function () { if (leave()) logout(); });
+    $('#local-login').addEventListener('submit', localLogin);
+    $('#local-signin').disabled = false;
     $('#rename').addEventListener('click', nameDialog);
     $('#pend').addEventListener('click', function () { location.hash = '#/changes'; });
     if (c.autosaveSeconds) AUTO_MS = c.autosaveSeconds * 1000;
@@ -2177,10 +2343,7 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && document.body.classList.contains('navopen')) { e.preventDefault(); navOpen(false, true); } });
     var skip = $('#skip');
     if (skip) skip.addEventListener('click', function (e) { e.preventDefault(); navOpen(false); $('#main').focus(); $('#main').scrollIntoView({ block: 'start' }); });
-    if (cfg.worker) {
-      if (st && st.email) { token = st.token; owner = !!st.owner; enter(st.email); } else google();
-      return;
-    }
+    if (cfg.worker) return startAuthentication(st);
     $('#tokbox').hidden = false;
     $('#go').addEventListener('click', function () {
       token = $('#tok').value.trim(); if (!token) return;

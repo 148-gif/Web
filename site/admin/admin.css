@@ -90,6 +90,23 @@ body.out .ah{display:none}
 .steps{margin:0 0 16px;padding-inline-start:20px;font-size:.92rem;color:var(--mute)}
 .lbl{display:block;font-weight:700;font-size:.92rem;margin:0 0 5px}
 #tokbox input[type=password]{margin-bottom:14px}
+.local-login{display:grid;gap:var(--s2);margin-block-end:var(--s3)}
+.local-login .fld{margin:0 0 var(--s2)}
+.local-login .help{margin-top:var(--s2)}
+.auth-divider{display:flex;align-items:center;gap:var(--s3);color:var(--mute);font-size:.9rem;margin:var(--s4) 0}
+.auth-divider::before,.auth-divider::after{content:"";height:1px;flex:1;background:var(--line)}
+.auth-settings{max-width:760px}
+.auth-settings .card>p{color:var(--mute)}
+.auth-method{display:flex;align-items:flex-start;gap:var(--s3);padding-block:var(--s3);border-top:1px solid var(--line)}
+.auth-method:first-of-type{border-top:0}
+.auth-method .sw{margin:0;align-items:flex-start}
+.auth-method .sw .track{margin-top:2px}
+.auth-method b{display:block;font-size:1rem}
+.auth-method small{display:block;color:var(--mute);font-weight:400;margin-top:var(--s1)}
+.auth-status{padding:var(--s2) var(--s3);border-radius:var(--r-sm);background:var(--ok-bg);color:var(--ok);font-weight:600}
+.auth-status:empty{display:none}
+.auth-settings .auth-password-fields{max-width:460px}
+.preview-state{margin:0;padding:var(--s3) var(--s4);background:var(--warnbg);color:var(--warn);border-bottom:1px solid var(--line);font-weight:600}
 @media (max-width:860px){
   .auth{grid-template-columns:minmax(0,1fr);align-content:start}
   .auth-brand{padding:22px 20px 26px;gap:16px}

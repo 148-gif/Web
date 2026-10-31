@@ -18,7 +18,7 @@ export async function inspectReadiness({ values = process.env, nodeVersion = pro
   try { resolveDriver(); add('mysql_driver', 'pass', 'mysql2/promise resolves; no connection was opened'); }
   catch { add('mysql_driver', 'blocked', 'mysql2/promise is not installed; no package installation was attempted'); }
   for (const name of ['CMS_PUBLIC_ORIGIN', 'ALLOWED_ORIGIN']) add(name, origin(values[name]) ? 'pass' : 'blocked', 'Requires an explicit HTTP(S) origin without a path or embedded credentials');
-  for (const name of ['REPO', 'BRANCH', 'OWNERS', 'GOOGLE_CLIENT_ID', 'GITHUB_TOKEN', 'SESSION_SECRET', 'MYSQL_HOST', 'MYSQL_DATABASE', 'MYSQL_USER', 'MYSQL_PASSWORD']) {
+  for (const name of ['REPO', 'BRANCH', 'OWNERS', ...(values.CMS_GOOGLE_AUTH_ENABLED === 'false' ? [] : ['GOOGLE_CLIENT_ID']), 'GITHUB_TOKEN', 'SESSION_SECRET', 'MYSQL_HOST', 'MYSQL_DATABASE', 'MYSQL_USER', 'MYSQL_PASSWORD']) {
     add(name, typeof values[name] === 'string' && values[name].trim() ? 'configured' : 'blocked', 'Presence only; the value and its validity are not disclosed or verified');
   }
   const port = values.MYSQL_PORT === undefined ? 3306 : Number(values.MYSQL_PORT);
