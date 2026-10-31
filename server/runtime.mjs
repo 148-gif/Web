@@ -44,6 +44,8 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
   const allowedOrigin = origin(values, 'ALLOWED_ORIGIN', allowLocal);
   const localAuthEnabled = flag(values, 'CMS_LOCAL_AUTH_ENABLED');
   const googleEnabled = flag(values, 'CMS_GOOGLE_AUTH_ENABLED', true);
+  const googleSetupEnabled = flag(values, 'CMS_GOOGLE_SETUP_ENABLED');
+  if (googleSetupEnabled && !localAuthEnabled) invalid('CMS_GOOGLE_SETUP_ENABLED', 'managed Google setup requires local authentication');
   if (!localAuthEnabled && !googleEnabled) invalid('CMS_GOOGLE_AUTH_ENABLED', 'at least one configured authentication provider is required');
   if (localAuthEnabled && allowedOrigin !== publicOrigin) invalid('ALLOWED_ORIGIN', 'local authentication requires the same public and API origin');
   const apiBasePath = values.CMS_API_BASE_PATH || '';
@@ -57,7 +59,7 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
   if (Buffer.byteLength(sessionSecret) < 32) invalid('SESSION_SECRET', 'must contain at least32 bytes');
   const env = {
     ALLOWED_ORIGIN: allowedOrigin, REPO: repo, BRANCH: branch, OWNERS: owners, CMS_STAGING: flag(values, 'CMS_STAGING', true),
-    GOOGLE_CLIENT_ID: googleEnabled ? text(values, 'GOOGLE_CLIENT_ID') : '', GITHUB_TOKEN: text(values, 'GITHUB_TOKEN'), SESSION_SECRET: sessionSecret,
+    GOOGLE_CLIENT_ID: googleEnabled && !googleSetupEnabled ? text(values, 'GOOGLE_CLIENT_ID') : '', GITHUB_TOKEN: text(values, 'GITHUB_TOKEN'), SESSION_SECRET: sessionSecret,
   };
   for (const name of ['MEDIA_GH_FILE_MB', 'MEDIA_GH_TOTAL_MB', 'MEDIA_R2_FILE_MB', 'MEDIA_R2_TOTAL_GB', 'TRANSLATE_PER_USER', 'TRANSLATE_PER_DAY', 'RATE_LOGIN_PER_MINUTE', 'RATE_LOGIN_PER_CLIENT', 'RATE_WRITE_PER_MINUTE']) {
     if (values[name] !== undefined) env[name] = text(values, name);
@@ -93,7 +95,7 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
   }
   return {
     publicOrigin, apiBasePath, env, ai, bindHost, trustedProxyIps, staging: env.CMS_STAGING, port: integer(values, 'PORT', 3000),
-    publishEnabled: flag(values, 'CMS_PUBLISH_ENABLED'), readOnly: flag(values, 'CMS_READ_ONLY'), localAuthEnabled, googleEnabled,
+    publishEnabled: flag(values, 'CMS_PUBLISH_ENABLED'), readOnly: flag(values, 'CMS_READ_ONLY'), localAuthEnabled, googleEnabled, googleSetupEnabled,
     mediaRoot: text(values, 'CMS_MEDIA_ROOT'), publicRoot: text(values, 'CMS_PUBLIC_ROOT'),
     mediaMaxBytes: Number(env.MEDIA_R2_FILE_MB || 90) * 1024 ** 2,
     appRoot: values.CMS_APP_ROOT, sslMode, caFile: values.MYSQL_SSL_CA,
@@ -128,10 +130,21 @@ async function directories(config, applicationRoot) {
 export function runtimeHandler(config, handleRequest = worker.fetch) {
   return async (request, env) => {
     const path = new URL(request.url).pathname;
+    // Same-origin Node discovery also exists in legacy Google-only mode. A
+    // failed discovery can then fail closed without breaking that deployment.
+    if (!config.localAuthEnabled && path === '/auth/options' && request.method === 'GET') {
+      const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
+      if (env.CMS_STAGING !== false) headers['X-Robots-Tag'] = 'noindex, nofollow';
+      if (request.headers.get('Origin') !== env.ALLOWED_ORIGIN) return Response.json({ message: 'origin not allowed' }, { status: 403, headers });
+      headers['Access-Control-Allow-Origin'] = env.ALLOWED_ORIGIN; headers.Vary = 'Origin';
+      return Response.json({ localEnabled: false, googleEnabled: config.googleEnabled !== false, settingsAvailable: false,
+        readOnly: Boolean(config.readOnly), publishEnabled: Boolean(config.publishEnabled) }, { headers });
+    }
     const mutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
     const authWrite = path === '/session' && request.method === 'POST' || config.localAuthEnabled && (
       request.method === 'POST' && ['/auth/login', '/auth/logout', '/auth/bootstrap', '/auth/password'].includes(path) ||
-      request.method === 'PUT' && path === '/auth/settings');
+      request.method === 'PUT' && path === '/auth/settings' ||
+      config.googleSetupEnabled && request.method === 'POST' && ['/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path));
     const blocked = mutation && ((config.readOnly && !authWrite) || (!config.publishEnabled && path === '/publish'));
     if (blocked) {
       const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Retry-After': '60' };
@@ -182,7 +195,7 @@ export async function createRuntime({ values = process.env, nodeVersion = proces
     let handler = dependencies.handleRequest || worker.fetch;
     if (config.localAuthEnabled) {
       const makeAuth = dependencies.createAuthStore || (await import('./mysql-auth-store.mjs')).createMysqlAuthStore;
-      const authStore = makeAuth(pool);
+      const authStore = makeAuth(pool, { googleSetup: config.googleSetupEnabled });
       await authStore.ensureSchema();
       const auth = createLocalAuth({ store: authStore, config });
       const next = handler;
