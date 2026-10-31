@@ -1,0 +1,87 @@
+כניסה מקומית ב־cPanel — הוראות לעיון לפני פריסה
+
+זהו נוהל למימוש שבקוד, לא אישור לפריסה באחסון. FULL_MERGED_SHA ו־REVIEWED_AUTH_SCHEMA_SHA256 יוחלפו בערכים המאומתים בחבילת המסטר. אין להשתמש בשם ענף או בקיצור.
+
+1. גיבוי וקוד
+
+מגבים בפרטיות את המסד, תצורת Selector וקובצי הציבור והשרת. אחרי הקמת חשבון, הגיבוי חייב לכלול גם את טבלאות auth; גיבובי סיסמאות וסשנים אינם נכנסים ל־Git או לחבילה הציבורית.
+
+מתקינים ברשומת Selector חדשה: Node 24.22.2, Production, passenger.cjs, נתיב API זמני פנוי, ותיקייה:
+/home/yoterber/heichal-cms/releases/FULL_MERGED_SHA/app
+
+שומרים גרסאות ו־nodevenv קודמים. מאמתים מניפסט, Run NPM Install עם omit=dev ו־ignore-scripts=true, exit 0, mysql2 וזהות package/lock. CMS_APP_ROOT ו־CMS_API_BASE_PATH תואמים לרשומה החדשה; מדיה ומסד נשמרים. בכניסה מקומית CMS_PUBLIC_ORIGIN ו־ALLOWED_ORIGIN חייבים להיות אותו מקור HTTPS.
+
+מעלים גם קובצי ניהול מאותו קומיט, עם config/CSP המכוונים ל־https://hichal.yoterberama.com/cms-api. runtime אינו מעדכן אותם אוטומטית. שומרים חסימת /admin/, noindex והוראות PHP/Passenger; אין לדרוס .htaccess חי או קובצי אחסון ב־baseline ישן.
+
+משאירים תמיד CMS_STAGING=true, CMS_READ_ONLY=true, CMS_PUBLISH_ENABLED=false. מותר להתחבר, לקרוא ולשנות אישורי התחברות; תוכן ופרסום נשארים חסומים. MySQL אינו מסתנכרן עם D1/KV, ואין לפתוח שני כותבים או לנתק את הישן בשלב זה.
+
+2. הכנת שלוש טבלאות בלבד
+
+CMS_LOCAL_AUTH_ENABLED=false עד הכנת הסכימה. המסד הקיים yoterber_heichal_preview והמשתמש yoterber_heichal_app נשמרים; CRUD ו־CREATE שכבר ניתנו מספיקים, ללא DROP או הרשאה למסד אחר. אין להריץ cms:import.
+
+תוכנית ללא חיבור למסד או קריאת סיסמה:
+node scripts/setup-local-auth.mjs
+
+לאחר השוואת schemaSha256 לחבילה:
+node scripts/setup-local-auth.mjs --apply --database yoterber_heichal_preview --schema-sha256 REVIEWED_AUTH_SCHEMA_SHA256
+
+MYSQL_DATABASE חייב להתאים. הכלי מאמת את הסכימה הקיימת ומוסיף local_auth_settings, local_auth_users, local_auth_sessions ורשומת הגדרות. מצפים ל־exit 0, schemaInitialized=true, verified=true. הוא מסרב אם טבלת auth כבר קיימת. DDL עשוי להשאיר סכימה חלקית בכשל; בודקים אותה, בלי מחיקה או ניסיון חוזר עיוור. startup בודק בלבד.
+
+3. ללא Terminal
+
+Run JS Script יכול להריץ את תוכניות npm בשם cms:auth:setup ו־cms:auth:arm. אם אין שדה לארגומנטים, apply/arm מורצים דרך קובץ shell פרטי ו־Cron חד־פעמי. משתמשים בבינארי Node מוחלט שאומת מתוך Selector; לא ב־PATH של Cron.
+
+Cron אינו יורש בהכרח משתני Selector, ו־Passenger אינו טוען runtime.env אוטומטית. ל־CLI אפשר --env-file=/private/runtime.env אחרי אימות פורמט וערכים. הקובץ 0600, תיקייתו 0700 ומחוץ לציבור. אין סודות בשורת Cron, בארגומנטים, בלוג או בצ׳אט.
+
+תבנית shell פרטית; משלימים נתיבים וגיבוב לפני שימוש. auth-private כבר קיימת בבעלות החשבון ובהרשאות 0700:
+#!/bin/sh
+umask 077
+set -eu
+mkdir '/home/yoterber/heichal-cms/auth-private/schema-FULL_MERGED_SHA.lock' 2>/dev/null || exit 0
+auth_exit=0
+'/ABSOLUTE/VERIFIED/NODE' --env-file='/home/yoterber/heichal-cms/auth-private/runtime.env' '/home/yoterber/heichal-cms/releases/FULL_MERGED_SHA/app/scripts/setup-local-auth.mjs' --apply --database yoterber_heichal_preview --schema-sha256 REVIEWED_AUTH_SCHEMA_SHA256 > '/home/yoterber/heichal-cms/auth-private/schema-FULL_MERGED_SHA.log' 2>&1 || auth_exit=$?
+printf '%s\n' "$auth_exit" > '/home/yoterber/heichal-cms/auth-private/schema-FULL_MERGED_SHA.exit'
+exit "$auth_exit"
+
+Cron מכיל רק /bin/sh ונתיב לקובץ. אין set -x. לכל פעולה נעילה ולוג נפרדים; הנעילה נשארת כדי למנוע חזרה. לאחר תוצאה וקוד יציאה מסירים Cron ומאמתים שהרשימה ריקה.
+
+4. הפעלה ו־bootstrap פרטי
+
+אחרי אימות הסכימה מגדירים בפריסת cPanel הזאת CMS_LOCAL_AUTH_ENABLED=true וגם CMS_GOOGLE_AUTH_ENABLED=false. שומרים readOnly/publish כפי שהיו, ובודקים preflight, createRuntime/close ללא listen ואז Passenger בפועל. אין לעקוף ensureSchema.
+
+אין כרגע OAuth זמין לפריסה הזאת, ולכן הכניסה תהיה מקומית בלבד. לא יוצרים פרויקט Google חדש. GOOGLE_CLIENT_ID אינו נדרש כאשר Google=false; ערך קיים יכול להישאר בתצורה הפרטית ללא שימוש. ברירת המחדל בקוד, הקוד של Google, ה־Worker הישן ו־OWNERS נשמרים ללא שינוי; ההחלטה חלה על משתני ה־Node ב־cPanel בלבד.
+
+לפני bootstrap, /auth/options מציג localEnabled=false וגם googleEnabled=false, לצד settingsAvailable=true, readOnly=true ו־publishEnabled=false. זהו מצב הכנה מכוון: דף ההקמה הפרטי זמין רק לאחר arming, ואינו זקוק ל־Google. /auth/setup מחזיר 404 עד arming. מסד ריק אינו פותח הרשמה. אחרי bootstrap, localEnabled=true ו־googleEnabled=false; מסך הכניסה מציע שם משתמש וסיסמה בלבד.
+
+תוכנית: node scripts/arm-local-auth.mjs
+פעולת arming מפורשת:
+node scripts/arm-local-auth.mjs --arm --database yoterber_heichal_preview --code-file /home/yoterber/heichal-cms/auth-private/bootstrap-UNIQUE_ATTEMPT.txt --minutes 15
+
+בעלים יחיד ב־OWNERS נבחר בשרת אוטומטית; אם יש כמה מוסיפים --owner-hash של בעלים קיים. אין לשנות OWNERS או לקבל בעלות מהדפדפן. קוד אקראי של 32 בתים נכתב רק בקובץ חדש 0600 תחת תיקייה בבעלות החשבון 0700, ללא symlinks ומחוץ לציבור. הדוח אינו מכיל את הקוד או גיבובו. תוקף רגיל 15 דקות, מקסימום 30. קוד פעיל אינו נדרס; אחרי תפוגה אפשר arming לקובץ חדש. אחרי צריכה אין rearm גם לאחר restart/מחיקת משתמש. אין לאפס bootstrap_consumed.
+
+5. המשתמש קובע סיסמה
+
+כאשר /admin/ עדיין חסום, המשתמש פותח:
+https://hichal.yoterberama.com/cms-api/auth/setup
+
+אם הרשומה עדיין בנתיב API זמני, משתמשים באותו נתיב לפני /auth/setup. לפני פתיחת הלוח מעבירים במתואם את הרשומה החדשה ל־/cms-api, מעדכנים CMS_API_BASE_PATH ומאמתים מחדש HTTP; הרשומה הקודמת נשמרת עצורה בנתיב החזרה. config של הלוח חייב להתאים לנתיב הפעיל.
+
+הדף ללא צד שלישי, עם CSP nonce, no-store ו־Referrer-Policy:no-referrer. המשתמש קורא את הקוד בקובץ הפרטי בלוח האחסון ומזין אותו בטופס יחד עם שם המשתמש והסיסמה שבחר. אין סוד ב־URL או בצ׳אט. ללא JavaScript, שליחת טופסי האישורים הרגילה חסומה; הגדרת POST משמשת הגנת fallback ואינה מכניסה אישורים ל־query string. אין לעקוף זאת או לשנות את הטופס ל־GET. שם משתמש: 3–64 תווי ASCII; סיסמה: 15–128 תווי Unicode ועד 512 בתים, ללא חיתוך/נרמול בשרת. אין סיסמה מובנית; משתמשים במנהל סיסמאות.
+
+201 עם created=true יוצר חשבון אחד וצורך את הקוד בטרנזקציה; אין auto-login. אחרי הצלחה ובדיקות HTTP ללא סיסמה, מסירים במבוקר רק את חסימת admin ומיד בודקים כניסה, רענון, CSRF ויציאה. HTML ציבורי אינו הרשאת API. בכשל מחזירים את החסימה. כניסה נפרדת מוצלחת, ולא bootstrap בלבד, מאמתת את השיטה המקומית.
+
+6. קבלה ושחזור
+
+בודקים cookie בשם __Host-heichal_local עם Secure/HttpOnly/SameSite=Strict/Path=/, JSON no-store, הודעת 401 זהה לשם חסר/סיסמה שגויה, דחיית Origin זר ו־CSRF חסר, ורענון אחרי logout שאינו מחזיר כניסה. Cookie אינו נשמר ב־localStorage/sessionStorage או נשלח כ־Bearer. בדיקות login מעדכנות מוני קצב; אין להציף.
+
+לשונית ההגדרות לבעל הרשאה בלבד. שינוי מקומי דורש סיסמה נוכחית. בתצורה הנוכחית ההגדרות מציגות googleAvailable=false; המתג של Google חסום ומוסבר שהאפשרות אינה זמינה עד להגדרת האחסון. אין לבטל את הכניסה המקומית כאשר היא הדרך הזמינה היחידה.
+
+כדי להחזיר Google בעתיד, מפעיל האחסון צריך קודם להגדיר OAuth תקין למקור המדויק, GOOGLE_CLIENT_ID ו־CMS_GOOGLE_AUTH_ENABLED=true, ולהפעיל מחדש באופן מבוקר. לאחר מכן בעל ההרשאה מפעיל את השיטה בהגדרות אם אינה פעילה, ומבצע כניסת בעל הרשאה אמיתית ועדכנית דרך Google. רק אחרי אימות החלופה ניתן לבטל את המקומית. client ID או שינוי מתג בלבד אינם הוכחה. ביטול Google דורש כניסה מקומית מאומתת; תמיד נשארת דרך כניסה מאומתת אחת לפחות.
+
+הסיסמה מגובבת ב־scrypt של Node עם מלח ופרופיל קבוע ועומס מוגבל. סשן תקף עד שמונה שעות, עד שמונה לחשבון. שינוי סיסמה מעלה גרסה, מבטל סשנים ישנים ומנפיק חדש; logout מבטל את הנוכחי, וביטול השיטה מוחק סשניה. החלפת SESSION_SECRET מבטלת אימות מקומי ומשפיעה גם על Google החתום בו.
+
+מאמתים הודעת קריאה בלבד, תוכן/עורכים/פרסום חסומים ב־503, ומדיה ציבורית GET/HEAD /cms-api/m/ זמינה. אין הפניה ל־Cloudflare לצורך ה־API המקומי. Google כבוי בפריסה הזאת לפי החלטת המשתמש; בדיקות בענן אינן הוכחת Cookie/proxy באחסון.
+
+בכשל עוצרים את החדשה, מחזירים ניתוב וקובצי ניהול מגיבוי וחוסמים admin לפי הצורך. שומרים נתונים וטבלאות auth; אין reimport, מחיקת משתמש, איפוס consumed או פתיחת הכותב הישן. חזרה לקוד ישן עשויה להשאיר ניהול חסום עד תיקון.
+
+CI/CD ו־cutover הם שלבים נפרדים. לפני צילום סופי יש לשמר גם auth שנוצר ביעד: יבוא D1 אינו כולל אותו ומסרב למסד מאוכלס. רק אחרי הקפאת הכותב הישן ואימות העברה מפעילים כותב יחיד בחדש; מקורות D1/KV/R2 והגיבויים נשמרים.
