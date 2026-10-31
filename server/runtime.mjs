@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { createCmsServer } from './http.mjs';
 import { createFileMedia } from './file-media.mjs';
 import { createInitializedMysqlPool } from './mysql-pool.mjs';
+import { readRuntimeIdentity } from './runtime-identity.mjs';
+import { loadRuntimeEnvironment } from './runtime-env.mjs';
 import { createLocalAuth } from './local-auth.mjs';
 import { createWorkersAi, WorkersAiConfigurationError, WORKERS_AI_PROVIDER } from './workers-ai.mjs';
 import worker from '../cms-worker/worker.mjs';
@@ -39,13 +41,18 @@ const origin = (values, name, allowLocal) => {
 
 export function runtimeConfiguration(values = process.env, nodeVersion = process.versions.node) {
   if (typeof nodeVersion !== 'string' || !/^\d+\.\d+\.\d+/.test(nodeVersion) || Number(nodeVersion.split('.')[0]) < 24) invalid('Node', 'version24 or newer is required');
+  const deploymentCandidate = flag(values, 'CMS_DEPLOYMENT_CANDIDATE');
+  const readOnly = flag(values, 'CMS_READ_ONLY'), publishEnabled = flag(values, 'CMS_PUBLISH_ENABLED');
+  if (deploymentCandidate && (!readOnly || publishEnabled)) invalid('CMS_DEPLOYMENT_CANDIDATE', 'requires CMS_READ_ONLY=true and CMS_PUBLISH_ENABLED=false');
   const allowLocal = flag(values, 'CMS_LOCAL_DEVELOPMENT');
   const publicOrigin = origin(values, 'CMS_PUBLIC_ORIGIN', allowLocal);
   const allowedOrigin = origin(values, 'ALLOWED_ORIGIN', allowLocal);
   const localAuthEnabled = flag(values, 'CMS_LOCAL_AUTH_ENABLED');
+  const localInvitationsEnabled = flag(values, 'CMS_LOCAL_INVITATIONS_ENABLED');
   const googleEnabled = flag(values, 'CMS_GOOGLE_AUTH_ENABLED', true);
   const googleSetupEnabled = flag(values, 'CMS_GOOGLE_SETUP_ENABLED');
   if (googleSetupEnabled && !localAuthEnabled) invalid('CMS_GOOGLE_SETUP_ENABLED', 'managed Google setup requires local authentication');
+  if (localInvitationsEnabled && !localAuthEnabled) invalid('CMS_LOCAL_INVITATIONS_ENABLED', 'local owner invitations require local authentication');
   if (!localAuthEnabled && !googleEnabled) invalid('CMS_GOOGLE_AUTH_ENABLED', 'at least one configured authentication provider is required');
   if (localAuthEnabled && allowedOrigin !== publicOrigin) invalid('ALLOWED_ORIGIN', 'local authentication requires the same public and API origin');
   const apiBasePath = values.CMS_API_BASE_PATH || '';
@@ -95,7 +102,7 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
   }
   return {
     publicOrigin, apiBasePath, env, ai, bindHost, trustedProxyIps, staging: env.CMS_STAGING, port: integer(values, 'PORT', 3000),
-    publishEnabled: flag(values, 'CMS_PUBLISH_ENABLED'), readOnly: flag(values, 'CMS_READ_ONLY'), localAuthEnabled, googleEnabled, googleSetupEnabled,
+    publishEnabled, readOnly, deploymentCandidate, localAuthEnabled, localInvitationsEnabled, googleEnabled, googleSetupEnabled,
     mediaRoot: text(values, 'CMS_MEDIA_ROOT'), publicRoot: text(values, 'CMS_PUBLIC_ROOT'),
     mediaMaxBytes: Number(env.MEDIA_R2_FILE_MB || 90) * 1024 ** 2,
     appRoot: values.CMS_APP_ROOT, sslMode, caFile: values.MYSQL_SSL_CA,
@@ -130,6 +137,37 @@ async function directories(config, applicationRoot) {
 export function runtimeHandler(config, handleRequest = worker.fetch) {
   return async (request, env) => {
     const path = new URL(request.url).pathname;
+    if (config.deploymentCandidate) {
+      // A second runtime may verify the shared schema and existing session, but
+      // it must never become a second writer. This outer gate runs before all
+      // auth handlers, admission counters, bootstrap and Worker operations.
+      // Limit reads too: only the reviewed smoke routes can reach application
+      // code, so a future GET with cleanup side effects is not exposed here.
+      const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+        'X-Robots-Tag': 'noindex, nofollow', Vary: 'Origin' };
+      const origin = request.headers.get('Origin');
+      const read = ['GET', 'HEAD'].includes(request.method);
+      if (request.headers.has('Origin') && origin !== env.ALLOWED_ORIGIN || !read && request.method !== 'OPTIONS' && origin !== env.ALLOWED_ORIGIN) {
+        return Response.json({ message: 'origin not allowed' }, { status: 403, headers });
+      }
+      if (origin === env.ALLOWED_ORIGIN) headers['Access-Control-Allow-Origin'] = origin;
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: {
+        ...headers, 'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+      } });
+      if (!read || !['/version', '/me'].includes(path)) return new Response(request.method === 'HEAD' ? null : JSON.stringify({ message: 'גרסת הבדיקה אינה מאפשרת פעולות ניהול.' }), {
+        status: 503, headers: { ...headers, 'Content-Type': 'application/json', 'Retry-After': '60' },
+      });
+    }
+    if (path === '/version' && ['GET', 'HEAD'].includes(request.method)) {
+      const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Origin' };
+      if (config.deploymentCandidate || env.CMS_STAGING !== false) headers['X-Robots-Tag'] = 'noindex, nofollow';
+      const requestOrigin = request.headers.get('Origin');
+      const forbidden = requestOrigin && requestOrigin !== env.ALLOWED_ORIGIN;
+      if (requestOrigin && !forbidden) headers['Access-Control-Allow-Origin'] = env.ALLOWED_ORIGIN;
+      const status = forbidden ? 403 : config.runtimeIdentity ? 200 : 404;
+      const body = status === 200 ? { version: 1, ...config.runtimeIdentity, schemaVerified: true, deploymentCandidate: Boolean(config.deploymentCandidate) } : { message: 'Runtime identity unavailable' };
+      return new Response(request.method === 'HEAD' ? null : JSON.stringify(body), { status, headers });
+    }
     // Same-origin Node discovery also exists in legacy Google-only mode. A
     // failed discovery can then fail closed without breaking that deployment.
     if (!config.localAuthEnabled && path === '/auth/options' && request.method === 'GET') {
@@ -144,6 +182,7 @@ export function runtimeHandler(config, handleRequest = worker.fetch) {
     const authWrite = path === '/session' && request.method === 'POST' || config.localAuthEnabled && (
       request.method === 'POST' && ['/auth/login', '/auth/logout', '/auth/bootstrap', '/auth/password'].includes(path) ||
       request.method === 'PUT' && path === '/auth/settings' ||
+      config.localInvitationsEnabled && request.method === 'POST' && ['/auth/invitations', '/auth/invitations/accept'].includes(path) ||
       config.googleSetupEnabled && request.method === 'POST' && ['/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path));
     const blocked = mutation && ((config.readOnly && !authWrite) || (!config.publishEnabled && path === '/publish'));
     if (blocked) {
@@ -153,7 +192,7 @@ export function runtimeHandler(config, handleRequest = worker.fetch) {
       return Response.json({ message: config.readOnly ? 'המערכת במצב קריאה בלבד לצורך תחזוקה. נסו שוב בהמשך.' : 'הפרסום מושהה עד להשלמת הגדרת הפרסום לאתר.' }, { status: 503, headers });
     }
     const response = await handleRequest(request, env);
-    if (env.CMS_STAGING === false) return response;
+    if (env.CMS_STAGING === false && !config.deploymentCandidate) return response;
     const headers = new Headers(response.headers);
     headers.set('X-Robots-Tag', 'noindex, nofollow');
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
@@ -163,6 +202,7 @@ export function runtimeHandler(config, handleRequest = worker.fetch) {
 // Dependency injection keeps lifecycle tests independent of credentials, a live
 // provider and a database. Production uses the explicitly named local adapters.
 export async function createRuntime({ values = process.env, nodeVersion = process.versions.node, applicationRoot = APP_ROOT, dependencies = {} } = {}) {
+  values = await loadRuntimeEnvironment({ inherited: values, applicationRoot });
   const config = runtimeConfiguration(values, nodeVersion);
   const paths = await directories(config, applicationRoot);
   if (config.sslMode === 'verify') {
@@ -195,16 +235,19 @@ export async function createRuntime({ values = process.env, nodeVersion = proces
     let handler = dependencies.handleRequest || worker.fetch;
     if (config.localAuthEnabled) {
       const makeAuth = dependencies.createAuthStore || (await import('./mysql-auth-store.mjs')).createMysqlAuthStore;
-      const authStore = makeAuth(pool, { googleSetup: config.googleSetupEnabled });
+      const authStore = makeAuth(pool, { googleSetup: config.googleSetupEnabled, localInvitations: config.localInvitationsEnabled });
       await authStore.ensureSchema();
       const auth = createLocalAuth({ store: authStore, config });
       const next = handler;
       handler = (request, requestEnv) => auth.handle(request, requestEnv, next);
     }
-    server = createCmsServer({ env, publicOrigin: config.publicOrigin, basePath: config.apiBasePath, trustedProxyIps: config.trustedProxyIps, noIndex: config.staging, handleRequest: runtimeHandler(config, handler) });
+    // An identity is optional for legacy env-only installations, but a present
+    // identity must always verify. New private-file deployments require it.
+    config.runtimeIdentity = await readRuntimeIdentity({ applicationRoot: paths.CMS_APP_ROOT, required: Boolean(values.CMS_ENV_FILE) });
+    server = createCmsServer({ env, publicOrigin: config.publicOrigin, basePath: config.apiBasePath, trustedProxyIps: config.trustedProxyIps, noIndex: config.staging || config.deploymentCandidate, handleRequest: runtimeHandler(config, handler) });
     return {
       server, close,
-      status: { publicationEnabled: config.publishEnabled, readOnly: config.readOnly, slugAiAvailable: Boolean(config.ai), slugAiProvider: config.ai ? WORKERS_AI_PROVIDER : 'disabled', slugAiVerified: false, schemaVerified: true },
+      status: { publicationEnabled: config.publishEnabled, readOnly: config.readOnly, deploymentCandidate: config.deploymentCandidate, slugAiAvailable: Boolean(config.ai), slugAiProvider: config.ai ? WORKERS_AI_PROVIDER : 'disabled', slugAiVerified: false, schemaVerified: true },
       async listen() {
         if (closing || server.listening) throw new Error('Runtime cannot be started in its current state');
         try {
