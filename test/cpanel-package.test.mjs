@@ -7,6 +7,8 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { packageCpanel } from '../scripts/package-cpanel.mjs';
+import { readRuntimeIdentity, RUNTIME_IDENTITY_FILE } from '../server/runtime-identity.mjs';
+import { runtimeManifestSha256 } from '../server/cpanel-publication.mjs';
 
 const run = promisify(execFile);
 async function fixture(t, extra = {}) {
@@ -18,7 +20,7 @@ async function fixture(t, extra = {}) {
     'server/start.mjs': 'export {};\n', 'server/runtime.mjs': 'export {};\n', 'server/mysql-store.mjs': 'export {};\n',
     'server/mysql-kv.mjs': 'export {};\n', 'server/mysql-rate-limit.mjs': 'export {};\n',
     'cms-worker/worker.mjs': 'export {};\n', 'site/admin/image-rules.mjs': 'export {};\n',
-    'scripts/setup-google-auth.mjs': 'export {};\n',
+    'scripts/setup-google-auth.mjs': 'export {};\n', 'scripts/setup-local-invitations.mjs': 'export {};\n',
     'package.json': '{"type":"module","dependencies":{"mysql2":"3.24.6"}}\n', 'package-lock.json': '{"lockfileVersion":3}\n',
     '.env': 'SECRET_EXCLUDED_FROM_RELEASE=private-fixture-value\n',
     'data/private-fixture.json': '{"notRuntimeData":true}\n',
@@ -57,6 +59,15 @@ test('staging artifact preserves exact source SHA, contains only public/runtime 
   assert.equal(manifest.runtime.passengerEntrypoint, 'passenger.cjs');
   assert.ok(manifest.files.some((file) => file.path === 'app/passenger.cjs'));
   assert.ok(manifest.files.some((file) => file.path === 'app/scripts/setup-google-auth.mjs'));
+  assert.ok(manifest.files.some((file) => file.path === 'app/scripts/setup-local-invitations.mjs'));
+  assert.ok(manifest.files.some((file) => file.path === `app/${RUNTIME_IDENTITY_FILE}`));
+  const installed = await readRuntimeIdentity({ applicationRoot: join(options.output, 'app') });
+  assert.equal(installed.commit, options.commit);
+  assert.equal(installed.runtimeManifestSha256, runtimeManifestSha256(manifest));
+  assert.equal(installed.verified, true);
+  const identity = JSON.parse(await readFile(join(options.output, 'app', RUNTIME_IDENTITY_FILE), 'utf8'));
+  assert.equal(identity.files.some((file) => file.path === RUNTIME_IDENTITY_FILE), false);
+  assert.equal(identity.files.length + 1, manifest.files.filter((file) => file.path.startsWith('app/')).length);
   assert.equal((await stat(options.output)).mode & 0o777, 0o700);
   assert.equal((await stat(join(options.output, 'manifest.json'))).mode & 0o777, 0o600);
   assert.deepEqual((await readdir(options.output)).sort(), ['app', 'manifest.json', 'public']);
