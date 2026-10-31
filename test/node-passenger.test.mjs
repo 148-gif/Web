@@ -101,7 +101,7 @@ test('require() of the actual Passenger entry starts once against isolated MySQL
     try {
       assert.deepEqual(await ready, {
         service: 'heichal-cms', listening: true, publicationEnabled: false,
-        readOnly: false, slugAiAvailable: false, slugAiProvider: 'disabled', slugAiVerified: false, schemaVerified: true,
+        readOnly: false, deploymentCandidate: false, slugAiAvailable: false, slugAiProvider: 'disabled', slugAiVerified: false, schemaVerified: true,
       });
       const local = `http://127.0.0.1:${port}`;
       for (const [path, method, status] of [['/cms-api/me', 'GET', 401], ['/cms-api/publish', 'POST', 503], ['/me', 'GET', 404]]) {

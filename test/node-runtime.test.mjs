@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
@@ -8,6 +8,8 @@ import { EventEmitter } from 'node:events';
 import { createRuntime, runtimeConfiguration, runtimeHandler, installShutdownHandlers } from '../server/runtime.mjs';
 import { mysqlEnabled, withMysqlDatabase } from './helpers/mysql.mjs';
 import { WORKERS_AI_ACCOUNT_ID, WORKERS_AI_MODEL, WORKERS_AI_PROVIDER } from '../server/workers-ai.mjs';
+import worker from '../cms-worker/worker.mjs';
+import { digestToken, csrfToken } from '../server/local-auth-crypto.mjs';
 
 async function fixture(t) {
   const base = await mkdtemp(join(tmpdir(), 'cms-runtime-'));
@@ -32,6 +34,30 @@ async function fixture(t) {
   return { base, values, state, dependencies, options: { values, applicationRoot: values.CMS_APP_ROOT, dependencies } };
 }
 
+test('runtime identity is explicit, uncached, same-origin safe and cannot be used as a write exception', async () => {
+  const identity = Object.freeze({ commit: 'a'.repeat(40), runtimeManifestSha256: 'b'.repeat(64), verified: true });
+  const env = { ALLOWED_ORIGIN: 'https://example.test', CMS_STAGING: true };
+  const handler = runtimeHandler({ readOnly: true, runtimeIdentity: identity }, () => { throw new Error('Identity must not delegate'); });
+  const response = await handler(new Request('https://example.test/version'), env);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { version: 1, ...identity, schemaVerified: true, deploymentCandidate: false });
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow');
+  const head = await handler(new Request('https://example.test/version', { method: 'HEAD' }), env);
+  assert.equal(head.status, 200); assert.equal(await head.text(), '');
+  assert.equal((await handler(new Request('https://example.test/version', { headers: { Origin: 'https://foreign.test' } }), env)).status, 403);
+  assert.equal((await handler(new Request('https://example.test/version', { method: 'POST' }), env)).status, 503);
+  const legacy = runtimeHandler({ readOnly: true }, () => { throw new Error('Missing identity must not delegate'); });
+  assert.equal((await legacy(new Request('https://example.test/version'), env)).status, 404);
+});
+
+test('runtime refuses a present corrupt identity after schema verification and closes its pool', async (t) => {
+  const { values, state, options } = await fixture(t);
+  await writeFile(join(values.CMS_APP_ROOT, 'app-release.json'), '{"invalid":"private-fixture-sentinel"}');
+  await assert.rejects(createRuntime(options), (error) => error.name === 'RuntimeIdentityError' && !String(error).includes('private-fixture-sentinel'));
+  assert.equal(state.verified, 1); assert.equal(state.ended, 1);
+});
+
 test('runtime config validates secrets and owner identities without including their values in errors', async (t) => {
   const { values } = await fixture(t);
   for (const [name, value] of [['OWNERS', 'not-a-hash'], ['SESSION_SECRET', 'short-private-secret'], ['MYSQL_HOST', 'remote/path'], ['BRANCH', '../private']]) {
@@ -45,6 +71,101 @@ test('runtime config validates secrets and owner identities without including th
   assert.deepEqual(config.trustedProxyIps, []);
   assert.equal(runtimeConfiguration({ ...values, MEDIA_R2_FILE_MB: '2' }).mediaMaxBytes, 2 * 1024 ** 2);
   for (const bad of ['0', '-1', 'NaN', '1e9', '999999999999999']) assert.throws(() => runtimeConfiguration({ ...values, MEDIA_R2_FILE_MB: bad }), /MEDIA_R2_FILE_MB/);
+});
+
+test('deployment candidate is explicit and refuses writable or publish-enabled configuration before connecting', async (t) => {
+  const { values, options, state } = await fixture(t);
+  assert.equal(runtimeConfiguration(values).deploymentCandidate, false);
+  const candidate = { ...values, CMS_DEPLOYMENT_CANDIDATE: 'true', CMS_READ_ONLY: 'true', CMS_PUBLISH_ENABLED: 'false' };
+  assert.equal(runtimeConfiguration(candidate).deploymentCandidate, true);
+  for (const changed of [{ CMS_READ_ONLY: 'false' }, { CMS_READ_ONLY: undefined }, { CMS_PUBLISH_ENABLED: 'true' }, { CMS_DEPLOYMENT_CANDIDATE: 'yes' }]) {
+    await assert.rejects(createRuntime({ ...options, values: { ...candidate, ...changed } }), /CMS_DEPLOYMENT_CANDIDATE/);
+  }
+  assert.equal(state.constructed, 0);
+  assert.equal(runtimeConfiguration({ ...candidate, CMS_DEPLOYMENT_CANDIDATE: 'false', CMS_READ_ONLY: 'false', CMS_PUBLISH_ENABLED: 'true' }).publishEnabled, true);
+});
+
+test('candidate outer gate blocks writes even under an inconsistent injected config and advertises only smoke reads', async () => {
+  const identity = { commit: 'a'.repeat(40), runtimeManifestSha256: 'b'.repeat(64), verified: true };
+  const env = { ALLOWED_ORIGIN: 'https://example.test', CMS_STAGING: false }, seen = [];
+  const handler = runtimeHandler({ deploymentCandidate: true, readOnly: false, publishEnabled: true, localAuthEnabled: true, localInvitationsEnabled: true, googleSetupEnabled: true, runtimeIdentity: identity }, (request) => {
+    seen.push(request.method + ' ' + new URL(request.url).pathname); return Response.json({ read: true }, { headers: { 'Cache-Control': 'no-store' } });
+  });
+  const request = (path, method = 'GET', origin = env.ALLOWED_ORIGIN) => new Request('https://example.test' + path, { method, headers: origin === null ? {} : { Origin: origin } });
+  for (const method of ['POST', 'PUT', 'DELETE', 'PATCH']) {
+    for (const path of ['/version', '/me', '/session', '/auth/login', '/auth/bootstrap', '/auth/invitations', '/auth/invitations/accept', '/auth/google/activate', '/publish']) {
+      const response = await handler(request(path, method), env);
+      assert.equal(response.status, 503); assert.equal(response.headers.get('cache-control'), 'no-store');
+      assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow');
+    }
+  }
+  for (const path of ['/auth/setup', '/auth/invitation', '/auth/options', '/auth/session', '/auth/settings', '/media', '/m/private.pdf', '/changes?check=1']) {
+    assert.equal((await handler(request(path), env)).status, 503);
+    const head = await handler(request(path, 'HEAD'), env); assert.equal(head.status, 503); assert.equal(await head.text(), '');
+  }
+  for (const method of ['GET', 'HEAD', 'POST', 'OPTIONS']) assert.equal((await handler(request('/me', method, 'https://foreign.test'), env)).status, 403);
+  for (const origin of [null, '']) assert.equal((await handler(request('/auth/login', 'POST', origin), env)).status, 403);
+  const preflight = await handler(request('/auth/bootstrap', 'OPTIONS'), env);
+  assert.equal(preflight.status, 204); assert.equal(preflight.headers.get('access-control-allow-methods'), 'GET, HEAD, OPTIONS');
+  assert.deepEqual(seen, []);
+  const version = await handler(request('/version'), env);
+  assert.deepEqual(await version.json(), { version: 1, ...identity, schemaVerified: true, deploymentCandidate: true });
+  assert.equal(version.headers.get('x-robots-tag'), 'noindex, nofollow');
+  assert.equal((await handler(request('/me'), env)).status, 200);
+  assert.deepEqual(seen, ['GET /me']);
+});
+
+test('candidate HTTP writes cannot reach local auth, invitations, bootstrap, Google, rate counters or Worker; existing /me reads remain safe', async (t) => {
+  const f = await fixture(t);
+  Object.assign(f.values, { CMS_DEPLOYMENT_CANDIDATE: 'true', CMS_READ_ONLY: 'true', CMS_PUBLISH_ENABLED: 'false',
+    CMS_STAGING: 'false', CMS_LOCAL_AUTH_ENABLED: 'true', CMS_LOCAL_INVITATIONS_ENABLED: 'true', CMS_GOOGLE_AUTH_ENABLED: 'false', CMS_GOOGLE_SETUP_ENABLED: 'true', ALLOWED_ORIGIN: f.values.CMS_PUBLIC_ORIGIN });
+  const calls = { authSchema: 0, authReads: 0, atomic: 0, counters: 0, worker: 0, kv: 0 };
+  const token = 'A'.repeat(43), user = { id: 'b'.repeat(32), username: 'administrator', display_name: 'מנהל', password_hash: 'unused-fixture-hash', owner_hash: f.values.OWNERS, role: 'owner', version: 1, disabled: false };
+  const settings = { local_enabled: true, local_verified: true, google_enabled: false, bootstrap_consumed: false, bootstrap_hash: 'c'.repeat(64), bootstrap_expires: Date.now() + 600000 };
+  f.dependencies.createAuthStore = () => ({
+    async ensureSchema() { calls.authSchema++; },
+    async getSettings() { calls.authReads++; return settings; },
+    async getGoogleConfig() { calls.authReads++; return { active_client_id: null }; },
+    async getSession(hash) { calls.authReads++; assert.equal(hash, digestToken(token)); return { user_id: user.id, version: 1, expires_at: Date.now() + 600000, csrf_hash: digestToken(csrfToken(token, f.values.SESSION_SECRET)) }; },
+    async getUserById(id) { calls.authReads++; assert.equal(id, user.id); return user; },
+    async getInvitationByHash() { calls.authReads++; assert.fail('Candidate must not read invitation state'); },
+    async getUserByOwnerHash() { calls.authReads++; assert.fail('Candidate must not enumerate invitation targets'); },
+    async atomic() { calls.atomic++; assert.fail('Candidate must not write auth state'); },
+  });
+  f.dependencies.createKv = () => ({ async get() { calls.kv++; assert.fail('Local candidate smoke should not read Google membership'); } });
+  f.dependencies.createRateLimitStore = () => async () => { calls.counters++; assert.fail('Candidate must not consume rate counters'); };
+  f.dependencies.handleRequest = (request, env) => { calls.worker++; return worker.fetch(request, env); };
+  const runtime = await createRuntime(f.options); t.after(() => runtime.close()); await runtime.listen();
+  assert.equal(runtime.status.deploymentCandidate, true); assert.equal(calls.authSchema, 1);
+  const url = `http://127.0.0.1:${f.values.PORT}`, headers = { Origin: f.values.ALLOWED_ORIGIN, 'Content-Type': 'application/json', Cookie: `__Host-heichal_local=${token}` };
+  const blocked = [['POST', '/session'], ['POST', '/session/local'], ['POST', '/auth/login'], ['POST', '/auth/logout'], ['POST', '/auth/bootstrap'], ['POST', '/auth/password'],
+    ['POST', '/auth/google/prepare'], ['POST', '/auth/google/verify'], ['POST', '/auth/google/activate'], ['PUT', '/auth/settings'],
+    ['POST', '/auth/invitations'], ['POST', '/auth/invitations/accept'], ['GET', '/auth/invitation'],
+    ['POST', '/publish'], ['POST', '/translate'], ['PUT', '/me'], ['PUT', '/gh/contents/data/site.json'], ['DELETE', '/media/aaaaaaaa'],
+    ['GET', '/auth/setup'], ['GET', '/auth/options'], ['GET', '/media'], ['GET', '/changes?check=1']];
+  for (const [method, path] of blocked) {
+    const response = await fetch(url + path, { method, headers, ...(!['GET', 'HEAD'].includes(method) ? { body: 'not-json' } : {}) });
+    assert.equal(response.status, 503, `${method} ${path}`); assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow'); await response.arrayBuffer();
+  }
+  for (const method of ['GET', 'POST', 'OPTIONS']) {
+    const response = await fetch(url + '/me', { method, headers: { Origin: 'https://foreign.test' } });
+    assert.equal(response.status, 403); assert.equal(response.headers.has('access-control-allow-origin'), false); await response.arrayBuffer();
+  }
+  const preflight = await fetch(url + '/auth/login', { method: 'OPTIONS', headers });
+  assert.equal(preflight.status, 204); assert.equal(preflight.headers.get('access-control-allow-methods'), 'GET, HEAD, OPTIONS');
+  const boundaryError = await fetch(url + '/me', { method: 'PATCH', headers, body: '{}' });
+  assert.equal(boundaryError.status, 405);
+  assert.equal(boundaryError.headers.get('x-robots-tag'), 'noindex, nofollow', 'Candidate noindex also covers errors before the runtime handler');
+  await boundaryError.arrayBuffer();
+  assert.deepEqual(calls, { authSchema: 1, authReads: 0, atomic: 0, counters: 0, worker: 0, kv: 0 });
+  const anonymous = await fetch(url + '/me', { headers: { Origin: f.values.ALLOWED_ORIGIN } });
+  assert.equal(anonymous.status, 401); await anonymous.arrayBuffer();
+  const existing = await fetch(url + '/me', { headers });
+  assert.equal(existing.status, 200); assert.equal((await existing.json()).owner, true);
+  assert.equal(existing.headers.get('cache-control'), 'no-store'); assert.equal(existing.headers.get('x-robots-tag'), 'noindex, nofollow');
+  assert.equal(calls.worker, 2); assert.equal(calls.authReads, 6);
+  assert.equal(calls.atomic, 0); assert.equal(calls.counters, 0); assert.equal(calls.kv, 0);
 });
 
 test('remote database TLS and local proxy trust require explicit verified configuration', async (t) => {
@@ -100,10 +221,23 @@ test('managed Google setup is opt-in and missing addon schema fails startup clos
   delete f.values.GOOGLE_CLIENT_ID;
   assert.equal(runtimeConfiguration(f.values).env.GOOGLE_CLIENT_ID, '');
   f.dependencies.createAuthStore = (pool, options) => {
-    assert.deepEqual(options, { googleSetup: true });
+    assert.deepEqual(options, { googleSetup: true, localInvitations: false });
     return { async ensureSchema() { throw new Error('managed Google schema missing'); } };
   };
   await assert.rejects(createRuntime(f.options), /managed Google schema missing/);
+  assert.equal(f.state.ended, 1);
+});
+
+test('local owner invitations require explicit local authentication and verified additive schema', async (t) => {
+  const f = await fixture(t);
+  assert.equal(runtimeConfiguration(f.values).localInvitationsEnabled, false);
+  assert.throws(() => runtimeConfiguration({ ...f.values, CMS_LOCAL_INVITATIONS_ENABLED: 'true' }), /require local authentication/);
+  Object.assign(f.values, { CMS_LOCAL_AUTH_ENABLED: 'true', CMS_LOCAL_INVITATIONS_ENABLED: 'true', CMS_GOOGLE_AUTH_ENABLED: 'false', ALLOWED_ORIGIN: f.values.CMS_PUBLIC_ORIGIN });
+  f.dependencies.createAuthStore = (pool, options) => {
+    assert.deepEqual(options, { googleSetup: false, localInvitations: true });
+    return { async ensureSchema() { throw new Error('owner invitation schema missing'); } };
+  };
+  await assert.rejects(createRuntime(f.options), /owner invitation schema missing/);
   assert.equal(f.state.ended, 1);
 });
 
