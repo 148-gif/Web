@@ -59,6 +59,39 @@ test('remote database TLS and local proxy trust require explicit verified config
   assert.equal(runtimeConfiguration({ ...values, CMS_PUBLIC_ORIGIN: 'http://127.0.0.1:3000', CMS_LOCAL_DEVELOPMENT: 'true' }).publicOrigin, 'http://127.0.0.1:3000');
 });
 
+test('local authentication is opt-in, same-origin and permits explicitly configured local-only login', async (t) => {
+  const { values } = await fixture(t);
+  assert.equal(runtimeConfiguration(values).localAuthEnabled, false);
+  assert.equal(runtimeConfiguration(values).googleEnabled, true);
+  assert.throws(() => runtimeConfiguration({ ...values, CMS_LOCAL_AUTH_ENABLED: 'true' }), /same public and API origin/);
+  const local = { ...values, ALLOWED_ORIGIN: values.CMS_PUBLIC_ORIGIN, CMS_LOCAL_AUTH_ENABLED: 'true', CMS_GOOGLE_AUTH_ENABLED: 'false' };
+  delete local.GOOGLE_CLIENT_ID;
+  assert.equal(runtimeConfiguration(local).env.GOOGLE_CLIENT_ID, '');
+  assert.throws(() => runtimeConfiguration({ ...local, CMS_LOCAL_AUTH_ENABLED: 'false' }), /at least one/);
+  assert.throws(() => runtimeConfiguration({ ...local, CMS_GOOGLE_AUTH_ENABLED: 'true' }), /GOOGLE_CLIENT_ID/);
+});
+
+test('read-only auth exceptions are exact method/path pairs and never unlock content or publication', async () => {
+  const env = { ALLOWED_ORIGIN: 'https://example.test', CMS_STAGING: true };
+  const handler = runtimeHandler({ readOnly: true, publishEnabled: false, localAuthEnabled: true }, async () => Response.json({ reached: true }));
+  for (const [method, path] of [['POST', '/auth/login'], ['POST', '/auth/logout'], ['POST', '/auth/bootstrap'], ['POST', '/auth/password'], ['PUT', '/auth/settings'], ['POST', '/session']]) {
+    assert.equal((await handler(new Request('https://example.test'+path, { method, headers: { Origin: env.ALLOWED_ORIGIN } }), env)).status, 200);
+  }
+  for (const [method, path] of [['POST', '/publish'], ['PUT', '/me'], ['PUT', '/editors'], ['POST', '/auth/settings'], ['DELETE', '/auth/login'], ['POST', '/auth/login/'], ['POST', '/auth/anything'], ['POST', '/session/'], ['PUT', '/session']]) {
+    assert.equal((await handler(new Request('https://example.test'+path, { method }), env)).status, 503);
+  }
+  const disabled = runtimeHandler({ readOnly: true, publishEnabled: false, localAuthEnabled: false }, async () => Response.json({ reached: true }));
+  assert.equal((await disabled(new Request('https://example.test/auth/login', { method: 'POST' }), env)).status, 503);
+});
+
+test('enabled local authentication verifies its separate schema and closes the pool on failure', async (t) => {
+  const f = await fixture(t);
+  f.values.CMS_LOCAL_AUTH_ENABLED = 'true'; f.values.ALLOWED_ORIGIN = f.values.CMS_PUBLIC_ORIGIN;
+  f.dependencies.createAuthStore = () => ({ async ensureSchema() { throw new Error('auth schema missing'); } });
+  await assert.rejects(createRuntime(f.options), /auth schema missing/);
+  assert.equal(f.state.ended, 1);
+});
+
 test('remote MySQL connections verify both the certificate chain and its DNS identity', async (t) => {
   const { options, values, state } = await fixture(t);
   const runtime = await createRuntime({ ...options, values: { ...values, MYSQL_HOST: 'db.example.test' } });
