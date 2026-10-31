@@ -6,6 +6,8 @@ import { loginLimit } from '../cms-worker/rate-limit.mjs';
 import { readSession, who } from '../cms-worker/worker.mjs';
 import { hashPassword, verifyPassword, passwordAcceptable, normalizeUsername, randomToken, digestToken, csrfToken, safeEqualStrings, LocalAuthBusyError } from './local-auth-crypto.mjs';
 import { renderAuthSetup } from './auth-setup.mjs';
+import { googleSessionEnvironment } from './google-auth-proof.mjs';
+import { createGoogleSetup, googleSetupView, clearGooglePending } from './google-auth-setup.mjs';
 
 const COOKIE = '__Host-heichal_local';
 const SESSION_MS = 8 * 3600_000;
@@ -21,7 +23,7 @@ const setCookie = (token, clear = false) => `${COOKIE}=${clear ? '' : token}; Pa
 const fail = (message, status) => Object.assign(new Error(message), { status });
 const actorOf = (user) => ({ email: `local:${user.id}`, name: user.display_name, shown: user.display_name, owner: user.role === 'owner', publisher: ['owner', 'publisher'].includes(user.role) });
 
-export function createLocalAuth({ store, config, clock = Date.now }) {
+export function createLocalAuth({ store, config, clock = Date.now, googleProofVerifier }) {
   const owners = new Set(config.env.OWNERS.split(',').map((s) => s.trim()));
   const validUser = (user) => user && !user.disabled && owners.has(user.owner_hash) && ['owner', 'editor', 'publisher'].includes(user.role);
   const headers = (request) => ({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', ...(config.staging ? { 'X-Robots-Tag': 'noindex, nofollow' } : {}), ...(request.headers.get('origin') === config.env.ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': config.env.ALLOWED_ORIGIN, Vary: 'Origin' } : {}) });
@@ -31,7 +33,7 @@ export function createLocalAuth({ store, config, clock = Date.now }) {
     if (!own(b)) throw fail('גוף הבקשה אינו תקין', 400);
     return b;
   };
-  const enabled = (settings) => ({ localEnabled: settings.local_enabled, googleEnabled: config.googleEnabled && settings.google_enabled });
+  const enabled = (settings, google) => ({ localEnabled: settings.local_enabled, googleEnabled: Boolean(config.googleEnabled && settings.google_enabled && (!config.googleSetupEnabled || google?.active_client_id)) });
   const recentGoogle = (token) => {
     try { const p = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString('utf8')); return Number.isSafeInteger(p.exp) && p.exp * 1000 - 12 * 3600_000 <= clock() && p.exp * 1000 - 12 * 3600_000 > clock() - RECENT_MS; }
     catch { return false; }
@@ -44,7 +46,7 @@ export function createLocalAuth({ store, config, clock = Date.now }) {
     const second = first.allowed && await env.RATE_LIMIT_STORE({ scope: 'login', windowStart, limit: 120, subject: digestToken(`local-account:${account}`), subjectLimit: 5 });
     if (!second) throw fail('יותר מדי ניסיונות. המתינו מעט ונסו שוב.', 429);
   }
-  async function current(request, env, settings) {
+  async function current(request, env, settings, google) {
     const token = cookieValue(request), bearer = (request.headers.get('authorization') || '').replace(/^Bearer /, '');
     if (token && bearer) return null;
     if (token && settings.local_enabled) {
@@ -55,7 +57,7 @@ export function createLocalAuth({ store, config, clock = Date.now }) {
       if (!validUser(user) || user.version !== session.version) return null;
       return { method: 'local', actor: actorOf(user), user, session, token };
     }
-    if (bearer && enabled(settings).googleEnabled) {
+    if (bearer && enabled(settings, google).googleEnabled) {
       const email = await readSession(bearer, env);
       const actor = email ? await who(env, email) : null;
       if (actor) return { method: 'google', actor, bearer };
@@ -84,7 +86,8 @@ export function createLocalAuth({ store, config, clock = Date.now }) {
       if (!(await verifyPassword(body.currentPassword, authenticated.user.password_hash))) throw fail(AUTH_FAILURE, 401);
     }
   }
-  const viewSettings = (s, auth) => ({ ...enabled(s), googleAvailable: config.googleEnabled, method: auth.method, ...(auth.user ? { username: auth.user.username } : {}), canDisableGoogle: s.local_enabled && s.local_verified && auth.method === 'local', canDisableLocal: config.googleEnabled && s.google_enabled && s.google_verified_until > clock() && auth.method === 'google' && recentGoogle(auth.bearer) });
+  const viewSettings = (s, auth, google) => ({ ...enabled(s, google), googleAvailable: config.googleEnabled, method: auth.method, ...(auth.user ? { username: auth.user.username } : {}), canDisableGoogle: s.local_enabled && s.local_verified && auth.method === 'local', canDisableLocal: enabled(s, google).googleEnabled && s.google_verified_until > clock() && auth.method === 'google' && recentGoogle(auth.bearer), ...(config.googleSetupEnabled ? { googleSetup: googleSetupView(google, auth, config, clock()) } : {}) });
+  const googleSetup = config.googleSetupEnabled ? createGoogleSetup({ store, config, clock, validUser, reauthenticate, admission, verifyProof: googleProofVerifier }) : null;
 
   async function handle(request, env, next) {
     const path = new URL(request.url).pathname, method = request.method;
@@ -96,6 +99,8 @@ export function createLocalAuth({ store, config, clock = Date.now }) {
       // Setup navigation is the only HTML route; no key in URL or third-party
       // resources. Serving its form alone never grants bootstrap authority.
       const settings = await store.getSettings();
+      const google = config.googleSetupEnabled ? await store.getGoogleConfig() : null;
+      if (google?.active_client_id) env = googleSessionEnvironment(env, { clientId: google.active_client_id, activeVersion: google.active_version, origin: config.publicOrigin });
       if (path === '/auth/setup' && method === 'GET') {
         if (settings.bootstrap_consumed || !settings.bootstrap_hash || settings.bootstrap_expires <= clock()) return json(request, { message: 'לא נמצא' }, 404);
         const nonce = randomBytes(18).toString('base64url');
@@ -103,7 +108,7 @@ export function createLocalAuth({ store, config, clock = Date.now }) {
       }
       if (request.headers.get('origin') !== config.env.ALLOWED_ORIGIN || config.publicOrigin !== config.env.ALLOWED_ORIGIN) return json(request, { message: 'origin not allowed' }, 403);
       if (path.startsWith('/auth/') && method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...headers(request), 'Access-Control-Allow-Methods': 'GET, POST, PUT', 'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, Authorization' } });
-      if (path === '/auth/options' && method === 'GET') return json(request, { ...enabled(settings), settingsAvailable: true, readOnly: config.readOnly, publishEnabled: config.publishEnabled });
+      if (path === '/auth/options' && method === 'GET') return json(request, { ...enabled(settings, google), settingsAvailable: true, readOnly: config.readOnly, publishEnabled: config.publishEnabled, ...(config.googleSetupEnabled ? { googleManaged: true, googleClientId: enabled(settings, google).googleEnabled ? google.active_client_id : '', googleRevision: google.active_version } : {}) });
       if (path === '/auth/bootstrap' && method === 'POST') {
         const body = await bodyOf(request);
         await admission(request, env, 'bootstrap');
@@ -134,35 +139,46 @@ export function createLocalAuth({ store, config, clock = Date.now }) {
         });
         return json(request, sessionBody(user, token), 200, setCookie(token));
       }
-      const authenticated = await current(request, env, settings);
+      const authenticated = await current(request, env, settings, google);
       if (path === '/auth/session' && method === 'GET') return authenticated?.method === 'local' ? json(request, sessionBody(authenticated.user, authenticated.token)) : json(request, { message: 'צריך להתחבר מחדש' }, 401);
       if (MUTATION(method)) requireCsrf(request, authenticated);
+      if (googleSetup && method === 'POST' && ['/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path)) {
+        return json(request, await googleSetup.handle(path, request, env, authenticated, await bodyOf(request)));
+      }
       if (path === '/auth/logout' && method === 'POST') {
         if (authenticated?.method === 'local') await store.atomic((tx) => tx.deleteSession(digestToken(authenticated.token)));
         return json(request, { loggedOut: true }, 200, setCookie('', true));
       }
       if (path === '/auth/settings' && ['GET', 'PUT'].includes(method)) {
         if (!authenticated?.actor.owner) return json(request, { message: 'רק בעל הרשאה יכול לנהל את הגדרות ההתחברות' }, 403);
-        if (method === 'GET') return json(request, viewSettings(settings, authenticated));
+        if (method === 'GET') return json(request, viewSettings(settings, authenticated, google));
         const body = await bodyOf(request);
         if (typeof body.localEnabled !== 'boolean' || typeof body.googleEnabled !== 'boolean') throw fail('הגדרות התחברות אינן תקינות', 400);
         await reauthenticate(request, env, authenticated, body);
         const result = await store.atomic(async (tx) => {
           const s = await tx.getSettings();
+          let managed = config.googleSetupEnabled ? await tx.getGoogleConfig() : null;
+          if (managed && (managed.active_version !== google.active_version || managed.active_client_id !== google.active_client_id)) throw fail('הגדרות Google השתנו. רעננו את המסך', 409);
           if (authenticated.method === 'local') {
             const user = await tx.getUserById(authenticated.user.id);
             if (!validUser(user) || user.version !== authenticated.user.version || user.password_hash !== authenticated.user.password_hash || !s.local_enabled) throw fail('יש להתחבר מחדש', 401);
           } else if (!s.google_enabled || !config.googleEnabled) throw fail('יש להתחבר מחדש', 401);
           if ((!body.localEnabled && !body.googleEnabled) || (body.googleEnabled && !config.googleEnabled) || (body.localEnabled && (!s.bootstrap_consumed || !await tx.countUsers()))) throw fail('צריך להשאיר דרך התחברות זמינה', 409);
+          if (managed && body.googleEnabled && (!s.google_enabled || !managed.active_client_id)) throw fail('יש להשלים בדיקת כניסה באשף Google לפני הפעלה', 409);
           if (s.google_enabled && !body.googleEnabled && !(body.localEnabled && s.local_verified && authenticated.method === 'local')) throw fail('יש לאמת כניסה מקומית לפני ביטול Google', 409);
           if (s.local_enabled && !body.localEnabled && !(body.googleEnabled && s.google_verified_until > clock() && authenticated.method === 'google' && recentGoogle(authenticated.bearer))) throw fail('יש לאמת כניסת בעל הרשאה דרך Google לפני ביטול הכניסה המקומית', 409);
           const updated = { ...s, local_enabled: body.localEnabled, google_enabled: body.googleEnabled };
+          if (managed && s.google_enabled && !body.googleEnabled) {
+            managed = clearGooglePending({ ...managed, revision: managed.revision + 1, active_version: managed.active_version + 1 });
+            updated.google_verified_until = 0;
+            await tx.saveGoogleConfig(managed);
+          }
           await tx.saveSettings(updated);
           if (!updated.local_enabled) await tx.deleteAllSessions();
           const token = authenticated.method === 'local' && updated.local_enabled ? await issue(tx, authenticated.user, authenticated.token) : null;
-          return { updated, token };
+          return { updated, token, managed };
         });
-        return json(request, { ...viewSettings(result.updated, authenticated), ...(result.token ? sessionBody(authenticated.user, result.token) : {}) }, 200, result.token ? setCookie(result.token) : undefined);
+        return json(request, { ...viewSettings(result.updated, authenticated, result.managed), ...(result.token ? sessionBody(authenticated.user, result.token) : {}) }, 200, result.token ? setCookie(result.token) : undefined);
       }
       if (path === '/auth/password' && method === 'POST') {
         if (authenticated?.method !== 'local' || !authenticated.actor.owner) throw fail('נדרשת כניסה מקומית של בעל הרשאה', 403);
@@ -182,13 +198,17 @@ export function createLocalAuth({ store, config, clock = Date.now }) {
       }
       if (path.startsWith('/auth/')) return json(request, { message: 'לא נמצא' }, 404);
       if (path === '/session' && method === 'POST') {
-        if (!enabled(settings).googleEnabled) return json(request, { message: 'שיטת ההתחברות אינה זמינה' }, 403);
+        if (!enabled(settings, google).googleEnabled) return json(request, { message: 'שיטת ההתחברות אינה זמינה' }, 403);
         const response = await next(request, env);
         if (response.status !== 200) return response;
         const data = await response.clone().json();
         await store.atomic(async (tx) => {
           const s = await tx.getSettings();
           if (!s.google_enabled) throw fail('שיטת ההתחברות אינה זמינה', 403);
+          if (config.googleSetupEnabled) {
+            const fresh = await tx.getGoogleConfig();
+            if (fresh.active_version !== google.active_version || fresh.active_client_id !== google.active_client_id) throw fail('הגדרות Google השתנו. התחברו מחדש', 409);
+          }
           if (data.owner === true) await tx.saveSettings({ ...s, google_verified_until: clock() + RECENT_MS });
           const old = cookieValue(request); if (old) await tx.deleteSession(digestToken(old));
         });
