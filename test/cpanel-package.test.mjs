@@ -18,6 +18,7 @@ async function fixture(t, extra = {}) {
     'server/start.mjs': 'export {};\n', 'server/runtime.mjs': 'export {};\n', 'server/mysql-store.mjs': 'export {};\n',
     'server/mysql-kv.mjs': 'export {};\n', 'server/mysql-rate-limit.mjs': 'export {};\n',
     'cms-worker/worker.mjs': 'export {};\n', 'site/admin/image-rules.mjs': 'export {};\n',
+    'scripts/setup-google-auth.mjs': 'export {};\n',
     'package.json': '{"type":"module","dependencies":{"mysql2":"3.24.6"}}\n', 'package-lock.json': '{"lockfileVersion":3}\n',
     '.env': 'SECRET_EXCLUDED_FROM_RELEASE=private-fixture-value\n',
     'data/private-fixture.json': '{"notRuntimeData":true}\n',
@@ -55,6 +56,7 @@ test('staging artifact preserves exact source SHA, contains only public/runtime 
   assert.equal(manifest.runtime.entrypoint, 'server/start.mjs');
   assert.equal(manifest.runtime.passengerEntrypoint, 'passenger.cjs');
   assert.ok(manifest.files.some((file) => file.path === 'app/passenger.cjs'));
+  assert.ok(manifest.files.some((file) => file.path === 'app/scripts/setup-google-auth.mjs'));
   assert.equal((await stat(options.output)).mode & 0o777, 0o700);
   assert.equal((await stat(join(options.output, 'manifest.json'))).mode & 0o777, 0o600);
   assert.deepEqual((await readdir(options.output)).sort(), ['app', 'manifest.json', 'public']);
