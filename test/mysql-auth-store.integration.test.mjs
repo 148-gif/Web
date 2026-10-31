@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPool } from 'mysql2/promise';
 import { createMysqlAuthStore } from '../server/mysql-auth-store.mjs';
 import { createMysqlDataStore } from '../server/mysql-store.mjs';
 import { createInitializedMysqlPool } from '../server/mysql-pool.mjs';
 import { initializeLocalAuthSchema } from '../scripts/setup-local-auth.mjs';
 import { mysqlEnabled, withMysqlDatabase } from './helpers/mysql.mjs';
 
+const { createPool } = mysqlEnabled ? await import('mysql2/promise') : {};
 const user = (changes = {}) => ({ id: 'a'.repeat(32), username: 'administrator', display_name: 'מנהל מקומי', password_hash: 'test-only-noncredential-hash', owner_hash: 'b'.repeat(64), role: 'owner', version: 1, disabled: false, ...changes });
 const session = (changes = {}) => ({ token_hash: 'c'.repeat(64), csrf_hash: 'd'.repeat(64), user_id: 'a'.repeat(32), version: 1, expires_at: 1794000000000, ...changes });
 async function setup(pool, database) {
