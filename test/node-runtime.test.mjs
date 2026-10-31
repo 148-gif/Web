@@ -24,7 +24,7 @@ async function fixture(t) {
   };
   const state = { constructed: 0, ended: 0, verified: 0, mysql: null };
   const dependencies = {
-    createPool(options) { state.constructed++; state.mysql = options; return { async end() { state.ended++; } }; },
+    createPool(options) { state.constructed++; state.mysql = options; return { async getConnection() { throw new Error('Unexpected fixture database access'); }, async end() { state.ended++; } }; },
     createDataStore() { return { async ensureSchema() { state.verified++; } }; },
     createKv() { return {}; }, createRateLimitStore() { return async () => true; },
     handleRequest: async () => Response.json({ ok: true }),
@@ -128,6 +128,31 @@ test('schema verification failure closes the pool without opening an HTTP listen
   const { state, options, dependencies } = await fixture(t);
   await assert.rejects(createRuntime({ ...options, dependencies: { ...dependencies, createDataStore: () => ({ ensureSchema: async () => { throw new Error('schema mismatch'); } }) } }), /schema mismatch/);
   assert.equal(state.constructed, 1); assert.equal(state.ended, 1);
+});
+
+test('runtime initialization failure closes the pool before schema queries or an HTTP listener', async (t) => {
+  const { options, dependencies } = await fixture(t);
+  let ended = 0, destroyed = 0, reads = 0;
+  await assert.rejects(createRuntime({ ...options, dependencies: {
+    ...dependencies,
+    createPool() {
+      return {
+        async getConnection() {
+          return {
+            async query(sql) { assert.ok(sql.startsWith('SET SESSION ')); throw new Error('private driver failure'); },
+            async execute() { reads++; },
+            release() { assert.fail('Failed session must not be released'); },
+            destroy() { destroyed++; },
+          };
+        },
+        async end() { ended++; },
+      };
+    },
+    createDataStore(pool) {
+      return { async ensureSchema() { const connection = await pool.getConnection(); await connection.execute('SELECT 1'); connection.release(); } };
+    },
+  } }), /MySQL session initialization failed/);
+  assert.equal(reads, 0); assert.equal(destroyed, 1); assert.equal(ended, 1);
 });
 
 test('runtime verifies before explicit listen and owns graceful idempotent cleanup', async (t) => {
