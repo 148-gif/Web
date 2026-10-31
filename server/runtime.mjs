@@ -5,6 +5,7 @@ import { isAbsolute, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCmsServer } from './http.mjs';
 import { createFileMedia } from './file-media.mjs';
+import { createInitializedMysqlPool } from './mysql-pool.mjs';
 import { createWorkersAi, WorkersAiConfigurationError, WORKERS_AI_PROVIDER } from './workers-ai.mjs';
 import worker from '../cms-worker/worker.mjs';
 
@@ -155,7 +156,7 @@ export async function createRuntime({ values = process.env, nodeVersion = proces
   const makeStore = dependencies.createDataStore || (await import('./mysql-store.mjs')).createMysqlDataStore;
   const makeKv = dependencies.createKv || (await import('./mysql-kv.mjs')).createMysqlKv;
   const makeRate = dependencies.createRateLimitStore || (await import('./mysql-rate-limit.mjs')).createMysqlRateLimitStore;
-  const pool = createPool(config.mysql);
+  const pool = createInitializedMysqlPool(createPool(config.mysql));
   let server, closing;
   const close = () => closing ||= (async () => {
     try {
