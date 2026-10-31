@@ -61,3 +61,13 @@ test('explicit local-only configuration does not require a Google client but sti
   const unavailable = await inspectReadiness({ values: { ...local, CMS_LOCAL_AUTH_ENABLED: 'false' }, resolveDriver: () => 'present' });
   assert.equal(unavailable.checks.find((c) => c.name === 'runtime_configuration').status, 'blocked');
 });
+
+test('managed Google configuration uses the database client and requires local authentication', async (t) => {
+  const { values } = await setup(t);
+  const managed = { ...values, ALLOWED_ORIGIN: values.CMS_PUBLIC_ORIGIN, CMS_LOCAL_AUTH_ENABLED: 'true', CMS_GOOGLE_SETUP_ENABLED: 'true' };
+  delete managed.GOOGLE_CLIENT_ID;
+  const report = await inspectReadiness({ values: managed, resolveDriver: () => 'present' });
+  assert.equal(report.checks.some((c) => c.status === 'blocked'), false);
+  const invalid = await inspectReadiness({ values: { ...managed, CMS_LOCAL_AUTH_ENABLED: 'false' }, resolveDriver: () => 'present' });
+  assert.equal(invalid.checks.find((c) => c.name === 'runtime_configuration').status, 'blocked');
+});
