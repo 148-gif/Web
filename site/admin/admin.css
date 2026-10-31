@@ -106,6 +106,11 @@ body.out .ah{display:none}
 .auth-status{padding:var(--s2) var(--s3);border-radius:var(--r-sm);background:var(--ok-bg);color:var(--ok);font-weight:600}
 .auth-status:empty{display:none}
 .auth-settings .auth-password-fields{max-width:460px}
+.auth-invitation-result{margin-block-start:var(--s4);padding-block-start:var(--s3);border-top:1px solid var(--line);overflow-wrap:anywhere}
+.auth-invitation-copy{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.auth-invitation-copy input{flex:1 1 260px;min-width:0}
+.auth-invitation-copy .btn{flex:0 1 auto}
+.auth-invitations .auth-status{margin-block:var(--s3)}
 .google-setup{overflow-wrap:anywhere}
 .google-setup h3{margin-block:var(--s4) var(--s2)}
 .google-setup-links{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4)}
