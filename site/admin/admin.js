@@ -131,7 +131,7 @@
   var kindOf = function (t) { return t && t.kind === 'page' ? 'page' : 'collection'; };
   var cfg, deploymentTools, deploymentConfig, token, owner = false, publisher = false, me = '', myName = '';
   // Cookie credentials never enter browser storage or an Authorization header.
-  var cookieSession = false, csrfToken = '', authOptions = null;
+  var cookieSession = false, csrfToken = '', authOptions = null, authDiscoveryFailed = false, authSetupCleanup = null;
   var draft = false; // saves go to drafts (editor server) instead of straight to the branch
   var pending = { list: [], at: 0 }; // unpublished drafts, as the server last said
   var cur = null; // the open file: { path, sha, indent, data, orig }
@@ -469,7 +469,7 @@
     $('#burger').setAttribute('aria-expanded', String(!!open));
     if (restoreFocus) $('#burger').focus();
   }
-  function main() { var m = token ? $('#main') : el('main'); m.textContent = ''; window.scrollTo(0, 0); return m; }
+  function main() { if (authSetupCleanup) authSetupCleanup(); var m = token ? $('#main') : el('main'); m.textContent = ''; window.scrollTo(0, 0); return m; }
   function head(title, sub, actions) { return el('header', { class: 'phd' }, el('div', {}, el('h1', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), actions ? el('div', { class: 'acts' }, actions) : null); }
   function viewLink(p, text, cls) { return el('a', { class: 'btn ghost' + (cls ? ' ' + cls : ''), href: '..' + p, target: '_blank', rel: 'noopener' }, icon('eye'), text || 'צפייה באתר'); }
   function loading(m) { m.append(el('p', { class: 'loading', text: 'טוען…' })); }
@@ -2073,6 +2073,7 @@
     else home();
   }
   window.addEventListener('hashchange', function () { route(); });
+  window.addEventListener('pagehide', function () { if (authSetupCleanup) authSetupCleanup(false); });
 
   // ---- dialogs ----
   function dialog(title, fields, okText, ok) {
@@ -2110,24 +2111,50 @@
   }
   function acceptCookieSession(result) {
     if (!validCookieSession(result)) throw new Error('לא ניתן להשלים את ההתחברות. נסו שוב.');
+    googleAttempt++;
     remember(null); cookieSession = true; csrfToken = result.csrfToken;
     // This object is only a liveness marker for the editor's cancellation logic;
     // it is never persisted or included in a request header or request body.
     token = {}; owner = !!result.user.owner;
   }
   function showLoginMethods() {
-    var local = !!(authOptions && authOptions.localEnabled), googleEnabled = !authOptions || authOptions.googleEnabled;
+    var local = !authDiscoveryFailed && !!(authOptions && authOptions.localEnabled), googleEnabled = !authDiscoveryFailed && (!authOptions || authOptions.googleEnabled);
     if (local) $('#local-login').action = cfg.worker.replace(/\/$/, '') + '/auth/login';
     $('#local-login').hidden = !local; $('#gbox').hidden = !googleEnabled;
     $('#auth-divider').hidden = !(local && googleEnabled);
+    if (authDiscoveryFailed) showDiscoveryFailure();
     if (googleEnabled) google();
+  }
+  function showDiscoveryFailure() {
+    $('#lerr').textContent = 'לא ניתן לבדוק כרגע את דרכי הכניסה המאובטחות. בדקו את החיבור ונסו שוב.';
+    var retry = $('#auth-discovery-retry');
+    if (!retry) {
+      retry = el('button', { type: 'button', id: 'auth-discovery-retry', class: 'btn', text: 'בדיקה מחדש של דרכי הכניסה' });
+      $('#lerr').after(retry);
+      retry.addEventListener('click', function () { retry.disabled = true; $('#lerr').textContent = ''; startAuthentication(saved()).finally(function () { retry.disabled = false; }); });
+    }
+    retry.hidden = false;
+  }
+  function discoverAuthentication() {
+    return authCall('/options', 'GET', undefined, true).then(function (options) {
+      if (typeof options.localEnabled !== 'boolean' || typeof options.googleEnabled !== 'boolean' || typeof options.settingsAvailable !== 'boolean') throw new Error('invalid authentication options');
+      if (options.googleManaged === true && (typeof options.googleClientId !== 'string' || (options.googleEnabled && !options.googleClientId) || !['number', 'string'].includes(typeof options.googleRevision))) throw new Error('invalid Google provider options');
+      var oldKey = googleProvider().key;
+      authOptions = options; authDiscoveryFailed = false;
+      if (oldKey !== googleProvider().key) { gAsk = null; gClientKey = ''; googleAttempt++; }
+      var retry = $('#auth-discovery-retry'); if (retry) retry.hidden = true;
+      return options;
+    }).catch(function (error) {
+      // A failed refresh must also invalidate an older managed provider. Keep
+      // the existing read-only capabilities until a verified refresh succeeds.
+      if (!error.editorSessionEnded) { authDiscoveryFailed = true; gAsk = null; gClientKey = ''; googleAttempt++; }
+      throw error;
+    });
   }
   function startAuthentication(stored) {
     var sameOrigin = false;
     try { sameOrigin = new URL(cfg.worker, location.href).origin === location.origin; } catch { /* legacy configuration error follows existing handling */ }
-    var discover = sameOrigin ? authCall('/options', 'GET', undefined, true).then(function (options) {
-      if (typeof options.localEnabled === 'boolean' && typeof options.googleEnabled === 'boolean' && typeof options.settingsAvailable === 'boolean') authOptions = options;
-    }).catch(function () { /* No local feature: retain the existing Google sign-in. */ }) : Promise.resolve();
+    var discover = sameOrigin ? discoverAuthentication() : Promise.resolve();
     return discover.then(function () {
       if (!authOptions || !authOptions.settingsAvailable) return null;
       return authCall('/session', 'GET', undefined, true).then(function (result) { return validCookieSession(result) ? result : null; }).catch(function () { return null; });
@@ -2137,6 +2164,10 @@
         token = stored.token; owner = !!stored.owner; return enter(stored.email);
       }
       showLoginMethods();
+    }).catch(function (error) {
+      if (error.editorSessionEnded) return;
+      authOptions = null; authDiscoveryFailed = true; gAsk = null; gClientKey = ''; googleAttempt++;
+      showLoginMethods();
     });
   }
   function localLogin(event) {
@@ -2144,6 +2175,7 @@
     if (authLoginBusy || !authOptions || !authOptions.localEnabled) return;
     var form = $('#local-login'); if (!form.reportValidity()) return;
     var epoch = sessionEpoch, password = $('#local-password').value;
+    googleAttempt++;
     authLoginBusy = true; $('#local-signin').disabled = true; $('#local-signin').textContent = 'מתחבר…';
     $('#gsign').disabled = true; $('#lerr').textContent = '';
     authCall('/login', 'POST', { username: $('#local-user').value.trim(), password: password }, true)
@@ -2164,12 +2196,125 @@
       say('היציאה לא הושלמה. בדקו את החיבור ונסו שוב.', 'bad');
     }).finally(function () { $('#out').disabled = false; });
   }
+  function googleSetupPanel(container, setup, epoch) {
+    var panel = el('section', { class: 'card google-setup', id: 'auth-google-setup', 'aria-labelledby': 'google-setup-title' },
+      el('h2', { id: 'google-setup-title', text: 'הגדרת כניסה עם Google' }),
+      el('p', { text: 'מגדירים לקוח באתר Google, מאמתים אותו ורק אז מפעילים את הכניסה. החשבון המקומי שלכם נשאר מחובר.' }));
+    container.append(panel);
+    var links = el('p', { class: 'google-setup-links' },
+      el('a', { href: 'https://console.cloud.google.com/auth/clients', target: '_blank', rel: 'noopener noreferrer', text: 'פתיחת לקוחות Google Auth' }),
+      el('a', { href: 'https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid', target: '_blank', rel: 'noopener noreferrer', text: 'המדריך הרשמי של Google' }));
+    panel.append(el('ol', { class: 'steps google-setup-steps' },
+      el('li', { text: 'במסוף Google בוחרים פרויקט קיים או יוצרים פרויקט חדש. משלימים את הגדרת האפליקציה וקהל המשתמשים לפי ההנחיות של Google.' }),
+      el('li', { text: 'יוצרים לקוח OAuth מסוג Web application, או פותחים לקוח קיים. מוסיפים את כתובת האתר המדויקת שלמטה לשדה Authorized JavaScript origins.' }),
+      el('li', { text: 'מעתיקים את Client ID לכאן. אין צורך להעתיק Client secret או סיסמה של Google.' })), links);
+    var originInput = el('input', { id: 'google-setup-origin', type: 'text', readonly: true, dir: 'ltr', value: setup.origin || '', autocomplete: 'off' });
+    var copy = el('button', { id: 'google-copy-origin', type: 'button', class: 'btn', text: 'העתקת כתובת האתר' });
+    var copyStatus = el('p', { class: 'help', role: 'status' });
+    panel.append(el('div', { class: 'fld' }, el('label', { for: 'google-setup-origin', text: 'כתובת האתר המדויקת להגדרה ב־Google' }), el('div', { class: 'google-origin-row' }, originInput, copy)), copyStatus);
+    copy.addEventListener('click', function () {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) { originInput.focus(); originInput.select(); copyStatus.textContent = 'הכתובת מסומנת. העתיקו אותה והדביקו ב־Google.'; return; }
+      navigator.clipboard.writeText(originInput.value).then(function () { copyStatus.textContent = 'כתובת האתר הועתקה.'; }, function () { originInput.focus(); originInput.select(); copyStatus.textContent = 'הכתובת מסומנת. העתיקו אותה והדביקו ב־Google.'; });
+    });
+    if (setup.activeClientId) panel.append(el('p', { class: 'help google-active-client' }, 'מזהה הלקוח השמור: ', el('bdi', { dir: 'ltr', text: setup.activeClientId })));
+    if (!setup.configurable) { panel.append(el('p', { class: 'note', text: 'כדי לשנות את הגדרת Google, צאו והתחברו באמצעות חשבון המנהל המקומי.' })); return; }
+    if (!setup.activationAllowed) panel.append(el('p', { class: 'note', id: 'google-activation-unavailable', text: 'הפעלת Google עדיין כבויה בהגדרות האחסון. אפשר להכין ולאמת את ההגדרה כאן; ההפעלה תתאפשר לאחר שמתחזק האתר יאשר אותה.' }));
+    var prepare = el('form', { id: 'google-prepare', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/google/prepare' });
+    var clientId = el('input', { id: 'google-client-id', name: 'clientId', type: 'text', dir: 'ltr', required: true, autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false', maxlength: '256', value: setup.clientId || '' });
+    var preparePassword = el('input', { id: 'google-prepare-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '128' });
+    var prepareSubmit = el('button', { id: 'google-prepare-submit', type: 'submit', class: 'btn pri', disabled: true, text: 'הכנת אימות Google' });
+    prepare.append(el('div', { class: 'fld' }, el('label', { for: 'google-client-id', text: 'מזהה לקוח Google — Client ID' }), clientId),
+      el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'google-prepare-password', text: 'הסיסמה המקומית הנוכחית לאישור ההכנה' }), preparePassword), prepareSubmit);
+    var status = el('p', { id: 'google-setup-status', class: 'auth-status', role: 'status' });
+    var error = el('p', { id: 'google-setup-error', class: 'err', role: 'alert' });
+    var proofButton = el('div', { id: 'google-proof-button', class: 'google-proof-button', hidden: true });
+    var cancel = el('button', { id: 'google-setup-cancel', type: 'button', class: 'btn', hidden: true, text: 'ביטול האימות' });
+    var activate = el('form', { id: 'google-activate', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/google/activate', hidden: true },
+      el('h3', { text: 'הפעלת הכניסה' }), el('p', { class: 'help', text: 'האימות אינו מחליף את החשבון המחובר. הזינו שוב את הסיסמה המקומית כדי להפעיל את Google כדרך כניסה נוספת.' }));
+    var activatePassword = el('input', { id: 'google-activate-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '128' });
+    var activateSubmit = el('button', { id: 'google-activate-submit', type: 'submit', class: 'btn pri', disabled: true, text: 'הפעלת כניסה עם Google' });
+    activate.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'google-activate-password', text: 'הסיסמה המקומית הנוכחית לאישור ההפעלה' }), activatePassword), activateSubmit);
+    panel.append(prepare, status, error, proofButton, activate, cancel);
+    var serial = 0, challenge = null, expiryTimer = null, busy = false;
+    function current(attempt) { return attempt === serial && epoch === sessionEpoch && !!token && panel.isConnected; }
+    function clearProof(message) {
+      serial++; challenge = null; busy = false; cancelLater(expiryTimer); expiryTimer = null;
+      preparePassword.value = ''; activatePassword.value = ''; proofButton.textContent = ''; proofButton.hidden = true;
+      activate.hidden = true; activateSubmit.disabled = true; cancel.hidden = true; prepareSubmit.disabled = false;
+      status.textContent = message || ''; error.textContent = '';
+      if (window.google && window.google.accounts && window.google.accounts.id && window.google.accounts.id.cancel) window.google.accounts.id.cancel();
+    }
+    function expireAt(value, attempt) {
+      var deadline = typeof value === 'number' ? value : Date.parse(value);
+      if (!Number.isFinite(deadline) || deadline <= Date.now()) throw new Error('תוקף האימות הסתיים. התחילו אימות חדש.');
+      cancelLater(expiryTimer);
+      expiryTimer = later(function () { if (current(attempt)) clearProof('תוקף האימות הסתיים. התחילו אימות חדש.'); }, Math.min(deadline - Date.now(), 300000));
+    }
+    authSetupCleanup = function (detach) { clearProof(); if (detach !== false) authSetupCleanup = null; };
+    clientId.addEventListener('input', function () { clearProof('המזהה השתנה. יש לבצע אימות חדש לפני ההפעלה.'); });
+    cancel.addEventListener('click', function () { clearProof('האימות בוטל. אפשר להתחיל מחדש.'); });
+    prepare.addEventListener('submit', function (event) {
+      event.preventDefault(); if (busy || !prepare.reportValidity()) return;
+      var password = preparePassword.value, requestedClient = clientId.value.trim();
+      clearProof(); var attempt = serial; busy = true; prepareSubmit.disabled = true; cancel.hidden = false;
+      status.textContent = 'מכין אימות מאובטח…';
+      authCall('/google/prepare', 'POST', { clientId: requestedClient, currentPassword: password }).then(function (prepared) {
+        password = ''; if (!current(attempt)) return;
+        if (prepared.clientId !== requestedClient || typeof prepared.nonce !== 'string' || !prepared.nonce || !['number', 'string'].includes(typeof prepared.revision)) throw new Error('לא ניתן להכין את האימות. נסו שוב.');
+        challenge = { clientId: prepared.clientId, revision: prepared.revision, verified: false };
+        expireAt(prepared.expiresAt, attempt);
+        return loadGoogleSdk().then(function (sdk) {
+          if (!current(attempt)) { prepared.nonce = ''; return; }
+          if (!sdk.id || !sdk.id.initialize || !sdk.id.renderButton) throw new Error('לא ניתן לטעון את כפתור האימות של Google. נסו שוב.');
+          sdk.id.initialize({ client_id: prepared.clientId, nonce: prepared.nonce, ux_mode: 'popup', auto_select: false, button_auto_select: false,
+            callback: function (response) {
+              if (!current(attempt) || !challenge || challenge.verified || busy) return;
+              if (!response || typeof response.credential !== 'string' || !response.credential) { clearProof(); error.textContent = 'האימות עם Google לא הושלם. התחילו מחדש.'; return; }
+              busy = true; prepareSubmit.disabled = true; proofButton.hidden = true; status.textContent = 'בודק את האימות של Google…';
+              authCall('/google/verify', 'POST', { credential: response.credential, revision: challenge.revision }).then(function (verified) {
+                if (!current(attempt)) return;
+                if (!verified.verified || verified.clientId !== challenge.clientId || !['number', 'string'].includes(typeof verified.revision)) throw new Error('האימות לא הושלם. התחילו מחדש.');
+                challenge = { clientId: verified.clientId, revision: verified.revision, verified: true };
+                expireAt(verified.verifiedUntil, attempt); proofButton.textContent = '';
+                status.textContent = 'Google אומת בהצלחה. הכניסה תופעל רק לאחר האישור הנפרד שלמטה.';
+                activate.hidden = false; activateSubmit.disabled = !setup.activationAllowed;
+              }).catch(function (failure) { if (current(attempt) && !failure.editorSessionEnded) { clearProof(); error.textContent = failure.message; } })
+                .finally(function () { if (current(attempt)) { busy = false; prepareSubmit.disabled = false; } });
+            } });
+          prepared.nonce = ''; proofButton.hidden = false;
+          sdk.id.renderButton(proofButton, { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', locale: 'he', width: Math.max(200, Math.min(360, Math.floor(proofButton.clientWidth || 240))) });
+          status.textContent = 'לחצו על הכפתור הרשמי של Google כדי לאמת את ההגדרה. הכניסה למערכת לא משתנה בשלב הזה.';
+        });
+      }).catch(function (failure) { if (current(attempt) && !failure.editorSessionEnded) { clearProof(); error.textContent = failure.message; } })
+        .finally(function () { password = ''; preparePassword.value = ''; if (current(attempt)) { busy = false; prepareSubmit.disabled = false; } });
+    });
+    prepareSubmit.disabled = false;
+    activate.addEventListener('submit', function (event) {
+      event.preventDefault();
+      if (busy || !setup.activationAllowed || !challenge || !challenge.verified || !activate.reportValidity()) return;
+      var attempt = serial, revision = challenge.revision, password = activatePassword.value;
+      activatePassword.value = ''; busy = true; activateSubmit.disabled = true; prepareSubmit.disabled = true; error.textContent = '';
+      authCall('/google/activate', 'POST', { revision: revision, currentPassword: password }).then(function (result) {
+        password = ''; if (!current(attempt)) return;
+        if (!result.activated) throw new Error('ההפעלה לא הושלמה. נסו שוב.');
+        clearProof(); attempt = serial;
+        return discoverAuthentication().then(function () {
+          sessionCheck(epoch); if (!current(attempt)) return;
+          authSettingsScreen(); say('הכניסה עם Google הופעלה. החשבון המקומי נשאר מחובר.', 'ok');
+        });
+      }).catch(function (failure) {
+        if (!current(attempt) || failure.editorSessionEnded) return;
+        clearProof(); error.textContent = failure.message;
+      }).finally(function () { password = ''; activatePassword.value = ''; if (current(attempt)) { busy = false; prepareSubmit.disabled = false; activateSubmit.disabled = !setup.activationAllowed; } });
+    });
+    if (setup.pending || setup.verified) status.textContent = 'קיימת הכנה קודמת. התחילו אימות חדש במסך הזה לפני ההפעלה.';
+  }
   function authSettingsScreen() {
     var screen = main(), epoch = sessionEpoch;
     screen.append(head('הגדרות התחברות', 'ניהול דרכי הכניסה למערכת והסיסמה שלכם.'));
     var content = el('div', { class: 'auth-settings' }); screen.append(content); loading(content);
     authCall('/settings').then(function (settings) {
-      sessionCheck(epoch); if (!screen.isConnected) return;
+      sessionCheck(epoch); if (!screen.isConnected || !content.isConnected) return;
       content.textContent = '';
       var methods = el('form', { class: 'card', id: 'auth-methods', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/settings' }, el('h2', { text: 'דרכי כניסה' }),
         el('p', { text: 'כדי לכבות דרך כניסה, יש לאמת קודם דרך חלופית. תמיד תישאר דרך פעילה לכניסת מנהל.' }));
@@ -2182,7 +2327,8 @@
       var local = method('auth-local-enabled', 'שם משתמש וסיסמה', settings.username ? 'חשבון מנהל: ' + settings.username : 'כניסה באמצעות חשבון מקומי שאושר.', !!settings.localEnabled, !!settings.canDisableLocal);
       var googleAvailable = settings.googleAvailable !== false;
       var googleEnabled = method('auth-google-enabled', 'Google', googleAvailable ? 'ההרשאות של חשבונות Google נשארות כפי שהוגדרו ברשימת העורכים.' : 'Google אינו מופעל באתר הזה. ניתן להפעילו לאחר השלמת ההגדרה באחסון.', !!settings.googleEnabled, !!settings.canDisableGoogle);
-      if (!googleAvailable) googleEnabled.disabled = true;
+      if (!googleAvailable || (settings.googleSetup && !settings.googleEnabled)) googleEnabled.disabled = true;
+      if (settings.googleSetup && !settings.googleEnabled) methods.append(el('p', { class: 'help', text: 'להפעלת Google יש להשלים את ההגדרה והאימות באשף שבהמשך.' }));
       var currentPassword = null;
       if (settings.method === 'local') {
         currentPassword = el('input', { id: 'auth-method-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '128' });
@@ -2206,6 +2352,7 @@
           .finally(function () { if (currentPassword) currentPassword.value = ''; methodSave.disabled = false; });
       });
       content.append(methods);
+      if (settings.googleSetup) googleSetupPanel(content, settings.googleSetup, epoch);
       if (settings.method !== 'local') return;
       var passwords = el('form', { class: 'card', id: 'auth-password-change', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/password' }, el('h2', { text: 'שינוי סיסמה' }),
         el('p', { text: 'בחרו סיסמה ארוכה וייחודית, עם 15 תווים לפחות. החלפת הסיסמה תוציא את החשבון משאר ההתחברויות.' }));
@@ -2232,7 +2379,7 @@
       });
       content.append(passwords);
     }).catch(function (error) {
-      if (error.editorSessionEnded || epoch !== sessionEpoch || !screen.isConnected) return;
+      if (error.editorSessionEnded || epoch !== sessionEpoch || !screen.isConnected || !content.isConnected) return;
       content.textContent = ''; content.append(el('p', { class: 'alert', role: 'alert', text: error.message }));
     });
   }
@@ -2273,6 +2420,8 @@
     // Expiry must capture the last keystroke, even before the local-save debounce fires.
     // Explicit logout has already asked leave() whether to discard unsaved changes.
     if (why) keepLocal();
+    if (authSetupCleanup) authSetupCleanup();
+    googleAttempt++;
     sessionEpoch++; remember(null); token = ''; cookieSession = false; csrfToken = '';
     requests.forEach(function (r) { r.abort(); }); requests.clear();
     transfers.forEach(function (r) { r.abort(); }); transfers.clear();
@@ -2294,39 +2443,66 @@
     if (focus === $('#lerr')) focus.tabIndex = -1;
     focus.focus();
   }
-  // Google sign-in, with the page's own button: Google's library opens its sign-in popup and gives back a short-lived access
-  // token for the account's email; the editor server checks it with Google (and that the email may edit), and returns a 12-hour session.
-  // (Google's own ready-made button needs inline styles, which this page's content policy does not allow.)
-  var gStarted = false, gAsk = null, googleEpoch = 0;
-  function gBusy(on) { var b = $('#gsign'); b.disabled = !!on || authLoginBusy; $('#local-signin').disabled = !!on || authLoginBusy; $('#gtxt').textContent = on ? 'מתחבר…' : 'המשך עם Google'; }
+  // The shared GIS loader serves ordinary OAuth sign-in and the setup-only ID
+  // proof. Managed deployments take their client and revision from the server.
+  var gStarted = false, gAsk = null, gClientKey = '', googleAttempt = 0, googleSdkPromise = null;
+  function googleProvider() {
+    if (authDiscoveryFailed || (authOptions && !authOptions.googleEnabled)) return { id: '', key: '' };
+    if (authOptions && authOptions.googleManaged === true) {
+      var managedId = authOptions.googleClientId || '';
+      return { id: managedId, key: managedId ? JSON.stringify([managedId, authOptions.googleRevision]) : '' };
+    }
+    return { id: cfg && cfg.googleClientId || '', key: cfg && cfg.googleClientId || '' };
+  }
+  function loadGoogleSdk() {
+    if (window.google && window.google.accounts) return Promise.resolve(window.google.accounts);
+    if (googleSdkPromise) return googleSdkPromise;
+    googleSdkPromise = new Promise(function (resolve, reject) {
+      var script = document.createElement('script'); script.src = 'https://accounts.google.com/gsi/client';
+      script.onload = function () {
+        if (window.google && window.google.accounts) resolve(window.google.accounts);
+        else { googleSdkPromise = null; script.remove(); reject(new Error('לא ניתן לטעון את ההתחברות של Google. נסו שוב.')); }
+      };
+      script.onerror = function () { googleSdkPromise = null; script.remove(); reject(new Error('לא הצלחנו לטעון את ההתחברות של Google. בדקו את החיבור לאינטרנט ונסו שוב.')); };
+      document.head.append(script);
+    });
+    return googleSdkPromise;
+  }
+  function gBusy(on) { var b = $('#gsign'); b.disabled = !!on || authLoginBusy || !gAsk; $('#local-signin').disabled = !!on || authLoginBusy; $('#gtxt').textContent = on ? 'מתחבר…' : 'המשך עם Google'; }
   function google() {
-    if (authOptions && !authOptions.googleEnabled) { $('#gbox').hidden = true; return; }
+    var provider = googleProvider();
+    if (!provider.id) { $('#gbox').hidden = true; gAsk = null; return; }
     $('#gbox').hidden = false;
-    if (gStarted) return;
-    gStarted = true;
-    $('#gsign').addEventListener('click', function () { if (authLoginBusy) return; $('#lerr').textContent = ''; if (gAsk) { googleEpoch = sessionEpoch; gBusy(true); gAsk(); } });
-    var s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.onerror = function () { $('#lerr').textContent = 'לא הצלחנו לטעון את ההתחברות של Google. בדקו את החיבור לאינטרנט ורעננו את הדף.'; };
-    s.onload = function () {
-      var client = window.google.accounts.oauth2.initTokenClient({
-        client_id: cfg.googleClientId, scope: 'openid email',
-        callback: function (resp) {
-          if (googleEpoch !== sessionEpoch) return;
-          if (!resp || resp.error || !resp.access_token) { gBusy(false); $('#lerr').textContent = 'ההתחברות עם Google לא הושלמה. נסו שוב.'; return; }
-          var epoch = sessionEpoch;
-          sessionFetch(cfg.worker.replace(/\/$/, '') + '/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access_token: resp.access_token }) }, function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'ההתחברות נכשלה'); return j; }); }, true)
-            .then(function (j) { if (epoch !== sessionEpoch) throw endedSession(); token = j.token; owner = !!j.owner; remember({ token: j.token, email: j.email, owner: owner }, $('#grem').checked); return enter(j.email); })
-            .catch(function (e) { if (epoch === sessionEpoch && !e.editorSessionEnded) $('#lerr').textContent = e.message; })
-            .then(function () { if (epoch === sessionEpoch) gBusy(false); });
-        },
-        // The popup was closed, or the browser blocked it: nothing to show for the first, a hint for the second.
-        error_callback: function (err) { gBusy(false); if (err && err.type === 'popup_failed_to_open') $('#lerr').textContent = 'הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצ׳ים לאתר הזה ונסו שוב.'; },
-      });
-      gAsk = function () { client.requestAccessToken({ prompt: 'select_account' }); };
-      $('#gsign').disabled = authLoginBusy;
-    };
-    document.head.append(s);
+    if (!gStarted) {
+      gStarted = true;
+      $('#gsign').addEventListener('click', function () { if (authLoginBusy || !gAsk) return; $('#lerr').textContent = ''; gAsk(); });
+    }
+    if (gAsk && gClientKey === provider.key) { gBusy(false); return; }
+    gAsk = null; gClientKey = provider.key; gBusy(false);
+    loadGoogleSdk().then(function (sdk) {
+      if (googleProvider().key !== provider.key) return;
+      if (!sdk.oauth2 || !sdk.oauth2.initTokenClient) throw new Error('לא ניתן לטעון את ההתחברות של Google. נסו שוב.');
+      gAsk = function () {
+        if (googleProvider().key !== provider.key) return;
+        var epoch = sessionEpoch, attempt = ++googleAttempt;
+        function current() { return epoch === sessionEpoch && attempt === googleAttempt && googleProvider().key === provider.key; }
+        gBusy(true);
+        var client = sdk.oauth2.initTokenClient({
+          client_id: provider.id, scope: 'openid email',
+          callback: function (resp) {
+            if (!current()) return;
+            if (!resp || resp.error || !resp.access_token) { gBusy(false); $('#lerr').textContent = 'ההתחברות עם Google לא הושלמה. נסו שוב.'; return; }
+            sessionFetch(cfg.worker.replace(/\/$/, '') + '/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access_token: resp.access_token }) }, function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'ההתחברות נכשלה'); return j; }); }, true)
+              .then(function (j) { if (!current()) throw endedSession(); token = j.token; owner = !!j.owner; remember({ token: j.token, email: j.email, owner: owner }, $('#grem').checked); return enter(j.email); })
+              .catch(function (e) { if (current() && !e.editorSessionEnded) $('#lerr').textContent = e.message; })
+              .finally(function () { if (current()) gBusy(false); });
+          },
+          error_callback: function (err) { if (!current()) return; gBusy(false); if (err && err.type === 'popup_failed_to_open') $('#lerr').textContent = 'הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצ׳ים לאתר הזה ונסו שוב.'; },
+        });
+        client.requestAccessToken({ prompt: 'select_account' });
+      };
+      gBusy(false);
+    }).catch(function (error) { if (googleProvider().key === provider.key) $('#lerr').textContent = error.message; });
   }
   Promise.all([fetch('config.json').then(function (r) { return r.json(); }), import('./deployment-status.mjs')]).then(function (loaded) {
     var c = loaded[0]; deploymentTools = loaded[1]; deploymentConfig = deploymentTools.deploymentSettings(c.deployment);
