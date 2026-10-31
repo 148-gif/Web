@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createCmsServer } from './http.mjs';
 import { createFileMedia } from './file-media.mjs';
 import { createInitializedMysqlPool } from './mysql-pool.mjs';
+import { createLocalAuth } from './local-auth.mjs';
 import { createWorkersAi, WorkersAiConfigurationError, WORKERS_AI_PROVIDER } from './workers-ai.mjs';
 import worker from '../cms-worker/worker.mjs';
 
@@ -41,6 +42,10 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
   const allowLocal = flag(values, 'CMS_LOCAL_DEVELOPMENT');
   const publicOrigin = origin(values, 'CMS_PUBLIC_ORIGIN', allowLocal);
   const allowedOrigin = origin(values, 'ALLOWED_ORIGIN', allowLocal);
+  const localAuthEnabled = flag(values, 'CMS_LOCAL_AUTH_ENABLED');
+  const googleEnabled = flag(values, 'CMS_GOOGLE_AUTH_ENABLED', true);
+  if (!localAuthEnabled && !googleEnabled) invalid('CMS_GOOGLE_AUTH_ENABLED', 'at least one configured authentication provider is required');
+  if (localAuthEnabled && allowedOrigin !== publicOrigin) invalid('ALLOWED_ORIGIN', 'local authentication requires the same public and API origin');
   const apiBasePath = values.CMS_API_BASE_PATH || '';
   if (typeof apiBasePath !== 'string' || (apiBasePath && !/^\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+$/.test(apiBasePath))) invalid('CMS_API_BASE_PATH', 'must be empty or a canonical path without a trailing slash');
   const repo = text(values, 'REPO'), branch = text(values, 'BRANCH');
@@ -52,7 +57,7 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
   if (Buffer.byteLength(sessionSecret) < 32) invalid('SESSION_SECRET', 'must contain at least32 bytes');
   const env = {
     ALLOWED_ORIGIN: allowedOrigin, REPO: repo, BRANCH: branch, OWNERS: owners, CMS_STAGING: flag(values, 'CMS_STAGING', true),
-    GOOGLE_CLIENT_ID: text(values, 'GOOGLE_CLIENT_ID'), GITHUB_TOKEN: text(values, 'GITHUB_TOKEN'), SESSION_SECRET: sessionSecret,
+    GOOGLE_CLIENT_ID: googleEnabled ? text(values, 'GOOGLE_CLIENT_ID') : '', GITHUB_TOKEN: text(values, 'GITHUB_TOKEN'), SESSION_SECRET: sessionSecret,
   };
   for (const name of ['MEDIA_GH_FILE_MB', 'MEDIA_GH_TOTAL_MB', 'MEDIA_R2_FILE_MB', 'MEDIA_R2_TOTAL_GB', 'TRANSLATE_PER_USER', 'TRANSLATE_PER_DAY', 'RATE_LOGIN_PER_MINUTE', 'RATE_LOGIN_PER_CLIENT', 'RATE_WRITE_PER_MINUTE']) {
     if (values[name] !== undefined) env[name] = text(values, name);
@@ -88,7 +93,7 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
   }
   return {
     publicOrigin, apiBasePath, env, ai, bindHost, trustedProxyIps, staging: env.CMS_STAGING, port: integer(values, 'PORT', 3000),
-    publishEnabled: flag(values, 'CMS_PUBLISH_ENABLED'), readOnly: flag(values, 'CMS_READ_ONLY'),
+    publishEnabled: flag(values, 'CMS_PUBLISH_ENABLED'), readOnly: flag(values, 'CMS_READ_ONLY'), localAuthEnabled, googleEnabled,
     mediaRoot: text(values, 'CMS_MEDIA_ROOT'), publicRoot: text(values, 'CMS_PUBLIC_ROOT'),
     mediaMaxBytes: Number(env.MEDIA_R2_FILE_MB || 90) * 1024 ** 2,
     appRoot: values.CMS_APP_ROOT, sslMode, caFile: values.MYSQL_SSL_CA,
@@ -124,7 +129,10 @@ export function runtimeHandler(config, handleRequest = worker.fetch) {
   return async (request, env) => {
     const path = new URL(request.url).pathname;
     const mutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
-    const blocked = mutation && ((config.readOnly && path !== '/session') || (!config.publishEnabled && path === '/publish'));
+    const authWrite = path === '/session' && request.method === 'POST' || config.localAuthEnabled && (
+      request.method === 'POST' && ['/auth/login', '/auth/logout', '/auth/bootstrap', '/auth/password'].includes(path) ||
+      request.method === 'PUT' && path === '/auth/settings');
+    const blocked = mutation && ((config.readOnly && !authWrite) || (!config.publishEnabled && path === '/publish'));
     if (blocked) {
       const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Retry-After': '60' };
       if (request.headers.get('Origin') === env.ALLOWED_ORIGIN) { headers['Access-Control-Allow-Origin'] = env.ALLOWED_ORIGIN; headers.Vary = 'Origin'; }
@@ -171,7 +179,16 @@ export async function createRuntime({ values = process.env, nodeVersion = proces
     const store = makeStore(pool);
     await store.ensureSchema();
     const env = { ...config.env, ...(config.ai ? { AI: config.ai } : {}), DATA_STORE: store, EDITORS: makeKv(pool), RATE_LIMIT_STORE: makeRate(pool), MEDIA: createFileMedia({ root: paths.CMS_MEDIA_ROOT, maxBytes: config.mediaMaxBytes }) };
-    server = createCmsServer({ env, publicOrigin: config.publicOrigin, basePath: config.apiBasePath, trustedProxyIps: config.trustedProxyIps, noIndex: config.staging, handleRequest: runtimeHandler(config, dependencies.handleRequest || worker.fetch) });
+    let handler = dependencies.handleRequest || worker.fetch;
+    if (config.localAuthEnabled) {
+      const makeAuth = dependencies.createAuthStore || (await import('./mysql-auth-store.mjs')).createMysqlAuthStore;
+      const authStore = makeAuth(pool);
+      await authStore.ensureSchema();
+      const auth = createLocalAuth({ store: authStore, config });
+      const next = handler;
+      handler = (request, requestEnv) => auth.handle(request, requestEnv, next);
+    }
+    server = createCmsServer({ env, publicOrigin: config.publicOrigin, basePath: config.apiBasePath, trustedProxyIps: config.trustedProxyIps, noIndex: config.staging, handleRequest: runtimeHandler(config, handler) });
     return {
       server, close,
       status: { publicationEnabled: config.publishEnabled, readOnly: config.readOnly, slugAiAvailable: Boolean(config.ai), slugAiProvider: config.ai ? WORKERS_AI_PROVIDER : 'disabled', slugAiVerified: false, schemaVerified: true },
