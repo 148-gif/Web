@@ -3,6 +3,7 @@
 // the Google configuration singleton when that optional addon is enabled.
 import { queryRows, safeInteger, withTransaction } from './mysql-core.mjs';
 import { getGoogleConfig, lockGoogleConfig, saveGoogleConfig, verifyGoogleAuthSchema } from './mysql-google-auth-store.mjs';
+import { getLocalInvitationByHash, saveLocalInvitation, verifyLocalInvitationsSchema } from './mysql-local-invitations-store.mjs';
 
 const HASH = /^[a-f0-9]{64}$/;
 const ID = /^[a-f0-9]{32}$/;
@@ -87,9 +88,10 @@ async function verifySchema(pool) {
   } finally { c.release(); }
 }
 
-export function createMysqlAuthStore(pool, { googleSetup = false } = {}) {
+export function createMysqlAuthStore(pool, { googleSetup = false, localInvitations = false } = {}) {
   if (!pool || typeof pool.execute !== 'function' || typeof pool.getConnection !== 'function') throw new TypeError('A MySQL pool is required');
   if (typeof googleSetup !== 'boolean') throw new TypeError('Google setup option must be boolean');
+  if (typeof localInvitations !== 'boolean') throw new TypeError('Local invitation option must be boolean');
   let ready;
   const first = async (connection, sql, values = []) => (await queryRows(connection, sql, values))[0] || null;
   const reads = (c, guard = () => {}) => ({
@@ -99,9 +101,20 @@ export function createMysqlAuthStore(pool, { googleSetup = false } = {}) {
     async getSession(value) { guard(); return sessionRow(await first(c, 'SELECT * FROM local_auth_sessions WHERE token_hash = ?', [hash(value)])); },
     async countUsers() { guard(); return number((await first(c, 'SELECT COUNT(*) AS n FROM local_auth_users')).n); },
     ...(googleSetup ? { async getGoogleConfig() { guard(); return getGoogleConfig(c); } } : {}),
+    ...(localInvitations ? {
+      async getInvitationByHash(value) { guard(); return getLocalInvitationByHash(c, value); },
+      async getUserByOwnerHash(value) {
+        guard(); const rows = await queryRows(c, 'SELECT * FROM local_auth_users WHERE owner_hash = ? LIMIT 2', [hash(value)]);
+        if (rows.length > 1) invalid();
+        return rows.length ? userRow(rows[0]) : null;
+      },
+    } : {}),
   });
   return {
-    ensureSchema() { return ready ||= verifySchema(pool).then(async (base) => googleSetup ? { ...base, ...await verifyGoogleAuthSchema(pool) } : base).catch((error) => { ready = undefined; throw error; }); },
+    ensureSchema() { return ready ||= verifySchema(pool).then(async (base) => ({ ...base,
+      ...(googleSetup ? await verifyGoogleAuthSchema(pool) : {}),
+      ...(localInvitations ? await verifyLocalInvitationsSchema(pool) : {}),
+    })).catch((error) => { ready = undefined; throw error; }); },
     ...reads(pool),
     atomic(fn) {
       if (typeof fn !== 'function') throw new TypeError('An authentication transaction callback is required');
@@ -115,6 +128,7 @@ export function createMysqlAuthStore(pool, { googleSetup = false } = {}) {
         const tx = {
           ...reads(c, guard),
           ...(googleSetup ? { async saveGoogleConfig(value) { guard(); await saveGoogleConfig(c, value); } } : {}),
+          ...(localInvitations ? { async saveInvitation(value) { guard(); await saveLocalInvitation(c, value); } } : {}),
           async saveSettings(value) {
             guard(); const s = settingsRow(value);
             if ((await tx.getSettings()).bootstrap_consumed && !s.bootstrap_consumed) invalid();
