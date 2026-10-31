@@ -153,7 +153,7 @@ export async function packageCpanel({ sourceRoot = REPO, commit, branch, output,
     const runtimeFiles = entries.filter((path) => /^server\/[^/]+\.(?:mjs|sql)$/.test(path) || /^cms-worker\/[^/]+\.mjs$/.test(path) || [
       'site/admin/image-rules.mjs', 'package.json', 'package-lock.json', 'passenger.cjs',
       'scripts/check-cpanel-readiness.mjs', 'scripts/prepare-mysql-migration.mjs', 'scripts/import-mysql-migration.mjs', 'scripts/smoke-cpanel.mjs', 'scripts/publish-cpanel.mjs',
-      'scripts/setup-local-auth.mjs', 'scripts/arm-local-auth.mjs',
+      'scripts/setup-local-auth.mjs', 'scripts/arm-local-auth.mjs', 'scripts/setup-google-auth.mjs',
     ].includes(path));
     for (const required of ['server/start.mjs', 'server/runtime.mjs', 'server/mysql-store.mjs', 'server/mysql-kv.mjs', 'server/mysql-rate-limit.mjs', 'package.json', 'package-lock.json', 'passenger.cjs']) if (!runtimeFiles.includes(required)) throw new Error('Source commit lacks a required Node runtime file');
     if (runtimeFiles.some(forbidden)) throw new Error('Runtime selection contains a prohibited path');
