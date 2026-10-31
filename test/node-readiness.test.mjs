@@ -51,3 +51,13 @@ test('ordinary files cannot pass the directory prerequisite', async (t) => {
   const report = await inspectReadiness({ values: { ...values, CMS_MEDIA_ROOT: file }, resolveDriver: () => 'present' });
   assert.equal(report.checks.find((c) => c.name === 'CMS_MEDIA_ROOT').status, 'blocked');
 });
+
+test('explicit local-only configuration does not require a Google client but still requires an enabled provider', async (t) => {
+  const { values } = await setup(t);
+  const local = { ...values, ALLOWED_ORIGIN: values.CMS_PUBLIC_ORIGIN, CMS_LOCAL_AUTH_ENABLED: 'true', CMS_GOOGLE_AUTH_ENABLED: 'false' };
+  delete local.GOOGLE_CLIENT_ID;
+  const report = await inspectReadiness({ values: local, resolveDriver: () => 'present' });
+  assert.equal(report.checks.some((c) => c.status === 'blocked'), false);
+  const unavailable = await inspectReadiness({ values: { ...local, CMS_LOCAL_AUTH_ENABLED: 'false' }, resolveDriver: () => 'present' });
+  assert.equal(unavailable.checks.find((c) => c.name === 'runtime_configuration').status, 'blocked');
+});
