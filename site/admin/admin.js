@@ -131,7 +131,7 @@
   var kindOf = function (t) { return t && t.kind === 'page' ? 'page' : 'collection'; };
   var cfg, deploymentTools, deploymentConfig, token, owner = false, publisher = false, me = '', myName = '';
   // Cookie credentials never enter browser storage or an Authorization header.
-  var cookieSession = false, csrfToken = '', authOptions = null, authDiscoveryFailed = false, authSetupCleanup = null;
+  var cookieSession = false, csrfToken = '', authOptions = null, authDiscoveryFailed = false, authSetupCleanup = null, authInvitationCleanup = null;
   var draft = false; // saves go to drafts (editor server) instead of straight to the branch
   var pending = { list: [], at: 0 }; // unpublished drafts, as the server last said
   var cur = null; // the open file: { path, sha, indent, data, orig }
@@ -469,7 +469,7 @@
     $('#burger').setAttribute('aria-expanded', String(!!open));
     if (restoreFocus) $('#burger').focus();
   }
-  function main() { if (authSetupCleanup) authSetupCleanup(); var m = token ? $('#main') : el('main'); m.textContent = ''; window.scrollTo(0, 0); return m; }
+  function main() { if (authSetupCleanup) authSetupCleanup(); if (authInvitationCleanup) authInvitationCleanup(); var m = token ? $('#main') : el('main'); m.textContent = ''; window.scrollTo(0, 0); return m; }
   function head(title, sub, actions) { return el('header', { class: 'phd' }, el('div', {}, el('h1', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), actions ? el('div', { class: 'acts' }, actions) : null); }
   function viewLink(p, text, cls) { return el('a', { class: 'btn ghost' + (cls ? ' ' + cls : ''), href: '..' + p, target: '_blank', rel: 'noopener' }, icon('eye'), text || 'צפייה באתר'); }
   function loading(m) { m.append(el('p', { class: 'loading', text: 'טוען…' })); }
@@ -2073,7 +2073,7 @@
     else home();
   }
   window.addEventListener('hashchange', function () { route(); });
-  window.addEventListener('pagehide', function () { if (authSetupCleanup) authSetupCleanup(false); });
+  window.addEventListener('pagehide', function () { if (authSetupCleanup) authSetupCleanup(false); if (authInvitationCleanup) authInvitationCleanup(false); });
 
   // ---- dialogs ----
   function dialog(title, fields, okText, ok) {
@@ -2188,6 +2188,7 @@
       });
   }
   function logout() {
+    if (authInvitationCleanup) authInvitationCleanup(false);
     if (!cookieSession) { signout(); return; }
     $('#out').disabled = true;
     authCall('/logout', 'POST', {}).then(function () { signout(); }, function (error) {
@@ -2221,7 +2222,7 @@
     if (!setup.activationAllowed) panel.append(el('p', { class: 'note', id: 'google-activation-unavailable', text: 'הפעלת Google עדיין כבויה בהגדרות האחסון. אפשר להכין ולאמת את ההגדרה כאן; ההפעלה תתאפשר לאחר שמתחזק האתר יאשר אותה.' }));
     var prepare = el('form', { id: 'google-prepare', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/google/prepare' });
     var clientId = el('input', { id: 'google-client-id', name: 'clientId', type: 'text', dir: 'ltr', required: true, autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false', maxlength: '256', value: setup.clientId || '' });
-    var preparePassword = el('input', { id: 'google-prepare-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '128' });
+    var preparePassword = el('input', { id: 'google-prepare-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '256' });
     var prepareSubmit = el('button', { id: 'google-prepare-submit', type: 'submit', class: 'btn pri', disabled: true, text: 'הכנת אימות Google' });
     prepare.append(el('div', { class: 'fld' }, el('label', { for: 'google-client-id', text: 'מזהה לקוח Google — Client ID' }), clientId),
       el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'google-prepare-password', text: 'הסיסמה המקומית הנוכחית לאישור ההכנה' }), preparePassword), prepareSubmit);
@@ -2231,7 +2232,7 @@
     var cancel = el('button', { id: 'google-setup-cancel', type: 'button', class: 'btn', hidden: true, text: 'ביטול האימות' });
     var activate = el('form', { id: 'google-activate', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/google/activate', hidden: true },
       el('h3', { text: 'הפעלת הכניסה' }), el('p', { class: 'help', text: 'האימות אינו מחליף את החשבון המחובר. הזינו שוב את הסיסמה המקומית כדי להפעיל את Google כדרך כניסה נוספת.' }));
-    var activatePassword = el('input', { id: 'google-activate-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '128' });
+    var activatePassword = el('input', { id: 'google-activate-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '256' });
     var activateSubmit = el('button', { id: 'google-activate-submit', type: 'submit', class: 'btn pri', disabled: true, text: 'הפעלת כניסה עם Google' });
     activate.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'google-activate-password', text: 'הסיסמה המקומית הנוכחית לאישור ההפעלה' }), activatePassword), activateSubmit);
     panel.append(prepare, status, error, proofButton, activate, cancel);
@@ -2309,6 +2310,85 @@
     });
     if (setup.pending || setup.verified) status.textContent = 'קיימת הכנה קודמת. התחילו אימות חדש במסך הזה לפני ההפעלה.';
   }
+  function invitationPanel(container, epoch) {
+    var panel = el('section', { class: 'card auth-invitations', id: 'auth-invitations', 'aria-labelledby': 'auth-invitation-title' },
+      el('h2', { id: 'auth-invitation-title', text: 'הזמנת בעלים לחשבון מקומי' }),
+      el('p', { text: 'אפשר להזמין רק כתובת דוא״ל שכבר אושרה כבעלים בהגדרות השרת הפרטיות. המוזמן יבחר בעצמו שם משתמש וסיסמה.' }));
+    var form = el('form', { id: 'auth-invitation-form', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/invitations' });
+    var email = el('input', { id: 'auth-invitation-email', name: 'email', type: 'email', autocomplete: 'off', dir: 'ltr', required: true, maxlength: '254', spellcheck: 'false' });
+    var password = el('input', { id: 'auth-invitation-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '256' });
+    var submit = el('button', { id: 'auth-invitation-submit', type: 'submit', class: 'btn pri', disabled: true, text: 'יצירת הזמנה' });
+    var clear = el('button', { id: 'auth-invitation-clear', type: 'button', class: 'btn ghost', text: 'ניקוי הטופס והקוד' });
+    var error = el('p', { id: 'auth-invitation-error', class: 'err', role: 'alert' });
+    var status = el('p', { id: 'auth-invitation-status', class: 'auth-status', role: 'status' });
+    var result = el('div', { id: 'auth-invitation-result', class: 'auth-invitation-result', hidden: true });
+    var code = el('input', { id: 'auth-invitation-code', type: 'text', readonly: true, autocomplete: 'off', dir: 'ltr', spellcheck: 'false' });
+    var setupUrl = el('input', { id: 'auth-invitation-url', type: 'text', readonly: true, autocomplete: 'off', dir: 'ltr', spellcheck: 'false' });
+    var copyCode = el('button', { id: 'auth-invitation-copy-code', type: 'button', class: 'btn', text: 'העתקת הקוד' });
+    var copyUrl = el('button', { id: 'auth-invitation-copy-url', type: 'button', class: 'btn', text: 'העתקת כתובת ההרשמה' });
+    var expiry = el('p', { class: 'help' });
+    result.append(el('p', { class: 'note', text: 'הקוד מוצג פעם אחת בלבד ותקף ל־15 דקות. העבירו את הקוד ואת כתובת ההרשמה באופן פרטי ורק למוזמן.' }),
+      el('div', { class: 'fld' }, el('label', { for: 'auth-invitation-code', text: 'קוד ההזמנה הפרטי' }), el('div', { class: 'auth-invitation-copy' }, code, copyCode)),
+      el('div', { class: 'fld' }, el('label', { for: 'auth-invitation-url', text: 'כתובת ההרשמה — ללא הקוד' }), el('div', { class: 'auth-invitation-copy' }, setupUrl, copyUrl)), expiry);
+    form.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'auth-invitation-email', text: 'כתובת הדוא״ל של הבעלים המוזמן' }), email),
+      el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'auth-invitation-password', text: 'הסיסמה המקומית הנוכחית שלכם לאישור ההזמנה' }), password),
+      error, el('div', { class: 'acts' }, submit, clear));
+    panel.append(form, status, result);
+    var generation = 0, busy = false, detached = false, expiryTimer = null;
+    function active() { return !detached && epoch === sessionEpoch && token && cookieSession && owner && location.hash === '#/auth' && panel.isConnected; }
+    function clearResult() {
+      clearTimeout(expiryTimer); expiryTimer = null;
+      code.value = ''; setupUrl.value = ''; expiry.textContent = ''; result.hidden = true;
+    }
+    function reset() {
+      generation++; password.value = ''; email.value = ''; clearResult(); error.textContent = ''; status.textContent = '';
+    }
+    authInvitationCleanup = function (detach) {
+      reset();
+      if (detach !== false) { detached = true; authInvitationCleanup = null; }
+    };
+    function copy(input, message) {
+      if (!active() || result.hidden || !input.value) return;
+      var at = generation;
+      if (!navigator.clipboard || !navigator.clipboard.writeText) { input.focus(); input.select(); status.textContent = 'הטקסט מסומן. אפשר להעתיק אותו ידנית.'; return; }
+      navigator.clipboard.writeText(input.value).then(function () { if (active() && at === generation) status.textContent = message; }, function () {
+        if (!active() || at !== generation) return;
+        input.focus(); input.select(); status.textContent = 'הטקסט מסומן. אפשר להעתיק אותו ידנית.';
+      });
+    }
+    copyCode.addEventListener('click', function () { copy(code, 'הקוד הועתק. שתפו אותו באופן פרטי.'); });
+    copyUrl.addEventListener('click', function () { copy(setupUrl, 'כתובת ההרשמה הועתקה בנפרד מהקוד.'); });
+    clear.addEventListener('click', function () { reset(); status.textContent = 'המסך נוקה. הניקוי אינו מבטל הזמנה שכבר נוצרה; היא תפקע בתום 15 דקות.'; });
+    email.addEventListener('input', function () { if (!result.hidden) { generation++; clearResult(); status.textContent = ''; } });
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      if (!active() || busy || !form.reportValidity()) return;
+      clearResult(); error.textContent = ''; status.textContent = 'יוצר הזמנה…';
+      var at = ++generation, body = { email: email.value.trim(), currentPassword: password.value };
+      password.value = ''; busy = true; submit.disabled = true; email.disabled = true;
+      var pending = authCall('/invitations', 'POST', body); body.currentPassword = '';
+      pending.then(function (invitation) {
+        if (!active() || at !== generation) return;
+        var target;
+        try { target = new URL(invitation.setupUrl, location.href); } catch { throw new Error('לא ניתן להציג את ההזמנה. נסו שוב.'); }
+        var expectedUrl = new URL(cfg.worker.replace(/\/$/, '') + '/auth/invitation', location.href);
+        if (typeof invitation.code !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(invitation.code) || typeof invitation.setupUrl !== 'string' ||
+            target.origin !== location.origin || target.href !== expectedUrl.href || target.search || target.hash || target.username || target.password ||
+            !Number.isSafeInteger(invitation.expiresAt) || invitation.expiresAt <= Date.now() || !Number.isFinite(new Date(invitation.expiresAt).getTime())) throw new Error('לא ניתן להציג את ההזמנה. נסו שוב.');
+        code.value = invitation.code; setupUrl.value = target.href; result.hidden = false;
+        expiry.textContent = 'תוקף הקוד עד ' + new Date(invitation.expiresAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) + '. הקוד יימחק מהמסך במעבר לעמוד אחר או ביציאה.';
+        status.textContent = 'ההזמנה נוצרה. העתיקו את הקוד כעת; הוא לא יוצג שוב לאחר ניקוי המסך.';
+        expiryTimer = setTimeout(function () { if (active() && at === generation) { generation++; clearResult(); status.textContent = 'תוקף הצגת הקוד הסתיים. אפשר ליצור הזמנה חדשה.'; } }, Math.min(invitation.expiresAt - Date.now(), 15 * 60000));
+      }).catch(function (failure) {
+        if (!active() || at !== generation || failure.editorSessionEnded) return;
+        clearResult(); status.textContent = ''; error.textContent = failure.message;
+      }).finally(function () { password.value = ''; busy = false; submit.disabled = !active(); email.disabled = false; });
+    });
+    // Native navigation is blocked by the page's form-action policy; POST is
+    // explicit as a second safeguard. No credential-bearing fields are shown
+    // until their submit/cancel handlers exist.
+    submit.disabled = false; container.append(panel);
+  }
   function authSettingsScreen() {
     var screen = main(), epoch = sessionEpoch;
     screen.append(head('הגדרות התחברות', 'ניהול דרכי הכניסה למערכת והסיסמה שלכם.'));
@@ -2331,7 +2411,7 @@
       if (settings.googleSetup && !settings.googleEnabled) methods.append(el('p', { class: 'help', text: 'להפעלת Google יש להשלים את ההגדרה והאימות באשף שבהמשך.' }));
       var currentPassword = null;
       if (settings.method === 'local') {
-        currentPassword = el('input', { id: 'auth-method-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '128' });
+        currentPassword = el('input', { id: 'auth-method-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '256' });
         methods.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'auth-method-password', text: 'הסיסמה הנוכחית לאישור השינוי' }), currentPassword));
       } else methods.append(el('p', { class: 'help', text: 'שינוי ההגדרות דורש התחברות עדכנית עם Google. אם תתבקשו, צאו והתחברו שוב.' }));
       var methodError = el('p', { class: 'err', role: 'alert' }), methodSave = el('button', { type: 'submit', class: 'btn pri', text: 'שמירת דרכי הכניסה' });
@@ -2354,11 +2434,12 @@
       content.append(methods);
       if (settings.googleSetup) googleSetupPanel(content, settings.googleSetup, epoch);
       if (settings.method !== 'local') return;
+      if (settings.invitationsAvailable === true && cookieSession && owner) invitationPanel(content, epoch);
       var passwords = el('form', { class: 'card', id: 'auth-password-change', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/password' }, el('h2', { text: 'שינוי סיסמה' }),
         el('p', { text: 'בחרו סיסמה ארוכה וייחודית, עם 15 תווים לפחות. החלפת הסיסמה תוציא את החשבון משאר ההתחברויות.' }));
       var fields = {};
       [['currentPassword', 'הסיסמה הנוכחית', 'current-password'], ['newPassword', 'סיסמה חדשה', 'new-password'], ['confirmation', 'הסיסמה החדשה שוב', 'new-password']].forEach(function (field) {
-        var id = 'auth-password-' + field[0], input = el('input', { id: id, name: field[0], type: 'password', autocomplete: field[2], dir: 'ltr', required: true, maxlength: '128', minlength: field[0] === 'currentPassword' ? undefined : '15' });
+        var id = 'auth-password-' + field[0], input = el('input', { id: id, name: field[0], type: 'password', autocomplete: field[2], dir: 'ltr', required: true, maxlength: '256', minlength: field[0] === 'currentPassword' ? undefined : '15' });
         fields[field[0]] = input;
         passwords.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: id, text: field[1] }), input));
       });
@@ -2421,6 +2502,7 @@
     // Explicit logout has already asked leave() whether to discard unsaved changes.
     if (why) keepLocal();
     if (authSetupCleanup) authSetupCleanup();
+    if (authInvitationCleanup) authInvitationCleanup();
     googleAttempt++;
     sessionEpoch++; remember(null); token = ''; cookieSession = false; csrfToken = '';
     requests.forEach(function (r) { r.abort(); }); requests.clear();
