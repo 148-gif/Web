@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://148-gif.github.io/Web/sitemap.xml
