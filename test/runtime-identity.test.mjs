@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, link } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, link, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -69,7 +69,7 @@ test('tampered same-size contents, missing files and incorrect declared lengths 
 
 test('manifest schema rejects duplicate, unsafe, undeclared-host and self-referential paths before reading them', async (t) => {
   const badPaths = ['../secret', '/private-fixture-secret', 'server/../start.mjs', 'server\\runtime.mjs',
-    '.env', 'node_modules/provider.mjs', 'tmp/runtime.mjs', 'app-release.json', 'scripts/arbitrary-secret.mjs'];
+    '.env', 'node_modules/provider.mjs', 'tmp/runtime.mjs', 'public/file.txt', 'app-release.json', 'scripts/arbitrary-secret.mjs'];
   for (const path of badPaths) {
     const f = await fixture(t);
     f.document.files.push({ path, bytes: 0, sha256: digest('') }); await f.save();
@@ -139,4 +139,47 @@ test('undeclared source files and directories fail while explicit hosting instal
   await rejected(() => readRuntimeIdentity({ applicationRoot: f.applicationRoot }));
   await rm(join(f.applicationRoot, 'server/unreviewed.mjs')); await mkdir(join(f.applicationRoot, 'unexpected'));
   await rejected(() => readRuntimeIdentity({ applicationRoot: f.applicationRoot }));
+});
+
+test('owned empty Selector public directory preserves the exact runtime identity', async (t) => {
+  const f = await fixture(t), before = await readRuntimeIdentity({ applicationRoot: f.applicationRoot });
+  await mkdir(join(f.applicationRoot, 'public'), { mode: 0o755 });
+  assert.deepEqual(await readRuntimeIdentity({ applicationRoot: f.applicationRoot }), before);
+  await writeFile(join(f.applicationRoot, 'server/unreviewed.mjs'), 'export {};');
+  await rejected(() => readRuntimeIdentity({ applicationRoot: f.applicationRoot }));
+});
+
+test('Selector public must remain empty, including hidden files and subdirectories', async (t) => {
+  for (const entry of ['file.txt', '.hidden', 'nested/']) {
+    const f = await fixture(t), path = join(f.applicationRoot, 'public');
+    await mkdir(path, { mode: 0o755 });
+    if (entry.endsWith('/')) await mkdir(join(path, entry));
+    else await writeFile(join(path, entry), '');
+    await rejected(() => readRuntimeIdentity({ applicationRoot: f.applicationRoot }));
+  }
+});
+
+test('Selector public rejects files and symlinks even when the linked directory is empty', async (t) => {
+  {
+    const f = await fixture(t); await writeFile(join(f.applicationRoot, 'public'), '');
+    await rejected(() => readRuntimeIdentity({ applicationRoot: f.applicationRoot }));
+  }
+  const f = await fixture(t), outside = join(f.base, 'empty');
+  await mkdir(outside); await symlink(outside, join(f.applicationRoot, 'public'));
+  await rejected(() => readRuntimeIdentity({ applicationRoot: f.applicationRoot }));
+});
+
+test('Selector public rejects unsafe permissions and a different effective owner', async (t) => {
+  const f = await fixture(t), path = join(f.applicationRoot, 'public');
+  await mkdir(path, { mode: 0o755 });
+  for (const mode of [0o775, 0o757, 0o1755]) {
+    await chmod(path, mode);
+    await rejected(() => readRuntimeIdentity({ applicationRoot: f.applicationRoot }));
+  }
+  await chmod(path, 0o755);
+  const uid = process.getuid();
+  const mockedUid = t.mock.method(process, 'getuid', () => uid + 1);
+  try { await rejected(() => readRuntimeIdentity({ applicationRoot: f.applicationRoot })); }
+  finally { mockedUid.mock.restore(); }
+  assert.equal((await readRuntimeIdentity({ applicationRoot: f.applicationRoot })).verified, true);
 });
