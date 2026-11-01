@@ -1252,13 +1252,15 @@
       var inp = el('input', { id: 'newed', type: 'email', class: 'ltr', dir: 'ltr', autocomplete: 'off', placeholder: 'name@gmail.com', required: true });
       var nm = el('input', { id: 'newname', type: 'text', maxlength: '40', placeholder: 'למשל: יעקב' });
       var pb = el('input', { id: 'newpub', type: 'checkbox' });
-      var form = el('form', { class: 'addrow' },
-        el('div', { class: 'fld grow' }, el('label', { for: 'newed', text: 'הוספת עורך: כתובת Gmail (או חשבון Google אחר)' }), inp),
-        el('div', { class: 'fld grow' }, el('label', { for: 'newname', text: 'שם תצוגה (יופיע בהיסטוריה הציבורית)' }), nm),
-        el('label', { class: 'chk' }, pb, 'מפרסם'),
-        el('button', { type: 'submit', class: 'btn pri' }, icon('plus'), 'הוספה'));
+      var form = el('form', { class: 'addrow edadd', 'aria-labelledby': 'edaddh' },
+        el('h3', { id: 'edaddh', class: 'edh', text: 'הוספת עורך' }),
+        el('div', { class: 'fld' }, el('label', { for: 'newed', text: 'כתובת Gmail (או חשבון Google אחר)' }), inp),
+        el('div', { class: 'fld' }, el('label', { for: 'newname', text: 'שם תצוגה' }), nm, el('small', { class: 'hint', text: 'יופיע בהיסטוריה הציבורית' })),
+        el('div', { class: 'edacts' }, el('label', { class: 'chk' }, pb, 'מפרסם'),
+          el('button', { type: 'submit', class: 'btn pri' }, icon('plus'), 'הוספה')));
       form.addEventListener('submit', function (e) { e.preventDefault(); var v = inp.value.trim(); if (!v) return; editorsApi('PUT', { email: v, name: nm.value.trim(), publisher: pb.checked }).then(function (l) { say('העורך נוסף: ' + v, 'ok'); drawList(l); }, fail); });
       card.append(form, el('p', { class: 'help', text: 'כל עוד אפליקציית ההתחברות ב־Google במצב בדיקה, צריך להוסיף את העורך גם שם: Google Auth Platform › Audience › Test users. מפרסם יכול לפרסם שינויים לאתר; עורך רגיל רק שומר טיוטות.' }));
+      card.append(el('h3', { class: 'edh edlisth', text: 'עורכים' + (list.length ? ' (' + list.length + ')' : '') }));
       if (!list.length) card.append(el('p', { class: 'help', text: 'עדיין אין עורכים נוספים.' }));
       var ul = el('ul', { class: 'eds' });
       list.forEach(function (ed) {
@@ -1266,7 +1268,7 @@
         name.addEventListener('change', function () { editorsApi('PUT', { email: ed.email, name: name.value.trim() }).then(function () { say('השם נשמר.', 'ok'); }, fail); });
         var pub = el('input', { type: 'checkbox', 'aria-label': 'מפרסם: ' + ed.email }); pub.checked = !!ed.publisher;
         pub.addEventListener('change', function () { editorsApi('PUT', { email: ed.email, publisher: pub.checked }).then(function () { say(pub.checked ? 'העורך יכול עכשיו לפרסם.' : 'העורך כבר לא יכול לפרסם.', 'ok'); }, function (x) { pub.checked = !pub.checked; fail(x); }); });
-        ul.append(el('li', {}, el('span', { class: 'ltr grow', text: ed.email }), name, el('label', { class: 'chk' }, pub, 'מפרסם'),
+        ul.append(el('li', {}, el('span', { class: 'ltr edmail', text: ed.email }), name, el('label', { class: 'chk' }, pub, 'מפרסם'),
           el('button', { type: 'button', class: 'btn ghost sm dng', onclick: function () { if (confirm('להסיר את ' + ed.email + ' מהעורכים?')) editorsApi('DELETE', { email: ed.email }).then(function (l) { say('העורך הוסר: ' + ed.email, 'ok'); drawList(l); }, fail); } }, 'הסרה')));
       });
       card.append(ul);
