@@ -1,0 +1,20 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-r3KxXJHhCwXk8Ve9bSWKqekzWVpAeEElis2TM94Y/dk=' 'sha256-Yl0+ll69CaNgbG6iLKoxyo80LATVNzT/cPS3BRGYtvo='; style-src 'self' 'sha256-hnDcsp000Dp53MFa+TJuDsbLJ8yiwrEAq2aN/V++VCY='; font-src 'self'; img-src 'self' data: https:; media-src 'self' https:; connect-src 'self'; frame-src https://www.matara.pro; form-action 'self'; base-uri 'none'; object-src 'none'; upgrade-insecure-requests; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), usb=(), payment=(self "https://www.matara.pro")
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+/style.css
+  Cache-Control: public, max-age=31536000, immutable
+/app.js
+  Cache-Control: public, max-age=31536000, immutable
+/search.js
+  Cache-Control: public, max-age=31536000, immutable
+/idx/*
+  Cache-Control: public, max-age=31536000, immutable
+/img/p/*
+  Cache-Control: public, max-age=31536000, immutable

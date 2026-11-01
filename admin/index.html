@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; font-src 'self'; frame-src https://accounts.google.com/gsi/; connect-src 'self' https://api.github.com https://*.workers.dev https://accounts.google.com/gsi/; img-src 'self' data: https://*.workers.dev https://*.r2.dev; media-src 'self' data: https://*.workers.dev https://*.r2.dev; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#0b1d50">
+<title>עריכת האתר | היכל הקודש</title><link rel="icon" href="data:,"><link rel="stylesheet" href="admin.css"></head>
+<body class="out">
+<header class="ah">
+  <a id="skip" class="skip" href="#main">דלגו לתוכן</a>
+  <button type="button" id="burger" class="burger" aria-label="תפריט" aria-controls="nav" aria-expanded="false" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  <a class="brand" href="./"><span class="mark"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c.6 3.2 4.8 5.3 4.8 10.1A4.8 4.8 0 0 1 12 17a4.8 4.8 0 0 1-4.8-4.9c0-2.2 1.2-3.7 2.3-4.6 0 1.7.8 2.9 1.9 3.3C11 8.3 10.9 5 12 2Z"/></svg></span><span>היכל הקודש<small>עריכת האתר</small></span></a>
+  <button type="button" id="pend" class="hl pend" hidden></button>
+  <span id="who" class="who"></span>
+  <button type="button" id="rename" class="hl" hidden>השם שלי</button>
+  <a class="hl" href="../" target="_blank" rel="noopener">לאתר</a>
+  <button type="button" id="out" class="hl" hidden>יציאה</button>
+</header>
+<main id="login" class="auth">
+  <section class="auth-brand">
+    <a class="brand" href="../"><span class="mark"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c.6 3.2 4.8 5.3 4.8 10.1A4.8 4.8 0 0 1 12 17a4.8 4.8 0 0 1-4.8-4.9c0-2.2 1.2-3.7 2.3-4.6 0 1.7.8 2.9 1.9 3.3C11 8.3 10.9 5 12 2Z"/></svg></span><span>היכל הקודש<small>חסידות ברסלב</small></span></a>
+    <div class="pitch">
+      <h2>ניהול התוכן של האתר, בפשטות</h2>
+      <p>דפים, נושאים, שאלות ותשובות וכל מה שמופיע באתר, במקום אחד ובעברית.</p>
+      <ul class="points">
+        <li><span class="pi"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></span><span><b>עריכה בלי קוד</b><small>טפסים ברורים, ותצוגה מקדימה לפני הפרסום</small></span></li>
+        <li><span class="pi"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 21h14"/></svg></span><span><b>שמירה ופרסום מסודרים</b><small>שומרים טיוטה, בודקים ומפרסמים כשהתוכן מוכן</small></span></li>
+        <li><span class="pi"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg></span><span><b>גישה מאובטחת</b><small>רק עורכים שאושרו על ידי בעל האתר</small></span></li>
+      </ul>
+    </div>
+    <p class="fine">© היכל הקודש</p>
+  </section>
+  <section class="auth-form" aria-labelledby="login-title">
+    <div class="form-in">
+      <h1 id="login-title">כניסה למערכת העריכה</h1>
+      <p class="lead">התחברו כדי לערוך את האתר.</p>
+      <form id="local-login" class="local-login" method="post" action="#" hidden>
+        <div class="fld"><label for="local-user">שם משתמש</label><input id="local-user" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" required maxlength="64"></div>
+        <div class="fld"><label for="local-password">סיסמה</label><input id="local-password" name="password" type="password" autocomplete="current-password" dir="ltr" required maxlength="256"></div>
+        <button id="local-signin" type="submit" class="btn pri wide" disabled>כניסה עם סיסמה</button>
+        <p class="help">פרטי הכניסה ניתנים על ידי מנהל האתר.</p>
+      </form>
+      <p id="auth-divider" class="auth-divider" hidden>או</p>
+      <div id="gbox" hidden>
+        <button type="button" id="gsign" class="gbtn" disabled><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span id="gtxt">המשך עם Google</span></button>
+        <label class="sw"><input id="grem" type="checkbox"><span class="track" aria-hidden="true"></span><span>להישאר מחובר במחשב הזה (12 שעות)</span></label>
+        <p class="note"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>הכניסה מיועדת לעורכים שאושרו. אם אין לכם גישה, בקשו מבעל האתר להוסיף את חשבון ה־Google שלכם.</span></p>
+      </div>
+      <div id="tokbox" hidden>
+        <p class="note"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>העריכה נשמרת ישירות במאגר הקבצים של האתר, ולכן צריך מפתח גישה אישי מ־GitHub. המפתח נשמר בדפדפן הזה בלבד.</span></p>
+        <ol class="steps">
+          <li>נכנסים ל־<a href="https://github.com/settings/personal-access-tokens/new" rel="noopener" target="_blank">יצירת מפתח אישי ב־GitHub</a>.</li>
+          <li>ב־Repository access בוחרים Only select repositories ואת מאגר האתר.</li>
+          <li>ב־Permissions מגדירים Contents: Read and write, ו־Actions: Read-only.</li>
+          <li>מעתיקים את המפתח ומדביקים כאן.</li>
+        </ol>
+        <label class="lbl" for="tok">מפתח גישה</label><input id="tok" type="password" autocomplete="off" dir="ltr">
+        <label class="sw"><input id="rem" type="checkbox"><span class="track" aria-hidden="true"></span><span>לזכור במחשב הזה</span></label>
+        <button type="button" id="go" class="btn pri wide">כניסה</button>
+      </div>
+      <p id="lerr" class="alert" role="alert"></p>
+      <a class="back" href="../">← חזרה לאתר</a>
+    </div>
+  </section>
+</main>
+<p id="preview-state" class="preview-state" role="status" hidden></p>
+<div id="app" hidden>
+  <nav id="nav" aria-label="תפריט העריכה"></nav>
+  <div id="scrim"></div>
+  <main id="main" tabindex="-1"></main>
+</div>
+<p id="msg" class="toast" role="status" hidden></p>
+<script src="admin.js"></script>
+</body></html>
