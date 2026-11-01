@@ -98,11 +98,28 @@ async function readRegular(root, path, limit, { optional = false, observed } = {
   } finally { await file.close(); }
 }
 
+// Selector creates this empty directory even when the site's documents live in
+// CMS_PUBLIC_ROOT. It is not an additional source or static-file namespace.
+async function verifyEmptyHostPublic(root) {
+  const path = join(root, 'public');
+  const directory = await open(path, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
+  try {
+    const before = await directory.stat({ bigint: true });
+    if (!before.isDirectory() || typeof process.getuid !== 'function' ||
+        before.uid !== BigInt(process.getuid()) || (before.mode & 0o7022n)) invalid();
+    if ((await readdir(path)).length !== 0) invalid();
+    const after = await directory.stat({ bigint: true }), named = await lstat(path, { bigint: true });
+    if (!sameFile(before, after) || !sameFile(before, named) || named.isSymbolicLink() ||
+        after.uid !== before.uid || named.uid !== before.uid) invalid();
+  } finally { await directory.close(); }
+}
+
 async function verifyInventory(root, declared) {
   const found = new Set();
   async function walk(directory, prefix = '') {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (!prefix && HOST_ENTRIES.has(entry.name)) continue;
+      if (!prefix && entry.name === 'public') { await verifyEmptyHostPublic(root); continue; }
       const path = prefix + entry.name;
       if (entry.isSymbolicLink()) invalid();
       if (entry.isDirectory()) {
