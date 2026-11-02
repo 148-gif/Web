@@ -1,36 +1,48 @@
-name: Deploy site to GitHub Pages
+name: Retire legacy GitHub Pages
 on:
   workflow_dispatch:
-  push:
-    branches: [claude/greeting-2i183o]
+    inputs:
+      expected_pages_head:
+        description: Current reviewed gh-pages commit (40 hex)
+        required: true
+        type: string
 permissions: {}
-# A deploy that started is never cancelled halfway (that left the site waiting); saves made meanwhile wait,
-# and only the newest of them is built next, since it carries all the changes before it.
 concurrency:
   group: pages
   cancel-in-progress: false
 jobs:
-  deploy:
+  retire:
+    if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     permissions:
-      contents: write # push the built site to the gh-pages branch
+      contents: write
+      pages: write
     steps:
-      # Third-party actions are pinned to full commit SHAs so a moved tag cannot inject code.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 24
-      - run: npm ci --ignore-scripts
-      - run: node --test test/*.test.mjs
-      - run: node scripts/build.mjs
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Publish the reviewed retirement files
+        shell: bash
         env:
-          SITE_BASE: /${{ github.event.repository.name }}
-          SITE_ORIGIN: https://${{ github.repository_owner }}.github.io
-      - run: touch dist/.nojekyll
-      - uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          force_orphan: true
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED: ${{ inputs.expected_pages_head }}
+        run: |
+          [[ "$EXPECTED" =~ ^[a-f0-9]{40}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/pages" | jq -e '.build_type == "legacy" and .source.branch == "gh-pages" and .source.path == "/"' >/dev/null
+          git fetch --no-tags --depth=1 origin refs/heads/gh-pages
+          previous=$(git rev-parse FETCH_HEAD)
+          test "$previous" = "$EXPECTED"
+          tree=$(git rev-parse HEAD:.github/retired-pages)
+          head="$previous"
+          if test "$(git rev-parse "$previous^{tree}")" != "$tree"; then
+            head=$(git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit-tree "$tree" -p "$previous" -m 'Retire legacy Pages and migrate its service worker')
+            git push origin "$head:refs/heads/gh-pages"
+          fi
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" >/dev/null
+          echo "Previous gh-pages: $previous; requested retirement build: $head" >> "$GITHUB_STEP_SUMMARY"
+          for attempt in {1..60}; do
+            result=$(gh api "repos/$GITHUB_REPOSITORY/pages/builds/latest")
+            if test "$(jq -r .commit <<<"$result")" = "$head"; then
+              case "$(jq -r .status <<<"$result")" in built) exit 0;; errored) exit 1;; esac
+            fi
+            sleep 5
+          done
+          exit 1

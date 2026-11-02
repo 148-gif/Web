@@ -53,7 +53,7 @@ const integration = (name, fn) => test(name, { skip: !mysqlEnabled }, () => with
     const body = await response.json(), fullCookie = response.headers.get('set-cookie');
     return { cookie: fullCookie.split(';')[0], fullCookie, csrf: body.csrfToken, body };
   };
-  await fn({ pool, store, env, config, service, call, arm, bootstrap, login, advance: () => { now += 60000; }, now: () => now });
+  await fn({ pool, store, env, config, service, call, arm, bootstrap, login, advance: (ms = 60000) => { now += ms; }, now: () => now });
 }));
 
 integration('real local-auth bootstrap is private, atomic, replay-proof and bound to the configured owner', async (f) => {
@@ -131,7 +131,10 @@ integration('real local password rotation revokes all old sessions and rotates b
   assert.equal((await f.bootstrap(await f.arm())).status, 201);
   const a = await f.login(), b = await f.login();
   assert.notEqual(a.cookie, b.cookie); assert.notEqual(a.csrf, b.csrf);
-  const response = await f.call('/auth/password', { method: 'POST', cookie: a.cookie, csrf: a.csrf, body: { currentPassword: PASSWORD, newPassword: REPLACEMENT } });
+  f.advance(60 * 60_000);
+  const mismatch = await f.call('/auth/password', { method: 'POST', cookie: a.cookie, csrf: a.csrf, body: { newPassword: REPLACEMENT, confirmation: 'different' } });
+  assert.equal(mismatch.status, 400);
+  const response = await f.call('/auth/password', { method: 'POST', cookie: a.cookie, csrf: a.csrf, body: { newPassword: REPLACEMENT, confirmation: REPLACEMENT } });
   assert.equal(response.status, 200);
   const next = await response.json(), cookie = response.headers.get('set-cookie').split(';')[0];
   assert.notEqual(cookie, a.cookie); assert.notEqual(next.csrfToken, a.csrf);
@@ -205,20 +208,15 @@ integration('real local session expiry is enforced and the next login removes ex
   const [[count]] = await f.pool.query('SELECT COUNT(*) AS n FROM local_auth_sessions'); assert.equal(Number(count.n), 1);
 });
 
-integration('disabling local login requires current recent Google-owner proof and revokes every local cookie', async (f) => {
+integration('a valid Google owner session can choose Google as the remaining method without another login', async (f) => {
   assert.equal((await f.bootstrap(await f.arm())).status, 201); const s = await f.login();
-  const bearer = await makeSession(OWNER_EMAIL, f.env, f.now());
   const body = { localEnabled: false, googleEnabled: true };
-  assert.equal((await f.call('/auth/settings', { method: 'PUT', bearer, body })).status, 409);
-  // Seed only the result of a prior Google proof: no external OAuth provider is
-  // contacted in this isolated test. Current bearer authenticity is still real.
-  await f.store.atomic(async (tx) => tx.saveSettings({ ...await tx.getSettings(), google_verified_until: f.now() + 900000 }));
-  const old = await makeSession(OWNER_EMAIL, f.env, f.now() - 16 * 60000);
-  assert.equal((await f.call('/auth/settings', { method: 'PUT', bearer: old, body })).status, 409);
-  const disabled = await f.call('/auth/settings', { method: 'PUT', bearer, body }); assert.equal(disabled.status, 200);
+  const expired = await makeSession(OWNER_EMAIL, f.env, f.now() - 13 * 3600_000);
+  assert.equal((await f.call('/auth/settings', { method: 'PUT', bearer: expired, body })).status, 401);
+  const bearer = await makeSession(OWNER_EMAIL, f.env, f.now() - 60 * 60000);
+  assert.equal((await f.call('/auth/settings', { method: 'PUT', bearer, body })).status, 200);
   assert.equal((await f.call('/auth/session', { cookie: s.cookie })).status, 401);
   assert.equal(await f.store.countUsers(), 1);
-  const [[count]] = await f.pool.query('SELECT COUNT(*) AS n FROM local_auth_sessions'); assert.equal(Number(count.n), 0);
 });
 
 integration('local-only Node mode bootstraps, authenticates and rotates passwords without enabling content writes', async (f) => {
@@ -280,7 +278,7 @@ integration('local-only mode rejects forged Google enablement and last-local dis
   assert.equal(google.status, 403); assert.equal(providerCalls, 0);
   const legacyBearer = await makeSession(OWNER_EMAIL, f.env, f.now());
   assert.equal((await f.call('/me', { bearer: legacyBearer })).status, 401);
-  assert.equal((await f.call('/auth/settings', { bearer: legacyBearer })).status, 403);
+  assert.equal((await f.call('/auth/settings', { bearer: legacyBearer })).status, 401);
   assert.deepEqual(await f.store.getSettings(), beforeSettings);
   const [afterSessions] = await f.pool.query('SELECT * FROM local_auth_sessions ORDER BY token_hash');
   assert.deepEqual(afterSessions, beforeSessions);

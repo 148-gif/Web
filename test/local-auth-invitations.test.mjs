@@ -112,51 +112,41 @@ integration('invitation navigation is private by headers and native POST never b
   assert.equal(native.status, 400); assert.equal(native.headers.get('location'), null); assert(!(await native.text()).includes('private-fixture'));
 });
 
-integration('fresh owner proof is bounded, CSRF protected, shared, and bound to the same unrevoked local session', async (f) => {
-  const request = (path, body, cookie = f.cookie, csrf = f.csrf) => f.call('/auth/' + path, { method: 'POST', cookie, csrf, body });
-  const settings = (cookie) => f.call('/auth/settings', { cookie });
+integration('an aged local owner can invite and edit settings without a password; broken Origin, CSRF or revoked sessions cannot', async (f) => {
   const email = 'second-owner@example.test';
-  assert.equal((await (await settings(f.cookie)).json()).localOwnerFresh, true);
-  assert.equal((await request('invitations', { email: '\u200e “' + email.toUpperCase() + '” \u200f' })).status, 201);
-  const invalid = await request('invitations', { email: 'second-owner@"example.test' });
+  f.advance(60 * 60_000);
+  const req = (body, extra = {}) => f.call('/auth/invitations', { method: 'POST', cookie: f.cookie, csrf: f.csrf, body, ...extra });
+  const good = await req({ email: '\u200e “' + email.toUpperCase() + '” \u200f' });
+  assert.equal(good.status, 201); assert(!good.headers.has('set-cookie'));
+  const invalid = await req({ email: 'second-owner@"example.test' });
   assert.equal(invalid.status, 400); assert.match((await invalid.json()).message, /name@example\.com/);
-  f.advance(16 * 60_000);
-  const stale = await request('invitations', { email });
-  assert.equal(stale.status, 428); assert.equal((await stale.json()).code, 'reauth_required');
-  assert.equal((await request('confirm', { currentPassword: PASSWORD }, f.cookie, 'not-the-csrf-token')).status, 403);
-  assert.equal((await request('confirm', { currentPassword: 'wrong' })).status, 401);
-  const proof = await request('confirm', { currentPassword: PASSWORD }); assert.equal(proof.status, 200);
-  const header = proof.headers.get('set-cookie'); assert.match(header, /^__Host-heichal_owner_proof=/);
-  assert.match(header, /; Path=\/; Secure; HttpOnly; SameSite=Strict; Max-Age=900$/);
-  const pair = header.split(';')[0], both = f.cookie + '; ' + pair;
-  assert.equal((await (await settings(both)).json()).localOwnerFresh, true);
-  assert.equal((await (await settings(both + '; ' + pair)).json()).localOwnerFresh, false);
-  const other = randomToken();
-  await f.store.atomic((tx) => tx.insertSession({ token_hash: digestToken(other), csrf_hash: digestToken(csrfToken(other, f.env.SESSION_SECRET)), user_id: f.user.id, version: f.user.version, expires_at: f.now() + 7 * 3600_000 }));
-  assert.equal((await (await settings('__Host-heichal_local=' + other + '; ' + pair)).json()).localOwnerFresh, false);
-  const tampered = pair.slice(0, -1) + (pair.endsWith('A') ? 'B' : 'A');
-  assert.equal((await (await settings(f.cookie + '; ' + tampered)).json()).localOwnerFresh, false);
-  assert.equal((await request('invitations', { email }, both)).status, 201);
-  f.advance(14 * 60_000);
-  const toggled = await f.call('/auth/settings', { method: 'PUT', cookie: both, csrf: f.csrf, body: { localEnabled: true, googleEnabled: false } });
-  assert.equal(toggled.status, 200); const rotated = toggled.headers.get('set-cookie').split(';')[0];
-  assert.equal((await (await settings(rotated)).json()).localOwnerFresh, true);
-  f.advance(60_000);
-  assert.equal((await (await settings(rotated)).json()).localOwnerFresh, false, 'settings-cookie rotation cannot extend recent proof');
-  assert.equal((await settings(both)).status, 403, 'rotated original cannot be revived by its proof');
+  assert.equal((await req({ email }, { csrf: 'wrong' })).status, 403);
+  assert.equal((await req({ email }, { origin: 'https://foreign.example' })).status, 403);
+  const saved = await f.call('/auth/settings', { method: 'PUT', cookie: f.cookie, csrf: f.csrf, body: { localEnabled: true, googleEnabled: false } });
+  assert.equal(saved.status, 200); const cookie = saved.headers.get('set-cookie').split(';')[0], csrf = (await saved.json()).csrfToken;
+  assert.equal((await f.call('/auth/logout', { method: 'POST', cookie, csrf, body: {} })).status, 200);
+  const revoked = await req({ email }, { cookie, csrf }); assert.equal(revoked.status, 401); assert.equal((await revoked.json()).code, 'session_expired');
 });
 
-integration('legacy invitation requests still validate the password and reject Origin, CSRF and ownership failures without disclosing membership', async (f) => {
-  for (const extra of [{ origin: null }, { origin: 'https://foreign.example.test' }, { csrf: undefined }, { csrf: 'wrong' }, { cookie: undefined }]) {
+integration('a signed-in publisher cannot invite owners or change owner credentials', async (f) => {
+  await f.pool.execute("UPDATE local_auth_users SET role = 'publisher' WHERE id = ?", [f.user.id]);
+  for (const [path,method,body] of [['/auth/invitations','POST',{email:'second-owner@example.test'}], ['/auth/password','POST',{newPassword:NEW_PASSWORD,confirmation:NEW_PASSWORD}], ['/auth/settings','PUT',{localEnabled:true,googleEnabled:false}]]) {
+    assert.equal((await f.call(path,{method,cookie:f.cookie,csrf:f.csrf,body})).status,403);
+  }
+});
+
+integration('legacy invitation password fields are ignored; Origin, CSRF and ownership remain mandatory', async (f) => {
+  for (const extra of [{ origin: null }, { origin: 'https://foreign.example.test' }, { csrf: undefined }, { csrf: 'wrong' }]) {
     assert.equal((await f.create(undefined, extra)).status, 403);
   }
-  assert.equal((await f.create(undefined, { body: { email: 'second-owner@example.test', currentPassword: 'wrong-password' } })).status, 401);
+  assert.equal((await f.create(undefined, { cookie: undefined })).status, 401);
+  assert.equal((await f.create(undefined, { body: { email: 'second-owner@example.test', currentPassword: 'obsolete legacy field' } })).status, 201);
   const unknown = await f.create('unknown@example.test'), duplicate = await f.create('initial-owner@example.test');
   assert.equal(unknown.status, 403); assert.equal(duplicate.status, 403); assert.deepEqual(await unknown.json(), await duplicate.json());
   const settings = await f.call('/auth/settings', { cookie: f.cookie }); assert.equal((await settings.json()).invitationsAvailable, true);
   await f.pool.execute("UPDATE local_auth_users SET role = 'publisher' WHERE id = ?", [f.user.id]);
   assert.equal((await f.create()).status, 403);
-  const [[count]] = await f.pool.execute('SELECT COUNT(*) AS n FROM local_auth_invitations'); assert.equal(Number(count.n), 0);
+  const [[count]] = await f.pool.execute('SELECT COUNT(*) AS n FROM local_auth_invitations'); assert.equal(Number(count.n), 1, 'only the earlier authorized invitation exists');
 });
 
 integration('Google owner authentication alone cannot issue a local owner invitation', async (f) => {
@@ -189,9 +179,10 @@ integration('credential syntax errors disclose only fixed field guidance regardl
 });
 
 for (const reason of ['logout', 'expiry', 'password-version', 'disabled', 'owner-removed']) {
-  integration(`creation rechecks live authority after password verification: ${reason}`, async (f) => {
+  integration(`creation rechecks live authority before the invitation transaction: ${reason}`, async (f) => {
     const entered = deferred(), release = deferred();
-    f.resetService({ invitationPasswordHasher: { hashPassword, async verifyPassword(...args) { const ok = await verifyPassword(...args); entered.resolve(); await release.promise; return ok; } } });
+    const atomic = f.store.atomic.bind(f.store); let first = true;
+    f.store.atomic = async (run) => { if (first) { first = false; entered.resolve(); await release.promise; } return atomic(run); };
     const pending = f.create(); await entered.promise;
     try {
       if (reason === 'logout') assert.equal((await f.logout()).status, 200);
