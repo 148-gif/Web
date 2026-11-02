@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { routePrefix, seedRoute, statusState, verifyRoute } from '../scripts/cpanel-route-guards.mjs';
@@ -18,11 +18,11 @@ async function fixture(t) {
 }
 
 test('role markers close health probes too, maintenance admits only the exact GET/HEAD health paths', () => {
-  assert.match(marker, /candidate -f\nRewriteRule \^ - \[R=503,L\]/);
-  assert.ok(marker.includes('!^/cms-api-check-bbbbbbbb/(version|me)$'));
-  assert.ok(routePrefix('cms-api').includes('.heichal-runtime-drain-canonical -f'));
-  const parked = routePrefix('cms-api-rollback-aaaaaaaa');
-  assert.ok(parked.includes('RewriteRule ^ - [R=503,L]')); assert.ok(!parked.includes('RewriteCond'));
+  assert.equal(routePrefix('cms-api'), marker);
+  assert.equal(routePrefix('cms-api-rollback-aaaaaaaa'), marker);
+  assert.ok(marker.includes('RewriteCond %{REQUEST_URI} !^/cms-api(?:-check-[a-f0-9]{8})?(?:/|$)\nRewriteRule ^ - [R=503,L]'));
+  for (const role of ['canonical', 'candidate']) assert.ok(marker.includes('.heichal-runtime-drain-' + role + ' -f\nRewriteRule ^ - [R=503,L]'));
+  assert.ok(marker.includes('!^/cms-api(?:-check-[a-f0-9]{8})?/(?:version|me)$'));
   for (const path of ['other', '../cms-api', 'cms-api-check-short', '/cms-api', 'cms-api-rollback-aaaaaaaa/extra']) assert.throws(() => routePrefix(path));
 });
 
@@ -78,6 +78,63 @@ for (const interrupted of [false, true]) test('create checks the route before Se
   await writeFile(path, stopped); status = 'stopped'; await api.verify('candidate-created');
   await writeFile(path, stopped.replace('PrivateEnv', 'changed')); await assert.rejects(api.verify('candidate-created'));
   await writeFile(path, 'PrivateEnv reference\n'); await assert.rejects(verifyRoute(root, route));
+});
+
+test('Park and promote preserve the same rules when Selector copies the whole source file and retains both paths', linux, async t => {
+  const root = await fixture(t), rollback = 'cms-api-rollback-aaaaaaaa';
+  const file = uri => join(root, uri, '.htaccess');
+  const previous = marker + 'Old private environment reference\n';
+  const candidate = marker + 'New candidate environment reference\n';
+  const promoted = marker + 'New active environment reference\n';
+  const routes = ['cms-api', route, rollback];
+  const layouts = {
+    'candidate-created-off-off': [previous, candidate, null],
+    'previous-parked': [previous, candidate, previous],
+    'candidate-promoted': [promoted, candidate, previous],
+    'candidate-promoted-off-off': [promoted, candidate, previous],
+  };
+  const expected = state => ({ files: routes.map((uri, i) => ({ path: uri + '/.htaccess',
+    entry: layouts[state][i] === null ? null : entry(layouts[state][i]) })) });
+  const guard = { expected, async verify(state) {
+    for (const [i, uri] of routes.entries()) {
+      const bytes = await readFile(file(uri), 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+      assert.equal(bytes, layouts[state][i]);
+    }
+    return { verified: true };
+  } };
+  let oldUri = '/cms-api', newUri = '/' + route;
+  const selector = { async inspect() { return { applications: [[old, oldUri], [next, newUri]].map(([commit, uri]) =>
+    ({ root: 'heichal-cms/releases/' + commit + '/app', domain: 'hichal.yoterberama.com', uri, status: 'stopped' })) }; } };
+  const scope = { commit: next, previousCommit: old, contract: { transitions: {
+    'park-old': { before: 'candidate-created', after: 'previous-parked' },
+    'promote-candidate': { before: 'previous-parked', after: 'candidate-promoted' },
+  } } };
+  for (const [uri, bytes] of [['cms-api', previous], [route, candidate]]) {
+    await seedRoute(root, uri); await writeFile(file(uri), bytes);
+  }
+  const api = guardedTransitions({ scope, guard, selector, root });
+  await api.run('park-old', async () => {
+    assert.equal(await readFile(file(rollback), 'utf8'), marker);
+    await copyFile(file('cms-api'), file(rollback)); oldUri = '/' + rollback;
+  });
+  await api.run('promote-candidate', async () => {
+    await copyFile(file(route), file('cms-api'));
+    assert.equal(await readFile(file('cms-api'), 'utf8'), candidate);
+    await writeFile(file('cms-api'), promoted); newUri = '/cms-api';
+  });
+  assert.equal(await readFile(file(route), 'utf8'), candidate);
+  assert.equal(await readFile(file(rollback), 'utf8'), previous);
+});
+
+test('a vacant empty file needs approval of its exact mode and a new route is traversable under a private umask', linux, async t => {
+  const root = await fixture(t), file = join(root, route, '.htaccess');
+  await mkdir(join(root, route)); await writeFile(file, '', { mode: 0o600 });
+  await assert.rejects(seedRoute(root, route)); await assert.rejects(seedRoute(root, route, 0o644));
+  await seedRoute(root, route, 0o600); assert.equal(await readFile(file, 'utf8'), marker);
+  assert.equal((await lstat(file)).mode & 0o777, 0o600);
+  const before = process.umask(0o077);
+  try { await seedRoute(root, 'cms-api'); } finally { process.umask(before); }
+  assert.equal((await lstat(join(root, 'cms-api'))).mode & 0o777, 0o755);
 });
 
 test('stop proof requires 503 and noindex on that route after Selector returns', async () => {
