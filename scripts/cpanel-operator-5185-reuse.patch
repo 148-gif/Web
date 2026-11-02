@@ -1,0 +1,144 @@
+--- a/server/cpanel-runtime-install.mjs
++++ b/server/cpanel-runtime-install.mjs
+@@ -53,1 +53,1 @@
+-  verifyIdentity = readRuntimeIdentity, readEnvironment = readRuntimeEnvironmentFile, hashWrapperBytes = digest } = {}) {
++  verifyIdentity = readRuntimeIdentity, readEnvironment = readRuntimeEnvironmentFile, hashWrapperBytes = digest, dependencyReuse } = {}) {
+@@ -245,1 +245,1 @@
+-  async function dependencyInventory(data, root) {
++  async function dependencyInventory(data, root, outputRecords) {
+@@ -280,1 +280,2 @@
+-    records.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
++    records.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
++    if (outputRecords) for (const record of records) outputRecords.push(record);
+@@ -332,1 +333,41 @@
+-  async function install({ plan: value, toolchain: input } = {}) {
++  // A committed donor is selected by the driver from its pinned predecessor.
++  // Neither a previously installed directory nor its package versions alone qualify.
++  async function reusable(input) {
++    if (!dependencyReuse || !input) return null;
++    const { previous, commit, candidateRoot, runtimeManifestSha256, manifestSha256 } = input;
++    const donor = { target: selectorTarget({ commit: previous.commit }), runtimeManifestSha256: previous.runtimeManifestSha256 };
++    const next = { target: selectorTarget({ commit }) };
++    const oldTools = toolchain(donor, input.oldTools), nextTools = toolchain(next, input.nextTools);
++    const oldRoot = donor.target.absoluteRoot, nextRoot = join(candidateRoot, 'app');
++    const oldIdentity = await verifyIdentity({ applicationRoot: oldRoot }), nextIdentity = await verifyIdentity({ applicationRoot: nextRoot });
++    if (!oldIdentity.verified || oldIdentity.commit !== previous.commit || oldIdentity.runtimeManifestSha256 !== previous.runtimeManifestSha256 ||
++        !nextIdentity.verified || nextIdentity.commit !== commit || nextIdentity.runtimeManifestSha256 !== runtimeManifestSha256) fail('identity-mismatch');
++    async function inputs(path, pin, owner, appRoot) {
++      const raw = await read(path);
++      if (digest(raw) !== pin) fail('manifest-drift');
++      const m = JSON.parse(raw);
++      if (m.commit !== owner || m.format !== 'heichal-cpanel-release' || m.version !== 1 || !Array.isArray(m.files)) fail('manifest-drift');
++      return Promise.all(['package.json', 'package-lock.json'].map(async name => {
++        const rows = m.files.filter(row => row.path === 'app/' + name), bytes = await read(join(appRoot, name));
++        if (rows.length !== 1 || rows[0].bytes !== bytes.length || rows[0].sha256 !== digest(bytes)) fail('source-drift');
++        return bytes;
++      }));
++    }
++    const [oldPackage, oldLock] = await inputs(previous.manifestFile, previous.manifestSha256, previous.commit, oldRoot);
++    const [nextPackage, nextLock] = await inputs(join(candidateRoot, 'manifest.json'), manifestSha256, commit, nextRoot);
++    if (!dependencyReuse.sameInstallInputs(oldPackage, oldLock, nextPackage, nextLock, oldTools, nextTools)) return null;
++    await toolsReady(donor, oldTools);
++    if ((await fs.lstat(oldTools.modulesPath, { bigint: true })).dev !== (await fs.lstat(PRIVATE, { bigint: true })).dev) fail('module-target-drift');
++    const records = [], dependencies = await dependencyInventory(donor, oldTools.modulesPath, records);
++    const receipt = await dependencyReceipt(donor, oldTools, dependencies);
++    const workspace = join(PRIVATE, 'dependency-staging', previous.commit);
++    if (!(await read(join(workspace, 'dependencies.json'), 65536, true)).equals(Buffer.from(JSON.stringify(receipt) + '\n'))) fail('unverified-dependencies');
++    const installed = JSON.parse(await read(join(workspace, 'installed.json'), 65536, true));
++    const blockSize = Number((await fs.statfs(PRIVATE, { bigint: true })).bsize);
++    const proof = dependencyReuse.dependencyReuseProof({ sourceCommit: previous.commit, targetCommit: commit, runtimeManifestSha256: previous.runtimeManifestSha256,
++      sourceTools: oldTools, targetTools: nextTools, oldPackage, oldLock, nextPackage, nextLock, receipt, installed, dependencies, records, blockSize });
++    if (!proof) fail('unverified-dependencies');
++    return { proof, records, blockSize, sourceRoot: oldTools.modulesPath };
++  }
++  async function planReuse(input) { return guarded(async () => (await reusable(input))?.proof ?? null); }
++  async function install({ plan: value, toolchain: input, reuse = null } = {}) {
+@@ -335,1 +376,9 @@
+-      if ((await fs.readdir(spec.modulesPath)).length) {
++      let copy = null;
++      if (reuse) {
++        if (reuse.input.commit !== data.target.commit || reuse.input.candidateRoot !== data.candidateRoot ||
++            selectorTarget({ commit: reuse.input.previous.commit }).absoluteRoot !== data.sourceApplicationRoot ||
++            reuse.input.previous.envFile !== data.sourceEnvFile || !same(reuse.input.nextTools, input)) fail('invalid-plan');
++        copy = await reusable(reuse.input);
++        if (!copy || !same(copy.proof, reuse.proof)) fail('unverified-dependencies');
++      }
++      if ((await fs.readdir(spec.modulesPath)).length) {
+@@ -337,1 +386,2 @@
+-        return freeze({ installed: false, alreadyInstalled: true, commit: data.target.commit, ...dependencies });
++        if (copy && dependencies.treeSha256 !== copy.proof.treeSha256) fail('unverified-dependencies');
++        return freeze({ installed: false, alreadyInstalled: true, commit: data.target.commit, ...dependencies });
+@@ -340,1 +390,3 @@
+-      if (disk.bavail * disk.bsize < 2n * 1024n ** 3n + 4n * BigInt(MAX_MODULE_BYTES) || disk.ffree < BigInt(MAX_MODULE_INODES * 3)) fail('installation-capacity');
++      const needBytes = copy ? BigInt(copy.proof.allocation.bytes) : 2n * 1024n ** 3n + 4n * BigInt(MAX_MODULE_BYTES);
++      const needInodes = copy ? BigInt(copy.proof.allocation.inodes) : BigInt(MAX_MODULE_INODES * 3);
++      if (disk.bavail * disk.bsize < needBytes || disk.ffree < needInodes) fail('installation-capacity');
+@@ -345,1 +397,8 @@
+-      const emptyUser = join(workspace, 'user.npmrc'), emptyGlobal = join(workspace, 'global.npmrc'), home = join(workspace, 'home'), cache = join(workspace, 'cache');
++      if (copy) {
++        for (const name of ['package.json', 'package-lock.json']) await immutable(join(workspace, name), await read(join(data.target.absoluteRoot, name)));
++        await dependencyReuse.copyVerifiedDependencies(copy.sourceRoot, join(workspace, 'node_modules'), copy.records, copy.proof, copy.blockSize);
++        const checked = await reusable(reuse.input);
++        if (!checked || !same(checked.proof, copy.proof)) fail('unverified-dependencies');
++        await immutable(join(workspace, 'reuse.json'), Buffer.from(JSON.stringify(copy.proof) + '\n'));
++      } else {
++      const emptyUser = join(workspace, 'user.npmrc'), emptyGlobal = join(workspace, 'global.npmrc'), home = join(workspace, 'home'), cache = join(workspace, 'cache');
+@@ -352,1 +411,2 @@
+-      await installationBudget(workspace);
++      await installationBudget(workspace);
++      }
+@@ -354,1 +414,2 @@
+-      const modules = join(workspace, 'node_modules'), dependencies = await dependencyInventory(data, modules);
++      const modules = join(workspace, 'node_modules'), dependencies = await dependencyInventory(data, modules);
++      if (copy && (dependencies.treeSha256 !== copy.proof.treeSha256 || dependencies.packages !== copy.proof.packages || dependencies.bytes !== copy.proof.bytes || dependencies.inodes !== copy.proof.inodes)) fail('unverified-dependencies');
+@@ -365,1 +426,1 @@
+-  return Object.freeze({ plan, materialize, inspect, install });
++  return Object.freeze({ plan, planReuse, materialize, inspect, install });
+--- a/server/cpanel-deployment-adapter.mjs
++++ b/server/cpanel-deployment-adapter.mjs
+@@ -185,1 +185,10 @@
+-  async function capacity(candidateRoot, phase = 'download') {
++  async function selectDependencyReuse(previous, current, commit, candidateRoot, manifestSha256, runtimeManifestSha256) {
++    if (!current || !installer.planReuse || previous.manifestFile !== join(config.outerStateRoot, 'candidates', previous.commit, 'manifest.json')) return null;
++    const old = await files.json(join(config.outerStateRoot, 'contexts', previous.commit + '.json'));
++    if (old.commit !== previous.commit || old.runtimeManifestSha256 !== previous.runtimeManifestSha256 || old.manifestSha256 !== previous.manifestSha256 ||
++        join(old.candidateRoot, 'manifest.json') !== previous.manifestFile || old.outerStateRoot !== config.outerStateRoot) fail('baseline-drift');
++    const input = { previous, commit, candidateRoot, manifestSha256, runtimeManifestSha256, oldTools: old.toolchain, nextTools: tools(config, targetOf(commit)) };
++    const proof = await installer.planReuse(input);
++    return proof ? { input, proof } : null;
++  }
++  async function capacity(candidateRoot, phase = 'download', reuse = null) {
+@@ -189,2 +198,3 @@
+-    const installBytes = phase === 'install' ? RUNTIME_BYTES : 0;
+-    const installInodes = phase === 'install' ? RUNTIME_INODES : 0;
++    if (reuse && (phase !== 'install' || !Number.isSafeInteger(reuse.allocation?.bytes) || reuse.allocation.bytes <= 0 || !Number.isSafeInteger(reuse.allocation?.inodes) || reuse.allocation.inodes <= 0)) fail('capacity');
++    const installBytes = phase === 'install' ? (reuse?.allocation.bytes ?? RUNTIME_BYTES) : 0;
++    const installInodes = phase === 'install' ? (reuse?.allocation.inodes ?? RUNTIME_INODES) : 0;
+@@ -284,1 +294,2 @@
+-    const projected = { install: await capacity(candidateRoot, 'install'), promote: await capacity(candidateRoot, 'promote') };
++    const reuse = await selectDependencyReuse(previous, baselineCurrent, release.commit, candidateRoot, pkg.manifestSha256, pkg.runtimeManifestSha256);
++    const projected = { install: await capacity(candidateRoot, 'install', reuse?.proof), promote: await capacity(candidateRoot, 'promote') };
+@@ -287,1 +298,2 @@
+-    context.selector = config.selector; context.probePaths = config.probePaths; context.capacity = config.capacity;
++    if (reuse) context.dependencyReuse = reuse.proof;
++    context.selector = config.selector; context.probePaths = config.probePaths; context.capacity = config.capacity;
+@@ -470,1 +482,8 @@
+-      await installer.materialize({ plan: installerPlan });
++      let reuse = null;
++      if (context.dependencyReuse) {
++        reuse = await selectDependencyReuse(context.previous, context.baselineCurrent, context.commit, context.candidateRoot, context.manifestSha256, context.runtimeManifestSha256);
++        if (!reuse || JSON.stringify(reuse.proof) !== JSON.stringify(context.dependencyReuse)) fail('baseline-drift');
++      }
++      // This includes recovery: admit the selected mode before creating/changing the candidate.
++      await capacity(context.candidateRoot, 'install', reuse?.proof);
++      await installer.materialize({ plan: installerPlan });
+@@ -474,2 +493,2 @@
+-      await capacity(context.candidateRoot, 'install');
+-      await installer.install({ plan: installerPlan, toolchain: context.toolchain });
++      await capacity(context.candidateRoot, 'install', reuse?.proof);
++      await installer.install({ plan: installerPlan, toolchain: context.toolchain, reuse });
+@@ -627,1 +646,3 @@
+-          hostingMutations: false, activationRequested: context.activation !== null, initialVersionProofRequired: true, accountQuotaObserved: false, runtimeReservedBytes: RUNTIME_BYTES, runtimeReservedInodes: RUNTIME_INODES, projectedManaged: prepared.projected };
++          hostingMutations: false, activationRequested: context.activation !== null, initialVersionProofRequired: true, accountQuotaObserved: false,
++          runtimeReservedBytes: context.dependencyReuse?.allocation.bytes ?? RUNTIME_BYTES, runtimeReservedInodes: context.dependencyReuse?.allocation.inodes ?? RUNTIME_INODES,
++          dependencyInstallMode: context.dependencyReuse ? 'verified-copy' : 'npm', projectedManaged: prepared.projected };
