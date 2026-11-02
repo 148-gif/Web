@@ -4,7 +4,7 @@ import { constants } from 'node:fs';
 import { lstat, open, realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { routeKind, routePrefix, seedRoute, statusState, verifyRoute } from './cpanel-route-guards.mjs';
+import { guardOffset, readRoute, routeKind, routePrefix, seedRoute, statusState, verifyRoute } from './cpanel-route-guards.mjs';
 
 const OPERATOR = '5185c67ff426d3983534ccd3de654ed9f53ffcc2';
 const MANIFEST = '3266126c135e1e4e8c992b1d919b61ae23aead2cfb689044cacfa7751cf44e6f';
@@ -52,9 +52,46 @@ async function checkedModuleTree(base) {
   }
 }
 
+// Compare either measured placement of the same Passenger block. The physical
+// bytes, modes and hashes are kept for the durable ledger and recovery.
+export function routeSnapshots(scope, root, snapshot, read = readRoute) {
+  const placements = new Map();
+  const managed = new Set(['cms-api', ...[scope.commit, scope.previousCommit].flatMap(commit =>
+    ['cms-api-check-', 'cms-api-rollback-'].map(prefix => prefix + commit.slice(0, 8)))]);
+  const key = files => sha(JSON.stringify(files));
+  async function inspect(expected) {
+    const physical = await snapshot({ files: expected });
+    if (physical.length !== expected.length) refuse();
+    const compared = [];
+    for (const [i, actual] of physical.entries()) {
+      const wanted = expected[i];
+      if (actual.path !== wanted.path || actual.runtimeCommit !== wanted.runtimeCommit) refuse();
+      const route = actual.path.split('/')[0];
+      if (!managed.has(route) || actual.path !== route + '/.htaccess' || !wanted.entry || !actual.entry ||
+          actual.entry.bytes !== wanted.entry.bytes || actual.entry.mode !== wanted.entry.mode || actual.entry.sha256 === wanted.entry.sha256) {
+        compared.push(actual); continue;
+      }
+      const bytes = await read(root, route);
+      if (sha(bytes) !== actual.entry.sha256) refuse();
+      let offset;
+      try { offset = guardOffset(bytes, route); } catch { compared.push(actual); continue; }
+      const n = Buffer.byteLength(routePrefix(route));
+      const canonical = Buffer.concat([bytes.subarray(offset, offset + n), bytes.subarray(0, offset), bytes.subarray(offset + n)]);
+      compared.push(offset > 0 && sha(canonical) === wanted.entry.sha256 ? wanted : actual);
+    }
+    if (JSON.stringify(compared) === JSON.stringify(expected)) placements.set(key(expected), physical);
+    return compared;
+  }
+  function physicalLedger(ledger) {
+    const files = placements.get(key(ledger.files));
+    return files ? { ...ledger, files } : ledger;
+  }
+  return { inspect, physicalLedger };
+}
+
 // Before/after states and all retained files are still pinned by the private
 // contract. Selector status selects an explicitly approved stopped variant.
-export function guardedTransitions({ scope, guard, selector, root, readSnapshot, verify = verifyRoute, seed = seedRoute }) {
+export function guardedTransitions({ scope, guard, selector, root, readSnapshot, physicalLedger = ledger => ledger, verify = verifyRoute, seed = seedRoute }) {
   const next = scope.commit.slice(0, 8), old = scope.previousCommit.slice(0, 8);
   const destination = {
     'create-candidate': 'cms-api-check-' + next, 'park-old': 'cms-api-rollback-' + old,
@@ -90,6 +127,8 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
       } else await verify(root, route);
     }
     observedStates.set(state, key);
+    const physical = physicalLedger(ledger);
+    if (physical !== ledger) result = { ...result, snapshotSha256: sha(JSON.stringify(physical) + '\n') };
     return { ...result, contractState: key };
   }
   async function verifySeededDestination(error, state, snapshot, ledger) {
@@ -123,7 +162,7 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
       return { value };
     } finally { busy = false; }
   }
-  return { expected: state => guard.expected(observedStates.get(state) ?? state), verify: inspect, run };
+  return { expected: state => physicalLedger(guard.expected(observedStates.get(state) ?? state)), verify: inspect, run };
 }
 
 export async function proveStoppedRoute(uri, fetcher = fetch) {
@@ -153,8 +192,11 @@ async function main(args) {
         await proveStoppedRoute(uri);
         return stopped;
       } },
-      guardFactory: scope => guardedTransitions({ scope, guard: createHostContractGuard(scope), selector,
-        root: config.documentRoot, readSnapshot: readHostContractSnapshot }),
+      guardFactory(scope) {
+        const placement = routeSnapshots(scope, config.documentRoot, readHostContractSnapshot);
+        return guardedTransitions({ scope, guard: createHostContractGuard({ ...scope, readSnapshot: placement.inspect }), selector,
+          root: config.documentRoot, readSnapshot: readHostContractSnapshot, physicalLedger: placement.physicalLedger });
+      },
     });
   } });
   console.log(JSON.stringify(result));
