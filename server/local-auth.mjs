@@ -1,6 +1,6 @@
 // Node-only authentication. No password, role or Google identity comes from a
 // browser claim. This module is never imported by the Cloudflare entry point.
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { readJsonBody, RequestBodyError } from '../cms-worker/request-guards.mjs';
 import { loginLimit } from '../cms-worker/rate-limit.mjs';
 import { readSession, who } from '../cms-worker/worker.mjs';
@@ -14,6 +14,8 @@ import { renderAuthInvitation } from './auth-invitation.mjs';
 const COOKIE = '__Host-heichal_local';
 const SESSION_MS = 8 * 3600_000;
 const RECENT_MS = 15 * 60_000;
+const PROOF_COOKIE = '__Host-heichal_owner_proof';
+const REAUTH_MESSAGE = 'כדי להמשיך, יש לאמת פעם אחת את הסיסמה המקומית.';
 const AUTH_FAILURE = 'שם המשתמש או הסיסמה אינם תקינים';
 const MUTATION = (method) => !['GET', 'HEAD', 'OPTIONS'].includes(method);
 const own = (o) => o && typeof o === 'object' && !Array.isArray(o);
@@ -72,11 +74,11 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
     if (supplied.length > 128 || !safeEqualStrings(digestToken(supplied), session.session.csrf_hash)) throw fail('הבקשה לא אושרה. רעננו את הדף.', 403);
   }
   const sessionBody = (user, token) => ({ user: actorOf(user), method: 'local', csrfToken: csrfToken(token, config.env.SESSION_SECRET) });
-  async function issue(tx, user, previousToken) {
+  async function issue(tx, user, previousToken, expiresAt = clock() + SESSION_MS) {
     const token = randomToken();
     if (previousToken) await tx.deleteSession(digestToken(previousToken));
     await tx.pruneSessions(user.id, clock());
-    await tx.insertSession({ token_hash: digestToken(token), csrf_hash: digestToken(csrfToken(token, config.env.SESSION_SECRET)), user_id: user.id, version: user.version, expires_at: clock() + SESSION_MS });
+    await tx.insertSession({ token_hash: digestToken(token), csrf_hash: digestToken(csrfToken(token, config.env.SESSION_SECRET)), user_id: user.id, version: user.version, expires_at: expiresAt });
     return token;
   }
   async function reauthenticate(request, env, authenticated, body) {
@@ -88,9 +90,39 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       if (!(await verifyPassword(body.currentPassword, authenticated.user.password_hash))) throw fail(AUTH_FAILURE, 401);
     }
   }
+  function proofMac(auth, until) {
+    return createHmac('sha256', config.env.SESSION_SECRET).update(['heichal-owner-step-v1', auth.token, auth.user.id, auth.user.version, until].join('\0')).digest('base64url');
+  }
+  function freshUntil(request, auth) {
+    if (auth?.method !== 'local' || !auth.actor.owner) return 0;
+    const now = clock(), issued = auth.session.expires_at - SESSION_MS;
+    if (issued <= now && now - issued < RECENT_MS) return issued + RECENT_MS;
+    const matches = (request.headers.get('cookie') || '').split(';').map((part) => part.trim()).filter((part) => part.startsWith(PROOF_COOKIE + '='));
+    if (matches.length !== 1) return 0;
+    const parsed = /^(\d{1,15})\.([A-Za-z0-9_-]{43})$/.exec(matches[0].slice(PROOF_COOKIE.length + 1));
+    if (!parsed) return 0;
+    const until = Number(parsed[1]);
+    return until > now && until <= Math.min(now + RECENT_MS, auth.session.expires_at) && safeEqualStrings(parsed[2], proofMac(auth, until)) ? until : 0;
+  }
+  async function requireOwnerProof(request, auth, body, verify = verifyPassword) {
+    if (auth?.method !== 'local' || !auth.actor.owner) throw fail('נדרשת כניסה מקומית של בעל הרשאה', 403);
+    // Older admin clients explicitly send a password. An incorrect one must still be rejected.
+    if (body.currentPassword !== undefined) {
+      if (!await verify(body.currentPassword, auth.user.password_hash)) throw fail(AUTH_FAILURE, 401);
+      return clock() + RECENT_MS;
+    }
+    const until = freshUntil(request, auth);
+    if (!until) throw fail(REAUTH_MESSAGE, 428);
+    return until;
+  }
+  async function authorizeGoogleSetup(request, env, auth, body) {
+    if (auth?.method !== 'local' || !auth.actor.owner) throw fail('נדרשת כניסה מקומית של בעל הרשאה', 403);
+    await admission(request, env, auth.user.username);
+    await requireOwnerProof(request, auth, body);
+  }
   const viewSettings = (s, auth, google) => ({ ...enabled(s, google), googleAvailable: config.googleEnabled, method: auth.method, invitationsAvailable: Boolean(config.localInvitationsEnabled && auth.method === 'local' && auth.actor.owner), ...(auth.user ? { username: auth.user.username } : {}), canDisableGoogle: s.local_enabled && s.local_verified && auth.method === 'local', canDisableLocal: enabled(s, google).googleEnabled && s.google_verified_until > clock() && auth.method === 'google' && recentGoogle(auth.bearer), ...(config.googleSetupEnabled ? { googleSetup: googleSetupView(google, auth, config, clock()) } : {}) });
-  const googleSetup = config.googleSetupEnabled ? createGoogleSetup({ store, config, clock, validUser, reauthenticate, admission, verifyProof: googleProofVerifier }) : null;
-  const invitations = config.localInvitationsEnabled ? createLocalInvitations({ store, config, clock, admission, passwords: invitationPasswordHasher }) : null;
+  const googleSetup = config.googleSetupEnabled ? createGoogleSetup({ store, config, clock, validUser, reauthenticate: authorizeGoogleSetup, admission, verifyProof: googleProofVerifier }) : null;
+  const invitations = config.localInvitationsEnabled ? createLocalInvitations({ store, config, clock, admission, requireOwnerProof, passwords: invitationPasswordHasher }) : null;
 
   async function handle(request, env, next) {
     const path = new URL(request.url).pathname, method = request.method;
@@ -150,6 +182,14 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       const authenticated = await current(request, env, settings, google);
       if (path === '/auth/session' && method === 'GET') return authenticated?.method === 'local' ? json(request, sessionBody(authenticated.user, authenticated.token)) : json(request, { message: 'צריך להתחבר מחדש' }, 401);
       if (MUTATION(method)) requireCsrf(request, authenticated);
+      if (path === '/auth/confirm' && method === 'POST') {
+        if (authenticated?.method !== 'local' || !authenticated.actor.owner) throw fail('נדרשת כניסה מקומית של בעל הרשאה', 403);
+        await reauthenticate(request, env, authenticated, await bodyOf(request));
+        const live = await current(request, env, await store.getSettings(), google);
+        if (live?.method !== 'local' || !live.actor.owner || live.user.version !== authenticated.user.version || live.user.password_hash !== authenticated.user.password_hash) throw fail(AUTH_FAILURE, 401);
+        const now = clock(), until = Math.min(now + RECENT_MS, live.session.expires_at);
+        return json(request, { localOwnerFresh: true }, 200, PROOF_COOKIE + '=' + until + '.' + proofMac(live, until) + '; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=' + Math.floor((until - now) / 1000));
+      }
       if (invitations && path === '/auth/invitations' && method === 'POST') return json(request, await invitations.create(request, env, authenticated, await bodyOf(request)), 201);
       if (googleSetup && method === 'POST' && ['/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path)) {
         return json(request, await googleSetup.handle(path, request, env, authenticated, await bodyOf(request)));
@@ -160,17 +200,22 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       }
       if (path === '/auth/settings' && ['GET', 'PUT'].includes(method)) {
         if (!authenticated?.actor.owner) return json(request, { message: 'רק בעל הרשאה יכול לנהל את הגדרות ההתחברות' }, 403);
-        if (method === 'GET') return json(request, viewSettings(settings, authenticated, google));
+        if (method === 'GET') return json(request, { ...viewSettings(settings, authenticated, google), localOwnerFresh: Boolean(freshUntil(request, authenticated)) });
         const body = await bodyOf(request);
         if (typeof body.localEnabled !== 'boolean' || typeof body.googleEnabled !== 'boolean') throw fail('הגדרות התחברות אינן תקינות', 400);
-        await reauthenticate(request, env, authenticated, body);
+        let until = 0;
+        if (authenticated.method === 'local') {
+          await admission(request, env, authenticated.user.username);
+          until = await requireOwnerProof(request, authenticated, body);
+        } else await reauthenticate(request, env, authenticated, body);
         const result = await store.atomic(async (tx) => {
           const s = await tx.getSettings();
           let managed = config.googleSetupEnabled ? await tx.getGoogleConfig() : null;
           if (managed && (managed.active_version !== google.active_version || managed.active_client_id !== google.active_client_id)) throw fail('הגדרות Google השתנו. רעננו את המסך', 409);
           if (authenticated.method === 'local') {
             const user = await tx.getUserById(authenticated.user.id);
-            if (!validUser(user) || user.version !== authenticated.user.version || user.password_hash !== authenticated.user.password_hash || !s.local_enabled) throw fail('יש להתחבר מחדש', 401);
+            const session = await tx.getSession(digestToken(authenticated.token));
+            if (!validUser(user) || user.version !== authenticated.user.version || user.password_hash !== authenticated.user.password_hash || !s.local_enabled || !session || session.expires_at <= clock() || session.user_id !== user.id || session.version !== user.version) throw fail('יש להתחבר מחדש', 401);
           } else if (!s.google_enabled || !config.googleEnabled) throw fail('יש להתחבר מחדש', 401);
           if ((!body.localEnabled && !body.googleEnabled) || (body.googleEnabled && !config.googleEnabled) || (body.localEnabled && (!s.bootstrap_consumed || !await tx.countUsers()))) throw fail('צריך להשאיר דרך התחברות זמינה', 409);
           if (managed && body.googleEnabled && (!s.google_enabled || !managed.active_client_id)) throw fail('יש להשלים בדיקת כניסה באשף Google לפני הפעלה', 409);
@@ -184,7 +229,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
           }
           await tx.saveSettings(updated);
           if (!updated.local_enabled) await tx.deleteAllSessions();
-          const token = authenticated.method === 'local' && updated.local_enabled ? await issue(tx, authenticated.user, authenticated.token) : null;
+          const token = authenticated.method === 'local' && updated.local_enabled ? await issue(tx, authenticated.user, authenticated.token, until - RECENT_MS + SESSION_MS) : null;
           return { updated, token, managed };
         });
         return json(request, { ...viewSettings(result.updated, authenticated, result.managed), ...(result.token ? sessionBody(authenticated.user, result.token) : {}) }, 200, result.token ? setCookie(result.token) : undefined);
@@ -237,6 +282,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       }
       return next(request, env);
     } catch (error) {
+      if (error.status === 428 && error.message === REAUTH_MESSAGE) return json(request, { code: 'reauth_required', message: REAUTH_MESSAGE }, 428);
       const fieldErrors = localCredentialErrorFields(error);
       if (fieldErrors) return json(request, { message: error.message, fieldErrors }, 400);
       if (error instanceof RequestBodyError) return json(request, { message: error.message }, error.status);
