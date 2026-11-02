@@ -297,8 +297,23 @@ dialog.dlg{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow
 
 /* editors */
 .addrow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}.addrow .fld{margin:0}
-ul.eds{list-style:none;padding:0;margin:16px 0 0}
-ul.eds li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 4px;border-top:1px solid var(--line)}
+/* the add form: two fields side by side, the publisher box and the button under them; on phones one column */
+.edadd{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;align-items:start}
+.edadd>.edh,.edadd>.edacts{grid-column:1/-1}
+.edh{margin:0;font-size:1.05rem}
+.edadd .hint{display:block;margin-top:4px;color:var(--mute);font-size:.85rem}
+.edacts{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.edlisth{margin-top:22px}
+/* each editor: the address on its own line, then the name, the publisher box and the remove button */
+ul.eds{list-style:none;padding:0;margin:8px 0 0}
+ul.eds li{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto auto;align-items:center;gap:10px 14px;padding:12px 4px;border-top:1px solid var(--line)}
+ul.eds .edmail{min-width:0;overflow-wrap:anywhere;text-align:right;font-weight:600}
+@media (max-width:640px){
+  .edadd{grid-template-columns:minmax(0,1fr)}
+  .edacts .btn{flex:1 1 auto}
+  ul.eds li{grid-template-columns:minmax(0,1fr) auto auto}
+  ul.eds .edmail{grid-column:1/-1}
+}
 
 /* messages */
 .toast{position:fixed;bottom:max(20px,env(safe-area-inset-bottom));inset-inline:16px;z-index:50;max-width:540px;margin:0 auto;padding:14px 18px;border:1px solid transparent;border-radius:var(--r-md);background:var(--pri);color:#fff;font-weight:600;overflow-wrap:anywhere;box-shadow:0 10px 30px rgba(7,19,56,.3)}
@@ -359,8 +374,6 @@ ul.chg .tag{margin:0}
 .tag.st-added{background:var(--ok-bg);color:var(--ok)}
 .tag.st-removed{background:var(--err-bg);color:var(--err)}
 .warn{color:var(--warn);font-weight:600}
-ul.eds li{flex-wrap:wrap}
-ul.eds li input[type=text]{max-width:200px}
 @media (max-width:860px){.hl.pend{font-size:.8125rem;padding:4px 6px}}
 
 /* a calmer header and menu on phones: only the brand, the pending chip and the menu button stay; the rest moves into the menu */
@@ -380,7 +393,6 @@ ul.eds li input[type=text]{max-width:200px}
   .tile b{font-size:1rem}.tile span:last-child{font-size:.82rem;line-height:1.4}
   .tic{width:36px;height:36px;margin-bottom:4px}
   ul.chg li{flex-wrap:wrap}
-  ul.eds li input[type=text]{max-width:none;flex:1 1 140px}
   .phd{margin-bottom:16px}
   .phd .acts{width:100%}
   .phd .acts .btn{flex:1}
