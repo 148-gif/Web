@@ -13,22 +13,70 @@
      TARGET_CANDIDATE_URI: target.candidateUri, PREVIOUS_CANDIDATE_URI: previous.candidateUri,
 --- a/server/cpanel-deployment-adapter.mjs
 +++ b/server/cpanel-deployment-adapter.mjs
-@@ -183,10 +183,15 @@
-   async function capacity(candidateRoot, phase = 'download') {
-     const retained = await runtimeStorage();
+@@ -164,1 +164,1 @@
+-  async function runtimeStorage() {
++  async function runtimeStorage(separatelyMeasuredCandidate) {
+@@ -172,1 +172,3 @@
+-      async function visit(path, depth = 0) {
++      async function visit(path, depth = 0) {
++        // The capacity checker walks this exact candidate itself, including ownership and modes.
++        if (path === separatelyMeasuredCandidate) return;
+@@ -184,2 +186,6 @@
+-    const retained = await runtimeStorage();
 -    const reservedBytes = RUNTIME_BYTES + retained.bytes, reservedInodes = RUNTIME_INODES + retained.inodes;
-+    // Installation follows artifact extraction. All retained storage is charged
-+    // at both gates, and promotion reserves the entire future runtime install.
-+    if (phase !== 'download' && phase !== 'promote') fail('capacity');
-+    const futureBytes = phase === 'promote' ? RUNTIME_BYTES : 0;
-+    const futureInodes = phase === 'promote' ? RUNTIME_INODES : 0;
-+    const reservedBytes = futureBytes + retained.bytes, reservedInodes = futureInodes + retained.inodes;
-     const adjusted = { ...config.capacity, accountAllocationBytes: config.capacity.accountAllocationBytes - reservedBytes, accountAllocationInodes: config.capacity.accountAllocationInodes - reservedInodes,
-       retentionBytes: config.capacity.retentionBytes - reservedBytes, retentionInodes: config.capacity.retentionInodes - reservedInodes };
-     deploymentCapacityConfiguration(adjusted);
-     const inspectDisk = async (path, options) => {
++    const retained = await runtimeStorage(candidateRoot);
++    // npm finishes before public staging. Each phase charges its entire peak
++    // and the real retained output of every phase that has already finished.
++    const installBytes = phase === 'install' ? RUNTIME_BYTES : 0;
++    const installInodes = phase === 'install' ? RUNTIME_INODES : 0;
++    const reservedBytes = installBytes + retained.bytes, reservedInodes = installInodes + retained.inodes;
+@@ -190,2 +196,2 @@
 -      const d = await files.fs.statfs(files.path(path), options), reserveBlocks = (BigInt(RUNTIME_BYTES) + d.bsize - 1n) / d.bsize;
 -      return { ...d, bavail: d.bavail > reserveBlocks ? d.bavail - reserveBlocks : 0n, ffree: d.ffree > BigInt(RUNTIME_INODES) ? d.ffree - BigInt(RUNTIME_INODES) : 0n };
-+      const d = await files.fs.statfs(files.path(path), options), reserveBlocks = (BigInt(futureBytes) + d.bsize - 1n) / d.bsize;
-+      return { ...d, bavail: d.bavail > reserveBlocks ? d.bavail - reserveBlocks : 0n, ffree: d.ffree > BigInt(futureInodes) ? d.ffree - BigInt(futureInodes) : 0n };
-     };
++      const d = await files.fs.statfs(files.path(path), options), reserveBlocks = (BigInt(installBytes) + d.bsize - 1n) / d.bsize;
++      return { ...d, bavail: d.bavail > reserveBlocks ? d.bavail - reserveBlocks : 0n, ffree: d.ffree > BigInt(installInodes) ? d.ffree - BigInt(installInodes) : 0n };
+@@ -193,1 +199,2 @@
+-    return capacityCheck({ capacity: adjusted, documentRoot: config.documentRoot, stateRoot: config.staticStateRoot, candidateRoot, phase, statfsImpl: inspectDisk });
++    const result = await capacityCheck({ capacity: adjusted, documentRoot: config.documentRoot, stateRoot: config.staticStateRoot, candidateRoot, phase, statfsImpl: inspectDisk });
++    return { bytes: result.projectedManaged.bytes + reservedBytes, inodes: result.projectedManaged.inodes + reservedInodes };
+@@ -277,1 +284,1 @@
+-    await capacity(candidateRoot, 'promote');
++    const projected = { install: await capacity(candidateRoot, 'install'), promote: await capacity(candidateRoot, 'promote') };
+@@ -306,1 +313,1 @@
+-    return { context, installerPlan: plan, package: pkg, guard };
++    return { context, installerPlan: plan, package: pkg, guard, projected };
+@@ -467,1 +474,2 @@
+-      await installer.install({ plan: installerPlan, toolchain: context.toolchain });
++      await capacity(context.candidateRoot, 'install');
++      await installer.install({ plan: installerPlan, toolchain: context.toolchain });
+@@ -476,1 +484,2 @@
+-        o = await stageCandidate();
++        o = await stageCandidate();
++        await capacity(context.candidateRoot, 'promote');
+@@ -618,1 +627,1 @@
+-          hostingMutations: false, activationRequested: context.activation !== null, initialVersionProofRequired: true, accountQuotaObserved: false, runtimeReservedBytes: RUNTIME_BYTES, runtimeReservedInodes: RUNTIME_INODES };
++          hostingMutations: false, activationRequested: context.activation !== null, initialVersionProofRequired: true, accountQuotaObserved: false, runtimeReservedBytes: RUNTIME_BYTES, runtimeReservedInodes: RUNTIME_INODES, projectedManaged: prepared.projected };
+--- a/server/deployment-capacity.mjs
++++ b/server/deployment-capacity.mjs
+@@ -90,1 +90,1 @@
+-    if (!['download', 'promote'].includes(phase) || !canonicalPath(documentRoot) || !canonicalPath(stateRoot) ||
++    if (!['download', 'install', 'promote'].includes(phase) || !canonicalPath(documentRoot) || !canonicalPath(stateRoot) ||
+@@ -92,1 +92,1 @@
+-    if (phase === 'promote' && (!canonicalPath(candidateRoot) || inside(candidateRoot, documentRoot) || inside(documentRoot, candidateRoot) ||
++    if (phase !== 'download' && (!canonicalPath(candidateRoot) || inside(candidateRoot, documentRoot) || inside(documentRoot, candidateRoot) ||
+@@ -97,1 +97,1 @@
+-    if (phase === 'promote') candidate = await measureDeploymentTree(candidateRoot, { privateOnly: true });
++    if (phase !== 'download') candidate = await measureDeploymentTree(candidateRoot, { privateOnly: true });
+@@ -114,4 +114,8 @@
+-    const extraBytes = phase === 'download' ? downloadReserve : publicUsage.bytes + candidate.bytes + rollbackBytes + JOURNAL_BYTES;
+-    const extraInodes = phase === 'download' ? DOWNLOAD_INODES : publicUsage.inodes + 2n * candidate.inodes + JOURNAL_INODES;
+-    const retainedPeakBytes = retained.bytes + (phase === 'download' ? 0n : extraBytes);
+-    const retainedPeakInodes = retained.inodes + (phase === 'download' ? 0n : publicUsage.inodes + candidate.inodes + JOURNAL_INODES);
++    let extraBytes = 0n, extraInodes = 0n;
++    if (phase === 'download') { extraBytes = downloadReserve; extraInodes = DOWNLOAD_INODES; }
++    if (phase === 'promote') {
++      extraBytes = publicUsage.bytes + candidate.bytes + rollbackBytes + JOURNAL_BYTES;
++      extraInodes = publicUsage.inodes + 2n * candidate.inodes + JOURNAL_INODES;
++    }
++    const retainedPeakBytes = retained.bytes + candidate.bytes + (phase === 'promote' ? extraBytes : 0n);
++    const retainedPeakInodes = retained.inodes + candidate.inodes + (phase === 'promote' ? publicUsage.inodes + candidate.inodes + JOURNAL_INODES : 0n);
