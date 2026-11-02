@@ -123,14 +123,14 @@ if (!mysqlEnabled) {
     if (localOnly) {
       await page.getByText('Google אינו מופעל באתר הזה. ניתן להפעילו לאחר השלמת ההגדרה באחסון.', { exact: true }).waitFor();
     } else await page.locator('#auth-google-enabled').uncheck();
-    await page.locator('#auth-method-password').fill(firstPassword);
+    assert.equal(await page.locator('#auth-methods input[type=password]').count(), 0);
     await page.locator('#auth-methods button[type=submit]').click(); await page.getByText('דרכי הכניסה נשמרו.', { exact: true }).waitFor();
     assert.equal((await store.getSettings()).google_enabled, false);
     assert.equal(await store.getSession(digestToken(firstCookie.value)), null, 'settings rotation revokes old session');
     const passwordBefore = (await context.cookies()).find((cookie) => cookie.name === firstCookie.name);
     assert.notEqual(passwordBefore.value, firstCookie.value, 'settings save rotates the current cookie in either provider mode');
     const secondPassword = 'Replacement password local 456!';
-    await page.locator('#auth-password-currentPassword').fill(firstPassword); await page.locator('#auth-password-newPassword').fill(secondPassword); await page.locator('#auth-password-confirmation').fill(secondPassword);
+    await page.locator('#auth-password-newPassword').fill(secondPassword); await page.locator('#auth-password-confirmation').fill(secondPassword);
     await page.locator('#auth-password-change button[type=submit]').click(); await page.getByText('הסיסמה הוחלפה. שאר ההתחברויות לחשבון הסתיימו.', { exact: true }).waitFor();
     const passwordAfter = (await context.cookies()).find((cookie) => cookie.name === firstCookie.name);
     assert.notEqual(passwordAfter.value, passwordBefore.value); assert.equal(await store.getSession(digestToken(passwordBefore.value)), null);
