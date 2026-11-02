@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { constants } from 'node:fs';
-import { lstat, open, realpath } from 'node:fs/promises';
+import { lstat, mkdir, open, readdir, readlink, realpath, symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { guardOffset, readRoute, routeKind, routePrefix, seedRoute, statusState, verifyRoute } from './cpanel-route-guards.mjs';
@@ -219,7 +219,7 @@ export async function capacityGate(options, inspect) {
 async function stage(name, operation) {
   try { return await operation(); }
   catch (error) {
-    const categories = ['host-drift','target-mismatch','command-failed','command-rejected','state-drift','unrelated-app-drift','postcondition-failed','operation-busy','invalid-baseline','configuration-drift','unsafe-dependency','installation-capacity','unverified-dependencies','toolchain-drift','process-identity','process-respawn','term-timeout','helper-failed','process-access','admission-required','unknown-state','private-state','capacity','tree','unsafe-host-file','unapproved-host-file'];
+    const categories = ['host-drift','target-mismatch','command-failed','command-rejected','state-drift','unrelated-app-drift','postcondition-failed','operation-busy','invalid-baseline','configuration-drift','unsafe-dependency','installation-capacity','unverified-dependencies','toolchain-drift','process-identity','process-respawn','term-timeout','helper-failed','process-access','admission-required','unknown-state','private-state','capacity','tree','unsafe-host-file','unapproved-host-file','operation-failed','unsafe-permissions','unsafe-file','module-link-mismatch','module-target-drift','unsupported-lock','invalid-lock','unverified-toolchain','toolchain-version','installer-command','extraneous-dependency','dependency-version','installation-budget','dependency-budget','unsafe-source','installed-inventory','identity-mismatch','configuration-drift'];
     console.error('cPanel stage:', name, categories.includes(error?.code) ? error.code : 'failed');
     throw error;
   }
@@ -227,6 +227,46 @@ async function stage(name, operation) {
 function traced(service, names) {
   const wrappers = Object.fromEntries(names.map(name => [name, (...args) => stage(name, () => service[name](...args))]));
   return { ...service, ...wrappers };
+}
+
+// The Selector CLI creates the virtual environment before it creates the app's
+// node_modules link. The UI's npm action normally supplies that final layout.
+export async function linkEmptyModules(appRoot, venv) {
+  const uid = process.getuid();
+  async function dir(path, create = false) {
+    if (create) { try { await mkdir(path, { mode: 0o700 }); } catch (e) { if (e.code !== 'EEXIST') throw e; } }
+    const info = await lstat(path);
+    if (!info.isDirectory() || info.uid !== uid || (info.mode & 0o7022) || await realpath(path) !== path) refuse();
+    return info;
+  }
+  const app = await dir(appRoot), env = await dir(venv), link = join(appRoot, 'node_modules');
+  if ((app.mode & 0o7777) !== 0o700) refuse();
+  const lib = join(venv, 'lib'), modules = join(lib, 'node_modules');
+  let original;
+  try { original = await lstat(link); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  if (original) {
+    if (!original.isSymbolicLink() || original.uid !== uid || await readlink(link) !== modules || await realpath(link) !== modules) refuse();
+    return;
+  }
+  await dir(lib, true); await dir(modules, true);
+  if ((await readdir(modules)).length || (await dir(venv)).ino !== env.ino || (await dir(appRoot)).ino !== app.ino) refuse();
+  await symlink(modules, link, 'dir');
+  if (await readlink(link) !== modules || await realpath(link) !== modules) refuse();
+  for (const path of [lib, venv, appRoot]) {
+    const directory = await open(path, constants.O_DIRECTORY | constants.O_NOFOLLOW);
+    try { await directory.sync(); } finally { await directory.close(); }
+  }
+}
+
+export async function prepareModuleLink(options, selector) {
+  const commit = options?.plan?.commit;
+  if (typeof commit !== 'string' || !/^[a-f0-9]{40}$/.test(commit)) refuse();
+  const root = 'heichal-cms/releases/' + commit + '/app', app = '/home/yoterber/' + root, venv = '/home/yoterber/nodevenv/' + root + '/24';
+  const found = (await selector.inspect()).applications.filter(a => a.root === root);
+  if (options.plan.applicationRoot !== app || options.toolchain?.virtualenvRoot !== venv || options.toolchain.modulesPath !== venv + '/lib/node_modules' ||
+      found.length !== 1 || found[0].uri !== '/cms-api-check-' + commit.slice(0, 8) || found[0].domain !== 'hichal.yoterberama.com' ||
+      found[0].status !== 'stopped' || found[0].startup !== 'passenger.cjs' || found[0].mode !== 'production' || found[0].version !== '24.22.2') refuse();
+  await linkEmptyModules(app, venv);
 }
 
 async function main(args) {
@@ -250,8 +290,12 @@ async function main(args) {
       return run(file, selectorArguments(args), options);
     } });
     const selector = traced(raw, ['create','start','stop','setUri','setRuntimePhase']);
+    const installer = createRuntimeInstaller();
     return createCpanelDeploymentDriver(config, {
-      installer: traced(createRuntimeInstaller(), ['plan','materialize','install','inspect']),
+      installer: traced({ ...installer, async install(options) {
+        await stage('candidate-module-link', () => prepareModuleLink(options, selector));
+        return installer.install(options);
+      } }, ['plan','materialize','install','inspect']),
       runtimeProbe: options => stage('runtime-proof', () => probeCpanelRuntime(options)),
       capacityCheck: options => stage('capacity-' + options.phase, () => capacityGate(options, inspectDeploymentCapacity)),
       drainerFactory: options => traced(measuredDrainer(options, createLsnodeDrainer), ['inspect','drain']),
