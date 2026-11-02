@@ -5,7 +5,7 @@ import { copyFile, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } fro
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { guardOffset, routePrefix, seedRoute, statusState, verifyRoute } from '../scripts/cpanel-route-guards.mjs';
-import { guardedTransitions, proveStoppedRoute, routeSnapshots } from '../scripts/deploy-cpanel-guarded.mjs';
+import { guardedTransitions, measuredDrainer, proveStoppedRoute, routeSnapshots } from '../scripts/deploy-cpanel-guarded.mjs';
 
 const linux = { skip: typeof process.getuid !== 'function' };
 const old = 'a'.repeat(40), next = 'b'.repeat(40), route = 'cms-api-check-bbbbbbbb';
@@ -180,4 +180,23 @@ test('only the exact generated Passenger section can precede the guard, and the 
   for (const bad of [provider.replace('passenger.cjs', 'arbitrary.cjs'), provider.replace('/24/bin/node', '/22/bin/node'), 'RewriteRule ^ - [L]\n' + provider]) {
     assert.throws(() => guardOffset(Buffer.from(bad + marker + env), route));
   }
+});
+
+test('LiteSpeed title is an exact argument while original drainer still receives the full target and admission proof', async () => {
+  const prefix = 'lsnode:/home/yoterber/heichal-cms/releases/';
+  const contract = { uid: 1148, lsnode: { realPath: '/pinned/node', commandLineTemplate: [prefix + '{{COMMIT31}}'] } };
+  const evidence = [];
+  const drainer = measuredDrainer({ contract }, ({ contract: scoped }) => ({
+    inspect(options) { evidence.push([scoped, options]); }, drain(options) { evidence.push([scoped, options]); },
+  }));
+  for (const commit of [old, next]) {
+    const options = { target: { commit }, selectorStopped: true, admissionClosed: true, expectedProcesses: [] };
+    await drainer.inspect(options); await drainer.drain(options);
+    const [scoped, original] = evidence.at(-1);
+    assert.deepEqual(scoped.lsnode.commandLineTemplate, [prefix + commit.slice(0, 31)]);
+    assert.equal(scoped.lsnode.realPath, contract.lsnode.realPath); assert.equal(scoped.uid, contract.uid);
+    assert.equal(original, options); assert.equal(original.target.commit.length, 40);
+  }
+  assert.throws(() => drainer.drain({ target: { commit: old.slice(0, 31) } }));
+  assert.throws(() => measuredDrainer({ contract: { lsnode: { commandLineTemplate: [prefix + '*'] } } }, () => {}));
 });
