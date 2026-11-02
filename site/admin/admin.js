@@ -451,6 +451,7 @@
     nav.append(link('#/file/site.json', 'gear', 'הגדרות האתר'));
     if (owner) nav.append(link('#/editors', 'users', 'עורכים'));
     if (owner && authOptions && authOptions.settingsAvailable) nav.append(link('#/auth', 'gear', 'הגדרות התחברות'));
+    if (owner) nav.append(link('#/auth/google', 'gear', 'הגדרות Google'));
     // On a phone the header keeps only the essentials; the rest is here.
     nav.append(el('div', { class: 'navfoot' },
       draft && !contentReadOnly() ? el('button', { type: 'button', onclick: nameDialog, text: 'השם שלי' }) : null,
@@ -460,7 +461,7 @@
     auditBadge();
   }
   function mark(hash) {
-    document.querySelectorAll('#nav a').forEach(function (a) { var h = a.getAttribute('data-h'); a.classList.toggle('cur', h === hash || (h !== '#/' && hash.indexOf(h + '/') === 0) || (h === '#/pages' && /^#\/page\//.test(hash))); });
+    document.querySelectorAll('#nav a').forEach(function (a) { var h = a.getAttribute('data-h'); a.classList.toggle('cur', h === hash || (h !== '#/' && h !== '#/auth' && hash.indexOf(h + '/') === 0) || (h === '#/pages' && /^#\/page\//.test(hash))); });
     document.querySelectorAll('#nav a').forEach(function (a) { if (a.classList.contains('cur')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     navOpen(false);
   }
@@ -2072,6 +2073,7 @@
     else if (h === '#/links') linksScreen();
     else if (h === '#/editors' && owner) editorsScreen();
     else if (h === '#/auth' && owner && authOptions && authOptions.settingsAvailable) authSettingsScreen();
+    else if (h === '#/auth/google' && owner) authSettingsScreen(true);
     else home();
   }
   window.addEventListener('hashchange', function () { route(); });
@@ -2303,7 +2305,7 @@
         clearProof(); attempt = serial;
         return discoverAuthentication().then(function () {
           sessionCheck(epoch); if (!current(attempt)) return;
-          authSettingsScreen(); say('הכניסה עם Google הופעלה. החשבון המקומי נשאר מחובר.', 'ok');
+          route(true); say('הכניסה עם Google הופעלה. החשבון המקומי נשאר מחובר.', 'ok');
         });
       }).catch(function (failure) {
         if (!current(attempt) || failure.editorSessionEnded) return;
@@ -2391,13 +2393,24 @@
     // until their submit/cancel handlers exist.
     submit.disabled = false; container.append(panel);
   }
-  function authSettingsScreen() {
+  function authSettingsScreen(googleOnly) {
     var screen = main(), epoch = sessionEpoch;
-    screen.append(head('הגדרות התחברות', 'ניהול דרכי הכניסה למערכת והסיסמה שלכם.'));
-    var content = el('div', { class: 'auth-settings' }); screen.append(content); loading(content);
+    screen.append(googleOnly ? head('הגדרות Google', 'חיבור חשבון Google לכניסה ללוח הניהול.') :
+      head('הגדרות התחברות', 'ניהול דרכי הכניסה למערכת והסיסמה שלכם.'));
+    var content = el('div', { class: 'auth-settings' }); screen.append(content);
+    var unavailable = 'הגדרת כניסה עם Google אינה זמינה בשרת המחובר לאתר. כדי להשתמש באשף יש להפעיל את ניהול Google בהגדרות השרת.';
+    if (googleOnly && (!authOptions || !authOptions.settingsAvailable)) {
+      content.append(el('p', { class: 'note', text: unavailable })); return;
+    }
+    loading(content);
     authCall('/settings').then(function (settings) {
       sessionCheck(epoch); if (!screen.isConnected || !content.isConnected) return;
       content.textContent = '';
+      if (googleOnly) {
+        if (settings.googleSetup) googleSetupPanel(content, settings.googleSetup, epoch);
+        else content.append(el('p', { class: 'note', text: unavailable }));
+        return;
+      }
       var methods = el('form', { class: 'card', id: 'auth-methods', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/settings' }, el('h2', { text: 'דרכי כניסה' }),
         el('p', { text: 'כדי לכבות דרך כניסה, יש לאמת קודם דרך חלופית. תמיד תישאר דרך פעילה לכניסת מנהל.' }));
       function method(name, title, description, enabled, canDisable) {
