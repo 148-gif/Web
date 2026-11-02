@@ -166,6 +166,20 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
   return { expected: state => physicalLedger(guard.expected(observedStates.get(state) ?? state)), verify: inspect, run };
 }
 
+// LiteSpeed truncates the displayed title at 74 bytes on this host. This is an
+// exact argument, not a prefix match. The original drainer separately proves
+// the full working directory, uid, executable, environment and PID identity.
+export function measuredDrainer({ contract }, create) {
+  const template = 'lsnode:/home/yoterber/heichal-cms/releases/{{COMMIT31}}';
+  if (contract.lsnode.commandLineTemplate.length !== 1 || contract.lsnode.commandLineTemplate[0] !== template) refuse();
+  function forTarget(options) {
+    if (typeof options?.target?.commit !== 'string' || !/^[a-f0-9]{40}$/.test(options.target.commit)) refuse();
+    const argument = template.replace('{{COMMIT31}}', options.target.commit.slice(0, 31));
+    return create({ contract: { ...contract, lsnode: { ...contract.lsnode, commandLineTemplate: [argument] } } });
+  }
+  return { inspect: options => forTarget(options).inspect(options), drain: options => forTarget(options).drain(options) };
+}
+
 export async function proveStoppedRoute(uri, fetcher = fetch) {
   if (typeof uri !== 'string' || !uri.startsWith('/')) refuse();
   routeKind(uri.slice(1));
@@ -182,11 +196,13 @@ async function main(args) {
   const { deploymentCli } = await load('scripts/deploy-cpanel.mjs');
   const { readCpanelDeploymentConfiguration, createCpanelDeploymentDriver } = await load('server/cpanel-deployment-adapter.mjs');
   const { createCloudlinuxSelector } = await load('server/cloudlinux-selector.mjs');
+  const { createLsnodeDrainer } = await load('server/cpanel-process-drain.mjs');
   const { createHostContractGuard, readHostContractSnapshot } = await load('server/cpanel-host-contract.mjs');
   const result = await deploymentCli(args, { readConfiguration: readCpanelDeploymentConfiguration, driver(config) {
     if (config.documentRoot !== ROOT) refuse();
     const selector = createCloudlinuxSelector({ uriStyle: config.selector.uriStyle });
     return createCpanelDeploymentDriver(config, {
+      drainerFactory: options => measuredDrainer(options, createLsnodeDrainer),
       selector: { ...selector, async stop(options) {
         const uri = options.snapshot.applications.find(a => a.root === options.target.root)?.uri;
         const stopped = await selector.stop(options);
@@ -203,5 +219,9 @@ async function main(args) {
   console.log(JSON.stringify(result));
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  main(process.argv.slice(2)).catch(() => { console.error('cPanel deployment stopped; inspect the private configuration and journal.'); process.exitCode = 1; });
+  main(process.argv.slice(2)).catch(error => {
+    const allowed = new Set(['baseline-drift', 'baseline-required', 'capacity', 'configuration', 'contract', 'disabled', 'locked', 'operation-failed', 'package', 'private-state', 'public-proof', 'recovery-required', 'runtime', 'selector-drift', 'source-changed', 'source-unavailable', 'host-drift', 'invalid-scope', 'unknown-state', 'account-inodes', 'filesystem-inodes', 'retention-inodes', 'account-bytes', 'filesystem-bytes', 'retention-bytes']);
+    console.error('cPanel deployment stopped:', allowed.has(error?.code) ? error.code : 'inspect private configuration and journal');
+    process.exitCode = 1;
+  });
 }
