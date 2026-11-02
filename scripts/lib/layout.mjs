@@ -1,9 +1,9 @@
 // Page shell: security policy, menus, icons and the layout every page is built with.
 import { createHash } from 'node:crypto';
-import { SITE, BASE, ORIGIN, BUILD, font, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden, topics, cmsPages } from './core.mjs';
+import { SITE, BASE, ORIGIN, assetPath, font, escAttr, esc, url, tel, nik, gist, shut, letters, institutions, pr, site, isHidden, topics, cmsPages } from './core.mjs';
 
 // Security policy. Inline scripts (head bootstrap, speculation rules) and the splash styles are allowed by hash.
-const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
+const CSS_URL = `${BASE}/${assetPath('style.css')}`;
 // Head bootstrap, inlined at the top of every page.
 // The stylesheet is added from here rather than as a <link> in the HTML, so it never blocks the first paint.
 // Until it is in, the page stays hidden: behind the branded splash on the first page of a visit (which also waits
@@ -125,7 +125,7 @@ const layout = (title, body, { desc = '', path = '/', self = path, head = '', fu
 <meta name="theme-color" content="#0b1d50"><meta property="og:title" content="${escAttr(nik(title))}"><meta property="og:description" content="${escAttr(nik(desc || DESC))}"><meta property="og:site_name" content="${SITE}"><meta property="og:locale" content="he_IL"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">${ORIGIN && index ? `<link rel="canonical" href="${abs(self)}"><meta property="og:url" content="${abs(self)}"><meta property="og:image" content="${abs('/img/og.png')}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">` : ''}
 <link rel="manifest" href="/site.webmanifest"><link rel="apple-touch-icon" href="/img/icon-180.png"><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0b1d50"/><g fill="none" stroke="#e6c466" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON.flame}</g></svg>`)}">
 ${PRELOAD_FONTS.map((f) => `<link rel="preload" href="/${font(f)}" as="font" type="font/woff2" crossorigin>`).join('')}
-<noscript><link rel="stylesheet" href="/style.css?v=${BUILD}"></noscript><style>${SPLASH_CSS}</style>
+<noscript><link rel="stylesheet" href="/${assetPath('style.css')}"></noscript><style>${SPLASH_CSS}</style>
 ${head_extra}</head><body>
 ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 <header class="top"><div class="bar"><a class="brand" href="/"><span class="mark">${icon('flame')}</span><span>${SITE}<small>חסידות ברסלב</small></span></a><div class="hacts"><a class="iconbtn" href="/search/" aria-label="חיפוש">${icon('search')}</a><button class="iconbtn mbtn" type="button" aria-expanded="false" aria-controls="mainnav" aria-label="תפריט">${icon('menu', 'ico i-open')}${icon('close', 'ico i-close')}</button></div><nav id="mainnav" aria-label="ניווט ראשי">${mainMenu(path)}</nav></div>${reading ? '<div class="readbar" aria-hidden="true"><i></i></div>' : ''}</header>
@@ -133,7 +133,7 @@ ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 <footer class="foot"><div class="wrap"><div class="fbrand"><span class="mark">${icon('flame')}</span><div><b>${SITE}</b><span>אור הצדיק לכל נפש</span></div></div>
 <nav aria-label="ניווט תחתון">${nav.slice(1, -1).map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>
 <nav class="finfo" aria-label="מידע על האתר">${infoNav.map(([h, t]) => `<a href="${h}"${h === self ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</nav>
-<p>שו״ת ברסלב נכתב על ידי <a href="/moharash/">הצדיק מיבניאל זצ״ל</a>, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer><button type="button" class="totop" aria-label="חזרה לראש העמוד" hidden><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">${SPEC}</script></body></html>`;
+<p>שו״ת ברסלב נכתב על ידי <a href="/moharash/">הצדיק מיבניאל זצ״ל</a>, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer><button type="button" class="totop" aria-label="חזרה לראש העמוד" hidden><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button><script src="/${assetPath('app.js')}" defer></script><script type="speculationrules">${SPEC}</script></body></html>`;
 
 const sr = (t) => `<h2 class="sr">${t}</h2>`;
 const card = (x, base = '/shut/') => `<a class="card qcard" href="${base}${x.id}/"><h3>${esc(x.title)}</h3><p>${esc(gist(x.a).slice(0, 150))}…</p><span class="go">לקריאת התשובה ←</span></a>`;
