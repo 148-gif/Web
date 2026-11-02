@@ -14,6 +14,7 @@ import { renderAuthInvitation } from './auth-invitation.mjs';
 const COOKIE = '__Host-heichal_local';
 const SESSION_MS = 8 * 3600_000;
 const AUTH_FAILURE = 'שם המשתמש או הסיסמה אינם תקינים';
+const SESSION_ENDED = 'ההפעלה הסתיימה. התחברו שוב.';
 const MUTATION = (method) => !['GET', 'HEAD', 'OPTIONS'].includes(method);
 const own = (o) => o && typeof o === 'object' && !Array.isArray(o);
 const cookieValue = (request) => {
@@ -79,7 +80,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
     const session = await tx.getSession(digestToken(authenticated.token));
     if (!settings.local_enabled || !validUser(user) || user.role !== 'owner' || user.version !== authenticated.user.version ||
         user.password_hash !== authenticated.user.password_hash || !session || session.expires_at <= clock() ||
-        session.user_id !== user.id || session.version !== user.version || session.csrf_hash !== authenticated.session.csrf_hash) throw fail('ההפעלה הסתיימה. התחברו שוב.', 401);
+        session.user_id !== user.id || session.version !== user.version || session.csrf_hash !== authenticated.session.csrf_hash) throw fail(SESSION_ENDED, 401);
     return user;
   }
   const viewSettings = (s, auth, google) => ({ ...enabled(s, google), googleAvailable: config.googleEnabled, method: auth.method, invitationsAvailable: Boolean(config.localInvitationsEnabled && auth.method === 'local' && auth.actor.owner), ...(auth.user ? { username: auth.user.username } : {}), canDisableGoogle: s.local_enabled && s.local_verified && auth.method === 'local', canDisableLocal: enabled(s, google).googleEnabled && auth.method === 'google', ...(config.googleSetupEnabled ? { googleSetup: googleSetupView(google, auth, config, clock()) } : {}) });
@@ -143,6 +144,9 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       }
       const authenticated = await current(request, env, settings, google);
       if (path === '/auth/session' && method === 'GET') return authenticated?.method === 'local' ? json(request, sessionBody(authenticated.user, authenticated.token)) : json(request, { message: 'צריך להתחבר מחדש' }, 401);
+      if (!authenticated && ['/auth/settings', '/auth/password', '/auth/invitations', '/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path)) {
+        return json(request, { code: 'session_expired', message: SESSION_ENDED }, 401);
+      }
       if (MUTATION(method)) requireCsrf(request, authenticated);
       if (invitations && path === '/auth/invitations' && method === 'POST') return json(request, await invitations.create(request, env, authenticated, await bodyOf(request)), 201);
       if (googleSetup && method === 'POST' && ['/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path)) {
@@ -164,7 +168,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
           if (managed && (managed.active_version !== google.active_version || managed.active_client_id !== google.active_client_id)) throw fail('הגדרות Google השתנו. רעננו את המסך', 409);
           if (authenticated.method === 'local') {
             await currentLocalOwner(tx, authenticated, s);
-          } else if (!s.google_enabled || !config.googleEnabled || !await readSession(authenticated.bearer, env, clock() / 1000)) throw fail('ההפעלה הסתיימה. התחברו שוב.', 401);
+          } else if (!s.google_enabled || !config.googleEnabled || !await readSession(authenticated.bearer, env, clock() / 1000)) throw fail(SESSION_ENDED, 401);
           if ((!body.localEnabled && !body.googleEnabled) || (body.googleEnabled && !config.googleEnabled) || (body.localEnabled && (!s.bootstrap_consumed || !await tx.countUsers()))) throw fail('צריך להשאיר דרך התחברות זמינה', 409);
           if (managed && body.googleEnabled && (!s.google_enabled || !managed.active_client_id)) throw fail('יש להשלים בדיקת כניסה באשף Google לפני הפעלה', 409);
           if (s.google_enabled && !body.googleEnabled && !(body.localEnabled && s.local_verified && authenticated.method === 'local')) throw fail('יש לאמת כניסה מקומית לפני ביטול Google', 409);
@@ -228,6 +232,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       }
       return next(request, env);
     } catch (error) {
+      if (error.status === 401 && error.message === SESSION_ENDED) return json(request, { code: 'session_expired', message: SESSION_ENDED }, 401);
       const fieldErrors = localCredentialErrorFields(error);
       if (fieldErrors) return json(request, { message: error.message, fieldErrors }, 400);
       if (error instanceof RequestBodyError) return json(request, { message: error.message }, error.status);
