@@ -10,13 +10,24 @@ const ORIGIN = (process.env.SITE_ORIGIN || '').replace(/\/$/, ''); // e.g. https
 // srcset holds several comma-separated paths, so each one that starts at the site root gets the base too.
 const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`).replace(/srcset="([^"]*)"/g, (m, v) => `srcset="${v.replace(/(^|,\s*)\//g, `$1${BASE}/`)}"`) : h);
 const PER_PAGE = 40;
-const BUILD = Date.now().toString(36);
 // Fonts carry a hash of their content (fonts/x.woff2?v=…), so they can be cached for a year and a changed file still reaches everyone.
 // build.mjs adds it to the url()s in style.css; layout.mjs to the preloads, which must match those exactly.
 const FONT_DIR = new URL('../../site/fonts/', import.meta.url);
 const fileHash = (u) => createHash('sha256').update(readFileSync(u)).digest('hex').slice(0, 10);
 const FONT_V = Object.fromEntries(readdirSync(FONT_DIR).filter((f) => f.endsWith('.woff2')).map((f) => [f, fileHash(new URL(f, FONT_DIR))]));
 const font = (f) => `fonts/${f}?v=${FONT_V[f]}`;
+// Use the same rendered CSS bytes for writing the file and versioning its public URL.
+const cssDirectory = new URL('../../site/css/', import.meta.url);
+const stylesheet = readdirSync(cssDirectory).filter((name) => name.endsWith('.css')).sort()
+  .map((name) => readFileSync(new URL(name, cssDirectory), 'utf8')).join('\n')
+  .replace(/url\(fonts\/([\w.-]+\.woff2)\)/g, (match, name) => 'url(' + font(name) + ')');
+const scripts = ['app.js', 'search.js', 'zmanim.js'];
+const assets = new Map([['style.css', stylesheet], ...scripts.map((name) => [name, readFileSync(new URL('../../site/' + name, import.meta.url))])]
+  .map(([name, bytes]) => [name, name + '?v=' + createHash('sha256').update(bytes).digest('hex').slice(0, 16)]));
+const assetPath = (name) => {
+  if (!assets.has(name)) throw new Error('Unknown versioned asset: ' + name);
+  return assets.get(name);
+};
 // Text in attributes and <title> is escaped without the bidi marks: search results and share previews would show them.
 const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 // Page text: a number range (1940–2015) is isolated so it keeps its order inside Hebrew.
@@ -206,4 +217,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, assetPath, stylesheet, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
