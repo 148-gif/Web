@@ -12,6 +12,12 @@ const ROOT = '/home/yoterber/hichal.yoterberama.com';
 const ORIGIN = 'https://hichal.yoterberama.com';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const refuse = () => { throw new Error('cPanel operator contract mismatch'); };
+const empty = entry => entry?.bytes === 0 && entry.sha256 === sha('');
+function occupied(apps, route) {
+  const uri = '/' + route;
+  return apps.some(a => a.domain === 'hichal.yoterberama.com' &&
+    (a.uri === '/' || a.uri === uri || a.uri.startsWith(uri + '/') || uri.startsWith(a.uri + '/')));
+}
 
 async function checkedModuleTree(base) {
   const uid = BigInt(process.getuid());
@@ -62,28 +68,35 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
       // precisely our harmless prefix in a path pinned as absent. Admit that
       // one intermediate state only after rechecking the entire raw ledger.
       const route = pending[state];
-      if (error.code !== 'host-drift' || !route || !ledger.files.some(f => f.path === route + '/.htaccess' && f.entry === null)) throw error;
+      const slot = ledger.files.find(f => f.path === route + '/.htaccess');
+      if (error.code !== 'host-drift' || !route || !slot || occupied(snapshot.applications, route) || !(slot.entry === null || empty(slot.entry))) throw error;
       const prefix = Buffer.from(routePrefix(route));
-      const files = ledger.files.map(f => f.path === route + '/.htaccess' ? { ...f, entry: { bytes: prefix.length, sha256: sha(prefix), mode: 0o644 } } : f);
+      const files = ledger.files.map(f => f === slot ? { ...f, entry: { bytes: prefix.length, sha256: sha(prefix), mode: slot.entry?.mode ?? 0o644 } } : f);
       if (JSON.stringify(await readSnapshot({ files })) !== JSON.stringify(files)) throw error;
       await verify(root, route);
       result = { verified: true, state: key, snapshotSha256: sha(JSON.stringify({ ...ledger, files }) + '\n'), rootHtaccessSha256: files.find(f => f.path === '.htaccess').entry.sha256 };
     }
     for (const f of ledger.files) {
-      if (f.entry && /^cms-api(?:-check-[a-f0-9]{8}|-rollback-[a-f0-9]{8})?\/\.htaccess$/.test(f.path)) await verify(root, f.path.split('/')[0]);
+      if (!/^cms-api(?:-check-[a-f0-9]{8}|-rollback-[a-f0-9]{8})?\/\.htaccess$/.test(f.path)) continue;
+      const route = f.path.split('/')[0];
+      if (f.entry === null || empty(f.entry)) {
+        if (occupied(snapshot.applications, route)) refuse();
+      } else await verify(root, route);
     }
-    return result;
+    return { ...result, contractState: key };
   }
   async function run(action, operation) {
     const t = scope.contract.transitions[action];
     if (busy || !t || typeof operation !== 'function') refuse();
     busy = true;
     try {
-      await inspect(t.before);
+      const proof = await inspect(t.before);
       const route = destination[action];
       if (route) {
         if (!guard.expected(t.after).files.some(f => f.path === route + '/.htaccess' && f.entry)) refuse();
-        await seed(root, route);
+        const before = guard.expected(proof.contractState).files.find(f => f.path === route + '/.htaccess');
+        if (!before) refuse();
+        await seed(root, route, empty(before.entry) ? before.entry.mode : null);
       }
       let value;
       try { value = await operation(); } finally { await inspect(t.after); }
