@@ -451,6 +451,7 @@
     nav.append(link('#/file/site.json', 'gear', 'הגדרות האתר'));
     if (owner) nav.append(link('#/editors', 'users', 'עורכים'));
     if (owner && authOptions && authOptions.settingsAvailable) nav.append(link('#/auth', 'gear', 'הגדרות התחברות'));
+    if (owner) nav.append(link('#/auth/google', 'gear', 'הגדרות Google'));
     // On a phone the header keeps only the essentials; the rest is here.
     nav.append(el('div', { class: 'navfoot' },
       draft && !contentReadOnly() ? el('button', { type: 'button', onclick: nameDialog, text: 'השם שלי' }) : null,
@@ -460,7 +461,7 @@
     auditBadge();
   }
   function mark(hash) {
-    document.querySelectorAll('#nav a').forEach(function (a) { var h = a.getAttribute('data-h'); a.classList.toggle('cur', h === hash || (h !== '#/' && hash.indexOf(h + '/') === 0) || (h === '#/pages' && /^#\/page\//.test(hash))); });
+    document.querySelectorAll('#nav a').forEach(function (a) { var h = a.getAttribute('data-h'); a.classList.toggle('cur', h === hash || (h !== '#/' && h !== '#/auth' && hash.indexOf(h + '/') === 0) || (h === '#/pages' && /^#\/page\//.test(hash))); });
     document.querySelectorAll('#nav a').forEach(function (a) { if (a.classList.contains('cur')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     navOpen(false);
   }
@@ -2072,6 +2073,7 @@
     else if (h === '#/links') linksScreen();
     else if (h === '#/editors' && owner) editorsScreen();
     else if (h === '#/auth' && owner && authOptions && authOptions.settingsAvailable) authSettingsScreen();
+    else if (h === '#/auth/google' && owner) authSettingsScreen(true);
     else home();
   }
   window.addEventListener('hashchange', function () { route(); });
@@ -2103,9 +2105,15 @@
       { method: method || 'GET', headers: anonymous ? { 'Content-Type': 'application/json' } : editorHeaders(method), cache: 'no-store', body: body === undefined ? undefined : JSON.stringify(body) },
       function (r) { return r.text().then(function (text) {
         var result = {}; try { result = text ? JSON.parse(text) : {}; } catch { /* safe generic error below */ }
-        if (!r.ok) { var error = new Error(result.message || 'לא ניתן להשלים את הפעולה כרגע. נסו שוב.'); error.status = r.status; throw error; }
+        if (!r.ok) { var error = new Error(r.status === 503 ? 'שירות ההתחברות אינו זמין זמנית. נסו שוב בעוד רגע.' : result.message || 'לא ניתן להשלים את הפעולה כרגע. נסו שוב.'); error.status = r.status; if (r.status === 428 && result.code === 'reauth_required') error.code = result.code; throw error; }
         return result;
-      }); }, !!anonymous);
+      }); }, !!anonymous).then(function (result) {
+        if (path === '/confirm' && method === 'POST' && result.localOwnerFresh === true) {
+          document.querySelectorAll('input[data-owner-confirm]').forEach(function (input) { showOwnerPassword(input, false); });
+          window.dispatchEvent(new Event('heichal-owner-confirmed'));
+        }
+        return result;
+      });
   }
   function validCookieSession(result) {
     return result && result.method === 'local' && result.user && typeof result.user.email === 'string' &&
@@ -2199,7 +2207,7 @@
       say('היציאה לא הושלמה. בדקו את החיבור ונסו שוב.', 'bad');
     }).finally(function () { $('#out').disabled = false; });
   }
-  function googleSetupPanel(container, setup, epoch) {
+  function googleSetupPanel(container, setup, epoch, localOwnerFresh) {
     var panel = el('section', { class: 'card google-setup', id: 'auth-google-setup', 'aria-labelledby': 'google-setup-title' },
       el('h2', { id: 'google-setup-title', text: 'הגדרת כניסה עם Google' }),
       el('p', { text: 'מגדירים לקוח באתר Google, מאמתים אותו ורק אז מפעילים את הכניסה. החשבון המקומי שלכם נשאר מחובר.' }));
@@ -2226,19 +2234,44 @@
     var clientId = el('input', { id: 'google-client-id', name: 'clientId', type: 'text', dir: 'ltr', required: true, autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false', maxlength: '256', value: setup.clientId || '' });
     var preparePassword = el('input', { id: 'google-prepare-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '256' });
     var prepareSubmit = el('button', { id: 'google-prepare-submit', type: 'submit', class: 'btn pri', disabled: true, text: 'הכנת אימות Google' });
-    prepare.append(el('div', { class: 'fld' }, el('label', { for: 'google-client-id', text: 'מזהה לקוח Google — Client ID' }), clientId),
-      el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'google-prepare-password', text: 'הסיסמה המקומית הנוכחית לאישור ההכנה' }), preparePassword), prepareSubmit);
+    var preparePasswordField = el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'google-prepare-password', text: 'הסיסמה המקומית לאימות זהותכם' }), preparePassword);
+    prepare.append(el('div', { class: 'fld' }, el('label', { for: 'google-client-id', text: 'מזהה לקוח Google — Client ID' }), clientId), preparePasswordField, prepareSubmit);
     var status = el('p', { id: 'google-setup-status', class: 'auth-status', role: 'status' });
     var error = el('p', { id: 'google-setup-error', class: 'err', role: 'alert' });
     var proofButton = el('div', { id: 'google-proof-button', class: 'google-proof-button', hidden: true });
     var cancel = el('button', { id: 'google-setup-cancel', type: 'button', class: 'btn', hidden: true, text: 'ביטול האימות' });
     var activate = el('form', { id: 'google-activate', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/google/activate', hidden: true },
-      el('h3', { text: 'הפעלת הכניסה' }), el('p', { class: 'help', text: 'האימות אינו מחליף את החשבון המחובר. הזינו שוב את הסיסמה המקומית כדי להפעיל את Google כדרך כניסה נוספת.' }));
+      el('h3', { text: 'הפעלת הכניסה' }), el('p', { class: 'help', text: 'לאחר אימות חשבון Google, לחצו על הפעלה כדי להוסיף אותו כדרך כניסה.' }));
     var activatePassword = el('input', { id: 'google-activate-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '256' });
     var activateSubmit = el('button', { id: 'google-activate-submit', type: 'submit', class: 'btn pri', disabled: true, text: 'הפעלת כניסה עם Google' });
-    activate.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'google-activate-password', text: 'הסיסמה המקומית הנוכחית לאישור ההפעלה' }), activatePassword), activateSubmit);
+    var activatePasswordField = el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'google-activate-password', text: 'הסיסמה המקומית לאימות זהותכם' }), activatePassword);
+    activate.append(activatePasswordField, activateSubmit);
     panel.append(prepare, status, error, proofButton, activate, cancel);
     var serial = 0, challenge = null, expiryTimer = null, busy = false;
+    var supportsRecentOwner = typeof localOwnerFresh === 'boolean';
+    function showPassword(required, field) {
+      [[preparePassword, preparePasswordField], [activatePassword, activatePasswordField]].forEach(function (pair) {
+        var visible = required && (!field || field === pair[0]);
+        pair[1].hidden = !visible; pair[0].disabled = !visible; pair[0].required = visible; pair[0].value = '';
+      });
+    }
+    function confirmedOwner() { if (supportsRecentOwner && current(serial)) showPassword(false); }
+    showPassword(!supportsRecentOwner || !localOwnerFresh, supportsRecentOwner ? preparePassword : null);
+    window.addEventListener('heichal-owner-confirmed', confirmedOwner);
+    function ownerAction(path, body, password, attempt) {
+      if (!supportsRecentOwner) return authCall(path, 'POST', Object.assign(body, { currentPassword: password }));
+      if (!password) return authCall(path, 'POST', body);
+      return authCall('/confirm', 'POST', { currentPassword: password }).then(function (answer) {
+        if (!current(attempt)) throw endedSession();
+        if (answer.localOwnerFresh !== true) throw new Error('אימות הסיסמה לא הושלם. נסו שוב.');
+        showPassword(false);
+      }).catch(function (failure) { failure.ownerConfirmation = true; throw failure; })
+        .then(function () { if (!current(attempt)) throw endedSession(); return authCall(path, 'POST', body); });
+    }
+    function handleOwnerChallenge(failure, field) {
+      if (!supportsRecentOwner || !(failure.ownerConfirmation || (failure.status === 428 && failure.code === 'reauth_required'))) return false;
+      showPassword(true, field); error.textContent = failure.message; field.focus(); return true;
+    }
     function current(attempt) { return attempt === serial && epoch === sessionEpoch && !!token && panel.isConnected; }
     function clearProof(message) {
       serial++; challenge = null; busy = false; cancelLater(expiryTimer); expiryTimer = null;
@@ -2253,16 +2286,17 @@
       cancelLater(expiryTimer);
       expiryTimer = later(function () { if (current(attempt)) clearProof('תוקף האימות הסתיים. התחילו אימות חדש.'); }, Math.min(deadline - Date.now(), 300000));
     }
-    authSetupCleanup = function (detach) { clearProof(); if (detach !== false) authSetupCleanup = null; };
+    authSetupCleanup = function (detach) { clearProof(); if (detach !== false) { window.removeEventListener('heichal-owner-confirmed', confirmedOwner); authSetupCleanup = null; } };
     clientId.addEventListener('input', function () { clearProof('המזהה השתנה. יש לבצע אימות חדש לפני ההפעלה.'); });
     cancel.addEventListener('click', function () { clearProof('האימות בוטל. אפשר להתחיל מחדש.'); });
     prepare.addEventListener('submit', function (event) {
       event.preventDefault(); if (busy || !prepare.reportValidity()) return;
-      var password = preparePassword.value, requestedClient = clientId.value.trim();
+      var password = preparePassword.disabled ? '' : preparePassword.value, requestedClient = clientId.value.trim();
       clearProof(); var attempt = serial; busy = true; prepareSubmit.disabled = true; cancel.hidden = false;
       status.textContent = 'מכין אימות מאובטח…';
-      authCall('/google/prepare', 'POST', { clientId: requestedClient, currentPassword: password }).then(function (prepared) {
-        password = ''; if (!current(attempt)) return;
+      var pending = ownerAction('/google/prepare', { clientId: requestedClient }, password, attempt);
+      pending.then(function (prepared) {
+        if (!current(attempt)) return;
         if (prepared.clientId !== requestedClient || typeof prepared.nonce !== 'string' || !prepared.nonce || !['number', 'string'].includes(typeof prepared.revision)) throw new Error('לא ניתן להכין את האימות. נסו שוב.');
         challenge = { clientId: prepared.clientId, revision: prepared.revision, verified: false };
         expireAt(prepared.expiresAt, attempt);
@@ -2288,31 +2322,56 @@
           sdk.id.renderButton(proofButton, { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', locale: 'he', width: Math.max(200, Math.min(360, Math.floor(proofButton.clientWidth || 240))) });
           status.textContent = 'לחצו על הכפתור הרשמי של Google כדי לאמת את ההגדרה. הכניסה למערכת לא משתנה בשלב הזה.';
         });
-      }).catch(function (failure) { if (current(attempt) && !failure.editorSessionEnded) { clearProof(); error.textContent = failure.message; } })
-        .finally(function () { password = ''; preparePassword.value = ''; if (current(attempt)) { busy = false; prepareSubmit.disabled = false; } });
+      }).catch(function (failure) {
+        if (!current(attempt) || failure.editorSessionEnded) return;
+        if (handleOwnerChallenge(failure, preparePassword)) { cancel.hidden = true; status.textContent = ''; return; }
+        clearProof(); error.textContent = failure.message;
+      }).finally(function () { preparePassword.value = ''; if (current(attempt)) { busy = false; prepareSubmit.disabled = false; } });
     });
     prepareSubmit.disabled = false;
     activate.addEventListener('submit', function (event) {
       event.preventDefault();
       if (busy || !setup.activationAllowed || !challenge || !challenge.verified || !activate.reportValidity()) return;
-      var attempt = serial, revision = challenge.revision, password = activatePassword.value;
+      var attempt = serial, revision = challenge.revision, password = activatePassword.disabled ? '' : activatePassword.value;
       activatePassword.value = ''; busy = true; activateSubmit.disabled = true; prepareSubmit.disabled = true; error.textContent = '';
-      authCall('/google/activate', 'POST', { revision: revision, currentPassword: password }).then(function (result) {
-        password = ''; if (!current(attempt)) return;
+      var pending = ownerAction('/google/activate', { revision: revision }, password, attempt);
+      pending.then(function (result) {
+        if (!current(attempt)) return;
         if (!result.activated) throw new Error('ההפעלה לא הושלמה. נסו שוב.');
         clearProof(); attempt = serial;
         return discoverAuthentication().then(function () {
           sessionCheck(epoch); if (!current(attempt)) return;
-          authSettingsScreen(); say('הכניסה עם Google הופעלה. החשבון המקומי נשאר מחובר.', 'ok');
+          route(true); say('הכניסה עם Google הופעלה. החשבון המקומי נשאר מחובר.', 'ok');
         });
       }).catch(function (failure) {
         if (!current(attempt) || failure.editorSessionEnded) return;
+        if (handleOwnerChallenge(failure, activatePassword)) return;
         clearProof(); error.textContent = failure.message;
-      }).finally(function () { password = ''; activatePassword.value = ''; if (current(attempt)) { busy = false; prepareSubmit.disabled = false; activateSubmit.disabled = !setup.activationAllowed; } });
+      }).finally(function () { activatePassword.value = ''; if (current(attempt)) { busy = false; prepareSubmit.disabled = false; activateSubmit.disabled = !setup.activationAllowed; } });
     });
     if (setup.pending || setup.verified) status.textContent = 'קיימת הכנה קודמת. התחילו אימות חדש במסך הזה לפני ההפעלה.';
   }
-  function invitationPanel(container, epoch) {
+  function showOwnerPassword(input, needed) {
+    input.parentElement.hidden = !needed; input.disabled = !needed; input.required = needed; input.value = '';
+  }
+  function initOwnerPassword(input, fresh) {
+    if (typeof fresh === 'boolean') { input.setAttribute('data-owner-confirm', ''); showOwnerPassword(input, !fresh); }
+  }
+  function ownerSettingsAction(path, method, body, input, fresh, active) {
+    if (!input) return authCall(path, method, body);
+    var password = input.disabled ? '' : input.value; input.value = '';
+    if (typeof fresh !== 'boolean') return authCall(path, method, Object.assign(body, { currentPassword: password }));
+    if (!password) return authCall(path, method, body);
+    return authCall('/confirm', 'POST', { currentPassword: password }).then(function (answer) {
+      if (!active()) throw endedSession();
+      if (answer.localOwnerFresh !== true) throw new Error('אימות הסיסמה לא הושלם. נסו שוב.');
+      return authCall(path, method, body);
+    });
+  }
+  function showOwnerChallenge(error, input) {
+    if (input && error.status === 428 && error.code === 'reauth_required') { showOwnerPassword(input, true); input.focus(); }
+  }
+  function invitationPanel(container, epoch, localOwnerFresh) {
     var panel = el('section', { class: 'card auth-invitations', id: 'auth-invitations', 'aria-labelledby': 'auth-invitation-title' },
       el('h2', { id: 'auth-invitation-title', text: 'הזמנת בעלים לחשבון מקומי' }),
       el('p', { text: 'אפשר להזמין רק כתובת דוא״ל שכבר אושרה כבעלים בהגדרות השרת הפרטיות. המוזמן יבחר בעצמו שם משתמש וסיסמה.' }));
@@ -2333,8 +2392,9 @@
       el('div', { class: 'fld' }, el('label', { for: 'auth-invitation-code', text: 'קוד ההזמנה הפרטי' }), el('div', { class: 'auth-invitation-copy' }, code, copyCode)),
       el('div', { class: 'fld' }, el('label', { for: 'auth-invitation-url', text: 'כתובת ההרשמה — ללא הקוד' }), el('div', { class: 'auth-invitation-copy' }, setupUrl, copyUrl)), expiry);
     form.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'auth-invitation-email', text: 'כתובת הדוא״ל של הבעלים המוזמן' }), email),
-      el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'auth-invitation-password', text: 'הסיסמה המקומית הנוכחית שלכם לאישור ההזמנה' }), password),
+      el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'auth-invitation-password', text: typeof localOwnerFresh === 'boolean' ? 'אימות סיסמה לפעולות ניהול ל־15 דקות' : 'הסיסמה המקומית הנוכחית שלכם לאישור ההזמנה' }), password),
       error, el('div', { class: 'acts' }, submit, clear));
+    initOwnerPassword(password, localOwnerFresh);
     panel.append(form, status, result);
     var generation = 0, busy = false, detached = false, expiryTimer = null;
     function active() { return !detached && epoch === sessionEpoch && token && cookieSession && owner && location.hash === '#/auth' && panel.isConnected; }
@@ -2343,7 +2403,7 @@
       code.value = ''; setupUrl.value = ''; expiry.textContent = ''; result.hidden = true;
     }
     function reset() {
-      generation++; password.value = ''; email.value = ''; clearResult(); error.textContent = ''; status.textContent = '';
+      generation++; password.value = ''; email.value = ''; email.setCustomValidity(''); clearResult(); error.textContent = ''; status.textContent = '';
     }
     authInvitationCleanup = function (detach) {
       reset();
@@ -2361,14 +2421,36 @@
     copyCode.addEventListener('click', function () { copy(code, 'הקוד הועתק. שתפו אותו באופן פרטי.'); });
     copyUrl.addEventListener('click', function () { copy(setupUrl, 'כתובת ההרשמה הועתקה בנפרד מהקוד.'); });
     clear.addEventListener('click', function () { reset(); status.textContent = 'המסך נוקה. הניקוי אינו מבטל הזמנה שכבר נוצרה; היא תפקע בתום 15 דקות.'; });
-    email.addEventListener('input', function () { if (!result.hidden) { generation++; clearResult(); status.textContent = ''; } });
+    function checkEmail() {
+      var address = email.value.replace(/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]/gu, '').trim();
+      var quotes = { '"': '"', "'": "'", '“': '”', '‘': '’', '״': '״' };
+      if (address.length >= 2 && Object.prototype.hasOwnProperty.call(quotes, address[0]) && address.at(-1) === quotes[address[0]]) address = address.slice(1, -1).trim();
+      if (email.value !== address) email.value = address;
+      email.setCustomValidity('');
+      var pieces = address.split('@'), localPart = pieces[0], domain = pieces[1] || '';
+      if (address && (email.validity.typeMismatch || pieces.length !== 2 || !domain.includes('.') || localPart.length > 64 ||
+          localPart.startsWith('.') || localPart.endsWith('.') || localPart.includes('..') || /[\s<>"“”]/u.test(address))) {
+        email.setCustomValidity('כתובת הדוא״ל אינה תקינה. לדוגמה: name@example.com. בדקו שאין רווח או מרכאות בתוך הכתובת.');
+      }
+    }
+    email.addEventListener('paste', function (event) {
+      // A single-line input would otherwise join two pasted lines into a different address.
+      var pasted = event.clipboardData && event.clipboardData.getData('text/plain');
+      if (pasted && /[\r\n]/.test(pasted.trim())) {
+        event.preventDefault(); email.value = ''; email.setCustomValidity('הדביקו כתובת דוא״ל אחת בשורה אחת, לדוגמה: name@example.com.');
+        error.textContent = email.validationMessage; email.reportValidity();
+      }
+    });
+    email.addEventListener('blur', checkEmail);
+    email.addEventListener('invalid', function () { error.textContent = email.validationMessage; });
+    email.addEventListener('input', function () { checkEmail(); error.textContent = ''; if (!result.hidden) { generation++; clearResult(); status.textContent = ''; } });
     form.addEventListener('submit', function (event) {
       event.preventDefault();
       if (!active() || busy || !form.reportValidity()) return;
       clearResult(); error.textContent = ''; status.textContent = 'יוצר הזמנה…';
-      var at = ++generation, body = { email: email.value.trim(), currentPassword: password.value };
-      password.value = ''; busy = true; submit.disabled = true; email.disabled = true;
-      var pending = authCall('/invitations', 'POST', body); body.currentPassword = '';
+      var at = ++generation, body = { email: email.value.trim() };
+      busy = true; submit.disabled = true; email.disabled = true;
+      var pending = ownerSettingsAction('/invitations', 'POST', body, password, localOwnerFresh, function () { return active() && at === generation; });
       pending.then(function (invitation) {
         if (!active() || at !== generation) return;
         var target;
@@ -2383,7 +2465,7 @@
         expiryTimer = setTimeout(function () { if (active() && at === generation) { generation++; clearResult(); status.textContent = 'תוקף הצגת הקוד הסתיים. אפשר ליצור הזמנה חדשה.'; } }, Math.min(invitation.expiresAt - Date.now(), 15 * 60000));
       }).catch(function (failure) {
         if (!active() || at !== generation || failure.editorSessionEnded) return;
-        clearResult(); status.textContent = ''; error.textContent = failure.message;
+        clearResult(); status.textContent = ''; error.textContent = failure.message; showOwnerChallenge(failure, password);
       }).finally(function () { password.value = ''; busy = false; submit.disabled = !active(); email.disabled = false; });
     });
     // Native navigation is blocked by the page's form-action policy; POST is
@@ -2391,13 +2473,24 @@
     // until their submit/cancel handlers exist.
     submit.disabled = false; container.append(panel);
   }
-  function authSettingsScreen() {
+  function authSettingsScreen(googleOnly) {
     var screen = main(), epoch = sessionEpoch;
-    screen.append(head('הגדרות התחברות', 'ניהול דרכי הכניסה למערכת והסיסמה שלכם.'));
-    var content = el('div', { class: 'auth-settings' }); screen.append(content); loading(content);
+    screen.append(googleOnly ? head('הגדרות Google', 'חיבור חשבון Google לכניסה ללוח הניהול.') :
+      head('הגדרות התחברות', 'ניהול דרכי הכניסה למערכת והסיסמה שלכם.'));
+    var content = el('div', { class: 'auth-settings' }); screen.append(content);
+    var unavailable = 'הגדרת כניסה עם Google אינה זמינה בשרת המחובר לאתר. כדי להשתמש באשף יש להפעיל את ניהול Google בהגדרות השרת.';
+    if (googleOnly && (!authOptions || !authOptions.settingsAvailable)) {
+      content.append(el('p', { class: 'note', text: unavailable })); return;
+    }
+    loading(content);
     authCall('/settings').then(function (settings) {
       sessionCheck(epoch); if (!screen.isConnected || !content.isConnected) return;
       content.textContent = '';
+      if (googleOnly) {
+        if (settings.googleSetup) googleSetupPanel(content, settings.googleSetup, epoch, settings.localOwnerFresh);
+        else content.append(el('p', { class: 'note', text: unavailable }));
+        return;
+      }
       var methods = el('form', { class: 'card', id: 'auth-methods', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/settings' }, el('h2', { text: 'דרכי כניסה' }),
         el('p', { text: 'כדי לכבות דרך כניסה, יש לאמת קודם דרך חלופית. תמיד תישאר דרך פעילה לכניסת מנהל.' }));
       function method(name, title, description, enabled, canDisable) {
@@ -2415,13 +2508,14 @@
       if (settings.method === 'local') {
         currentPassword = el('input', { id: 'auth-method-password', name: 'currentPassword', type: 'password', autocomplete: 'current-password', dir: 'ltr', required: true, maxlength: '256' });
         methods.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: 'auth-method-password', text: 'הסיסמה הנוכחית לאישור השינוי' }), currentPassword));
+        initOwnerPassword(currentPassword, settings.localOwnerFresh);
       } else methods.append(el('p', { class: 'help', text: 'שינוי ההגדרות דורש התחברות עדכנית עם Google. אם תתבקשו, צאו והתחברו שוב.' }));
       var methodError = el('p', { class: 'err', role: 'alert' }), methodSave = el('button', { type: 'submit', class: 'btn pri', text: 'שמירת דרכי הכניסה' });
       methods.append(methodError, methodSave);
       methods.addEventListener('submit', function (event) {
         event.preventDefault(); if (!methods.reportValidity()) return;
         methodError.textContent = ''; methodSave.disabled = true;
-        authCall('/settings', 'PUT', { localEnabled: local.checked, googleEnabled: googleEnabled.checked, currentPassword: currentPassword ? currentPassword.value : undefined })
+        ownerSettingsAction('/settings', 'PUT', { localEnabled: local.checked, googleEnabled: googleEnabled.checked }, currentPassword, settings.localOwnerFresh, function () { return epoch === sessionEpoch && content.isConnected && !!token && owner; })
           .then(function (result) {
             sessionCheck(epoch);
             authOptions.localEnabled = local.checked; authOptions.googleEnabled = googleEnabled.checked;
@@ -2430,13 +2524,13 @@
               signout(); acceptCookieSession(result); return enter(result.user.email).then(function () { say('דרכי הכניסה נשמרו.', 'ok'); });
             }
             authSettingsScreen(); say('דרכי הכניסה נשמרו.', 'ok');
-          }).catch(function (error) { if (!error.editorSessionEnded && epoch === sessionEpoch) methodError.textContent = error.message; })
+          }).catch(function (error) { if (!error.editorSessionEnded && epoch === sessionEpoch && content.isConnected) { methodError.textContent = error.message; showOwnerChallenge(error, currentPassword); } })
           .finally(function () { if (currentPassword) currentPassword.value = ''; methodSave.disabled = false; });
       });
       content.append(methods);
-      if (settings.googleSetup) googleSetupPanel(content, settings.googleSetup, epoch);
+      if (settings.googleSetup) googleSetupPanel(content, settings.googleSetup, epoch, settings.localOwnerFresh);
       if (settings.method !== 'local') return;
-      if (settings.invitationsAvailable === true && cookieSession && owner) invitationPanel(content, epoch);
+      if (settings.invitationsAvailable === true && cookieSession && owner) invitationPanel(content, epoch, settings.localOwnerFresh);
       var passwords = el('form', { class: 'card', id: 'auth-password-change', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/password' }, el('h2', { text: 'שינוי סיסמה' }),
         el('p', { text: 'בחרו סיסמה ארוכה וייחודית, עם 15 תווים לפחות. החלפת הסיסמה תוציא את החשבון משאר ההתחברויות.' }));
       var fields = {};

@@ -25,7 +25,15 @@ export function validateLocalCredentialInput(body) {
 }
 export const localCredentialErrorFields = (error) => inputErrors.get(error);
 
-export function createLocalInvitations({ store, config, clock = Date.now, admission, passwords = { hashPassword, verifyPassword } }) {
+export function invitationEmail(value) {
+  if (typeof value !== 'string' || value.length > 1024) return '';
+  let email = value.replace(/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]/gu, '').trim();
+  const quotes = { '"': '"', "'": "'", '“': '”', '‘': '’', '״': '״' };
+  if (email.length >= 2 && Object.hasOwn(quotes, email[0]) && email.at(-1) === quotes[email[0]]) email = email.slice(1, -1).trim();
+  return email.toLowerCase();
+}
+
+export function createLocalInvitations({ store, config, clock = Date.now, admission, requireOwnerProof, passwords = { hashPassword, verifyPassword } }) {
   const allowed = (hash) => String(config.env.OWNERS || '').split(',').map((s) => s.trim()).includes(hash);
   const owner = (user) => user && !user.disabled && user.role === 'owner' && allowed(user.owner_hash);
   const ready = (settings) => settings.local_enabled && settings.local_verified && settings.bootstrap_consumed;
@@ -52,9 +60,13 @@ export function createLocalInvitations({ store, config, clock = Date.now, admiss
       origin(request);
       if (authenticated?.method !== 'local' || !owner(authenticated.user)) throw fail('רק בעל הרשאה מקומית יכול ליצור הזמנה', 403);
       await admission(request, env, authenticated.user.username);
-      if (!(await passwords.verifyPassword(body.currentPassword, authenticated.user.password_hash))) throw fail('שם המשתמש או הסיסמה אינם תקינים', 401);
-      const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-      if (!email || email.length > 254 || !email.isWellFormed() || /[\p{Cc}<>]/u.test(email) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw fail('לא ניתן ליצור הזמנה לחשבון הזה');
+      await requireOwnerProof(request, authenticated, body, passwords.verifyPassword);
+      const email = invitationEmail(body.email), [local, domain, extra] = email.split('@');
+      if (!email.isWellFormed() || email.length > 254 || !local || !domain || extra !== undefined || /[\s\p{Cc}\p{Cf}<>"“”]/u.test(email) ||
+          local.length > 64 || local.startsWith('.') || local.endsWith('.') || local.includes('..') || !domain.includes('.') ||
+          !domain.split('.').every((label) => /^[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?$/u.test(label))) {
+        throw fail('כתובת הדוא״ל אינה תקינה. לדוגמה: name@example.com. בדקו שאין רווח או מרכאות בתוך הכתובת.', 400);
+      }
       const ownerHash = digestToken(email), code = randomToken();
       const expiresAt = await store.atomic(async (tx) => {
         const user = await creationAuthority(tx, request, authenticated);
