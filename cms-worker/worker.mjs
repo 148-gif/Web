@@ -671,7 +671,8 @@ async function publish(env, me, paths, force, note) {
     const head = (await gh(env, `git/ref/heads/${env.BRANCH}`)).object.sha;
     // Every read in this attempt uses the same immutable commit, including
     // photo/media dependencies. If the branch moves, validate again before retry.
-    const live = { ...env, BRANCH: head };
+    // Node request bindings are inherited. Pin only the branch for this attempt.
+    const live = Object.create(env, { BRANCH: { value: head } });
     const pubs = new Map(await Promise.all(rows.map(async (r) => [r.path, await publishedSha(live, r.path)])));
     const conflicts = rows.filter((r) => pubs.get(r.path) !== (r.base_sha || null) && pubs.get(r.path) !== shas.get(r.path) && !force.includes(r.path)).map((r) => r.path);
     if (conflicts.length) throw fail('חלק מהקבצים שונו גם באתר החי מאז שהתחלתם לערוך אותם', 409, { conflicts });
