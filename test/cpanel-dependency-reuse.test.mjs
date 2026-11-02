@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { copyVerifiedDependencies, dependencyReuseProof } from '../scripts/cpanel-dependency-reuse.mjs';
+import { copyVerifiedDependencies, dependencyReuseProof, dependencyInstallPolicy, matchesInstallPolicy } from '../scripts/cpanel-dependency-reuse.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 const oldSha = 'a'.repeat(40), nextSha = 'b'.repeat(40), runtimeHash = 'c'.repeat(64);
@@ -27,6 +27,7 @@ async function fixture(t) {
     oldLock: Buffer.from('exact locked bytes'), nextLock: Buffer.from('exact locked bytes'),
     receipt: { version: 1, commit: oldSha, runtimeManifestSha256: runtimeHash, toolchainSha256: hash(JSON.stringify(sourceTools)), ...dependencies },
     installed: { version: 1, commit: oldSha, runtimeManifestSha256: runtimeHash, packages: 1 }, dependencies, records, blockSize: 4096 };
+  args.installedPolicy = dependencyInstallPolicy(args.receipt, args.oldPackage, args.oldLock);
   return { source, destination, bytes, records, args };
 }
 
@@ -76,3 +77,28 @@ for (const change of ['same size tamper', 'link', 'hardlink', 'writable mode']) 
     await assert.rejects(fs.lstat(join(f.destination, 'pkg/index.js')), { code: 'ENOENT' });
   });
 }
+
+test('only a complete matching install-policy receipt admits a new donor', async t => {
+  const { args } = await fixture(t);
+  assert.equal(args.installedPolicy.dependencyReceiptSha256, hash(JSON.stringify(args.receipt) + '\n'));
+  for (const installedPolicy of [undefined, null, {}, { ...args.installedPolicy, policy: 'npm-ci/allow-scripts' },
+    { ...args.installedPolicy, lockSha256: '0'.repeat(64) }, { ...args.installedPolicy, dependencyReceiptSha256: '0'.repeat(64) }]) {
+    assert.equal(dependencyReuseProof({ ...args, installedPolicy }), null);
+    assert.throws(() => dependencyReuseProof({ ...args, installedPolicy, receipt: { ...args.receipt, bytes: 0 } }));
+    assert.throws(() => dependencyReuseProof({ ...args, installedPolicy, records: args.records.slice(0, 2) }));
+  }
+  assert.throws(() => dependencyReuseProof({ ...args, nextLock: Buffer.from('new lock'), records: args.records.slice(0, 2) }));
+});
+
+test('the legacy exception pins every byte of the one measured f2 receipt', () => {
+  const receipt = { version: 1, commit: 'f2e03e0cc624fc08c66ecab1ab20915fab3b42aa', runtimeManifestSha256: 'a9c531d46164d810e32a2bb6f6d28348644c9e9b8ee80a3b092481cc4974c352',
+    toolchainSha256: 'b53005f2e3f1ada7b7ee4b3a644b863d838ff4a0e37983c0e336ffa59ad71f85', packages: 13, bytes: 4440521, inodes: 533,
+    treeSha256: '4fa89e215ad0de852dcc9cb56a20c0e2f727b6f0919457df5cb29992f60df2a2' };
+  const pkg = Buffer.from('pinned package bytes'), lock = Buffer.from('pinned lock bytes');
+  assert.equal(hash(JSON.stringify(receipt) + '\n'), '31339f614056e057b7f92236c89d27acea0208dea230c458e7e6d4cc9e8bb401');
+  assert.equal(matchesInstallPolicy(undefined, receipt, pkg, lock), true);
+  assert.equal(matchesInstallPolicy({}, receipt, pkg, lock), false);
+  for (const change of [{ commit: nextSha }, { treeSha256: runtimeHash }, { inodes: 534 }, { runtimeManifestSha256: runtimeHash }, { toolchainSha256: runtimeHash }]) {
+    assert.equal(matchesInstallPolicy(undefined, { ...receipt, ...change }, pkg, lock), false);
+  }
+});
