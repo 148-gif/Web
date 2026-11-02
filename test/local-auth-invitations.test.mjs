@@ -128,8 +128,8 @@ integration('an aged local owner can invite and edit settings without a password
   const revoked = await req({ email }, { cookie, csrf }); assert.equal(revoked.status, 401); assert.equal((await revoked.json()).code, 'session_expired');
 });
 
-integration('an editor cannot invite owners or change owner credentials through an active local session', async (f) => {
-  await f.store.atomic(async (tx) => tx.saveUser({ ...await tx.getUserById(f.user.id), role: 'editor' }));
+integration('a signed-in publisher cannot invite owners or change owner credentials', async (f) => {
+  await f.pool.execute("UPDATE local_auth_users SET role = 'publisher' WHERE id = ?", [f.user.id]);
   for (const [path,method,body] of [['/auth/invitations','POST',{email:'second-owner@example.test'}], ['/auth/password','POST',{newPassword:NEW_PASSWORD,confirmation:NEW_PASSWORD}], ['/auth/settings','PUT',{localEnabled:true,googleEnabled:false}]]) {
     assert.equal((await f.call(path,{method,cookie:f.cookie,csrf:f.csrf,body})).status,403);
   }
