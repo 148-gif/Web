@@ -51,7 +51,7 @@ export function createLocalInvitations({ store, config, clock = Date.now, admiss
         session.csrf_hash !== authenticated.session.csrf_hash || supplied.length > 128 ||
         !safeEqualStrings(session.csrf_hash, digestToken(supplied)) ||
         !safeEqualStrings(session.csrf_hash, digestToken(csrfToken(authenticated.token, config.env.SESSION_SECRET)))) {
-      throw fail('יש להתחבר מחדש עם הסיסמה המקומית', 401);
+      throw fail('ההפעלה הסתיימה. התחברו שוב.', 401);
     }
     return user;
   }
