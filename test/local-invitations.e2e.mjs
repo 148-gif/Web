@@ -92,7 +92,8 @@ async function settings(page) {
 }
 async function createInvitation(page, email = RECIPIENT_EMAIL) {
   await page.locator('#auth-invitation-submit:enabled').waitFor();
-  await page.locator('#auth-invitation-email').fill(email); await page.locator('#auth-invitation-password').fill(OWNER_PASSWORD);
+  await page.locator('#auth-invitation-email').fill(email);
+  const input = page.locator('#auth-invitation-password'); if (await input.isVisible()) await input.fill(OWNER_PASSWORD);
   await page.locator('#auth-invitation-submit').click();
   assert.equal(await page.locator('#auth-invitation-password').inputValue(), '', 'password clears before the response');
 }
@@ -150,7 +151,8 @@ async function realBrowserFlow(browser) {
       RATE_LOGIN_PER_CLIENT: 30,
       DATA_STORE: createMysqlDataStore(pool), EDITORS: createMysqlKv(pool), RATE_LIMIT_STORE: createMysqlRateLimitStore(pool) };
     const config = { env, publicOrigin: fixture.origin, apiBasePath: '/cms-api', localAuthEnabled: true, localInvitationsEnabled: true, googleEnabled: false, readOnly: true, publishEnabled: false, staging: true };
-    const auth = createLocalAuth({ store, config });
+    let clockOffset = 0; const advanceClock = (ms) => { clockOffset += ms; };
+    const auth = createLocalAuth({ store, config, clock: () => Date.now() + clockOffset });
     bridge = createCmsServer({ env, publicOrigin: fixture.origin, basePath: config.apiBasePath, noIndex: true,
       handleRequest: runtimeHandler(config, (request, currentEnv) => auth.handle(request, currentEnv, worker.fetch)) });
     api = bridge.listeners('request')[0];
@@ -165,7 +167,14 @@ async function realBrowserFlow(browser) {
       await owner.page.locator('#auth-invitations').waitFor();
       assert.equal(await owner.page.locator('#auth-invitations select').count(), 0, 'no client-selected role');
       assert.equal(await owner.page.locator('#auth-invitation-form').getAttribute('method'), 'post');
-      await createInvitation(owner.page); const invitation = await visibleInvitation(owner.page);
+      const address = owner.page.locator('#auth-invitation-email');
+      assert.equal(await owner.page.locator('#auth-invitation-password').isHidden(), true, 'a fresh owner needs no password repeat');
+      const beforeInvalid = fixture.audit.requests.filter((r) => r.path === '/cms-api/auth/invitations').length;
+      const malformed = RECIPIENT_EMAIL.replace('@', '@"'); await address.fill(malformed); await owner.page.locator('#auth-invitation-submit').click();
+      assert.equal(await address.inputValue(), malformed); assert.match(await address.evaluate((e) => e.validationMessage), /name@example\.com/);
+      assert.equal(fixture.audit.requests.filter((r) => r.path === '/cms-api/auth/invitations').length, beforeInvalid, 'a quote inside the domain is not silently repaired or submitted');
+      await createInvitation(owner.page, '\u200f“' + RECIPIENT_EMAIL + '”\u200e'); const invitation = await visibleInvitation(owner.page);
+      assert.equal(await address.inputValue(), RECIPIENT_EMAIL);
       assert.match(invitation.code, /^[A-Za-z0-9_-]{43}$/);
       assert.equal(invitation.setupUrl, fixture.origin + '/cms-api/auth/invitation');
       for (const id of ['code', 'url']) {
@@ -219,7 +228,7 @@ async function realBrowserFlow(browser) {
       assert(cookie?.httpOnly && cookie.secure && cookie.sameSite === 'Strict');
       const writeStatus = await recipient.page.evaluate(async () => (await fetch('/cms-api/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status);
       assert.equal(writeStatus, 503, 'the invited owner cannot enable content publication');
-      await unicodePasswordFlow(browser, fixture, owner.page, store);
+      await unicodePasswordFlow(browser, fixture, owner.page, store, advanceClock);
       assert.equal((await store.getUserByUsername('inviting-owner')).password_hash, ownerPasswordHash);
       assert.deepEqual(await store.getSettings(), baselineSettings, 'bootstrap and provider settings remain unchanged');
       const [[counts]] = await pool.query('SELECT (SELECT COUNT(*) FROM drafts) AS drafts, (SELECT COUNT(*) FROM media) AS media, (SELECT COUNT(*) FROM editors_kv) AS editors, (SELECT COUNT(*) FROM log) AS log');
@@ -232,7 +241,7 @@ async function realBrowserFlow(browser) {
   });
 }
 
-async function unicodePasswordFlow(browser, fixture, ownerPage, store) {
+async function unicodePasswordFlow(browser, fixture, ownerPage, store, advanceClock) {
   for (const value of [UNICODE_PASSWORD, UNICODE_REPLACEMENT]) {
     assert(value.length > 128 && value.length <= 256, 'regression input crosses 128 UTF-16 units');
     assert([...value].length <= 128 && Buffer.byteLength(value, 'utf8') <= 512, 'regression input remains within the actual backend policy');
@@ -258,6 +267,7 @@ async function unicodePasswordFlow(browser, fixture, ownerPage, store) {
     assert.equal(await page.locator('#who').textContent(), 'מנהל יוניקוד');
     const cookie = async () => (await context.cookies()).find((item) => item.name === '__Host-heichal_local');
     const initialCookie = await cookie(); assert(initialCookie?.secure && initialCookie.httpOnly && initialCookie.sameSite === 'Strict');
+    advanceClock(16 * 60_000);
     await settings(page); await typeCompletePassword(page, '#auth-method-password', UNICODE_PASSWORD);
     const saved = page.waitForResponse((response) => new URL(response.url()).pathname === '/cms-api/auth/settings' && response.request().method() === 'PUT');
     await page.locator('#auth-methods button[type="submit"]').click(); assert.equal((await saved).status(), 200);
@@ -278,6 +288,10 @@ async function unicodePasswordFlow(browser, fixture, ownerPage, store) {
     const relogged = page.waitForResponse((response) => new URL(response.url()).pathname === '/cms-api/auth/login');
     await page.locator('#local-signin').click(); assert.equal((await relogged).status(), 200); await page.locator('#app:not([hidden])').waitFor();
     await settings(page); await page.locator('#auth-invitation-email').fill(FOLLOWUP_EMAIL);
+    assert.equal(await page.locator('#auth-invitation-password').isHidden(), true);
+    advanceClock(16 * 60_000);
+    const stale = page.waitForResponse((r) => new URL(r.url()).pathname === '/cms-api/auth/invitations');
+    await page.locator('#auth-invitation-submit').click(); assert.equal((await stale).status(), 428);
     await typeCompletePassword(page, '#auth-invitation-password', UNICODE_REPLACEMENT);
     const issued = page.waitForResponse((response) => new URL(response.url()).pathname === '/cms-api/auth/invitations');
     await page.locator('#auth-invitation-submit').click(); assert.equal((await issued).status(), 201);
