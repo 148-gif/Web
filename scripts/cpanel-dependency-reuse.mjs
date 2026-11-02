@@ -45,13 +45,30 @@ function checkRecords(records, dependencies, blockSize) {
   return { bytes: 65 * mib + allocated + 2 * unit * records.length, inodes: 1024 + records.length };
 }
 
-export function dependencyReuseProof({ sourceCommit, targetCommit, runtimeManifestSha256, sourceTools, targetTools, oldPackage, oldLock, nextPackage, nextLock, receipt, installed, dependencies, records, blockSize }) {
+// The original v1 dependency receipt omits install flags. Only the measured
+// first f2 installation may use this exception without a separate policy file.
+const firstNativeCommit = 'f2e03e0cc624fc08c66ecab1ab20915fab3b42aa';
+const firstNativeReceipt = '31339f614056e057b7f92236c89d27acea0208dea230c458e7e6d4cc9e8bb401';
+
+export function dependencyInstallPolicy(receipt, packageBytes, lockBytes) {
+  return { version: 1, policy, commit: receipt.commit, runtimeManifestSha256: receipt.runtimeManifestSha256,
+    toolchainSha256: receipt.toolchainSha256, packageSha256: sha(packageBytes), lockSha256: sha(lockBytes),
+    dependencyReceiptSha256: sha(JSON.stringify(receipt) + '\n') };
+}
+
+export function matchesInstallPolicy(measured, receipt, packageBytes, lockBytes) {
+  const expected = dependencyInstallPolicy(receipt, packageBytes, lockBytes);
+  if (measured === undefined) return receipt.commit === firstNativeCommit && expected.dependencyReceiptSha256 === firstNativeReceipt;
+  return sameJson(measured, expected);
+}
+
+export function dependencyReuseProof({ sourceCommit, targetCommit, runtimeManifestSha256, sourceTools, targetTools, oldPackage, oldLock, nextPackage, nextLock, receipt, installed, installedPolicy, dependencies, records, blockSize }) {
   if (!commitId.test(sourceCommit) || !commitId.test(targetCommit) || sourceCommit === targetCommit || !digest.test(runtimeManifestSha256)) fail();
-  if (!sameInstallInputs(oldPackage, oldLock, nextPackage, nextLock, sourceTools, targetTools)) return null;
   const sourceReceipt = { version: 1, commit: sourceCommit, runtimeManifestSha256, toolchainSha256: sha(JSON.stringify(sourceTools)), ...dependencies };
   const completion = { version: 1, commit: sourceCommit, runtimeManifestSha256, packages: dependencies.packages };
   if (!sameJson(sourceReceipt, receipt) || !sameJson(completion, installed)) fail();
   const allocation = checkRecords(records, dependencies, blockSize);
+  if (!sameInstallInputs(oldPackage, oldLock, nextPackage, nextLock, sourceTools, targetTools) || !matchesInstallPolicy(installedPolicy, receipt, oldPackage, oldLock)) return null;
   return { version: 1, policy, platform: process.platform, architecture: process.arch, sourceCommit, targetCommit,
     packageSha256: sha(nextPackage), lockSha256: sha(nextLock), sourceReceiptSha256: sha(JSON.stringify(receipt) + '\n'),
     targetToolchainSha256: sha(JSON.stringify(targetTools)), ...dependencies, allocation };
