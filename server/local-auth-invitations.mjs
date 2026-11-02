@@ -1,7 +1,7 @@
 // Node-only, explicit owner invitations. Codes carry no role or email claim.
 // The original bootstrap and every existing account remain untouched.
 import { randomBytes } from 'node:crypto';
-import { hashPassword, verifyPassword, passwordAcceptable, normalizeUsername, randomToken, digestToken, csrfToken, safeEqualStrings } from './local-auth-crypto.mjs';
+import { hashPassword, passwordAcceptable, normalizeUsername, randomToken, digestToken, csrfToken, safeEqualStrings } from './local-auth-crypto.mjs';
 
 const TTL = 15 * 60_000;
 const CODE = /^[A-Za-z0-9_-]{43}$/;
@@ -33,7 +33,7 @@ export function invitationEmail(value) {
   return email.toLowerCase();
 }
 
-export function createLocalInvitations({ store, config, clock = Date.now, admission, requireOwnerProof, passwords = { hashPassword, verifyPassword } }) {
+export function createLocalInvitations({ store, config, clock = Date.now, admission, passwords = { hashPassword } }) {
   const allowed = (hash) => String(config.env.OWNERS || '').split(',').map((s) => s.trim()).includes(hash);
   const owner = (user) => user && !user.disabled && user.role === 'owner' && allowed(user.owner_hash);
   const ready = (settings) => settings.local_enabled && settings.local_verified && settings.bootstrap_consumed;
@@ -60,7 +60,6 @@ export function createLocalInvitations({ store, config, clock = Date.now, admiss
       origin(request);
       if (authenticated?.method !== 'local' || !owner(authenticated.user)) throw fail('רק בעל הרשאה מקומית יכול ליצור הזמנה', 403);
       await admission(request, env, authenticated.user.username);
-      await requireOwnerProof(request, authenticated, body, passwords.verifyPassword);
       const email = invitationEmail(body.email), [local, domain, extra] = email.split('@');
       if (!email.isWellFormed() || email.length > 254 || !local || !domain || extra !== undefined || /[\s\p{Cc}\p{Cf}<>"“”]/u.test(email) ||
           local.length > 64 || local.startsWith('.') || local.endsWith('.') || local.includes('..') || !domain.includes('.') ||
