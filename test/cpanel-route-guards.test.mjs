@@ -5,7 +5,7 @@ import { copyFile, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } fro
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { guardOffset, routePrefix, seedRoute, statusState, verifyRoute } from '../scripts/cpanel-route-guards.mjs';
-import { guardedTransitions, measuredDrainer, proveStoppedRoute, routeSnapshots } from '../scripts/deploy-cpanel-guarded.mjs';
+import { capacityGate, guardedTransitions, measuredDrainer, proveStoppedRoute, routeSnapshots, selectorArguments } from '../scripts/deploy-cpanel-guarded.mjs';
 
 const linux = { skip: typeof process.getuid !== 'function' };
 const old = 'a'.repeat(40), next = 'b'.repeat(40), route = 'cms-api-check-bbbbbbbb';
@@ -209,4 +209,19 @@ test('LiteSpeed title is an exact argument while original drainer still receives
   }
   assert.throws(() => drainer.drain({ target: { commit: old.slice(0, 31) } }));
   assert.throws(() => measuredDrainer({ contract: { lsnode: { commandLineTemplate: [prefix + '*'] } } }, () => {}));
+});
+
+test('only create replaces the mutually exclusive user scope with the fixed site domain', () => {
+  const prefix = ['create','--json','--interpreter','nodejs','--user','yoterber'];
+  const tail = ['--app-root','heichal-cms/releases/' + next + '/app','--domain','hichal.yoterberama.com','--env-vars','{"CMS_ENV_FILE":"/private/ref"}'];
+  assert.deepEqual(selectorArguments([...prefix, ...tail]), [...prefix.slice(0, 4), ...tail]);
+  for (const args of [[...prefix, ...tail.slice(0, 2)], [...prefix, ...tail, '--domain','other'], [...prefix, '--domain','other']]) assert.throws(() => selectorArguments(args));
+  const stop = ['stop', ...prefix.slice(1), '--app-root',tail[1]]; assert.equal(selectorArguments(stop),stop);
+});
+
+test('retention includes the private download without deducting the currently public tree', async () => {
+  const measured = { public: { bytes: 100, inodes: 10 }, headroom: { bytes: 25, inodes: 3 }, projectedManaged: { bytes: 225, inodes: 23 } };
+  const options = { phase:'download', capacity:{retentionBytes:100,retentionInodes:10} };
+  assert.equal(await capacityGate(options,async () => measured),measured);
+  for (const k of ['retentionBytes','retentionInodes']) await assert.rejects(capacityGate({ ...options,capacity:{...options.capacity,[k]:options.capacity[k]-1} }, async () => measured));
 });
