@@ -57,13 +57,13 @@ const server = createServer(async (request, response) => {
       if (path === '/cms-api/auth/settings') {
         if (!owner) return json(response, { message: 'אין הרשאה' }, 403);
         if (mutation) {
-          assert.equal(body.currentPassword, password); assert.equal(body.localEnabled, true);
+          assert.equal(Object.hasOwn(body, 'currentPassword'), false); assert.equal(body.localEnabled, true);
           googleEnabled = body.googleEnabled; return json(response, { ...settings(), ...issue(response) });
         }
         return json(response, settings());
       }
       if (path === '/cms-api/auth/password') {
-        assert.equal(body.currentPassword, password); password = body.newPassword; return json(response, issue(response));
+        assert.equal(Object.hasOwn(body, 'currentPassword'), false); assert.equal(body.confirmation, body.newPassword); password = body.newPassword; return json(response, issue(response));
       }
       if (path === '/cms-api/me') return json(response, user());
       if (path === '/cms-api/changes') return json(response, { changes: [] });
@@ -119,10 +119,10 @@ try {
     assert.equal(active.id, firstSession, 'reload restores the existing HttpOnly cookie without logging in again');
     await page.locator('#nav a[href="#/auth"]').click(); await page.locator('#auth-methods').waitFor();
     assert.equal(await page.locator('#auth-local-enabled').isDisabled(), true, 'UI reflects server last-method guard');
-    await page.locator('#auth-google-enabled').uncheck(); await page.locator('#auth-method-password').fill(password);
+    await page.locator('#auth-google-enabled').uncheck();
     await page.locator('#auth-methods button[type=submit]').click(); await page.getByText('דרכי הכניסה נשמרו.', { exact: true }).waitFor();
     assert.notEqual(active.id, firstSession, 'settings fixture rotates session');
-    await page.locator('#auth-password-currentPassword').fill(password);
+    assert.equal(await page.locator('#auth-password-change input[type=password]').count(), 2);
     await page.locator('#auth-password-newPassword').fill('Changed local test pass 456!');
     await page.locator('#auth-password-confirmation').fill('Another mismatching password!');
     await page.locator('#auth-password-change button[type=submit]').click(); await page.getByText('הסיסמאות החדשות אינן זהות.', { exact: true }).waitFor();
