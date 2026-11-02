@@ -1,5 +1,7 @@
 // Companion to the immutable private 5185 operator. Run privately on cPanel.
 import { createHash } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { constants } from 'node:fs';
 import { lstat, open, realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -190,6 +192,43 @@ export async function proveStoppedRoute(uri, fetcher = fetch) {
   finally { await res.body?.cancel().catch(() => {}); }
 }
 
+// The provider's create grammar accepts a domain OR user. Other operations
+// remain user scoped. The native adapter still verifies all applications.
+export function selectorArguments(args) {
+  if (args[0] !== 'create') return args;
+  if (args.slice(1, 6).join(' ') !== '--json --interpreter nodejs --user yoterber' ||
+      args.filter(value => value === '--domain').length !== 1 || args[args.indexOf('--domain') + 1] !== 'hichal.yoterberama.com') refuse();
+  return [...args.slice(0, 4), ...args.slice(6)];
+}
+
+export async function capacityGate(options, inspect) {
+  const result = await inspect(options);
+  if (options.phase === 'download') {
+    // The extracted private candidate occupies retention as well as account
+    // space. Use the same worst-case archive reserve as the measured gate.
+    for (const [unit, ceiling] of [['bytes', 'retentionBytes'], ['inodes', 'retentionInodes']]) {
+      const peak = result.projectedManaged[unit] - result.public[unit] - result.headroom[unit];
+      if (peak > options.capacity[ceiling]) throw Object.assign(new Error('Download retention budget exceeded'), { code: 'capacity' });
+    }
+  }
+  return result;
+}
+
+// Capture stage and fixed provider error categories only. Child stdout/stderr,
+// argv, runtime environment and error messages remain private.
+async function stage(name, operation) {
+  try { return await operation(); }
+  catch (error) {
+    const categories = ['host-drift','target-mismatch','command-failed','command-rejected','state-drift','unrelated-app-drift','postcondition-failed','operation-busy','invalid-baseline','configuration-drift','unsafe-dependency','installation-capacity','unverified-dependencies','toolchain-drift','process-identity','process-respawn','term-timeout','helper-failed','process-access','admission-required','unknown-state','private-state','capacity','tree','unsafe-host-file','unapproved-host-file'];
+    console.error('cPanel stage:', name, categories.includes(error?.code) ? error.code : 'failed');
+    throw error;
+  }
+}
+function traced(service, names) {
+  const wrappers = Object.fromEntries(names.map(name => [name, (...args) => stage(name, () => service[name](...args))]));
+  return { ...service, ...wrappers };
+}
+
 async function main(args) {
   if (args.length === 2 && args[0] === '--print-guard') { process.stdout.write(routePrefix(args[1])); return; }
   const base = '/home/yoterber/heichal-cms/operator/' + OPERATOR + '-guarded-v1';
@@ -199,12 +238,23 @@ async function main(args) {
   const { readCpanelDeploymentConfiguration, createCpanelDeploymentDriver } = await load('server/cpanel-deployment-adapter.mjs');
   const { createCloudlinuxSelector } = await load('server/cloudlinux-selector.mjs');
   const { createLsnodeDrainer } = await load('server/cpanel-process-drain.mjs');
+  const { inspectDeploymentCapacity } = await load('server/deployment-capacity.mjs');
+  const { createRuntimeInstaller } = await load('server/cpanel-runtime-install.mjs');
+  const { probeCpanelRuntime } = await load('server/cpanel-runtime-probe.mjs');
   const { createHostContractGuard, readHostContractSnapshot } = await load('server/cpanel-host-contract.mjs');
   const result = await deploymentCli(args, { readConfiguration: readCpanelDeploymentConfiguration, driver(config) {
     if (config.documentRoot !== ROOT) refuse();
-    const selector = createCloudlinuxSelector({ uriStyle: config.selector.uriStyle });
+    const run = promisify(execFile);
+    const raw = createCloudlinuxSelector({ uriStyle: config.selector.uriStyle, execute(file, args, options) {
+      if (file !== '/usr/sbin/cloudlinux-selector') refuse();
+      return run(file, selectorArguments(args), options);
+    } });
+    const selector = traced(raw, ['create','start','stop','setUri','setRuntimePhase']);
     return createCpanelDeploymentDriver(config, {
-      drainerFactory: options => measuredDrainer(options, createLsnodeDrainer),
+      installer: traced(createRuntimeInstaller(), ['plan','materialize','install','inspect']),
+      runtimeProbe: options => stage('runtime-proof', () => probeCpanelRuntime(options)),
+      capacityCheck: options => stage('capacity-' + options.phase, () => capacityGate(options, inspectDeploymentCapacity)),
+      drainerFactory: options => traced(measuredDrainer(options, createLsnodeDrainer), ['inspect','drain']),
       selector: { ...selector, async stop(options) {
         const uri = options.snapshot.applications.find(a => a.root === options.target.root)?.uri;
         const stopped = await selector.stop(options);
@@ -213,8 +263,8 @@ async function main(args) {
       } },
       guardFactory(scope) {
         const placement = routeSnapshots(scope, config.documentRoot, readHostContractSnapshot);
-        return guardedTransitions({ scope, guard: createHostContractGuard({ ...scope, readSnapshot: placement.inspect }), selector,
-          root: config.documentRoot, readSnapshot: ({ files }) => placement.inspect(files), physicalLedger: placement.physicalLedger });
+        return traced(guardedTransitions({ scope, guard: createHostContractGuard({ ...scope, readSnapshot: placement.inspect }), selector,
+          root: config.documentRoot, readSnapshot: ({ files }) => placement.inspect(files), physicalLedger: placement.physicalLedger }), ['verify','run']);
       },
     });
   } });
