@@ -89,3 +89,18 @@ test('launch requires the actual exclusive poll.lock held by its flock parent',a
   const source='import {requireFlock} from '+JSON.stringify(helper)+';await requireFlock('+JSON.stringify(f.root)+');';
   const args=[process.execPath,'--input-type=module','-e',source];await run('/usr/bin/flock',['-n',lock,...args]);await assert.rejects(run('/usr/bin/flock',['-s','-n',lock,...args]));await assert.rejects(run(process.execPath,args.slice(1)));
 });
+
+test('a verified Actions equivalent binds remote bytes separately from the local tar and enforces seven days remaining', async t=>{
+  const f=await fixture(t), bundle=await f.op('archive',1), out=f.archive(1), inv=await get(join(out,'inventory.json'));
+  const verifiedAt=new Date().toISOString(), expiresAt=new Date(Date.now()+9*86400000).toISOString();
+  const ack={version:1,kind:'github-actions-equivalent-v1',commit:inv.commit,runId:inv.runId,artifactId:456,artifactBytes:12345,
+    artifactSha256:inv.artifactSha256,manifestSha256:inv.manifestSha256,inventorySha256:bundle.inventorySha256,localArchiveSha256:bundle.archiveSha256,
+    verifiedAt,expiresAt,files:inv.files.length,dirs:inv.dirs.length,bytes:inv.bytes,restoredVerified:true};
+  for(const extra of [{artifactSha256:bundle.archiveSha256},{artifactId:0},{runId:9},{files:0},{restoredVerified:false},
+    {expiresAt:new Date(Date.now()+6*86400000).toISOString()},{verifiedAt:new Date(Date.now()-2*86400000).toISOString()}]) {
+    await put(join(out,'actions-equivalent.json'),{...ack,...extra});await assert.rejects(f.op('reclaim',1),/invalid-actions-equivalent/);await access(join(f.candidate(1),'public'));
+  }
+  await put(join(out,'actions-equivalent.json'),ack);const result=await f.op('reclaim',1);
+  assert.equal(result.equivalence,ack.kind);assert.equal(result.artifactId,ack.artifactId);assert.equal(result.artifactSha256,inv.artifactSha256);
+  assert.equal(result.archiveSha256,bundle.archiveSha256);assert.notEqual(result.artifactSha256,result.archiveSha256);await access(join(out,'public.tar.gz'));
+});
