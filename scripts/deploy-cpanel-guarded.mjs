@@ -4,8 +4,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { constants } from 'node:fs';
 import { lstat, mkdir, open, readdir, readlink, realpath, symlink } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { guardOffset, readRoute, routeKind, routePrefix, seedRoute, statusState, verifyRoute } from './cpanel-route-guards.mjs';
 
 const OPERATOR = '5185c67ff426d3983534ccd3de654ed9f53ffcc2';
@@ -13,7 +13,8 @@ const MANIFEST = '3266126c135e1e4e8c992b1d919b61ae23aead2cfb689044cacfa7751cf44e
 // Reproducible from the verified 5185 manifest and cpanel-operator-5185.patch.
 const patched = new Map([
   ['server/cpanel-host-contract.mjs', { bytes: 21004, sha256: '010812d399b384fa35c4d9b21c9e93f6480118a3dd88535d6a49cece3f7c48db' }],
-  ['server/cpanel-deployment-adapter.mjs', { bytes: 60874, sha256: 'e3b810032f3e24b7b8c8d0d09ae061c5f1be95c90e130961ece0c16f09c924ab' }],
+  ['server/cpanel-deployment-adapter.mjs', { bytes: 63083, sha256: 'c5b6bca01b59d62911d29cdaac6f5117ff5789f36b6a1f8d8491e3fb242eeb77' }],
+  ['server/cpanel-runtime-install.mjs', { bytes: 36586, sha256: 'ee3d689f0f6f91459b0f1b0642ff3925d894016eaf16236060164f5ff0ade914' }],
   ['server/deployment-capacity.mjs', { bytes: 9761, sha256: '4a12be29c26a2f1f8552d087b1ae579661bc5af9fd52839bb9bed2d9b2b39490' }],
 ]);
 const ROOT = '/home/yoterber/hichal.yoterberama.com';
@@ -27,25 +28,27 @@ function occupied(apps, route) {
     (a.uri === '/' || a.uri === uri || a.uri.startsWith(uri + '/') || uri.startsWith(a.uri + '/')));
 }
 
-async function checkedModuleTree(base) {
+async function checkedPrivateFile(base, relative) {
   const uid = BigInt(process.getuid());
-  async function bytes(relative) {
-    const path = join(base, relative);
-    if (await realpath(path) !== path) refuse();
-    for (let dir = path.slice(0, path.lastIndexOf('/')); dir.startsWith('/home/yoterber/heichal-cms'); dir = dir.slice(0, dir.lastIndexOf('/'))) {
-      const s = await lstat(dir, { bigint: true });
-      if (!s.isDirectory() || s.uid !== uid || (s.mode & 0o7777n) !== 0o700n) refuse();
-    }
-    const h = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-    try {
-      const s = await h.stat({ bigint: true });
-      if (!s.isFile() || s.nlink !== 1n || s.uid !== uid || (s.mode & 0o7777n) !== 0o600n || s.size > 1048576n) refuse();
-      const data = await h.readFile();
-      const named = await lstat(path, { bigint: true });
-      if (s.ino !== named.ino || s.dev !== named.dev || s.ctimeNs !== named.ctimeNs || BigInt(data.length) !== s.size) refuse();
-      return data;
-    } finally { await h.close(); }
+  const path = join(base, relative);
+  if (await realpath(path) !== path) refuse();
+  for (let dir = path.slice(0, path.lastIndexOf('/')); dir.startsWith('/home/yoterber/heichal-cms'); dir = dir.slice(0, dir.lastIndexOf('/'))) {
+    const s = await lstat(dir, { bigint: true });
+    if (!s.isDirectory() || s.uid !== uid || (s.mode & 0o7777n) !== 0o700n) refuse();
   }
+  const h = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const s = await h.stat({ bigint: true });
+    if (!s.isFile() || s.nlink !== 1n || s.uid !== uid || (s.mode & 0o7777n) !== 0o600n || s.size > 1048576n) refuse();
+    const data = await h.readFile();
+    const named = await lstat(path, { bigint: true });
+    if (s.ino !== named.ino || s.dev !== named.dev || s.ctimeNs !== named.ctimeNs || BigInt(data.length) !== s.size) refuse();
+    return data;
+  } finally { await h.close(); }
+}
+
+async function checkedModuleTree(base) {
+  const bytes = path => checkedPrivateFile(base, path);
   const raw = await bytes('operator-manifest.json');
   if (sha(raw) !== MANIFEST) refuse();
   for (const file of JSON.parse(raw).files) {
@@ -271,8 +274,12 @@ export async function prepareModuleLink(options, selector) {
 
 async function main(args) {
   if (args.length === 2 && args[0] === '--print-guard') { process.stdout.write(routePrefix(args[1])); return; }
-  const base = '/home/yoterber/heichal-cms/operator/' + OPERATOR + '-guarded-v1';
+  const base = '/home/yoterber/heichal-cms/operator/' + OPERATOR + '-guarded-v2';
   await checkedModuleTree(base);
+  const dir = dirname(fileURLToPath(import.meta.url));
+  const dependencyBytes = await checkedPrivateFile(dir, 'cpanel-dependency-reuse.mjs');
+  if (dependencyBytes.length !== 9509 || sha(dependencyBytes) !== 'f2830c835cd421fc3de3d729d0cb936ccbe3c2bfe569fe9d782367cbed7e82e1') refuse();
+  const dependencyReuse = await import('./cpanel-dependency-reuse.mjs');
   const load = path => import(pathToFileURL(join(base, path)).href);
   const { deploymentCli } = await load('scripts/deploy-cpanel.mjs');
   const { readCpanelDeploymentConfiguration, createCpanelDeploymentDriver } = await load('server/cpanel-deployment-adapter.mjs');
@@ -290,7 +297,7 @@ async function main(args) {
       return run(file, selectorArguments(args), options);
     } });
     const selector = traced(raw, ['create','start','stop','setUri','setRuntimePhase']);
-    const installer = createRuntimeInstaller();
+    const installer = createRuntimeInstaller({ dependencyReuse });
     return createCpanelDeploymentDriver(config, {
       installer: traced({ ...installer, async install(options) {
         await stage('candidate-module-link', () => prepareModuleLink(options, selector));
