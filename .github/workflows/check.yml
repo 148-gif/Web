@@ -17,6 +17,20 @@ jobs:
       # Authentication tests and lint need the pinned dependencies from package-lock.json.
       - run: npm ci --ignore-scripts
       - run: node --test test/*.test.mjs
+      - name: Test Google setup in Chrome with MySQL
+        shell: bash
+        env:
+          MYSQL_TEST_CONFIG: ${{ runner.temp }}/google-wizard-mysql.json
+          NODE_PATH: ${{ runner.temp }}/google-wizard/node_modules
+        run: |
+          umask 077
+          sudo systemctl start mysql.service
+          printf '%s\n' '{"host":"127.0.0.1","port":3306,"user":"root","password":"root"}' > "$MYSQL_TEST_CONFIG"
+          npm install --prefix "$RUNNER_TEMP/google-wizard" --ignore-scripts --no-package-lock --no-audit --no-fund playwright@1.64.1
+          export CHROMIUM_EXECUTABLE_PATH="$(command -v google-chrome)"
+          test -x "$CHROMIUM_EXECUTABLE_PATH"
+          node test/google-setup-browser.e2e.mjs | tee "$RUNNER_TEMP/google-wizard.log"
+          grep -q '^PASS real Chromium/Node/MySQL Google wizard:' "$RUNNER_TEMP/google-wizard.log"
       - run: npx eslint .
       # Same settings as the deploy, so links are checked exactly as they will be published.
       - run: node scripts/build.mjs
