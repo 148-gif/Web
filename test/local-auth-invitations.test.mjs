@@ -146,7 +146,7 @@ integration('legacy invitation password fields are ignored; Origin, CSRF and own
   const settings = await f.call('/auth/settings', { cookie: f.cookie }); assert.equal((await settings.json()).invitationsAvailable, true);
   await f.pool.execute("UPDATE local_auth_users SET role = 'publisher' WHERE id = ?", [f.user.id]);
   assert.equal((await f.create()).status, 403);
-  const [[count]] = await f.pool.execute('SELECT COUNT(*) AS n FROM local_auth_invitations'); assert.equal(Number(count.n), 0);
+  const [[count]] = await f.pool.execute('SELECT COUNT(*) AS n FROM local_auth_invitations'); assert.equal(Number(count.n), 1, 'only the earlier authorized invitation exists');
 });
 
 integration('Google owner authentication alone cannot issue a local owner invitation', async (f) => {
