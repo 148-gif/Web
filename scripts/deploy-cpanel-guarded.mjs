@@ -99,7 +99,7 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
     'promote-candidate': 'cms-api', 'park-candidate': 'cms-api-check-' + next, 'restore-old': 'cms-api',
   };
   const pending = { baseline: destination['create-candidate'], 'candidate-created': destination['park-old'] };
-  const observedStates = new Map();
+  const observedLedgers = new Map();
   let busy = false;
   async function inspect(state) {
     const snapshot = await selector.inspect();
@@ -118,7 +118,10 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
         catch (other) { if (other.code !== 'host-drift') throw other; }
         if (result) { key = retained; ledger = guard.expected(key); }
       }
-      if (!result) result = await verifySeededDestination(error, state, snapshot, ledger);
+      if (!result) {
+        ledger = await verifySeededDestination(error, state, snapshot, ledger);
+        result = { verified: true, state: key, rootHtaccessSha256: ledger.files.find(f => f.path === '.htaccess').entry.sha256 };
+      }
     }
     for (const f of ledger.files) {
       if (!/^cms-api(?:-check-[a-f0-9]{8}|-rollback-[a-f0-9]{8})?\/\.htaccess$/.test(f.path)) continue;
@@ -127,10 +130,9 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
         if (occupied(snapshot.applications, route)) refuse();
       } else await verify(root, route);
     }
-    observedStates.set(state, key);
     const physical = physicalLedger(ledger);
-    if (physical !== ledger) result = { ...result, snapshotSha256: sha(JSON.stringify(physical) + '\n') };
-    return { ...result, contractState: key };
+    observedLedgers.set(state, physical);
+    return { ...result, contractState: key, snapshotSha256: sha(JSON.stringify(physical) + '\n') };
   }
   async function verifySeededDestination(error, state, snapshot, ledger) {
     // A crash after exclusive route creation and before Selector may leave
@@ -143,7 +145,7 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
     const files = ledger.files.map(f => f === slot ? { ...f, entry: { bytes: prefix.length, sha256: sha(prefix), mode: slot.entry?.mode ?? 0o644 } } : f);
     if (JSON.stringify(await readSnapshot({ files })) !== JSON.stringify(files)) throw error;
     await verify(root, route);
-    return { verified: true, state, snapshotSha256: sha(JSON.stringify({ ...ledger, files }) + '\n'), rootHtaccessSha256: files.find(f => f.path === '.htaccess').entry.sha256 };
+    return { ...ledger, files };
   }
   async function run(action, operation) {
     const t = scope.contract.transitions[action];
@@ -163,7 +165,7 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
       return { value };
     } finally { busy = false; }
   }
-  return { expected: state => physicalLedger(guard.expected(observedStates.get(state) ?? state)), verify: inspect, run };
+  return { expected: state => observedLedgers.get(state) ?? guard.expected(state), verify: inspect, run };
 }
 
 // LiteSpeed truncates the displayed title at 74 bytes on this host. This is an
@@ -212,7 +214,7 @@ async function main(args) {
       guardFactory(scope) {
         const placement = routeSnapshots(scope, config.documentRoot, readHostContractSnapshot);
         return guardedTransitions({ scope, guard: createHostContractGuard({ ...scope, readSnapshot: placement.inspect }), selector,
-          root: config.documentRoot, readSnapshot: readHostContractSnapshot, physicalLedger: placement.physicalLedger });
+          root: config.documentRoot, readSnapshot: ({ files }) => placement.inspect(files), physicalLedger: placement.physicalLedger });
       },
     });
   } });
