@@ -180,7 +180,7 @@ export function runtimeHandler(config, handleRequest = worker.fetch) {
     }
     const mutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
     const authWrite = path === '/session' && request.method === 'POST' || config.localAuthEnabled && (
-      request.method === 'POST' && ['/auth/login', '/auth/logout', '/auth/bootstrap', '/auth/password'].includes(path) ||
+      request.method === 'POST' && ['/auth/login', '/auth/logout', '/auth/bootstrap', '/auth/password', '/auth/confirm'].includes(path) ||
       request.method === 'PUT' && path === '/auth/settings' ||
       config.localInvitationsEnabled && request.method === 'POST' && ['/auth/invitations', '/auth/invitations/accept'].includes(path) ||
       config.googleSetupEnabled && request.method === 'POST' && ['/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path));
