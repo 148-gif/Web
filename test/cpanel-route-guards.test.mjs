@@ -88,6 +88,7 @@ test('Park and promote preserve the same rules when Selector copies the whole so
   const promoted = marker + 'New active environment reference\n';
   const routes = ['cms-api', route, rollback];
   const layouts = {
+    'candidate-created': [previous, candidate, null],
     'candidate-created-off-off': [previous, candidate, null],
     'candidate-created-off-off-retained': [previous, candidate, previous],
     'previous-parked-retained': [promoted, candidate, previous],
