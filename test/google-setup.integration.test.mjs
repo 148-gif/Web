@@ -93,8 +93,8 @@ const integration = (name, fn) => test(name, { skip: !mysqlEnabled }, () => with
   };
   const mutation = (path, session, body, extra = {}) => call(path, { method: 'POST', cookie: session.cookie, csrf: session.csrf, body, ...extra });
   const prepare = async (session, clientId = CLIENT_A, extra = {}) => {
-    advance(); // Each deliberate password check gets a fresh account-limit window.
-    return accepted(await mutation('/auth/google/prepare', session, { clientId, currentPassword: PASSWORD }, extra));
+    advance(); // Give each operation its own account-rate window.
+    return accepted(await mutation('/auth/google/prepare', session, { clientId }, extra));
   };
   const proof = (prepared, claims = {}) => {
     const credential = randomToken();
@@ -103,7 +103,7 @@ const integration = (name, fn) => test(name, { skip: !mysqlEnabled }, () => with
     return credential;
   };
   const verify = async (session, prepared, extra = {}) => accepted(await mutation('/auth/google/verify', session, { credential: proof(prepared), revision: prepared.revision }, extra));
-  const activate = async (session, verified, extra = {}) => accepted(await mutation('/auth/google/activate', session, { revision: verified.revision, currentPassword: PASSWORD }, extra));
+  const activate = async (session, verified, extra = {}) => accepted(await mutation('/auth/google/activate', session, { revision: verified.revision }, extra));
   const activateClient = async (session, clientId = CLIENT_A) => activate(session, await verify(session, await prepare(session, clientId)));
   const snapshot = async () => ({ settings: await store.getSettings(), google: await store.getGoogleConfig(),
     sessions: (await pool.query('SELECT * FROM local_auth_sessions ORDER BY token_hash'))[0],
@@ -132,7 +132,7 @@ integration('managed Google starts inactive and only exposes the active client i
   assert.equal(typeof settings.googleSetup, 'object'); assert(settings.googleSetup);
   assert.equal(settings.googleEnabled, false); assert.equal(settings.localEnabled, true);
   await rejected(await f.call('/auth/settings', { method: 'PUT', ...session,
-    body: { localEnabled: true, googleEnabled: true, currentPassword: PASSWORD } }));
+    body: { localEnabled: true, googleEnabled: true } }));
   assert.deepEqual(await f.snapshot(), before);
   const legacy = await makeSession(OWNER_EMAIL, f.env, f.now());
   assert.equal((await f.call('/me', { bearer: legacy })).status, 401);
@@ -143,7 +143,7 @@ integration('Google setup requires a local owner, current Origin and matching CS
   await f.store.atomic(async (tx) => tx.insertUser({ ...await tx.getUserByUsername('administrator'), id: randomBytes(16).toString('hex'), username: 'editor', role: 'editor' }));
   const editor = await f.login(PASSWORD, 'editor'), before = await f.snapshot();
   for (const path of ENDPOINTS) {
-    const body = { clientId: CLIENT_A, currentPassword: PASSWORD, credential: 'untrusted', revision: 1, owner: true, role: 'owner' };
+    const body = { clientId: CLIENT_A, credential: 'untrusted', revision: 1, owner: true, role: 'owner' };
     for (const identity of [{}, editor, { cookie: owner.cookie }, { ...owner, csrf: 'incorrect-csrf' }, { ...owner, origin: null }, { ...owner, origin: 'https://foreign.example.test' }]) {
       await rejected(await f.call(path, { method: 'POST', ...identity, body }));
     }
@@ -152,16 +152,16 @@ integration('Google setup requires a local owner, current Origin and matching CS
   await f.activateClient(owner);
   const google = await f.providerSession(), active = await f.snapshot();
   for (const path of ENDPOINTS) await rejected(await f.call(path, { method: 'POST', bearer: google.token,
-    body: { clientId: CLIENT_B, currentPassword: PASSWORD, credential: 'untrusted', revision: active.google.revision } }));
+    body: { clientId: CLIENT_B, credential: 'untrusted', revision: active.google.revision } }));
   assert.deepEqual(await f.snapshot(), active);
 });
 
-integration('Google preparation validates credentials and stores only a session-bound nonce digest', async (f) => {
+integration('Google preparation validates the client ID and stores only a session-bound nonce digest', async (f) => {
   const session = await f.ownerSession(), before = await f.snapshot();
   for (const body of [
-    { clientId: CLIENT_A, currentPassword: REPLACEMENT },
-    { clientId: 'https://accounts.google.com/client-id', currentPassword: PASSWORD },
-    { clientId: `${CLIENT_A}.evil.test`, currentPassword: PASSWORD },
+    { clientId: '' },
+    { clientId: 'https://accounts.google.com/client-id' },
+    { clientId: `${CLIENT_A}.evil.test` },
   ]) {
     f.advance();
     await rejected(await f.mutation('/auth/google/prepare', session, body));
@@ -179,7 +179,7 @@ integration('Google preparation validates credentials and stores only a session-
   assert.equal(publicOptions.googleClientId, ''); assert.equal(publicOptions.googleEnabled, false);
   const settings = await accepted(await f.call('/auth/settings', { cookie: session.cookie }));
   for (const privateValue of [prepared.nonce, PASSWORD, stored.pending_nonce_hash, stored.pending_session_hash]) assert.equal(JSON.stringify(settings).includes(privateValue), false);
-  await rejected(await f.mutation('/auth/google/activate', session, { revision: prepared.revision, currentPassword: PASSWORD }));
+  await rejected(await f.mutation('/auth/google/activate', session, { revision: prepared.revision }));
   assert.deepEqual(await f.store.getGoogleConfig(), stored);
 });
 
@@ -215,7 +215,7 @@ integration('Google proof and activation cannot cross sessions or survive a repl
   await rejected(await f.mutation('/auth/google/verify', second, { credential, revision: replacement.revision }));
   assert.deepEqual(await f.snapshot(), replaced);
   const verified = await f.verify(second, replacement), verifiedState = await f.snapshot();
-  await rejected(await f.mutation('/auth/google/activate', first, { revision: verified.revision, currentPassword: PASSWORD }));
+  await rejected(await f.mutation('/auth/google/activate', first, { revision: verified.revision }));
   assert.deepEqual(await f.snapshot(), verifiedState);
   const activated = await f.activate(second, verified);
   assert.equal(activated.clientId, CLIENT_B);
@@ -230,7 +230,7 @@ integration('expired Google challenges and verified proofs cannot activate a log
   const next = await f.prepare(session), verified = await f.verify(session, next);
   f.advance(verified.verifiedUntil - f.now() + 1);
   const expiredProof = await f.snapshot();
-  await rejected(await f.mutation('/auth/google/activate', session, { revision: verified.revision, currentPassword: PASSWORD }));
+  await rejected(await f.mutation('/auth/google/activate', session, { revision: verified.revision }));
   assert.deepEqual(await f.snapshot(), expiredProof);
 });
 
@@ -241,7 +241,7 @@ integration('Google activation consumes one proof atomically and preserves the l
   const identityData = [await f.env.EDITORS.get('owner-names'), await f.env.EDITORS.get('people')];
   const session = await f.ownerSession(), users = (await f.snapshot()).users;
   const verified = await f.verify(session, await f.prepare(session));
-  const results = await Promise.all([1, 2].map(() => f.mutation('/auth/google/activate', session, { revision: verified.revision, currentPassword: PASSWORD })));
+  const results = await Promise.all([1, 2].map(() => f.mutation('/auth/google/activate', session, { revision: verified.revision })));
   assert.equal(results.filter((response) => response.status === 200).length, 1);
   for (const response of results.filter((value) => value.status !== 200)) await rejected(response);
   const activated = await results.find((response) => response.status === 200).json(), after = await f.snapshot();
@@ -252,20 +252,20 @@ integration('Google activation consumes one proof atomically and preserves the l
   assert.deepEqual(after.users, users); assert.equal(f.env.OWNERS, ownerConfiguration);
   assert.deepEqual([await f.env.EDITORS.get('owner-names'), await f.env.EDITORS.get('people')], identityData);
   assert.equal((await f.call('/auth/session', { cookie: session.cookie })).status, 200);
-  await rejected(await f.mutation('/auth/google/activate', session, { revision: verified.revision, currentPassword: PASSWORD }));
+  await rejected(await f.mutation('/auth/google/activate', session, { revision: verified.revision }));
   assert.deepEqual(await f.snapshot(), after);
   const [[counts]] = await f.pool.query('SELECT (SELECT COUNT(*) FROM drafts) AS drafts, (SELECT COUNT(*) FROM media) AS media');
   assert.deepEqual(Object.fromEntries(Object.entries(counts).map(([key, value]) => [key, Number(value)])), { drafts: 0, media: 0 });
 });
 
-integration('Google activation rechecks local verification and the current local password', async (f) => {
+integration('Google activation rechecks local verification and the session CSRF token', async (f) => {
   const session = await f.ownerSession(), verified = await f.verify(session, await f.prepare(session));
   const before = await f.snapshot();
-  await rejected(await f.mutation('/auth/google/activate', session, { revision: verified.revision, currentPassword: REPLACEMENT }));
+  await rejected(await f.mutation('/auth/google/activate', session, { revision: verified.revision }, { csrf: 'wrong-token' }));
   assert.deepEqual(await f.snapshot(), before);
   await f.store.atomic(async (tx) => tx.saveSettings({ ...await tx.getSettings(), local_verified: false }));
   const unverified = await f.snapshot();
-  await rejected(await f.mutation('/auth/google/activate', session, { revision: verified.revision, currentPassword: PASSWORD }));
+  await rejected(await f.mutation('/auth/google/activate', session, { revision: verified.revision }));
   assert.deepEqual(await f.snapshot(), unverified);
 });
 
@@ -301,10 +301,10 @@ integration('managed session epochs reject old tokens after A to B to A and afte
   const alternateService = createLocalAuth({ store: f.store, config: { ...f.config, env: alternateEnv, publicOrigin: alternateOrigin }, clock: f.now, googleProofVerifier: f.googleProofVerifier });
   assert.equal((await alternateService.handle(new Request(alternateOrigin + '/me', { headers: { Origin: alternateOrigin, Authorization: `Bearer ${finalA.token}` } }), alternateEnv, worker.fetch)).status, 401);
   const before = await f.snapshot();
-  await rejected(await f.call('/auth/settings', { method: 'PUT', ...session, body: { localEnabled: true, googleEnabled: false, currentPassword: REPLACEMENT } }));
+  await rejected(await f.call('/auth/settings', { method: 'PUT', ...session, origin: 'https://foreign.example.test', body: { localEnabled: true, googleEnabled: false } }));
   assert.deepEqual(await f.snapshot(), before);
   f.advance();
-  const disabled = await f.call('/auth/settings', { method: 'PUT', ...session, body: { localEnabled: true, googleEnabled: false, currentPassword: PASSWORD } });
+  const disabled = await f.call('/auth/settings', { method: 'PUT', ...session, body: { localEnabled: true, googleEnabled: false } });
   const settings = await accepted(disabled);
   session = { cookie: disabled.headers.get('set-cookie').split(';')[0], csrf: settings.csrfToken };
   assert.equal(settings.localEnabled, true); assert.equal(settings.googleEnabled, false);
@@ -313,7 +313,7 @@ integration('managed session epochs reject old tokens after A to B to A and afte
   const disabledOptions = await accepted(await f.call('/auth/options'));
   assert.equal(disabledOptions.googleEnabled, false); assert.equal(disabledOptions.googleClientId, '');
   const disabledState = await f.snapshot();
-  await rejected(await f.call('/auth/settings', { method: 'PUT', ...session, body: { localEnabled: true, googleEnabled: true, currentPassword: PASSWORD } }));
+  await rejected(await f.call('/auth/settings', { method: 'PUT', ...session, body: { localEnabled: true, googleEnabled: true } }));
   assert.deepEqual(await f.snapshot(), disabledState);
   await f.activateClient(session, CLIENT_A);
   for (const token of [a.token, b.token, finalA.token]) assert.equal((await f.call('/me', { bearer: token })).status, 401);
@@ -328,7 +328,7 @@ for (const interruption of ['logout', 'password rotation', 'replacement configur
     await Promise.race([entered.promise, verifying.then((response) => { throw new Error(`Proof did not reach verifier: ${response.status}`); })]);
     try {
       if (interruption === 'logout') await accepted(await f.mutation('/auth/logout', session, {}));
-      else if (interruption === 'password rotation') await accepted(await f.mutation('/auth/password', session, { currentPassword: PASSWORD, newPassword: REPLACEMENT }));
+      else if (interruption === 'password rotation') await accepted(await f.mutation('/auth/password', session, { newPassword: REPLACEMENT }));
       else if (interruption === 'replacement configuration') await f.prepare(session, CLIENT_B);
       else f.advance(prepared.expiresAt - f.now() + 1);
       const interrupted = await f.snapshot();
