@@ -183,6 +183,7 @@ if (!mysqlEnabled) {
     const cookieBefore = await localCookie(), sessionBefore = await store.getSession(digestToken(cookieBefore.value));
     assert(cookieBefore.httpOnly && cookieBefore.secure && cookieBefore.sameSite === 'Strict');
     assert.equal(await page.evaluate(() => document.cookie), '');
+    serverTime = loginTime + 60 * 60_000; // Exercise the entire provider setup one hour after local sign-in.
     const authLink = page.locator('#nav a[href="#/auth"]');
     await authLink.click(); await page.locator('#auth-methods').waitFor();
     assert.equal(await page.locator('#auth-google-enabled').isChecked(), false); assert.equal(await page.locator('#auth-google-enabled').isDisabled(), true);
@@ -194,12 +195,11 @@ if (!mysqlEnabled) {
     await page.locator('#auth-google-setup').waitFor();
     assert.equal(await page.locator('#google-setup-origin').inputValue(), origin);
     const prepareResponse = apiResponse('/auth/google/prepare');
-    assert.equal(await page.locator('#google-prepare-password').isVisible(), false, 'recent local login prepares Google without another password');
+    assert.equal(await page.locator('#auth-google-setup input[type=password]').count(), 0, 'Google setup never requests a local password');
     await page.locator('#google-client-id').fill(CLIENT_ID); await page.locator('#google-prepare-submit').click();
     const preparation = await prepareResponse;
     assert.equal(preparation.status(), 200); const prepared = await preparation.json();
     await page.locator('[data-fixture-google]').waitFor();
-    assert.equal(await page.locator('#google-prepare-password').inputValue(), '');
     const pending = await store.getGoogleConfig(), pendingOptions = await options();
     assert.equal(pending.pending_client_id, CLIENT_ID); assert.equal(pending.pending_nonce_hash, digestToken(prepared.nonce));
     assert.equal(pending.pending_session_hash, digestToken(cookieBefore.value)); assert.equal(pending.pending_user_id, user.id);
@@ -220,11 +220,10 @@ if (!mysqlEnabled) {
     assert.equal(proofState.pending_nonce_hash, null); assert.equal(proofState.verified_until, verified.verifiedUntil);
     assert.equal(proofState.active_client_id, null); assert.equal(proofState.active_version, initialGoogle.active_version);
     assert.equal(proofOptions.googleEnabled, false); assert.equal(proofOptions.googleClientId, '');
-    assert.equal((await localCookie()).value, cookieBefore.value); assert.equal(await page.locator('#google-activate-password').inputValue(), '');
+    assert.equal((await localCookie()).value, cookieBefore.value);
     assert.equal(apiRequests.filter((request) => request.path === '/cms-api/auth/google/activate').length, 0, 'proof cannot activate implicitly');
     const activationResponse = apiResponse('/auth/google/activate');
     const refreshedSettings = page.waitForResponse((response) => new URL(response.url()).pathname === '/cms-api/auth/settings' && response.request().method() === 'GET');
-    assert.equal(await page.locator('#google-activate-password').isVisible(), false, 'a recently authenticated owner can approve activation directly');
     await page.locator('#google-activate-submit').click();
     const activation = await activationResponse;
     assert.equal(activation.status(), 200); const activated = await activation.json(); await refreshedSettings;
@@ -264,38 +263,14 @@ if (!mysqlEnabled) {
     assert.deepEqual(authBodies, [['prepare', 'clientId'], ['verify', 'credential', 'revision'], ['activate', 'revision']]);
     assert.equal(apiRequests.some((request) => request.path === '/cms-api/session'), false);
 
-    // Only the local owner's freshness expires after the second Google proof.
-    serverTime = loginTime + 14 * 60_000;
-    await googleLink.click(); await page.locator('#google-client-id').waitFor();
-    await page.locator('#google-client-id').fill(CLIENT_ID); await page.locator('#google-prepare-submit').click();
-    await page.locator('[data-fixture-google]').click(); await page.locator('#google-activate:not([hidden])').waitFor();
-    const beforeStepUp = await store.getGoogleConfig();
-    serverTime = loginTime + 16 * 60_000;
-    const forged = await context.request.post(origin + '/cms-api/auth/google/activate', {
-      headers: { Origin: origin, 'X-CSRF-Token': browserSession.csrfToken },
-      data: { revision: beforeStepUp.revision, localOwnerFresh: true, confirmedAt: serverTime, freshUntil: serverTime + 900_000 },
+    const withoutCSRF = await context.request.post(origin + '/cms-api/auth/google/prepare', {
+      headers: { Origin: origin }, data: { clientId: CLIENT_ID },
     });
-    assert.equal(forged.status(), 428); assert.equal((await forged.json()).code, 'reauth_required');
-    assert.deepEqual(await store.getGoogleConfig(), beforeStepUp, 'client freshness claims confer no authority');
-    const expired = apiResponse('/auth/google/activate'); await page.locator('#google-activate-submit').click();
-    assert.equal((await expired).status(), 428); await page.locator('#google-activate-password').waitFor();
-    assert.equal(await page.locator('#google-prepare-password').isVisible(), false);
-    assert.deepEqual(await store.getGoogleConfig(), beforeStepUp);
-    await page.locator('#google-activate-password').fill(PASSWORD);
-    const confirmed = apiResponse('/auth/confirm'), retry = apiResponse('/auth/google/activate');
-    const renewedView = page.waitForResponse(r => new URL(r.url()).pathname === '/cms-api/auth/settings' && r.request().method() === 'GET');
-    await page.locator('#google-activate-submit').click();
-    assert.equal((await confirmed).status(), 200); assert.equal((await retry).status(), 200);
-    await renewedView; await page.locator('#google-prepare-submit:enabled').waitFor();
-    assert.equal((await localCookie()).value, cookieBefore.value);
-    assert.equal(signatureVerifications, 2, 'step-up preserves the already verified Google identity');
-    assert.deepEqual(authBodies.slice(3), [['prepare', 'clientId'], ['verify', 'credential', 'revision'], ['activate', 'revision'], ['confirm', 'currentPassword'], ['activate', 'revision']]);
-    await page.locator('#google-prepare-submit').click(); await page.locator('[data-fixture-google]').waitFor();
-    assert.deepEqual(authBodies.at(-1), ['prepare', 'clientId']);
-    assert.equal(authBodies.filter(([path]) => path === 'confirm').length, 1, 'the next operation reuses the confirmation');
+    assert.equal(withoutCSRF.status(), 403, 'an active owner cookie still requires CSRF');
+    assert.deepEqual(await store.getGoogleConfig(), active);
     assert(providerCalls.every((host) => host === 'https://api.github.com'));
     assert.deepEqual(externalBrowserRequests, []); assert.deepEqual(browserErrors, []); assert.deepEqual(serverErrors, []);
-    console.log('PASS real Chromium/Node/MySQL Google wizard: bootstrap and local cookie login, real offline RS256 verification, pending stays inactive, explicit activation, single database client/epoch, unchanged local cookie/user/membership, reload discovery, read-only503 and no external providers');
+    console.log('PASS real Chromium/Node/MySQL Google wizard: one-hour-old local owner session without a password prompt, real offline RS256 verification, pending stays inactive, explicit activation, single database client/epoch, unchanged local cookie/user/membership, reload discovery, read-only503 and no external providers');
   } finally {
     await context?.close(); await browser?.close(); globalThis.fetch = realFetch;
     server.closeAllConnections(); await new Promise((done) => server.close(done)); bridge?.closeAllConnections();
