@@ -11,7 +11,8 @@ const MANIFEST = '3266126c135e1e4e8c992b1d919b61ae23aead2cfb689044cacfa7751cf44e
 // Reproducible from the verified 5185 manifest and cpanel-operator-5185.patch.
 const patched = new Map([
   ['server/cpanel-host-contract.mjs', { bytes: 21004, sha256: '010812d399b384fa35c4d9b21c9e93f6480118a3dd88535d6a49cece3f7c48db' }],
-  ['server/cpanel-deployment-adapter.mjs', { bytes: 60362, sha256: 'ec76b2e72ae3620ba310365059af776c41a72f24a7de02578eaef7af6cd386c0' }],
+  ['server/cpanel-deployment-adapter.mjs', { bytes: 60874, sha256: 'e3b810032f3e24b7b8c8d0d09ae061c5f1be95c90e130961ece0c16f09c924ab' }],
+  ['server/deployment-capacity.mjs', { bytes: 9761, sha256: '4a12be29c26a2f1f8552d087b1ae579661bc5af9fd52839bb9bed2d9b2b39490' }],
 ]);
 const ROOT = '/home/yoterber/hichal.yoterberama.com';
 const ORIGIN = 'https://hichal.yoterberama.com';
