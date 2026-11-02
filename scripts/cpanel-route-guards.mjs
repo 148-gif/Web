@@ -8,6 +8,7 @@ const FOOTER = '# END HEICHAL CPANEL ROUTE v1';
 const reject = () => { throw new Error('cPanel route protection could not be verified'); };
 
 export function routeKind(route) {
+  if (typeof route !== 'string') reject();
   if (route === 'cms-api') return 'canonical';
   if (/^cms-api-check-[a-f0-9]{8}$/.test(route)) return 'candidate';
   if (/^cms-api-rollback-[a-f0-9]{8}$/.test(route)) return 'rollback';
@@ -15,17 +16,23 @@ export function routeKind(route) {
 }
 
 export function routePrefix(route) {
-  const role = routeKind(route);
-  const rules = [HEADER, 'RewriteEngine On'];
-  if (role !== 'rollback') rules.push('RewriteCond %{DOCUMENT_ROOT}/.heichal-runtime-drain-' + role + ' -f');
-  rules.push('RewriteRule ^ - [R=503,L]');
-  if (role !== 'rollback') rules.push(
+  routeKind(route);
+  // Selector moves its source .htaccess onto the destination. Identical bytes
+  // must choose the correct admission rule at both URIs, even during a move.
+  return [HEADER, 'RewriteEngine On',
+    'RewriteCond %{REQUEST_URI} !^/cms-api(?:-check-[a-f0-9]{8})?(?:/|$)',
+    'RewriteRule ^ - [R=503,L]',
+    'RewriteCond %{REQUEST_URI} ^/cms-api(?:/|$)',
+    'RewriteCond %{DOCUMENT_ROOT}/.heichal-runtime-drain-canonical -f',
+    'RewriteRule ^ - [R=503,L]',
+    'RewriteCond %{REQUEST_URI} ^/cms-api-check-[a-f0-9]{8}(?:/|$)',
+    'RewriteCond %{DOCUMENT_ROOT}/.heichal-runtime-drain-candidate -f',
+    'RewriteRule ^ - [R=503,L]',
     'RewriteCond %{DOCUMENT_ROOT}/.cpanel-maintenance -f',
     'RewriteCond %{REQUEST_METHOD} !^(GET|HEAD)$ [OR]',
-    'RewriteCond %{REQUEST_URI} !^/' + route + '/(version|me)$',
-    'RewriteRule ^ - [R=503,L]',
-  );
-  return rules.concat(FOOTER, '').join('\n');
+    'RewriteCond %{REQUEST_URI} !^/cms-api(?:-check-[a-f0-9]{8})?/(?:version|me)$',
+    'RewriteRule ^ - [R=503,L]', FOOTER, '',
+  ].join('\n');
 }
 
 const sameNode = (a, b) => a.dev === b.dev && a.ino === b.ino && a.uid === b.uid && a.mode === b.mode;
@@ -65,19 +72,35 @@ export async function verifyRoute(root, route) {
 // Only a previously absent, approved destination is initialized. This never
 // rewrites an existing Passenger file. An interrupted seed retains its guard;
 // recovery inspects the pinned protected-file inventory before proceeding.
-export async function seedRoute(root, route) {
+export async function seedRoute(root, route, approvedEmptyMode = null) {
   const prefix = routePrefix(route);
   const parent = join(root, route), path = join(parent, '.htaccess');
   const rootInfo = await directory(root);
-  try { await mkdir(parent, { mode: 0o755 }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+  let created = false;
+  try { await mkdir(parent, { mode: 0o755 }); created = true; } catch (error) { if (error.code !== 'EEXIST') throw error; }
+  if (created) {
+    const dir = await open(parent, F.O_RDONLY | F.O_DIRECTORY | F.O_NOFOLLOW);
+    try {
+      if (!sameNode(await dir.stat({ bigint: true }), await directory(parent))) reject();
+      await dir.chmod(0o755); // The private Cron normally uses umask 077.
+    } finally { await dir.close(); }
+  }
   const parentInfo = await directory(parent);
   if (parentInfo.dev !== rootInfo.dev) reject();
   const entries = await readdir(parent);
-  if (entries.includes('.htaccess')) { await verifyRoute(root, route); return; }
-  if (entries.length) reject();
-  const handle = await open(path, F.O_CREAT | F.O_EXCL | F.O_WRONLY | F.O_NOFOLLOW, 0o644);
+  let empty = null;
+  if (entries.includes('.htaccess')) {
+    const info = await lstat(path, { bigint: true });
+    if (info.size !== 0n || approvedEmptyMode === null) { await verifyRoute(root, route); return; }
+    if (entries.length !== 1 || !info.isFile() || !owned(info) || info.nlink !== 1n || Number(info.mode & 0o777n) !== approvedEmptyMode) reject();
+    empty = info;
+  } else if (entries.length) reject();
+  const handle = await open(path, F.O_WRONLY | F.O_NONBLOCK | F.O_NOFOLLOW | (empty ? 0 : F.O_CREAT | F.O_EXCL), 0o644);
   try {
-    await handle.chmod(0o644);
+    if (empty) {
+      const info = await handle.stat({ bigint: true });
+      if (!sameNode(info, empty) || info.nlink !== 1n || info.size !== 0n || info.ctimeNs !== empty.ctimeNs) reject();
+    } else await handle.chmod(0o644);
     await handle.writeFile(prefix); await handle.sync();
     if (!sameNode(await handle.stat({ bigint: true }), await lstat(path, { bigint: true }))) reject();
   } finally { await handle.close(); }
