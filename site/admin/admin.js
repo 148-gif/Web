@@ -2105,7 +2105,7 @@
       { method: method || 'GET', headers: anonymous ? { 'Content-Type': 'application/json' } : editorHeaders(method), cache: 'no-store', body: body === undefined ? undefined : JSON.stringify(body) },
       function (r) { return r.text().then(function (text) {
         var result = {}; try { result = text ? JSON.parse(text) : {}; } catch { /* safe generic error below */ }
-        if (!r.ok) { var error = new Error(result.message || 'לא ניתן להשלים את הפעולה כרגע. נסו שוב.'); error.status = r.status; if (r.status === 428 && result.code === 'reauth_required') error.code = result.code; throw error; }
+        if (!r.ok) { var error = new Error(r.status === 503 ? 'שירות ההתחברות אינו זמין זמנית. נסו שוב בעוד רגע.' : result.message || 'לא ניתן להשלים את הפעולה כרגע. נסו שוב.'); error.status = r.status; if (r.status === 428 && result.code === 'reauth_required') error.code = result.code; throw error; }
         return result;
       }); }, !!anonymous).then(function (result) {
         if (path === '/confirm' && method === 'POST' && result.localOwnerFresh === true) {
@@ -2433,6 +2433,14 @@
         email.setCustomValidity('כתובת הדוא״ל אינה תקינה. לדוגמה: name@example.com. בדקו שאין רווח או מרכאות בתוך הכתובת.');
       }
     }
+    email.addEventListener('paste', function (event) {
+      // A single-line input would otherwise join two pasted lines into a different address.
+      var pasted = event.clipboardData && event.clipboardData.getData('text/plain');
+      if (pasted && /[\r\n]/.test(pasted.trim())) {
+        event.preventDefault(); email.setCustomValidity('הדביקו כתובת דוא״ל אחת בשורה אחת, לדוגמה: name@example.com.');
+        error.textContent = email.validationMessage; email.reportValidity();
+      }
+    });
     email.addEventListener('blur', checkEmail);
     email.addEventListener('invalid', function () { error.textContent = email.validationMessage; });
     email.addEventListener('input', function () { checkEmail(); error.textContent = ''; if (!result.hidden) { generation++; clearResult(); status.textContent = ''; } });
