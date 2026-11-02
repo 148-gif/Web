@@ -13,7 +13,7 @@ Operator preparation
 
 Owner and recipient flow
 
-The local owner enters the recipient’s allowlisted email in authentication settings. A password login or confirmation within the last 15 minutes covers invitations, Google setup and login-method changes. When this window expires, enter the current local password once. The confirmation is bound to that session and account version. Each invitation still checks the exact Origin, CSRF token, allowlist, live owner session and password version before saving. Paired outer quotes or invisible direction marks from a pasted address are removed. A quote embedded in the domain is rejected so the owner can correct it.
+The local owner enters the recipient’s allowlisted email in authentication settings. An active, authorized local owner session can create invitations. The owner signs in normally again only if the session has expired or been revoked. Each invitation still checks the exact Origin, CSRF token, allowlist, live owner session and password version before saving. Paired outer quotes or invisible direction marks from a pasted address are removed. A quote embedded in the domain is rejected so the owner can correct it.
 
 An invitation lasts 15 minutes. Its random capability is returned once to the owner's private settings screen; the database stores only its hash. The setup URL contains no invitation code. Share the code privately with the intended recipient, separately from the public setup URL. Do not put it into a URL, chat logs, command line, analytics or browser storage. A replacement invitation for the same target invalidates the previous unconsumed code.
 
