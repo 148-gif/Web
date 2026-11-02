@@ -13,6 +13,7 @@ import { createMysqlRateLimitStore } from '../server/mysql-rate-limit.mjs';
 import { createInitializedMysqlPool } from '../server/mysql-pool.mjs';
 import { initializeLocalAuthSchema } from '../scripts/setup-local-auth.mjs';
 import { runtimeHandler } from '../server/runtime.mjs';
+import { makeGithub } from './helpers/fake-github.mjs';
 import { mysqlEnabled, withMysqlDatabase } from './helpers/mysql.mjs';
 
 const ORIGIN = 'https://preview.example.test';
@@ -20,7 +21,7 @@ const OWNER_EMAIL = 'existing-owner@example.test';
 const OWNER_HASH = digestToken(OWNER_EMAIL);
 const PASSWORD = 'Test password only: long enough 123!';
 const REPLACEMENT = 'Different test password only 456!';
-const integration = (name, fn) => test(name, { skip: !mysqlEnabled }, () => withMysqlDatabase(async ({ pool: raw, database }) => {
+const integration = (name, fn) => test(name, { skip: !mysqlEnabled }, (t) => withMysqlDatabase(async ({ pool: raw, database }) => {
   const pool = createInitializedMysqlPool(raw), plan = await initializeLocalAuthSchema(null);
   await initializeLocalAuthSchema(pool, { apply: true, targetDatabase: database, expectedSchemaSha256: plan.schemaSha256 });
   const store = createMysqlAuthStore(pool);
@@ -30,14 +31,14 @@ const integration = (name, fn) => test(name, { skip: !mysqlEnabled }, () => with
     DATA_STORE: createMysqlDataStore(pool), EDITORS: createMysqlKv(pool), RATE_LIMIT_STORE: createMysqlRateLimitStore(pool), CLIENT_IP: () => '127.0.0.1' };
   const config = { env, publicOrigin: ORIGIN, apiBasePath: '/cms-api', googleEnabled: true, staging: true, readOnly: true, publishEnabled: false };
   const service = createLocalAuth({ store, config, clock: () => now });
-  const call = (path, { method = 'GET', body, cookie, csrf, bearer, origin = ORIGIN, next = worker.fetch } = {}) => {
+  const call = (path, { method = 'GET', body, cookie, csrf, bearer, origin = ORIGIN, next = worker.fetch, bindings = env } = {}) => {
     const headers = new Headers();
     if (origin !== null) headers.set('Origin', origin);
     if (cookie) headers.set('Cookie', cookie);
     if (csrf) headers.set('X-CSRF-Token', csrf);
     if (bearer) headers.set('Authorization', 'Bearer ' + bearer);
     if (body !== undefined) headers.set('Content-Type', 'application/json');
-    return service.handle(new Request(ORIGIN + path, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }), env, next);
+    return service.handle(new Request(ORIGIN + path, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }), bindings, next);
   };
   const arm = async () => {
     const code = randomToken();
@@ -53,7 +54,7 @@ const integration = (name, fn) => test(name, { skip: !mysqlEnabled }, () => with
     const body = await response.json(), fullCookie = response.headers.get('set-cookie');
     return { cookie: fullCookie.split(';')[0], fullCookie, csrf: body.csrfToken, body };
   };
-  await fn({ pool, store, env, config, service, call, arm, bootstrap, login, advance: (ms = 60000) => { now += ms; }, now: () => now });
+  await fn({ pool, store, env, config, service, call, arm, bootstrap, login, advance: (ms = 60000) => { now += ms; }, now: () => now }, t);
 }));
 
 integration('real local-auth bootstrap is private, atomic, replay-proof and bound to the configured owner', async (f) => {
@@ -100,6 +101,52 @@ integration('real local login returns opaque protected cookies and never aliases
   const workerResponse = await worker.fetch(new Request(ORIGIN + '/me', { headers: { Origin: ORIGIN, Authorization: 'Bearer ' + opaque } }), f.env);
   assert.equal(workerResponse.status, 401);
   assert.equal((await f.call('/me', { cookie: session.cookie, bearer })).status, 401);
+});
+
+integration('a signed-in local owner publishes from inherited Node bindings without bypassing file conflicts', async (f, t) => {
+  const path = 'data/print.json';
+  const github = await makeGithub({ files: { [path]: '{"title":"original"}\n' } });
+  const sourceHead = github.head;
+  Object.assign(f.env, { REPO: github.repo, BRANCH: github.branch });
+  const bindings = Object.create(f.env, { CLIENT_IP: { value: f.env.CLIENT_IP } });
+  const pinned = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    const target = new URL(url);
+    assert.equal(options.headers.Authorization, 'Bearer ' + f.env.GITHUB_TOKEN);
+    assert.ok(target.pathname.startsWith('/repos/' + github.repo + '/'));
+    if (target.pathname.endsWith('/contents/' + path)) pinned.push(target.searchParams.get('ref'));
+    if (options.method === 'PATCH') assert.equal(JSON.parse(options.body).force, false);
+    return github.fetch(url, options);
+  });
+  assert.equal((await f.bootstrap(await f.arm())).status, 201);
+  const { cookie, csrf } = await f.login();
+  const call = (method, route, body) => f.call(route, { bindings, method, body, cookie, csrf });
+  const contents = '/gh/contents/' + path;
+  const save = async (value) => {
+    const read = await call('GET', contents);
+    assert.equal(read.status, 200);
+    const { sha } = await read.json();
+    const content = Buffer.from(value).toString('base64');
+    assert.equal((await call('PUT', contents, { content, sha })).status, 200);
+  };
+  const draft = '{"title":"from the dashboard"}\n';
+  await save(draft);
+  const published = await call('POST', '/publish', { paths: [path] });
+  assert.equal(published.status, 200);
+  assert.equal((await published.json()).sha, github.head);
+  assert.ok(pinned.includes(sourceHead));
+  assert.equal(github.read(path), draft);
+  assert.equal(await f.env.DATA_STORE.getDraft(path), null);
+
+  await save('{"title":"next draft"}\n');
+  const competing = '{"title":"concurrent edit"}\n';
+  const competingHead = await github.commit({ [path]: competing });
+  const conflict = await call('POST', '/publish', { paths: [path] });
+  assert.equal(conflict.status, 409);
+  assert.deepEqual((await conflict.json()).conflicts, [path]);
+  assert.ok(pinned.includes(competingHead));
+  assert.equal(github.read(path), competing);
+  assert.ok(await f.env.DATA_STORE.getDraft(path));
 });
 
 integration('real local auth rejects unknown and wrong-password accounts identically and rate-limits atomically', async (f) => {
