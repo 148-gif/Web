@@ -93,9 +93,8 @@ async function settings(page) {
 async function createInvitation(page, email = RECIPIENT_EMAIL) {
   await page.locator('#auth-invitation-submit:enabled').waitFor();
   await page.locator('#auth-invitation-email').fill(email);
-  const input = page.locator('#auth-invitation-password'); if (await input.isVisible()) await input.fill(OWNER_PASSWORD);
+  assert.equal(await page.locator('#auth-invitation-form input[type=password]').count(), 0);
   await page.locator('#auth-invitation-submit').click();
-  assert.equal(await page.locator('#auth-invitation-password').inputValue(), '', 'password clears before the response');
 }
 async function visibleInvitation(page) {
   await page.locator('#auth-invitation-result:not([hidden])').waitFor();
@@ -268,13 +267,13 @@ async function unicodePasswordFlow(browser, fixture, ownerPage, store, advanceCl
     const cookie = async () => (await context.cookies()).find((item) => item.name === '__Host-heichal_local');
     const initialCookie = await cookie(); assert(initialCookie?.secure && initialCookie.httpOnly && initialCookie.sameSite === 'Strict');
     advanceClock(16 * 60_000);
-    await settings(page); await typeCompletePassword(page, '#auth-method-password', UNICODE_PASSWORD);
+    await settings(page); assert.equal(await page.locator('#auth-methods input[type=password]').count(), 0);
     const saved = page.waitForResponse((response) => new URL(response.url()).pathname === '/cms-api/auth/settings' && response.request().method() === 'PUT');
     await page.locator('#auth-methods button[type="submit"]').click(); assert.equal((await saved).status(), 200);
     await page.getByText('דרכי הכניסה נשמרו.', { exact: true }).waitFor();
-    const settingsCookie = await cookie(); assert(settingsCookie.value !== initialCookie.value, 'fresh settings reauthentication rotates the local cookie');
+    const settingsCookie = await cookie(); assert(settingsCookie.value !== initialCookie.value, 'changing login settings rotates the local cookie without extending its expiry');
     assert.equal(await store.getSession(digestToken(initialCookie.value)), null);
-    await typeCompletePassword(page, '#auth-password-currentPassword', UNICODE_PASSWORD);
+    assert.equal(await page.locator('#auth-password-change input[type=password]').count(), 2);
     await typeCompletePassword(page, '#auth-password-newPassword', UNICODE_REPLACEMENT);
     await typeCompletePassword(page, '#auth-password-confirmation', UNICODE_REPLACEMENT);
     const changed = page.waitForResponse((response) => new URL(response.url()).pathname === '/cms-api/auth/password');
@@ -288,20 +287,17 @@ async function unicodePasswordFlow(browser, fixture, ownerPage, store, advanceCl
     const relogged = page.waitForResponse((response) => new URL(response.url()).pathname === '/cms-api/auth/login');
     await page.locator('#local-signin').click(); assert.equal((await relogged).status(), 200); await page.locator('#app:not([hidden])').waitFor();
     await settings(page); await page.locator('#auth-invitation-email').fill(FOLLOWUP_EMAIL);
-    assert.equal(await page.locator('#auth-invitation-password').isHidden(), true);
-    advanceClock(16 * 60_000);
-    const stale = page.waitForResponse((r) => new URL(r.url()).pathname === '/cms-api/auth/invitations');
-    await page.locator('#auth-invitation-submit').click(); assert.equal((await stale).status(), 428);
-    await typeCompletePassword(page, '#auth-invitation-password', UNICODE_REPLACEMENT);
+    assert.equal(await page.locator('#auth-invitation-form input[type=password]').count(), 0);
+    advanceClock(60 * 60_000);
     const issued = page.waitForResponse((response) => new URL(response.url()).pathname === '/cms-api/auth/invitations');
     await page.locator('#auth-invitation-submit').click(); assert.equal((await issued).status(), 201);
-    assert.equal(await page.locator('#auth-invitation-password').inputValue(), '');
+    assert.equal(await page.locator('#auth-invitation-form input[type=password]').count(), 0);
     const next = await visibleInvitation(page), row = await store.getInvitationByHash(digestToken(next.code));
     assert(row && !row.consumed && row.owner_hash === digestToken(FOLLOWUP_EMAIL) && row.issuer_id === created.id && row.issuer_version === updated.version,
       'changed Unicode password authorizes an invitation only for the newly preconfigured owner');
     assert.match(await page.locator('#preview-state').textContent(), /קריאה בלבד/);
     await privateBrowserState(page, fixture.audit, [UNICODE_PASSWORD, UNICODE_REPLACEMENT, invitation.code, next.code]);
-    console.log('PASS real Unicode passwords: browser-typed values above 128 UTF-16 units survive invitation acceptance, login, fresh settings reauthentication, password change, changed-password login and invitation reauthentication through Node/MySQL');
+    console.log('PASS real Unicode passwords: browser-typed values above 128 UTF-16 units survive invitation acceptance, login, settings save, new-password-only rotation, changed-password login and invitation using an hour-old session through Node/MySQL');
   } finally { await context.close(); }
 }
 
@@ -335,8 +331,8 @@ async function contractFixture(options = {}) {
       ...(state.capability === undefined ? {} : { invitationsAvailable: state.capability }) });
     if (path === '/cms-api/auth/invitations') {
       if (request.method !== 'POST' || !request.headers['content-type']?.includes('application/json')) return json(response, { message: 'fixture requires JSON POST' }, 415);
-      assert.deepEqual(Object.keys(body).sort(), ['currentPassword', 'email']);
-      assert(body.currentPassword === OWNER_PASSWORD && body.email === RECIPIENT_EMAIL, 'invitation carries only the requested email and fresh password');
+      assert.deepEqual(Object.keys(body).sort(), ['email']);
+      assert(body.email === RECIPIENT_EMAIL, 'invitation carries only the requested email');
       assert.equal(request.headers['x-csrf-token'], session.csrf);
       const invitation = { code: randomToken(), expiresAt: Date.now() + 600000, setupUrl: origin + '/cms-api/auth/invitation', ...state.reply };
       if (state.delay) { state.delay.started.resolve(); await state.delay.release.promise; }
@@ -391,7 +387,7 @@ async function browserContracts(browser) {
       fixture.state.reply = reply; await createInvitation(page); await page.waitForFunction(() => Boolean(document.querySelector('#auth-invitation-error')?.textContent)); await emptyResult(page);
     }
     fixture.state.reply = null;
-    await page.locator('#auth-invitation-email').fill(RECIPIENT_EMAIL); await page.locator('#auth-invitation-password').fill(OWNER_PASSWORD);
+    await page.locator('#auth-invitation-email').fill(RECIPIENT_EMAIL);
     const before = fixture.audit.requests.length;
     const blocked = await page.evaluate(() => new Promise((done) => {
       const timer = setTimeout(() => done(false), 2000);
@@ -418,38 +414,20 @@ async function browserContracts(browser) {
   try {
     const opened = await open(browser, native); context = opened.context; const page = opened.page;
     await login(page, native.origin); await settings(page);
-    await page.locator('#auth-invitation-email').fill(RECIPIENT_EMAIL); await page.locator('#auth-invitation-password').fill(OWNER_PASSWORD);
+    await page.locator('#auth-invitation-email').fill(RECIPIENT_EMAIL);
     assert.equal(await page.locator('meta[http-equiv="Content-Security-Policy"]').count(), 0);
     const sent = page.waitForRequest((request) => request.isNavigationRequest() && new URL(request.url()).pathname === '/cms-api/auth/invitations');
     const rejected = page.waitForResponse((response) => response.request().isNavigationRequest() && new URL(response.url()).pathname === '/cms-api/auth/invitations');
     const navigated = page.waitForURL(native.origin + '/cms-api/auth/invitations', { waitUntil: 'load' });
     await page.evaluate(() => HTMLFormElement.prototype.submit.call(document.querySelector('#auth-invitation-form')));
     const request = await sent; assert.equal(request.method(), 'POST'); assert.equal(new URL(request.url()).search, '');
-    assert(request.postData()?.includes('currentPassword='), 'without CSP, the explicit POST keeps credentials in the body');
+    assert(request.postData()?.includes('email=') && !request.postData().includes('currentPassword='), 'without CSP, only the email is in the POST body');
     assert.equal((await rejected).status(), 415, 'the contract fixture refuses a native form body');
     await navigated; await privateBrowserState(page, native.audit, [OWNER_PASSWORD]);
     console.log('PASS defense in depth: with CSP deliberately stripped, forced native invitation submission remains POST, is refused with 415, and never leaks credentials into URL/history/storage/logs');
   } finally { await context?.close(); await native.close(); }
 }
 
-async function googlePasswordFields(browser) {
-  const fixture = await contractFixture({ googleSetup: true }); let context;
-  try {
-    const opened = await open(browser, fixture); context = opened.context; const page = opened.page;
-    await login(page, fixture.origin); await settings(page); await page.locator('#auth-google-setup').waitFor();
-    await typeCompletePassword(page, '#google-prepare-password', UNICODE_PASSWORD);
-    // Reveal only the already-rendered activation control to exercise native
-    // maxlength without a Google provider, proof callback or activation request.
-    await page.locator('#google-activate').evaluate((form) => { form.hidden = false; });
-    await typeCompletePassword(page, '#google-activate-password', UNICODE_REPLACEMENT);
-    assert.equal(fixture.audit.requests.filter((request) => request.path.startsWith('/cms-api/auth/google/')).length, 0);
-    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
-    for (const id of ['google-prepare-password', 'google-activate-password']) assert.equal(await page.locator('#' + id).inputValue(), '');
-    await privateBrowserState(page, fixture.audit, [UNICODE_PASSWORD, UNICODE_REPLACEMENT]);
-    console.log('PASS Unicode Google password controls: shipped prepare/activate inputs preserve complete browser-typed values and clear on pagehide; no provider or activation is invoked');
-  } finally { await context?.close(); await fixture.close(); }
-}
-
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium' });
-try { await realBrowserFlow(browser); await browserContracts(browser); await googlePasswordFields(browser); }
+try { await realBrowserFlow(browser); await browserContracts(browser); }
 finally { await browser.close(); }
