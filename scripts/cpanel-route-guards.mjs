@@ -49,24 +49,53 @@ async function syncDirectory(path) {
   try { await handle.sync(); } finally { await handle.close(); }
 }
 
-// The private Apache contract separately pins every byte, including the
-// provider-generated Passenger and environment sections. Inspect just the
-// required prefix here so no private configuration enters errors or logs.
-export async function verifyRoute(root, route) {
-  const required = Buffer.from(routePrefix(route));
+// Selector can put its exact generated Passenger block before a preseeded guard
+// when it starts an application. No other directive may precede the guard.
+export function guardOffset(bytes, route) {
+  const marker = Buffer.from(routePrefix(route));
+  const offset = bytes.indexOf(marker);
+  if (offset === 0) return 0;
+  if (offset < 0 || offset > 512) reject();
+  const header = bytes.subarray(0, offset).toString('latin1');
+  const lines = header.split('\n');
+  const commit = /^PassengerAppRoot "\/home\/yoterber\/heichal-cms\/releases\/([a-f0-9]{40})\/app"$/.exec(lines[1])?.[1];
+  const uri = /^PassengerBaseURI "\/(cms-api(?:-(?:check|rollback)-[a-f0-9]{8})?)"$/.exec(lines[2])?.[1];
+  if (!commit || !uri || (uri !== 'cms-api' && !uri.endsWith('-' + commit.slice(0, 8)))) reject();
+  const generated = ['# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN',
+    'PassengerAppRoot "/home/yoterber/heichal-cms/releases/' + commit + '/app"',
+    'PassengerBaseURI "/' + uri + '"',
+    'PassengerNodejs "/home/yoterber/nodevenv/heichal-cms/releases/' + commit + '/app/24/bin/node"',
+    'PassengerAppType node', 'PassengerStartupFile passenger.cjs',
+    '# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END', ''].join('\n');
+  if (header !== generated) reject();
+  return offset;
+}
+
+// Read only a bounded, owned, stable file. No provider environment is logged.
+export async function readRoute(root, route) {
+  routeKind(route);
   const parent = join(root, route), path = join(parent, '.htaccess');
   const rootInfo = await directory(root), parentInfo = await directory(parent);
   if (rootInfo.dev !== parentInfo.dev) reject();
   const handle = await open(path, F.O_RDONLY | F.O_NOFOLLOW | F.O_NONBLOCK);
   try {
     const info = await handle.stat({ bigint: true });
-    if (!info.isFile() || !owned(info) || info.nlink !== 1n || info.size < BigInt(required.length)) reject();
-    const prefix = Buffer.alloc(required.length);
-    const { bytesRead } = await handle.read(prefix, 0, prefix.length, 0);
+    if (!info.isFile() || !owned(info) || info.nlink !== 1n || info.size > 1048576n) reject();
+    const bytes = Buffer.alloc(Number(info.size));
+    let at = 0;
+    while (at < bytes.length) {
+      const { bytesRead } = await handle.read(bytes, at, bytes.length - at, at);
+      if (!bytesRead) reject();
+      at += bytesRead;
+    }
     const named = await lstat(path, { bigint: true });
-    if (bytesRead !== prefix.length || !prefix.equals(required) || !sameNode(info, named) ||
-        info.size !== named.size || info.ctimeNs !== named.ctimeNs || !sameNode(parentInfo, await directory(parent))) reject();
+    if (!sameNode(info, named) || info.size !== named.size || info.ctimeNs !== named.ctimeNs || !sameNode(parentInfo, await directory(parent))) reject();
+    return bytes;
   } finally { await handle.close(); }
+}
+
+export async function verifyRoute(root, route) {
+  guardOffset(await readRoute(root, route), route);
 }
 
 // Only a previously absent, approved destination is initialized. This never
