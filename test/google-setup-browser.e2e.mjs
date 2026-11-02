@@ -174,10 +174,16 @@ if (!mysqlEnabled) {
     const cookieBefore = await localCookie(), sessionBefore = await store.getSession(digestToken(cookieBefore.value));
     assert(cookieBefore.httpOnly && cookieBefore.secure && cookieBefore.sameSite === 'Strict');
     assert.equal(await page.evaluate(() => document.cookie), '');
-    await page.locator('#nav a[href="#/auth"]').click(); await page.locator('#auth-google-setup').waitFor();
-    assert.equal(await page.locator('#google-setup-origin').inputValue(), origin);
+    const authLink = page.locator('#nav a[href="#/auth"]');
+    await authLink.click(); await page.locator('#auth-methods').waitFor();
     assert.equal(await page.locator('#auth-google-enabled').isChecked(), false); assert.equal(await page.locator('#auth-google-enabled').isDisabled(), true);
     assert.equal(await page.locator('#auth-local-enabled').isChecked(), true);
+    const googleLink = page.locator('#nav').getByRole('link', { name: 'הגדרות Google', exact: true });
+    await googleLink.click(); await page.waitForURL('**/#/auth/google');
+    await page.locator('#nav a[href="#/auth/google"][aria-current="page"]').waitFor();
+    assert.equal(await page.locator('#nav a[aria-current="page"]').count(), 1);
+    await page.locator('#auth-google-setup').waitFor();
+    assert.equal(await page.locator('#google-setup-origin').inputValue(), origin);
     const prepareResponse = apiResponse('/auth/google/prepare');
     await page.locator('#google-client-id').fill(CLIENT_ID); await page.locator('#google-prepare-password').fill(PASSWORD); await page.locator('#google-prepare-submit').click();
     const preparation = await prepareResponse;
@@ -211,6 +217,7 @@ if (!mysqlEnabled) {
     await page.locator('#google-activate-password').fill(PASSWORD); await page.locator('#google-activate-submit').click();
     const activation = await activationResponse;
     assert.equal(activation.status(), 200); const activated = await activation.json(); await refreshedSettings;
+    await authLink.click(); await page.locator('#auth-methods').waitFor();
     await page.waitForFunction(() => document.querySelector('#auth-google-enabled')?.checked);
     const active = await store.getGoogleConfig(), activeOptions = await options(), settings = await store.getSettings();
     assert.equal(activated.activated, true); assert.equal(activated.clientId, CLIENT_ID);
