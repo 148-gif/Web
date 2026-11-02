@@ -8,6 +8,11 @@ import { routeKind, routePrefix, seedRoute, statusState, verifyRoute } from './c
 
 const OPERATOR = '5185c67ff426d3983534ccd3de654ed9f53ffcc2';
 const MANIFEST = '3266126c135e1e4e8c992b1d919b61ae23aead2cfb689044cacfa7751cf44e6f';
+// Reproducible from the verified 5185 manifest and cpanel-operator-5185.patch.
+const patched = new Map([
+  ['server/cpanel-host-contract.mjs', { bytes: 21004, sha256: '010812d399b384fa35c4d9b21c9e93f6480118a3dd88535d6a49cece3f7c48db' }],
+  ['server/cpanel-deployment-adapter.mjs', { bytes: 60362, sha256: 'ec76b2e72ae3620ba310365059af776c41a72f24a7de02578eaef7af6cd386c0' }],
+]);
 const ROOT = '/home/yoterber/hichal.yoterberama.com';
 const ORIGIN = 'https://hichal.yoterberama.com';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -42,7 +47,8 @@ async function checkedModuleTree(base) {
   if (sha(raw) !== MANIFEST) refuse();
   for (const file of JSON.parse(raw).files) {
     const actual = await bytes(file.path);
-    if (actual.length !== file.bytes || sha(actual) !== file.sha256) refuse();
+    const pin = patched.get(file.path) ?? file;
+    if (actual.length !== pin.bytes || sha(actual) !== pin.sha256) refuse();
   }
 }
 
@@ -55,26 +61,26 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
     'promote-candidate': 'cms-api', 'park-candidate': 'cms-api-check-' + next, 'restore-old': 'cms-api',
   };
   const pending = { baseline: destination['create-candidate'], 'candidate-created': destination['park-old'] };
+  const observedStates = new Map();
   let busy = false;
   async function inspect(state) {
     const snapshot = await selector.inspect();
     const status = commit => snapshot.applications.find(a => a.root === 'heichal-cms/releases/' + commit + '/app')?.status ?? null;
-    const key = statusState(state, status(scope.previousCommit), status(scope.commit));
-    const ledger = guard.expected(key);
-    let result;
+    const primary = statusState(state, status(scope.previousCommit), status(scope.commit));
+    const retained = primary + '-retained';
+    let key = primary, result;
+    let ledger = guard.expected(key);
     try { result = await guard.verify(key); }
     catch (error) {
-      // A crash after exclusive route creation and before Selector may leave
-      // precisely our harmless prefix in a path pinned as absent. Admit that
-      // one intermediate state only after rechecking the entire raw ledger.
-      const route = pending[state];
-      const slot = ledger.files.find(f => f.path === route + '/.htaccess');
-      if (error.code !== 'host-drift' || !route || !slot || occupied(snapshot.applications, route) || !(slot.entry === null || empty(slot.entry))) throw error;
-      const prefix = Buffer.from(routePrefix(route));
-      const files = ledger.files.map(f => f === slot ? { ...f, entry: { bytes: prefix.length, sha256: sha(prefix), mode: slot.entry?.mode ?? 0o644 } } : f);
-      if (JSON.stringify(await readSnapshot({ files })) !== JSON.stringify(files)) throw error;
-      await verify(root, route);
-      result = { verified: true, state: key, snapshotSha256: sha(JSON.stringify({ ...ledger, files }) + '\n'), rootHtaccessSha256: files.find(f => f.path === '.htaccess').entry.sha256 };
+      if (error.code !== 'host-drift') throw error;
+      // After a reverse URI move Selector retains the former source file. The
+      // only alternative is a separately pinned, exact, whole-ledger snapshot.
+      if (scope.contract.states?.[retained]) {
+        try { result = await guard.verify(retained); }
+        catch (other) { if (other.code !== 'host-drift') throw other; }
+        if (result) { key = retained; ledger = guard.expected(key); }
+      }
+      if (!result) result = await verifySeededDestination(error, state, snapshot, ledger);
     }
     for (const f of ledger.files) {
       if (!/^cms-api(?:-check-[a-f0-9]{8}|-rollback-[a-f0-9]{8})?\/\.htaccess$/.test(f.path)) continue;
@@ -83,7 +89,21 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
         if (occupied(snapshot.applications, route)) refuse();
       } else await verify(root, route);
     }
+    observedStates.set(state, key);
     return { ...result, contractState: key };
+  }
+  async function verifySeededDestination(error, state, snapshot, ledger) {
+    // A crash after exclusive route creation and before Selector may leave
+    // precisely our harmless prefix in a path pinned as absent. Admit that
+    // one intermediate state only after rechecking the entire raw ledger.
+    const route = pending[state];
+    const slot = ledger.files.find(f => f.path === route + '/.htaccess');
+    if (error.code !== 'host-drift' || !route || !slot || occupied(snapshot.applications, route) || !(slot.entry === null || empty(slot.entry))) throw error;
+    const prefix = Buffer.from(routePrefix(route));
+    const files = ledger.files.map(f => f === slot ? { ...f, entry: { bytes: prefix.length, sha256: sha(prefix), mode: slot.entry?.mode ?? 0o644 } } : f);
+    if (JSON.stringify(await readSnapshot({ files })) !== JSON.stringify(files)) throw error;
+    await verify(root, route);
+    return { verified: true, state, snapshotSha256: sha(JSON.stringify({ ...ledger, files }) + '\n'), rootHtaccessSha256: files.find(f => f.path === '.htaccess').entry.sha256 };
   }
   async function run(action, operation) {
     const t = scope.contract.transitions[action];
@@ -103,7 +123,7 @@ export function guardedTransitions({ scope, guard, selector, root, readSnapshot,
       return { value };
     } finally { busy = false; }
   }
-  return { expected: guard.expected, verify: inspect, run };
+  return { expected: state => guard.expected(observedStates.get(state) ?? state), verify: inspect, run };
 }
 
 export async function proveStoppedRoute(uri, fetcher = fetch) {
@@ -116,7 +136,7 @@ export async function proveStoppedRoute(uri, fetcher = fetch) {
 
 async function main(args) {
   if (args.length === 2 && args[0] === '--print-guard') { process.stdout.write(routePrefix(args[1])); return; }
-  const base = '/home/yoterber/heichal-cms/operator/' + OPERATOR;
+  const base = '/home/yoterber/heichal-cms/operator/' + OPERATOR + '-guarded-v1';
   await checkedModuleTree(base);
   const load = path => import(pathToFileURL(join(base, path)).href);
   const { deploymentCli } = await load('scripts/deploy-cpanel.mjs');
