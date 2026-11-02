@@ -175,6 +175,16 @@ test('only the exact generated Passenger section can precede the guard, and the 
   assert.equal(guardOffset(actual, route), Buffer.byteLength(provider));
   assert.deepEqual(await snapshot.inspect(expected), expected);
   assert.deepEqual(snapshot.physicalLedger({ files: expected }).files, [file(actual)]);
+  const rollbackPath = 'cms-api-rollback-aaaaaaaa/.htaccess';
+  const logical = [{ path: '.htaccess', entry: entry('root') }, ...expected, { path: rollbackPath, runtimeCommit: old, entry: null }];
+  const physical = [logical[0], file(actual), { ...logical[2], entry: entry(marker) }];
+  const placements = routeSnapshots({ commit: next, previousCommit: old }, '/unused', async () => physical, async () => actual);
+  const api = guardedTransitions({ scope: { commit: next, previousCommit: old, contract: {} }, root: '/unused',
+    guard: { expected: () => ({ files: logical }), verify() { throw Object.assign(new Error('drift'), { code: 'host-drift' }); } },
+    selector: { inspect: async () => ({ applications: [old, next].map(c => ({ root: 'heichal-cms/releases/' + c + '/app', status: 'started' })) }) },
+    verify: async () => {}, readSnapshot: ({ files }) => placements.inspect(files), physicalLedger: placements.physicalLedger });
+  await api.verify('candidate-created');
+  assert.deepEqual(api.expected('candidate-created').files, physical);
   actual = Buffer.from(provider + marker + env.replace('approved', 'tampered'));
   assert.notDeepEqual(await snapshot.inspect(expected), expected);
   for (const bad of [provider.replace('passenger.cjs', 'arbitrary.cjs'), provider.replace('/24/bin/node', '/22/bin/node'), 'RewriteRule ^ - [L]\n' + provider]) {
