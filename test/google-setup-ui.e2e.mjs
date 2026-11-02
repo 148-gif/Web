@@ -64,7 +64,7 @@ const server = createServer(async (request, response) => {
       if (path === '/cms-api/auth/logout') { state.session = null; response.setHeader('Set-Cookie', '__Host-wizard_fixture=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0'); return json(response, { loggedOut: true }); }
       if (path === '/cms-api/auth/settings') return json(response, settings());
       if (path === '/cms-api/auth/google/prepare') {
-        assert(state.configurable); assert.equal(body.currentPassword, password); assert.equal(typeof body.clientId, 'string');
+        assert(state.configurable); assert.deepEqual(Object.keys(body), ['clientId']); assert.equal(typeof body.clientId, 'string');
         state.revision++; state.pending = { clientId: body.clientId, nonce: 'fixture-nonce-' + state.revision, revision: state.revision, expiresAt: Date.now() + state.expiresIn };
         return json(response, state.pending);
       }
@@ -74,7 +74,7 @@ const server = createServer(async (request, response) => {
         return json(response, { verified: true, clientId: state.pending.clientId, revision: state.revision, verifiedUntil: state.pending.verifiedUntil });
       }
       if (path === '/cms-api/auth/google/activate') {
-        assert(state.activationAllowed); assert(state.pending?.verified); assert.equal(body.revision, state.revision); assert.equal(body.currentPassword, password);
+        assert(state.activationAllowed); assert(state.pending?.verified); assert.equal(body.revision, state.revision); assert.deepEqual(Object.keys(body), ['revision']);
         state.googleEnabled = true; state.activeClientId = state.pending.clientId; state.activeVersion++; state.revision++; state.pending = null;
         if (state.failOptionsAfterActivate) state.discoveryFail = true;
         return json(response, { activated: true, clientId: state.activeClientId, googleRevision: state.revision });
@@ -137,7 +137,7 @@ async function settingsPage(page) {
   await page.locator('#nav a[href="#/auth"]').click(); await page.locator('#auth-google-setup').waitFor();
 }
 async function prepare(page, clientId = firstClient) {
-  await page.locator('#google-client-id').fill(clientId); await page.locator('#google-prepare-password').fill(password); await page.locator('#google-prepare-submit').click();
+  await page.locator('#google-client-id').fill(clientId); await page.locator('#google-prepare-submit').click();
   await page.locator('[data-fixture-google]').waitFor();
 }
 async function verify(page) {
@@ -145,7 +145,7 @@ async function verify(page) {
 }
 async function activate(page) {
   const refreshed = page.waitForResponse((response) => new URL(response.url()).pathname === '/cms-api/auth/settings' && response.request().method() === 'GET');
-  await page.locator('#google-activate-password').fill(password); await page.locator('#google-activate-submit').click();
+  await page.locator('#google-activate-submit').click();
   await refreshed;
 }
 async function proofCount(page) { return page.evaluate(() => window.__gis?.ids.length || 0); }
@@ -174,14 +174,14 @@ try {
     await prepare(page);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, 'wizard with official button fits320px');
     await page.setViewportSize({ width: 1280, height: 900 });
-    assert.equal(await page.locator('#google-prepare-password').inputValue(), '');
+    assert.equal(await page.locator('#google-prepare input[type=password]').count(), 0);
     assert.equal(state.googleEnabled, false); assert.equal(count('activate'), 0);
     const idOptions = await page.evaluate(() => { const x = window.__gis.ids.at(-1); return { client_id: x.client_id, nonce: x.nonce, ux_mode: x.ux_mode, auto_select: x.auto_select, button_auto_select: x.button_auto_select }; });
     assert.deepEqual(idOptions, { client_id: firstClient, nonce: state.pending.nonce, ux_mode: 'popup', auto_select: false, button_auto_select: false });
     assert.equal(await page.evaluate(() => window.__gis.prompts), 0, 'custom button must not invoke Google ID prompt');
     await verify(page); assert.equal(state.googleEnabled, false); assert.equal(count('activate'), 0); assert.equal(state.session.id, session);
     assert.equal(await page.locator('#google-activate').getAttribute('method'), 'post');
-    assert.equal(await page.locator('#google-activate-password').inputValue(), '', 'activation asks for a fresh password');
+    assert.equal(await page.locator('#google-activate input[type=password]').count(), 0, 'activation uses the existing session');
     await activate(page);
     await page.waitForFunction(() => document.querySelector('#auth-google-enabled')?.checked);
     assert.equal(state.activeClientId, firstClient); assert.equal(state.session.id, session); assert.equal(count('activate'), 1);
@@ -217,7 +217,7 @@ try {
     await page.evaluate(() => window.__gis.tokens.at(-1).callback({ access_token: 'fixture-access-current' }));
     await page.locator('#app:not([hidden])').waitFor();
     assert.equal(seen.filter((x) => x.path === '/cms-api/session').length, sessionsBefore + 1);
-    console.log('PASS managed wizard: exact origin, supported GIS button, separate proof/activation, fresh passwords, unchanged local identity, shared SDK, provider revision and stale callback protection,320px light/dark');
+    console.log('PASS managed wizard: exact origin, supported GIS button, separate proof/activation, password-free setup, unchanged local identity, shared SDK, provider revision and stale callback protection,320px light/dark');
     await context.close();
   }
   {
@@ -280,14 +280,14 @@ try {
     assert.equal(await page.evaluate(() => window.__gis.oauth.at(-1).client_id), firstClient);
     await page.evaluate(() => window.__gis.tokens.at(-1).error_callback({ type: 'popup_closed' }));
     await login(page); const session = state.session.id; await settingsPage(page); await prepare(page, secondClient); await verify(page);
-    await page.locator('#google-activate-password').fill(password); await page.locator('#google-activate-submit').click();
+    await page.locator('#google-activate-submit').click();
     await page.waitForFunction(() => document.querySelector('#google-setup-error')?.textContent === 'fixture discovery unavailable');
     assert.equal(state.activeClientId, secondClient, 'server activation succeeds before discovery fails');
     assert.equal(state.session.id, session, 'failed discovery does not replace the local session');
     assert.equal(await page.locator('#app').isVisible(), true); assert.equal(await page.locator('#who').textContent(), user.name);
     assert.match(await page.locator('#preview-state').textContent(), /קריאה בלבד/); assert.equal(await page.locator('#preview-state').isVisible(), true);
     assert.equal(await page.locator('#rename').isHidden(), true, 'existing read-only capabilities survive failed discovery');
-    assert.equal(await page.locator('#google-activate-password').inputValue(), '');
+    assert.equal(await page.locator('#google-activate input[type=password]').count(), 0);
     const oauthBefore = await page.evaluate(() => window.__gis.oauth.length);
     await page.locator('#out').click(); await page.locator('#auth-discovery-retry').waitFor();
     assert.equal(await page.locator('#local-login').isHidden(), true); assert.equal(await page.locator('#gbox').isHidden(), true);
