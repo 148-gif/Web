@@ -18,7 +18,7 @@ export function googleSetupView(g, auth, config, now) {
     configurable: auth.method === 'local', activationAllowed: config.googleEnabled };
 }
 
-export function createGoogleSetup({ store, config, clock, validUser, reauthenticate, admission, verifyProof = createGoogleProofVerifier({ clock }) }) {
+export function createGoogleSetup({ store, config, clock, validUser, admission, verifyProof = createGoogleProofVerifier({ clock }) }) {
   async function currentOwner(tx, auth) {
     const settings = await tx.getSettings(), user = await tx.getUserById(auth.user.id);
     const session = await tx.getSession(digestToken(auth.token));
@@ -38,7 +38,7 @@ export function createGoogleSetup({ store, config, clock, validUser, reauthentic
     if (auth?.method !== 'local' || !auth.actor.owner) throw fail('הגדרת Google דורשת כניסה מקומית של בעל הרשאה', 403);
     if (path === '/auth/google/prepare') {
       if (!validGoogleClientId(body.clientId)) throw fail('הזינו Client ID תקין של יישום אינטרנט ב־Google', 400);
-      await reauthenticate(request, env, auth, body);
+      await admission(request, env, auth.user.username);
       const nonce = randomToken(), now = clock();
       return store.atomic(async (tx) => {
         await currentOwner(tx, auth);
@@ -73,7 +73,7 @@ export function createGoogleSetup({ store, config, clock, validUser, reauthentic
     }
     if (path === '/auth/google/activate') {
       if (!config.googleEnabled) throw fail('מפעיל האחסון השאיר את כניסת Google כבויה', 403);
-      await reauthenticate(request, env, auth, body);
+      await admission(request, env, auth.user.username);
       return store.atomic(async (tx) => {
         const { settings } = await currentOwner(tx, auth), g = await tx.getGoogleConfig();
         if (!pendingFor(g, auth, body.revision, true)) throw fail('יש להשלים בדיקת כניסה עדכנית לפני הפעלת Google');
