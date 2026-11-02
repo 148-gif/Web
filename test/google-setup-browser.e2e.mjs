@@ -76,8 +76,10 @@ if (!mysqlEnabled) {
   await store.atomic(async (tx) => tx.saveSettings({ ...await tx.getSettings(), bootstrap_hash: digestToken(code), bootstrap_expires: Date.now() + 600_000, bootstrap_owner_hash: OWNER_HASH }));
   const signing = await generateKeyPair('RS256'), keyId = 'ephemeral-browser-google-fixture';
   const keySet = createLocalJWKSet({ keys: [{ ...await exportJWK(signing.publicKey), kid: keyId, alg: 'RS256', use: 'sig' }] });
+  const loginTime = Date.now(); let serverTime = loginTime;
+  const clock = () => serverTime;
   let signatureVerifications = 0;
-  const googleProofVerifier = createGoogleProofVerifier({ keySet: async (...args) => { signatureVerifications++; return keySet(...args); } });
+  const googleProofVerifier = createGoogleProofVerifier({ clock, keySet: async (...args) => { signatureVerifications++; return keySet(...args); } });
   const site = resolve(new URL('../site/', import.meta.url).pathname);
   const mime = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2' };
   const github = await makeGithub({ repo: 'o/r', branch: 'live', files: repoFiles() });
@@ -100,7 +102,7 @@ if (!mysqlEnabled) {
         assert.match(body.nonce, /^[A-Za-z0-9_-]{43}$/);
         const pending = await store.getGoogleConfig();
         assert.equal(pending.pending_client_id, body.clientId); assert.equal(pending.pending_nonce_hash, digestToken(body.nonce));
-        const issuedAt = Math.floor(Date.now() / 1000);
+        const issuedAt = Math.floor(clock() / 1000);
         const credential = await new SignJWT({ nonce: body.nonce, email: OWNER_EMAIL, email_verified: true })
           .setProtectedHeader({ alg: 'RS256', kid: keyId }).setIssuer('https://accounts.google.com')
           .setAudience(body.clientId).setSubject('offline-browser-google-owner').setIssuedAt(issuedAt).setExpirationTime(issuedAt + 300)
@@ -127,7 +129,7 @@ if (!mysqlEnabled) {
       DATA_STORE: data, EDITORS: editors, RATE_LIMIT_STORE: createMysqlRateLimitStore(pool) };
     const config = { env, publicOrigin: origin, apiBasePath: '/cms-api', localAuthEnabled: true, googleSetupEnabled: true,
       googleEnabled: true, readOnly: true, publishEnabled: false, staging: true };
-    const auth = createLocalAuth({ store, config, googleProofVerifier });
+    const auth = createLocalAuth({ store, config, clock, googleProofVerifier });
     bridge = createCmsServer({ env, publicOrigin: origin, basePath: config.apiBasePath, noIndex: true,
       handleRequest: runtimeHandler(config, (request, currentEnv) => auth.handle(request, currentEnv, worker.fetch)) });
     api = bridge.listeners('request')[0];
@@ -150,6 +152,13 @@ if (!mysqlEnabled) {
       externalBrowserRequests.push(url); return route.abort('blockedbyclient');
     });
     const page = await context.newPage(); page.on('pageerror', (error) => browserErrors.push(String(error)));
+    const authBodies = [];
+    page.on('request', request => {
+      const { pathname } = new URL(request.url());
+      if (request.method() === 'POST' && (pathname.startsWith('/cms-api/auth/google/') || pathname === '/cms-api/auth/confirm')) {
+        authBodies.push([pathname.split('/').at(-1), ...Object.keys(request.postDataJSON()).sort()]);
+      }
+    });
     if (process.env.DEBUG_AUTH_BROWSER) page.on('response', (response) => { const url = new URL(response.url()); if (url.pathname.startsWith('/cms-api/')) console.log('HTTP', response.status(), url.pathname); });
     const options = () => page.evaluate(async () => { const response = await fetch('/cms-api/auth/options'); if (!response.ok) throw new Error('Auth options failed'); return response.json(); });
     const localCookie = async () => (await context.cookies()).find((cookie) => cookie.name === '__Host-heichal_local');
@@ -185,7 +194,8 @@ if (!mysqlEnabled) {
     await page.locator('#auth-google-setup').waitFor();
     assert.equal(await page.locator('#google-setup-origin').inputValue(), origin);
     const prepareResponse = apiResponse('/auth/google/prepare');
-    await page.locator('#google-client-id').fill(CLIENT_ID); await page.locator('#google-prepare-password').fill(PASSWORD); await page.locator('#google-prepare-submit').click();
+    assert.equal(await page.locator('#google-prepare-password').isVisible(), false, 'recent local login prepares Google without another password');
+    await page.locator('#google-client-id').fill(CLIENT_ID); await page.locator('#google-prepare-submit').click();
     const preparation = await prepareResponse;
     assert.equal(preparation.status(), 200); const prepared = await preparation.json();
     await page.locator('[data-fixture-google]').waitFor();
@@ -214,7 +224,8 @@ if (!mysqlEnabled) {
     assert.equal(apiRequests.filter((request) => request.path === '/cms-api/auth/google/activate').length, 0, 'proof cannot activate implicitly');
     const activationResponse = apiResponse('/auth/google/activate');
     const refreshedSettings = page.waitForResponse((response) => new URL(response.url()).pathname === '/cms-api/auth/settings' && response.request().method() === 'GET');
-    await page.locator('#google-activate-password').fill(PASSWORD); await page.locator('#google-activate-submit').click();
+    assert.equal(await page.locator('#google-activate-password').isVisible(), false, 'a recently authenticated owner can approve activation directly');
+    await page.locator('#google-activate-submit').click();
     const activation = await activationResponse;
     assert.equal(activation.status(), 200); const activated = await activation.json(); await refreshedSettings;
     await authLink.click(); await page.locator('#auth-methods').waitFor();
@@ -250,7 +261,32 @@ if (!mysqlEnabled) {
     const setupWrites = apiRequests.filter((request) => request.path.startsWith('/cms-api/auth/google/'));
     assert.deepEqual(setupWrites.map((request) => request.path), ['/cms-api/auth/google/prepare', '/cms-api/auth/google/verify', '/cms-api/auth/google/activate']);
     assert(setupWrites.every((request) => request.method === 'POST' && request.csrf && !request.authorization && !request.search));
+    assert.deepEqual(authBodies, [['prepare', 'clientId'], ['verify', 'credential', 'revision'], ['activate', 'revision']]);
     assert.equal(apiRequests.some((request) => request.path === '/cms-api/session'), false);
+
+    // Only the local owner's freshness expires after the second Google proof.
+    serverTime = loginTime + 14 * 60_000;
+    await googleLink.click(); await page.locator('#google-client-id').waitFor();
+    await page.locator('#google-client-id').fill(CLIENT_ID); await page.locator('#google-prepare-submit').click();
+    await page.locator('[data-fixture-google]').click(); await page.locator('#google-activate:not([hidden])').waitFor();
+    const beforeStepUp = await store.getGoogleConfig();
+    serverTime = loginTime + 16 * 60_000;
+    const expired = apiResponse('/auth/google/activate'); await page.locator('#google-activate-submit').click();
+    assert.equal((await expired).status(), 428); await page.locator('#google-activate-password').waitFor();
+    assert.equal(await page.locator('#google-prepare-password').isVisible(), false);
+    assert.deepEqual(await store.getGoogleConfig(), beforeStepUp);
+    await page.locator('#google-activate-password').fill(PASSWORD);
+    const confirmed = apiResponse('/auth/confirm'), retry = apiResponse('/auth/google/activate');
+    const renewedView = page.waitForResponse(r => new URL(r.url()).pathname === '/cms-api/auth/settings' && r.request().method() === 'GET');
+    await page.locator('#google-activate-submit').click();
+    assert.equal((await confirmed).status(), 200); assert.equal((await retry).status(), 200);
+    await renewedView; await page.locator('#google-prepare-submit:enabled').waitFor();
+    assert.equal((await localCookie()).value, cookieBefore.value);
+    assert.equal(signatureVerifications, 2, 'step-up preserves the already verified Google identity');
+    assert.deepEqual(authBodies.slice(3), [['prepare', 'clientId'], ['verify', 'credential', 'revision'], ['activate', 'revision'], ['confirm', 'currentPassword'], ['activate', 'revision']]);
+    await page.locator('#google-prepare-submit').click(); await page.locator('[data-fixture-google]').waitFor();
+    assert.deepEqual(authBodies.at(-1), ['prepare', 'clientId']);
+    assert.equal(authBodies.filter(([path]) => path === 'confirm').length, 1, 'the next operation reuses the confirmation');
     assert(providerCalls.every((host) => host === 'https://api.github.com'));
     assert.deepEqual(externalBrowserRequests, []); assert.deepEqual(browserErrors, []); assert.deepEqual(serverErrors, []);
     console.log('PASS real Chromium/Node/MySQL Google wizard: bootstrap and local cookie login, real offline RS256 verification, pending stays inactive, explicit activation, single database client/epoch, unchanged local cookie/user/membership, reload discovery, read-only503 and no external providers');
