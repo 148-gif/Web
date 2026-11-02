@@ -169,10 +169,10 @@ async function realBrowserFlow(browser) {
       assert.equal(await owner.page.locator('#auth-invitation-form').getAttribute('method'), 'post');
       const address = owner.page.locator('#auth-invitation-email');
       assert.equal(await owner.page.locator('#auth-invitation-password').isHidden(), true, 'a fresh owner needs no password repeat');
-      const beforeInvalid = fixture.audit.requests.filter((r) => r.path === '/cms-api/auth/invitations').length;
+      const beforeInvalidOwnerEmail = fixture.audit.requests.filter((r) => r.path === '/cms-api/auth/invitations').length;
       const malformed = RECIPIENT_EMAIL.replace('@', '@"'); await address.fill(malformed); await owner.page.locator('#auth-invitation-submit').click();
       assert.equal(await address.inputValue(), malformed); assert.match(await address.evaluate((e) => e.validationMessage), /name@example\.com/);
-      assert.equal(fixture.audit.requests.filter((r) => r.path === '/cms-api/auth/invitations').length, beforeInvalid, 'a quote inside the domain is not silently repaired or submitted');
+      assert.equal(fixture.audit.requests.filter((r) => r.path === '/cms-api/auth/invitations').length, beforeInvalidOwnerEmail, 'a quote inside the domain is not silently repaired or submitted');
       await createInvitation(owner.page, '\u200f“' + RECIPIENT_EMAIL + '”\u200e'); const invitation = await visibleInvitation(owner.page);
       assert.equal(await address.inputValue(), RECIPIENT_EMAIL);
       assert.match(invitation.code, /^[A-Za-z0-9_-]{43}$/);
