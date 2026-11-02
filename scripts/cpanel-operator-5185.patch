@@ -1,0 +1,34 @@
+--- a/server/cpanel-host-contract.mjs
++++ b/server/cpanel-host-contract.mjs
+@@ -15,3 +15,3 @@
+ const SLOTS = ['TARGET_APP_ROOT', 'PREVIOUS_APP_ROOT', 'TARGET_CANDIDATE_URI', 'PREVIOUS_CANDIDATE_URI',
+   'TARGET_ROLLBACK_URI', 'PREVIOUS_ROLLBACK_URI', 'CANONICAL_URI', 'TARGET_ENV_FILE', 'TARGET_CANDIDATE_ENV_FILE',
+-  'PREVIOUS_ENV_FILE', 'PREVIOUS_CANDIDATE_ENV_FILE', 'NODE_VERSION'];
++  'PREVIOUS_ENV_FILE', 'PREVIOUS_CANDIDATE_ENV_FILE', 'NODE_VERSION', 'TARGET_VENV_NODE', 'PREVIOUS_VENV_NODE'];
+@@ -222,3 +222,5 @@
+   const scope = scopedFiles(commit, previousCommit), target = selectorTarget({ commit, version: contract.nodeVersion }), previous = selectorTarget({ commit: previousCommit, version: contract.nodeVersion });
+   const slots = { TARGET_APP_ROOT: target.absoluteRoot, PREVIOUS_APP_ROOT: previous.absoluteRoot,
++    TARGET_VENV_NODE: '/home/yoterber/nodevenv/' + target.root + '/24/bin/node',
++    PREVIOUS_VENV_NODE: '/home/yoterber/nodevenv/' + previous.root + '/24/bin/node',
+     TARGET_CANDIDATE_URI: target.candidateUri, PREVIOUS_CANDIDATE_URI: previous.candidateUri,
+--- a/server/cpanel-deployment-adapter.mjs
++++ b/server/cpanel-deployment-adapter.mjs
+@@ -183,10 +183,15 @@
+   async function capacity(candidateRoot, phase = 'download') {
+     const retained = await runtimeStorage();
+-    const reservedBytes = RUNTIME_BYTES + retained.bytes, reservedInodes = RUNTIME_INODES + retained.inodes;
++    // Installation follows artifact extraction. All retained storage is charged
++    // at both gates, and promotion reserves the entire future runtime install.
++    if (phase !== 'download' && phase !== 'promote') fail('capacity');
++    const futureBytes = phase === 'promote' ? RUNTIME_BYTES : 0;
++    const futureInodes = phase === 'promote' ? RUNTIME_INODES : 0;
++    const reservedBytes = futureBytes + retained.bytes, reservedInodes = futureInodes + retained.inodes;
+     const adjusted = { ...config.capacity, accountAllocationBytes: config.capacity.accountAllocationBytes - reservedBytes, accountAllocationInodes: config.capacity.accountAllocationInodes - reservedInodes,
+       retentionBytes: config.capacity.retentionBytes - reservedBytes, retentionInodes: config.capacity.retentionInodes - reservedInodes };
+     deploymentCapacityConfiguration(adjusted);
+     const inspectDisk = async (path, options) => {
+-      const d = await files.fs.statfs(files.path(path), options), reserveBlocks = (BigInt(RUNTIME_BYTES) + d.bsize - 1n) / d.bsize;
+-      return { ...d, bavail: d.bavail > reserveBlocks ? d.bavail - reserveBlocks : 0n, ffree: d.ffree > BigInt(RUNTIME_INODES) ? d.ffree - BigInt(RUNTIME_INODES) : 0n };
++      const d = await files.fs.statfs(files.path(path), options), reserveBlocks = (BigInt(futureBytes) + d.bsize - 1n) / d.bsize;
++      return { ...d, bavail: d.bavail > reserveBlocks ? d.bavail - reserveBlocks : 0n, ffree: d.ffree > BigInt(futureInodes) ? d.ffree - BigInt(futureInodes) : 0n };
+     };
