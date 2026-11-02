@@ -10,7 +10,7 @@
 -    records.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 +    records.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 +    if (outputRecords) for (const record of records) outputRecords.push(record);
-@@ -332,1 +333,41 @@
+@@ -332,1 +333,48 @@
 -  async function install({ plan: value, toolchain: input } = {}) {
 +  // A committed donor is selected by the driver from its pinned predecessor.
 +  // Neither a previously installed directory nor its package versions alone qualify.
@@ -37,23 +37,30 @@
 +    }
 +    const [oldPackage, oldLock] = await inputs(previous.manifestFile, previous.manifestSha256, previous.commit, oldRoot);
 +    const [nextPackage, nextLock] = await inputs(join(candidateRoot, 'manifest.json'), manifestSha256, commit, nextRoot);
-+    if (!dependencyReuse.sameInstallInputs(oldPackage, oldLock, nextPackage, nextLock, oldTools, nextTools)) return null;
-+    await toolsReady(donor, oldTools);
-+    if ((await fs.lstat(oldTools.modulesPath, { bigint: true })).dev !== (await fs.lstat(PRIVATE, { bigint: true })).dev) fail('module-target-drift');
++    if (dependencyReuse.sameInstallInputs(oldPackage, oldLock, nextPackage, nextLock, oldTools, nextTools)) {
++      await toolsReady(donor, oldTools);
++      if ((await fs.lstat(oldTools.modulesPath, { bigint: true })).dev !== (await fs.lstat(PRIVATE, { bigint: true })).dev) fail('module-target-drift');
++    }
 +    const records = [], dependencies = await dependencyInventory(donor, oldTools.modulesPath, records);
 +    const receipt = await dependencyReceipt(donor, oldTools, dependencies);
 +    const workspace = join(PRIVATE, 'dependency-staging', previous.commit);
 +    if (!(await read(join(workspace, 'dependencies.json'), 65536, true)).equals(Buffer.from(JSON.stringify(receipt) + '\n'))) fail('unverified-dependencies');
 +    const installed = JSON.parse(await read(join(workspace, 'installed.json'), 65536, true));
++    const policyFile = join(workspace, 'install-policy.json');
++    let installedPolicy;
++    if (await exists(policyFile)) {
++      const rawPolicy = await read(policyFile, 65536, true);
++      try { installedPolicy = JSON.parse(rawPolicy); } catch { installedPolicy = null; }
++    }
 +    const blockSize = Number((await fs.statfs(PRIVATE, { bigint: true })).bsize);
 +    const proof = dependencyReuse.dependencyReuseProof({ sourceCommit: previous.commit, targetCommit: commit, runtimeManifestSha256: previous.runtimeManifestSha256,
-+      sourceTools: oldTools, targetTools: nextTools, oldPackage, oldLock, nextPackage, nextLock, receipt, installed, dependencies, records, blockSize });
-+    if (!proof) fail('unverified-dependencies');
++      sourceTools: oldTools, targetTools: nextTools, oldPackage, oldLock, nextPackage, nextLock, receipt, installed, installedPolicy, dependencies, records, blockSize });
++    if (!proof) return null;
 +    return { proof, records, blockSize, sourceRoot: oldTools.modulesPath };
 +  }
 +  async function planReuse(input) { return guarded(async () => (await reusable(input))?.proof ?? null); }
 +  async function install({ plan: value, toolchain: input, reuse = null } = {}) {
-@@ -335,1 +376,9 @@
+@@ -335,1 +383,9 @@
 -      if ((await fs.readdir(spec.modulesPath)).length) {
 +      let copy = null;
 +      if (reuse) {
@@ -64,16 +71,16 @@
 +        if (!copy || !same(copy.proof, reuse.proof)) fail('unverified-dependencies');
 +      }
 +      if ((await fs.readdir(spec.modulesPath)).length) {
-@@ -337,1 +386,2 @@
+@@ -337,1 +393,2 @@
 -        return freeze({ installed: false, alreadyInstalled: true, commit: data.target.commit, ...dependencies });
 +        if (copy && dependencies.treeSha256 !== copy.proof.treeSha256) fail('unverified-dependencies');
 +        return freeze({ installed: false, alreadyInstalled: true, commit: data.target.commit, ...dependencies });
-@@ -340,1 +390,3 @@
+@@ -340,1 +397,3 @@
 -      if (disk.bavail * disk.bsize < 2n * 1024n ** 3n + 4n * BigInt(MAX_MODULE_BYTES) || disk.ffree < BigInt(MAX_MODULE_INODES * 3)) fail('installation-capacity');
 +      const needBytes = copy ? BigInt(copy.proof.allocation.bytes) : 2n * 1024n ** 3n + 4n * BigInt(MAX_MODULE_BYTES);
 +      const needInodes = copy ? BigInt(copy.proof.allocation.inodes) : BigInt(MAX_MODULE_INODES * 3);
 +      if (disk.bavail * disk.bsize < needBytes || disk.ffree < needInodes) fail('installation-capacity');
-@@ -345,1 +397,8 @@
+@@ -345,1 +404,8 @@
 -      const emptyUser = join(workspace, 'user.npmrc'), emptyGlobal = join(workspace, 'global.npmrc'), home = join(workspace, 'home'), cache = join(workspace, 'cache');
 +      if (copy) {
 +        for (const name of ['package.json', 'package-lock.json']) await immutable(join(workspace, name), await read(join(data.target.absoluteRoot, name)));
@@ -83,15 +90,25 @@
 +        await immutable(join(workspace, 'reuse.json'), Buffer.from(JSON.stringify(copy.proof) + '\n'));
 +      } else {
 +      const emptyUser = join(workspace, 'user.npmrc'), emptyGlobal = join(workspace, 'global.npmrc'), home = join(workspace, 'home'), cache = join(workspace, 'cache');
-@@ -352,1 +411,2 @@
+@@ -352,1 +418,2 @@
 -      await installationBudget(workspace);
 +      await installationBudget(workspace);
 +      }
-@@ -354,1 +414,2 @@
+@@ -354,1 +421,2 @@
 -      const modules = join(workspace, 'node_modules'), dependencies = await dependencyInventory(data, modules);
 +      const modules = join(workspace, 'node_modules'), dependencies = await dependencyInventory(data, modules);
 +      if (copy && (dependencies.treeSha256 !== copy.proof.treeSha256 || dependencies.packages !== copy.proof.packages || dependencies.bytes !== copy.proof.bytes || dependencies.inodes !== copy.proof.inodes)) fail('unverified-dependencies');
-@@ -365,1 +426,1 @@
+@@ -361,1 +429,8 @@
+-      await immutable(join(workspace, 'installed.json'), Buffer.from(JSON.stringify({ version: 1, commit: data.target.commit, runtimeManifestSha256: data.runtimeManifestSha256, packages: dependencies.packages }) + '\n'));
++      if (dependencyReuse) {
++        const policyFile = join(workspace, 'install-policy.json');
++        const policy = dependencyReuse.dependencyInstallPolicy(receipt, await read(join(workspace, 'package.json')), await read(join(workspace, 'package-lock.json')));
++        const bytes = Buffer.from(JSON.stringify(policy) + '\n');
++        await immutable(policyFile, bytes);
++        if (!(await read(policyFile, 65536, true)).equals(bytes)) fail('unverified-dependencies');
++      }
++      await immutable(join(workspace, 'installed.json'), Buffer.from(JSON.stringify({ version: 1, commit: data.target.commit, runtimeManifestSha256: data.runtimeManifestSha256, packages: dependencies.packages }) + '\n'));
+@@ -365,1 +440,1 @@
 -  return Object.freeze({ plan, materialize, inspect, install });
 +  return Object.freeze({ plan, planReuse, materialize, inspect, install });
 --- a/server/cpanel-deployment-adapter.mjs
