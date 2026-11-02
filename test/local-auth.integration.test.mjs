@@ -53,7 +53,7 @@ const integration = (name, fn) => test(name, { skip: !mysqlEnabled }, () => with
     const body = await response.json(), fullCookie = response.headers.get('set-cookie');
     return { cookie: fullCookie.split(';')[0], fullCookie, csrf: body.csrfToken, body };
   };
-  await fn({ pool, store, env, config, service, call, arm, bootstrap, login, advance: () => { now += 60000; }, now: () => now });
+  await fn({ pool, store, env, config, service, call, arm, bootstrap, login, advance: (ms = 60000) => { now += ms; }, now: () => now });
 }));
 
 integration('real local-auth bootstrap is private, atomic, replay-proof and bound to the configured owner', async (f) => {
