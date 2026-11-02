@@ -58,7 +58,11 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
     if (bearer && enabled(settings, google).googleEnabled) {
       const email = await readSession(bearer, env);
       const actor = email ? await who(env, email) : null;
-      if (actor) return { method: 'google', actor, bearer };
+      if (actor) {
+        // readSession verified the signature and claims. Recheck the signed expiry after acquiring the settings lock.
+        const expiresAt = JSON.parse(Buffer.from(bearer.split('.')[0], 'base64url').toString('utf8')).exp * 1000;
+        return { method: 'google', actor, expiresAt };
+      }
     }
     return null;
   }
@@ -168,7 +172,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
           if (managed && (managed.active_version !== google.active_version || managed.active_client_id !== google.active_client_id)) throw fail('הגדרות Google השתנו. רעננו את המסך', 409);
           if (authenticated.method === 'local') {
             await currentLocalOwner(tx, authenticated, s);
-          } else if (!s.google_enabled || !config.googleEnabled || !await readSession(authenticated.bearer, env, clock() / 1000)) throw fail(SESSION_ENDED, 401);
+          } else if (!s.google_enabled || !config.googleEnabled || authenticated.expiresAt <= clock() || !owners.has(digestToken(authenticated.actor.email))) throw fail(SESSION_ENDED, 401);
           if ((!body.localEnabled && !body.googleEnabled) || (body.googleEnabled && !config.googleEnabled) || (body.localEnabled && (!s.bootstrap_consumed || !await tx.countUsers()))) throw fail('צריך להשאיר דרך התחברות זמינה', 409);
           if (managed && body.googleEnabled && (!s.google_enabled || !managed.active_client_id)) throw fail('יש להשלים בדיקת כניסה באשף Google לפני הפעלה', 409);
           if (s.google_enabled && !body.googleEnabled && !(body.localEnabled && s.local_verified && authenticated.method === 'local')) throw fail('יש לאמת כניסה מקומית לפני ביטול Google', 409);
