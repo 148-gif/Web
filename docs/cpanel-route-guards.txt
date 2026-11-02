@@ -1,0 +1,36 @@
+cPanel combined deployment with route-local Apache guards
+
+The site on hichal.yoterberama.com can dispatch requests to Passenger before a root rewrite denies them. Each API route therefore carries its own guard ahead of the provider's Passenger and environment sections. The candidate was measured with the standard Node fetch client: marker present returned 503/noindex, marker absent returned the verified candidate identity, and restoring the marker returned 503/noindex.
+
+Install the controller once
+
+1. Install the reviewed 5185c67ff426d3983534ccd3de654ed9f53ffcc2 operator under /home/yoterber/heichal-cms/operator/5185c67ff426d3983534ccd3de654ed9f53ffcc2. Its original operator-manifest.json must hash to 3266126c135e1e4e8c992b1d919b61ae23aead2cfb689044cacfa7751cf44e6f. Keep its separate versioned directory, files 0600 and directories 0700.
+2. From the same reviewed Git commit install scripts/deploy-cpanel-guarded.mjs and scripts/cpanel-route-guards.mjs as siblings in a new private directory outside both the public root and the application releases. Verify both transferred files against the reviewed Git blobs. Pin that directory in the Cron command. Operator updates are separate from application releases.
+3. Keep the original version-2 operator configuration, private credentials, original full release manifest, canonical environment pointer, process contract, account capacity and separate state roots. Keep a private backup of the current protected files and their hashes. The 5185 runbook covers these prerequisites, the staged data migration and rollback. Its activation policy remains disabled until the source freeze and final reconciliation are evidenced.
+
+Establish the protected baseline
+
+Use the installed Node 24 binary with the companion's --print-guard argument. Supply one directory name, for example cms-api, cms-api-check-0949a2f2 or cms-api-rollback-78753da2. This prints the exact LF-terminated, credential-free prefix. Add it once at byte zero of each already-existing managed route's .htaccess during the reviewed installation, preserving all provider/PHP/environment bytes and existing permissions. Include retained check and rollback routes in the protected ledger. Retire temporary unconditional foundation guards only after verifying their known bytes, during the controlled switch. Preserve the operator's existing document-root maintenance rules, noindex and cache directives.
+
+The canonical rule reads .heichal-runtime-drain-canonical under DOCUMENT_ROOT. Candidate rules read .heichal-runtime-drain-candidate. Parked rollback routes always deny requests. Under .cpanel-maintenance only GET/HEAD for that active or candidate route's exact /version and /me can pass its local maintenance check. A drain marker closes those probes too. A missing prefix, drifted permissions, unknown Passenger bytes or a failed 503/noindex proof stops the operation.
+
+Pin actual Apache states in the private host contract
+
+The original host contract has nine roles and retains its existing path, ownership and byte-level checks. For every present API .htaccess include the entire route prefix in the pinned file descriptor or Passenger template, together with all existing provider bytes. For release-specific paths use the existing TARGET_CANDIDATE_URI and PREVIOUS_CANDIDATE_URI slots in template fragments; the compiled prefix for each candidate contains its own URI. Keep raw Apache, env, Selector and process snapshots private.
+
+Use the four normal state names below in the transitions' before/after fields. The statuses listed are the previous and next application's measured Selector statuses.
+
+  baseline             started / absent
+  candidate-created    started / stopped
+  previous-parked      stopped / stopped
+  candidate-promoted   stopped / started
+
+For other statuses actually reached in the rehearsal, add a separate private state named <normal-state>-<old>-<new>, where old/new are on or off and an absent candidate is none. For example candidate-created-on-on pins the running candidate, and candidate-created-off-off pins both stopped. Each state contains the same nine roles, with exact measured files for that status. Keep the base states equal to their documented stable layouts because the original driver uses their full ledger for its committed and restored baselines. The provider may remove its Passenger block when an app stops; pin that measured stopped file, including its unchanged route guard and other directives. Never generate an approval from an unexpected live file.
+
+Before creating a fresh candidate or parking to an approved absent rollback route, the companion seeds only an empty, account-owned, nonsymlink destination with the role's exact .htaccess. Existing prefixes are verified instead of rewriting existing provider files. If a crash after seeding precedes the Selector change, the exact guard-only destination (0644) is recognized in the corresponding absent slot only when every other protected entry matches the approved baseline. The original operator continues to validate GitHub eligibility, install dependencies, drain the exact processes, switch both runtime and public files, prove /version and /admin/build.json, journal the transaction and recover interrupted releases.
+
+Use the companion for each deployment mode
+
+Replace the original private deploy-cpanel.mjs entrypoint with the installed deploy-cpanel-guarded.mjs in the existing one-shot and recurring Cron commands. Keep the same measured absolute Node path, config path and options. Run the initial --plan --adopt-existing against a different eligible default-branch SHA, review the private plan and capacity, then use the original --rehearse --adopt-existing and --apply --adopt-existing procedure. Subsequent recurring invocations use --apply. Keep one controller scheduled. Inspect/recovery use --inspect and the original pinned --recover arguments through this same companion.
+
+Confirm both role-specific 503/noindex responses with their marker present, including immediately after Selector Stop and before process drain. Then confirm the exact /version identity, active role, schema, cache/noindex headers and public /admin/build.json after promotion. Keep the previous app, public backup, config and full journal until rollback and a subsequent real default-branch merge have been demonstrated on the host.
