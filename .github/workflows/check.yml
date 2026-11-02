@@ -6,6 +6,17 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: google-wizard-fixture
+          MYSQL_ROOT_HOST: "%"
+        ports:
+          - "127.0.0.1:3306:3306"
+        options: >-
+          --health-cmd="mysqladmin ping --protocol=tcp -h 127.0.0.1"
+          --health-interval=5s --health-timeout=5s --health-retries=24
     steps:
       # Third-party actions are pinned to full commit SHAs so a moved tag cannot inject code.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -24,8 +35,7 @@ jobs:
           NODE_PATH: ${{ runner.temp }}/google-wizard/node_modules
         run: |
           umask 077
-          sudo systemctl start mysql.service
-          printf '%s\n' '{"host":"127.0.0.1","port":3306,"user":"root","password":"root"}' > "$MYSQL_TEST_CONFIG"
+          printf '%s\n' '{"host":"127.0.0.1","port":3306,"user":"root","password":"google-wizard-fixture"}' > "$MYSQL_TEST_CONFIG"
           npm install --prefix "$RUNNER_TEMP/google-wizard" --ignore-scripts --no-package-lock --no-audit --no-fund playwright@1.64.1
           export CHROMIUM_EXECUTABLE_PATH="$(command -v google-chrome)"
           test -x "$CHROMIUM_EXECUTABLE_PATH"
