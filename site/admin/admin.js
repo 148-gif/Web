@@ -2294,9 +2294,9 @@
       var password = preparePassword.disabled ? '' : preparePassword.value, requestedClient = clientId.value.trim();
       clearProof(); var attempt = serial; busy = true; prepareSubmit.disabled = true; cancel.hidden = false;
       status.textContent = 'מכין אימות מאובטח…';
-      var pending = ownerAction('/google/prepare', { clientId: requestedClient }, password, attempt); password = '';
+      var pending = ownerAction('/google/prepare', { clientId: requestedClient }, password, attempt);
       pending.then(function (prepared) {
-        password = ''; if (!current(attempt)) return;
+        if (!current(attempt)) return;
         if (prepared.clientId !== requestedClient || typeof prepared.nonce !== 'string' || !prepared.nonce || !['number', 'string'].includes(typeof prepared.revision)) throw new Error('לא ניתן להכין את האימות. נסו שוב.');
         challenge = { clientId: prepared.clientId, revision: prepared.revision, verified: false };
         expireAt(prepared.expiresAt, attempt);
@@ -2326,7 +2326,7 @@
         if (!current(attempt) || failure.editorSessionEnded) return;
         if (handleOwnerChallenge(failure, preparePassword)) { cancel.hidden = true; status.textContent = ''; return; }
         clearProof(); error.textContent = failure.message;
-      }).finally(function () { password = ''; preparePassword.value = ''; if (current(attempt)) { busy = false; prepareSubmit.disabled = false; } });
+      }).finally(function () { preparePassword.value = ''; if (current(attempt)) { busy = false; prepareSubmit.disabled = false; } });
     });
     prepareSubmit.disabled = false;
     activate.addEventListener('submit', function (event) {
@@ -2334,9 +2334,9 @@
       if (busy || !setup.activationAllowed || !challenge || !challenge.verified || !activate.reportValidity()) return;
       var attempt = serial, revision = challenge.revision, password = activatePassword.disabled ? '' : activatePassword.value;
       activatePassword.value = ''; busy = true; activateSubmit.disabled = true; prepareSubmit.disabled = true; error.textContent = '';
-      var pending = ownerAction('/google/activate', { revision: revision }, password, attempt); password = '';
+      var pending = ownerAction('/google/activate', { revision: revision }, password, attempt);
       pending.then(function (result) {
-        password = ''; if (!current(attempt)) return;
+        if (!current(attempt)) return;
         if (!result.activated) throw new Error('ההפעלה לא הושלמה. נסו שוב.');
         clearProof(); attempt = serial;
         return discoverAuthentication().then(function () {
@@ -2347,7 +2347,7 @@
         if (!current(attempt) || failure.editorSessionEnded) return;
         if (handleOwnerChallenge(failure, activatePassword)) return;
         clearProof(); error.textContent = failure.message;
-      }).finally(function () { password = ''; activatePassword.value = ''; if (current(attempt)) { busy = false; prepareSubmit.disabled = false; activateSubmit.disabled = !setup.activationAllowed; } });
+      }).finally(function () { activatePassword.value = ''; if (current(attempt)) { busy = false; prepareSubmit.disabled = false; activateSubmit.disabled = !setup.activationAllowed; } });
     });
     if (setup.pending || setup.verified) status.textContent = 'קיימת הכנה קודמת. התחילו אימות חדש במסך הזה לפני ההפעלה.';
   }
@@ -2437,7 +2437,7 @@
       // A single-line input would otherwise join two pasted lines into a different address.
       var pasted = event.clipboardData && event.clipboardData.getData('text/plain');
       if (pasted && /[\r\n]/.test(pasted.trim())) {
-        event.preventDefault(); email.setCustomValidity('הדביקו כתובת דוא״ל אחת בשורה אחת, לדוגמה: name@example.com.');
+        event.preventDefault(); email.value = ''; email.setCustomValidity('הדביקו כתובת דוא״ל אחת בשורה אחת, לדוגמה: name@example.com.');
         error.textContent = email.validationMessage; email.reportValidity();
       }
     });
