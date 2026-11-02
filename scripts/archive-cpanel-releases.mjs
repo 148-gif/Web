@@ -161,6 +161,22 @@ async function writeOrMatch(path,value) {
 function attest(ack,bundle) {
   requireState(ack.version === 1 && ack.commit === bundle.commit && ack.archiveSha256 === bundle.archiveSha256 && ack.inventorySha256 === bundle.inventorySha256 && ack.manifestSha256 === bundle.manifestSha256 && ack.offAccount === true && ack.restoredVerified === true && typeof ack.objectId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,249}$/.test(ack.objectId), 'off-account-proof-required');
 }
+const DAY = 86400000;
+export function attestActionsEquivalent(ack, bundle, inv, now = Date.now()) {
+  const verified = Date.parse(ack.verifiedAt), expires = Date.parse(ack.expiresAt);
+  requireState(ack.version === 1 && ack.kind === 'github-actions-equivalent-v1' && ack.restoredVerified === true &&
+    ack.commit === inv.commit && ack.runId === inv.runId && ack.artifactSha256 === inv.artifactSha256 &&
+    Number.isSafeInteger(ack.artifactId) && ack.artifactId > 0 && Number.isSafeInteger(ack.artifactBytes) && ack.artifactBytes > 0 && ack.artifactBytes <= 512*MiB &&
+    ack.localArchiveSha256 === bundle.archiveSha256 && ack.inventorySha256 === bundle.inventorySha256 && ack.manifestSha256 === inv.manifestSha256 &&
+    ack.files === inv.files.length && ack.dirs === inv.dirs.length && ack.bytes === inv.bytes && Number.isFinite(verified) && verified <= now+300000 && verified >= now-DAY &&
+    Number.isFinite(expires) && expires >= now+7*DAY && expires >= verified+7*DAY, 'invalid-actions-equivalent');
+}
+async function decisionFor(out,bundle,inv) {
+  const literal=join(out,'off-account.json');
+  if (await exists(literal)) { const proof=await readJson(literal,4096); attest(proof.value,bundle); return {...bundle,offAccountReceiptSha256:proof.sha256}; }
+  const proof=await readJson(join(out,'actions-equivalent.json'),8192); attestActionsEquivalent(proof.value,bundle,inv);
+  return {...bundle,equivalence:proof.value.kind,artifactId:proof.value.artifactId,artifactSha256:proof.value.artifactSha256,expiresAt:proof.value.expiresAt,equivalentReceiptSha256:proof.sha256};
+}
 // The off-account transport creates its own private acknowledgement after a full independent restore.
 // This program never makes an attestation or accepts a destination from the command line.
 export async function rotatePublic({root,document,mode,expected}) {
@@ -186,9 +202,9 @@ export async function rotatePublic({root,document,mode,expected}) {
     const bundle={version:1,commit:p.commit,manifestSha256:inv.manifestSha256,inventorySha256:hash(json(inv)),archiveSha256:packed.sha256,archiveBytes:packed.bytes};
     await writeOrMatch(join(out,'bundle.json'),bundle);
     if (mode==='archive') return {...bundle,outcome:'awaiting-off-account-proof'};
-    const acknowledgement=await readJson(join(out,'off-account.json'),4096); attest(acknowledgement.value,bundle);
+    const decision=await decisionFor(out,bundle,inv);
     await idle(root,document,true); requireState((await oldest(root,document))?.commit===p.commit,'release-became-protected');
-    const decision={...bundle,offAccountReceiptSha256:acknowledgement.sha256}; await writeOrMatch(intent,decision);
+    await writeOrMatch(intent,decision);
     if(present){await rename(source,quarantine); await syncDir(target);}
     if(await exists(quarantine)) {
       const remaining=await inspectPublic(quarantine,inv,inProgress);
