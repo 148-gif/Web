@@ -4,8 +4,8 @@ import { createHash } from 'node:crypto';
 import { copyFile, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { routePrefix, seedRoute, statusState, verifyRoute } from '../scripts/cpanel-route-guards.mjs';
-import { guardedTransitions, proveStoppedRoute } from '../scripts/deploy-cpanel-guarded.mjs';
+import { guardOffset, routePrefix, seedRoute, statusState, verifyRoute } from '../scripts/cpanel-route-guards.mjs';
+import { guardedTransitions, proveStoppedRoute, routeSnapshots } from '../scripts/deploy-cpanel-guarded.mjs';
 
 const linux = { skip: typeof process.getuid !== 'function' };
 const old = 'a'.repeat(40), next = 'b'.repeat(40), route = 'cms-api-check-bbbbbbbb';
@@ -89,6 +89,8 @@ test('Park and promote preserve the same rules when Selector copies the whole so
   const routes = ['cms-api', route, rollback];
   const layouts = {
     'candidate-created-off-off': [previous, candidate, null],
+    'candidate-created-off-off-retained': [previous, candidate, previous],
+    'previous-parked-retained': [promoted, candidate, previous],
     'previous-parked': [previous, candidate, previous],
     'candidate-promoted': [promoted, candidate, previous],
     'candidate-promoted-off-off': [promoted, candidate, previous],
@@ -98,14 +100,16 @@ test('Park and promote preserve the same rules when Selector copies the whole so
   const guard = { expected, async verify(state) {
     for (const [i, uri] of routes.entries()) {
       const bytes = await readFile(file(uri), 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
-      assert.equal(bytes, layouts[state][i]);
+      if (bytes !== layouts[state][i]) throw Object.assign(new Error('drift'), { code: 'host-drift' });
     }
     return { verified: true };
   } };
   let oldUri = '/cms-api', newUri = '/' + route;
   const selector = { async inspect() { return { applications: [[old, oldUri], [next, newUri]].map(([commit, uri]) =>
     ({ root: 'heichal-cms/releases/' + commit + '/app', domain: 'hichal.yoterberama.com', uri, status: 'stopped' })) }; } };
-  const scope = { commit: next, previousCommit: old, contract: { transitions: {
+  const scope = { commit: next, previousCommit: old, contract: { states: Object.fromEntries(Object.keys(layouts).map(s => [s, true])), transitions: {
+    'park-candidate': { before: 'candidate-promoted', after: 'previous-parked' },
+    'restore-old': { before: 'previous-parked', after: 'candidate-created' },
     'park-old': { before: 'candidate-created', after: 'previous-parked' },
     'promote-candidate': { before: 'previous-parked', after: 'candidate-promoted' },
   } } };
@@ -124,6 +128,13 @@ test('Park and promote preserve the same rules when Selector copies the whole so
   });
   assert.equal(await readFile(file(route), 'utf8'), candidate);
   assert.equal(await readFile(file(rollback), 'utf8'), previous);
+  await api.run('park-candidate', async () => {
+    await copyFile(file('cms-api'), file(route)); await writeFile(file(route), candidate); newUri = '/' + route;
+  });
+  await api.run('restore-old', async () => { await copyFile(file(rollback), file('cms-api')); oldUri = '/cms-api'; });
+  assert.deepEqual(api.expected('candidate-created'), expected('candidate-created-off-off-retained'));
+  await writeFile(file(rollback), previous + '# drift');
+  await assert.rejects(api.verify('candidate-created'));
 });
 
 test('a vacant empty file needs approval of its exact mode and a new route is traversable under a private umask', linux, async t => {
@@ -148,4 +159,24 @@ test('stop proof requires 503 and noindex on that route after Selector returns',
   assert.equal(statusState('candidate-promoted', 'stopped', 'started'), 'candidate-promoted');
   assert.equal(statusState('candidate-promoted', 'stopped', 'stopped'), 'candidate-promoted-off-off');
   assert.throws(() => statusState('baseline', 'started', 'started'));
+});
+
+test('only the exact generated Passenger section can precede the guard, and the physical digest survives publication', async () => {
+  const provider = ['# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN',
+    'PassengerAppRoot "/home/yoterber/heichal-cms/releases/' + next + '/app"', 'PassengerBaseURI "/' + route + '"',
+    'PassengerNodejs "/home/yoterber/nodevenv/heichal-cms/releases/' + next + '/app/24/bin/node"',
+    'PassengerAppType node', 'PassengerStartupFile passenger.cjs', '# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END', ''].join('\n');
+  const env = 'SetEnv CMS_ENV_FILE /private/approved\n';
+  const file = bytes => ({ path: route + '/.htaccess', runtimeCommit: next, entry: entry(bytes) });
+  const expected = [file(marker + provider + env)];
+  let actual = Buffer.from(provider + marker + env);
+  const snapshot = routeSnapshots({ commit: next, previousCommit: old }, '/unused', async () => [file(actual)], async () => actual);
+  assert.equal(guardOffset(actual, route), Buffer.byteLength(provider));
+  assert.deepEqual(await snapshot.inspect(expected), expected);
+  assert.deepEqual(snapshot.physicalLedger({ files: expected }).files, [file(actual)]);
+  actual = Buffer.from(provider + marker + env.replace('approved', 'tampered'));
+  assert.notDeepEqual(await snapshot.inspect(expected), expected);
+  for (const bad of [provider.replace('passenger.cjs', 'arbitrary.cjs'), provider.replace('/24/bin/node', '/22/bin/node'), 'RewriteRule ^ - [L]\n' + provider]) {
+    assert.throws(() => guardOffset(Buffer.from(bad + marker + env), route));
+  }
 });
