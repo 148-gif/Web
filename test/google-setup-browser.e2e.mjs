@@ -271,6 +271,12 @@ if (!mysqlEnabled) {
     await page.locator('[data-fixture-google]').click(); await page.locator('#google-activate:not([hidden])').waitFor();
     const beforeStepUp = await store.getGoogleConfig();
     serverTime = loginTime + 16 * 60_000;
+    const forged = await context.request.post(origin + '/cms-api/auth/google/activate', {
+      headers: { Origin: origin, 'X-CSRF-Token': browserSession.csrfToken },
+      data: { revision: beforeStepUp.revision, localOwnerFresh: true, confirmedAt: serverTime, freshUntil: serverTime + 900_000 },
+    });
+    assert.equal(forged.status(), 428); assert.equal((await forged.json()).code, 'reauth_required');
+    assert.deepEqual(await store.getGoogleConfig(), beforeStepUp, 'client freshness claims confer no authority');
     const expired = apiResponse('/auth/google/activate'); await page.locator('#google-activate-submit').click();
     assert.equal((await expired).status(), 428); await page.locator('#google-activate-password').waitFor();
     assert.equal(await page.locator('#google-prepare-password').isVisible(), false);
