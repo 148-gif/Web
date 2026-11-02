@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFile, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, mkdtemp, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { guardOffset, routePrefix, seedRoute, statusState, verifyRoute } from '../scripts/cpanel-route-guards.mjs';
-import { capacityGate, guardedTransitions, measuredDrainer, proveStoppedRoute, routeSnapshots, selectorArguments } from '../scripts/deploy-cpanel-guarded.mjs';
+import { capacityGate, guardedTransitions, linkEmptyModules, measuredDrainer, proveStoppedRoute, routeSnapshots, selectorArguments } from '../scripts/deploy-cpanel-guarded.mjs';
 
 const linux = { skip: typeof process.getuid !== 'function' };
 const old = 'a'.repeat(40), next = 'b'.repeat(40), route = 'cms-api-check-bbbbbbbb';
@@ -224,4 +224,17 @@ test('retention includes the private download without deducting the currently pu
   const options = { phase:'download', capacity:{retentionBytes:100,retentionInodes:10} };
   assert.equal(await capacityGate(options,async () => measured),measured);
   for (const k of ['retentionBytes','retentionInodes']) await assert.rejects(capacityGate({ ...options,capacity:{...options.capacity,[k]:options.capacity[k]-1} }, async () => measured));
+});
+
+test('only an empty private provider directory is adopted for a missing dependency link', linux, async t => {
+  const base = await fixture(t), app = join(base,'app'), venv = join(base,'24');
+  await mkdir(app,{mode:0o700}); await mkdir(venv,{mode:0o755});
+  await linkEmptyModules(app,venv);
+  const link = join(app,'node_modules'), modules = join(venv,'lib','node_modules');
+  assert.equal(await readlink(link),modules); assert.equal((await lstat(modules)).mode & 0o777,0o700);
+  await linkEmptyModules(app,venv);
+  await rm(link); await writeFile(join(modules,'foreign'),'keep');
+  await assert.rejects(linkEmptyModules(app,venv)); await assert.rejects(lstat(link),{code:'ENOENT'});
+  await symlink(base,link); await assert.rejects(linkEmptyModules(app,venv));
+  assert.equal(await readFile(join(modules,'foreign'),'utf8'),'keep');
 });
