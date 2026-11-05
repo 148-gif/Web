@@ -430,9 +430,7 @@
     if (!token) return;
     var nav = $('#nav'); nav.textContent = '';
     var link = function (hash, ic, text) { return el('a', { href: hash, 'data-h': hash }, icon(ic), el('span', { text: text })); };
-    if (cookieSession) nav.append(link('#/account','users','החשבון שלי'));
-    if (owner && cookieSession && authOptions && authOptions.accountsAvailable) nav.append(link('#/users','users','משתמשים'));
-    if (userCaps && !userCaps.edit) { mark(location.hash || '#/account'); return; }
+    if (userCaps && !userCaps.edit) { nav.append(link('#/account','users','החשבון שלי')); mark(location.hash || '#/account'); return; }
     var ts = (cache.topics && cache.topics.data) || [];
     nav.append(link('#/', 'home', 'לוח בקרה'), link('#/pages', 'page', 'נושאים ודפים'));
     groupTitles().forEach(function (title) {
@@ -445,6 +443,7 @@
       mine.forEach(function (t) { nav.append(link('#/topic/' + t.slug, t.icon || 'book', t.title)); });
     });
     nav.append(el('h3', { text: 'ניהול' }));
+    if (owner && cookieSession && authOptions && authOptions.accountsAvailable) nav.append(link('#/users','users','משתמשים'));
     if (draft) {
       var pl = link('#/changes', 'list', 'שינויים ממתינים'); pl.append(el('b', { id: 'hi-count', class: 'nb', text: String(pending.list.length) })); nav.append(pl);
       nav.append(link('#/media', 'image', 'ספריית מדיה'));
@@ -455,6 +454,7 @@
     if (owner) nav.append(link('#/editors', 'users', 'עורכים'));
     if (owner && authOptions && authOptions.settingsAvailable) nav.append(link('#/auth', 'gear', 'הגדרות התחברות'));
     if (owner) nav.append(link('#/auth/google', 'gear', 'הגדרות Google'));
+    if (cookieSession) nav.append(link('#/account','users','החשבון שלי'));
     // On a phone the header keeps only the essentials; the rest is here.
     nav.append(el('div', { class: 'navfoot' },
       draft && !contentReadOnly() ? el('button', { type: 'button', onclick: nameDialog, text: 'השם שלי' }) : null,
@@ -2071,8 +2071,8 @@
       inputs[f[0]]=input;form.append(el('div',{class:'fld'},el('label',{text:f[1]},input)));
     });
     var role=roleSelect('subscriber'), submit=el('button',{type:'submit',class:'btn pri',text:'יצירת משתמש ושליחת מייל'}), error=el('p',{role:'alert',class:'err'});
-    form.append(el('div',{class:'fld'},el('label',{text:'תפקיד'},role)),el('p',{class:'help',text:'סיסמה: 8 תווים לפחות, ללא חובת שילוב תווים. כשמשאירים ריק, המשתמש מקבל קישור לקביעת סיסמה. מחבר מפרסם דפים שלו; תורם שומר טיוטות לבדיקה; משתמש רגיל מקבל חשבון אישי.'}),submit,error);
-    form.append(el('button',{type:'button',class:'btn ghost',text:'ביטול',onclick:function(){createDialog.close();}}));
+    form.append(el('div',{class:'fld'},el('label',{text:'תפקיד'},role)),el('p',{class:'help',text:'סיסמה: 8 תווים לפחות, ללא חובת שילוב תווים. כשמשאירים ריק, המשתמש מקבל קישור לקביעת סיסמה. מחבר מפרסם דפים שלו; תורם שומר טיוטות לבדיקה; משתמש רגיל מקבל חשבון אישי.'}),error);
+    form.append(el('p',{class:'acts'},submit,el('button',{type:'button',class:'btn ghost',text:'ביטול',onclick:function(){createDialog.close();}})));
     createDialog.append(form);screen.append(el('button',{type:'button',class:'btn pri',text:'הוספת משתמש',onclick:function(){createDialog.showModal();inputs.username.focus();}}),createDialog);
     createDialog.addEventListener('close',function(){inputs.password.value='';});
     var list=el('section',{class:'card'});screen.append(list);
@@ -2084,7 +2084,10 @@
         row.append(el('h3',{text:user.display_name+' ('+user.username+')'}),el('p',{text:(user.email || 'ללא מייל משויך')+' · '+(Number(user.verified)?'מייל מאומת':'טרם אומת')+' · '+(roleLabels[user.role]||user.role)}));
         function action(body,message){return authCall('/users','POST',body).then(function(){if(!active())return;say(message,'ok');return refresh();}).catch(function(e){if(active())say(e.message,'bad');});}
         if(user.role!=='owner') row.append(choices,el('label',{class:'sw'},disabled,' חשבון מושבת'),el('button',{type:'button',class:'btn',text:'שמירת הרשאות',onclick:function(){action({action:'update',id:user.id,role:choices.value,disabled:disabled.checked},'ההרשאות נשמרו.');}}));
-        if(user.email && !Number(user.disabled))row.append(el('button',{type:'button',class:'btn ghost',text:'שליחת איפוס סיסמה',onclick:function(){action({action:'reset',id:user.id},'קישור לקביעת סיסמה נוסף לתור הדואר.');}}),!Number(user.verified)?el('button',{type:'button',class:'btn ghost',text:'שליחת אימות מייל',onclick:function(){action({action:'verify',id:user.id},'הודעת אימות נוספה לתור הדואר.');}}):null);
+        if(user.email && !Number(user.disabled)) {
+          row.append(el('button',{type:'button',class:'btn ghost',text:'שליחת איפוס סיסמה',onclick:function(){action({action:'reset',id:user.id},'קישור לקביעת סיסמה נוסף לתור הדואר.');}}));
+          if(!Number(user.verified)) row.append(el('button',{type:'button',class:'btn ghost',text:'שליחת אימות מייל',onclick:function(){action({action:'verify',id:user.id},'הודעת אימות נוספה לתור הדואר.');}}));
+        }
         list.append(row);
       });
     }).catch(function(e){if(active())list.textContent=e.message;});}
@@ -2567,7 +2570,7 @@
       var preview = $('#preview-state');
       preview.textContent = authOptions && authOptions.readOnly ? 'האתר בתצוגת בדיקה ובמצב קריאה בלבד. עריכת תוכן ופרסום עדיין אינם זמינים.' : authOptions && authOptions.publishEnabled === false ? 'אפשר לשמור תוכן בטיוטות. הפרסום לאתר עדיין אינו זמין.' : '';
       preview.hidden = !preview.textContent;
-      if (draft && !pollTimer) { pollTimer = setInterval(function () { if (epoch === sessionEpoch && token) refreshPending(); }, 60000); }
+      if (draft && (!userCaps || userCaps.edit) && !pollTimer) { pollTimer = setInterval(function () { if (epoch === sessionEpoch && token) refreshPending(); }, 60000); }
       if (userCaps && !userCaps.edit) { shell(); here = ''; accountScreen(); return; }
       return Promise.all([topics().catch(function () { return null; }), refreshPending(), loadPhotos().catch(function () { return null; })]).then(function () {
         sessionCheck(epoch);
