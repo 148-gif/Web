@@ -18,7 +18,13 @@ for(const entry of manifest.files){
  const target=join(stage,entry.path);await mkdir(dirname(target),{recursive:true});await copyFile(join(root,entry.path),target);files.push({...entry,packed:true});
 }
 const document={format:'heichal-fast-release',version:1,commit:manifest.commit,branch:manifest.branch,siteOrigin:manifest.siteOrigin,manifest,files};
-await writeFile(join(stage,'release.json'),JSON.stringify(document)+'\n');
+const description=JSON.stringify(document)+'\n',descriptionBytes=Buffer.byteLength(description);
+const expandedBytes=files.filter(f=>f.packed).reduce((sum,f)=>sum+f.bytes,descriptionBytes);
+if(descriptionBytes>8*1024**2)throw Error('Fast release description exceeds the runner limit of 8 MiB');
+if(expandedBytes>512*1024**2)throw Error('Fast release expanded size exceeds the runner limit of 512 MiB: '+expandedBytes+' bytes');
+await writeFile(join(stage,'release.json'),description);
 execFileSync('tar',['-czf',join(out,'fast.tar.gz'),'-C',stage,'.'],{env:{...process.env,GZIP:'-6'},stdio:['ignore','ignore','pipe']});
 const size=(await stat(join(out,'fast.tar.gz'))).size;
-await rm(stage,{recursive:true});console.log(JSON.stringify({commit:manifest.commit,compressedBytes:size,remoteAssets:files.filter(f=>f.blob).length}));
+// Reserve ZIP metadata overhead within the runner's 128 MiB download budget.
+if(size>128*1024**2-65536)throw Error('Fast release archive exceeds the runner download budget');
+await rm(stage,{recursive:true});console.log(JSON.stringify({commit:manifest.commit,compressedBytes:size,expandedBytes,descriptionBytes,remoteAssets:files.filter(f=>f.blob).length}));
