@@ -21,6 +21,7 @@ function meta(html, name, content, property = false) {
   return rx.test(html) ? html.replace(rx, tag) : html.replace(/<\/head>/i, tag + '</head>');
 }
 export function transformSeo(html, path, state = seo, origin = process.env.SITE_ORIGIN || '', base = (process.env.SITE_BASE || '').replace(/\/$/, '')) {
+  if (!state.records[path] && state.settings.indexing !== 'noindex' && !(state.settings.rules || []).some((r) => r.enabled)) return html;
   const cfg = state.records[path] || {}, absolute = (p) => origin.replace(/\/$/, '') + base + p;
   if (cfg.title) { html = html.replace(/<title>[\s\S]*?<\/title>/i, '<title>' + escapeHtml(cfg.title) + '</title>'); html = meta(html, 'og:title', cfg.title, true); }
   if (cfg.description) { html = meta(html, 'description', cfg.description); html = meta(html, 'og:description', cfg.description, true); }
