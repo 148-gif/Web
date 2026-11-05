@@ -1,4 +1,5 @@
 /* The amulet page (/kamea/) and its landing page (/lp/kamea/). */
+.donbox .small.center{color:var(--on-navy3)}
 .amulet{position:relative;width:112px;height:112px;margin:0 auto 20px;display:grid;place-items:center}
 .amulet-ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--gold2);background:radial-gradient(circle at 50% 35%,#2a5bc4,#0d2466 70%);box-shadow:0 0 0 8px rgba(230,196,102,.12),0 12px 36px rgba(0,0,0,.4)}
 .amulet-ring:after{content:"";position:absolute;inset:8px;border-radius:50%;border:1px dashed rgba(230,196,102,.55)}
