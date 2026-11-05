@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { digestToken } from '../server/local-auth-crypto.mjs';
 import { managedEmail } from '../server/account-roles.mjs';
 import { verifyAccountsSchema } from '../server/mysql-accounts-store.mjs';
+import { initializeMediaSchema } from '../server/mysql-media-schema.mjs';
 export async function initializeAccountsSchema(pool,{backupPath,legacyOwnerEmail}={}) {
  if(!backupPath||!backupPath.startsWith('/'))throw Error('An explicit private backup directory is required');
  const ready=await verifyAccountsSchema(pool);
@@ -33,6 +34,6 @@ async function main(){
  const {readRuntimeEnvironmentFile}=await import('../server/runtime-env.mjs'),{runtimeConfiguration}=await import('../server/runtime.mjs'),{createInitializedMysqlPool}=await import('../server/mysql-pool.mjs');
  const values=await readRuntimeEnvironmentFile({filePath:process.env.CMS_ENV_FILE,applicationRoot:process.env.CMS_APP_ROOT}),config=runtimeConfiguration(values);
  const {createPool}=await import('mysql2/promise'),pool=createInitializedMysqlPool(createPool(config.mysql));
- try{console.log(JSON.stringify(await initializeAccountsSchema(pool,{backupPath:process.env.CMS_ACCOUNT_BACKUP,legacyOwnerEmail:process.env.CMS_ACCOUNT_OWNER_EMAIL})));}finally{await pool.end();}
+ try{const accounts=await initializeAccountsSchema(pool,{backupPath:process.env.CMS_ACCOUNT_BACKUP,legacyOwnerEmail:process.env.CMS_ACCOUNT_OWNER_EMAIL});const media=await initializeMediaSchema(pool,{backupPath:process.env.CMS_ACCOUNT_BACKUP});console.log(JSON.stringify({accounts,media}));}finally{await pool.end();}
 }
 if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.url)await main();
