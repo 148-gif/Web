@@ -37,7 +37,7 @@ export function createR2Media({ accountId, accessKeyId, secretAccessKey, bucket 
   }
   async function call(method, key, query = {}, body, headers = {}) {
     const signed = signing(method,key,query,headers,body || '');
-    const response = await request(signed.url,{ method,headers:signed.headers,body,redirect:'error',signal:AbortSignal.timeout(60000) });
+    const response = await request(signed.url,{ method,headers:{...signed.headers,'accept-encoding':'identity'},body,redirect:'error',signal:AbortSignal.timeout(60000) });
     if (response.status === 404) { await response.body?.cancel(); return null; }
     if (!response.ok) { await response.body?.cancel(); throw issue('אחסון הקבצים אינו זמין כרגע. נסו שוב.'); }
     return response;
@@ -53,7 +53,8 @@ export function createR2Media({ accountId, accessKeyId, secretAccessKey, bucket 
     async head(key) {
       const r = await call('HEAD',key);
       if (!r) return null;
-      const size = Number(r.headers.get('content-length'));
+      const length = r.headers.get('content-length');
+      const size = length !== null && /^\d+$/.test(length) ? Number(length) : NaN;
       if (!Number.isSafeInteger(size) || size < 0) throw issue('Invalid object length');
       return { key,size,remote:true,httpMetadata:{contentType:r.headers.get('content-type') || 'application/octet-stream',cacheControl:r.headers.get('cache-control') || 'public, max-age=31536000, immutable'} };
     },

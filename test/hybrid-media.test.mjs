@@ -122,3 +122,10 @@ test('invalid direct uploads are removed before quota is released; a failed prov
   assert.equal((await w.api('/media/complete',{id:b.body.id})).status,500);
   assert.equal(w.row(b.body.id).status,'finalizing');
 });
+
+test('text-object length verification is unaffected by provider gzip negotiation',async () => {
+  const r2 = createR2Media({...values,fetch:async (_url,{headers}) => headers['accept-encoding'] === 'identity' ? new Response(null,{headers:{'content-length':'1048576','content-type':'text/plain; charset=utf-8'}}) : new Response(null,{headers:{'content-encoding':'gzip','content-type':'text/plain; charset=utf-8'}})});
+  assert.equal((await r2.head('0123abcd-text.txt')).size,1048576);
+  const missing = createR2Media({...values,fetch:async () => new Response(null)});
+  await assert.rejects(missing.head('0123abcd-text.txt'),/length/);
+});
