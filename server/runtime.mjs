@@ -246,7 +246,7 @@ export async function createRuntime({ values = process.env, nodeVersion = proces
         mailTimer = setInterval(() => { void dispatchMail().catch(() => {}); },30000); mailTimer.unref();
         void dispatchMail().catch(() => {});
       }
-      const auth = createLocalAuth({ store: authStore, config, dispatchMail });
+      const auth = createLocalAuth({ store: authStore, config, dispatchMail, accountsEnabled: Boolean(authStore.accountsAvailable) });
       const next = handler;
       handler = (request, requestEnv) => auth.handle(request, requestEnv, next);
     }

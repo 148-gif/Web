@@ -27,7 +27,7 @@ const setCookie = (token, clear = false) => `${COOKIE}=${clear ? '' : token}; Pa
 const fail = (message, status) => Object.assign(new Error(message), { status });
 const actorOf = (user) => ({ email: `local:${user.id}`, name: user.display_name, shown: user.display_name, role: user.role, capabilities: capabilities(user.role), owner: ['owner','administrator'].includes(user.role), publisher: capabilities(user.role).publish });
 
-export function createLocalAuth({ store, config, clock = Date.now, googleProofVerifier, invitationPasswordHasher, dispatchMail }) {
+export function createLocalAuth({ store, config, clock = Date.now, googleProofVerifier, invitationPasswordHasher, dispatchMail, accountsEnabled = false }) {
   const owners = new Set(config.env.OWNERS.split(',').map((s) => s.trim()));
   const validUser = (user) => user && !user.disabled && (user.role !== 'owner' || owners.has(user.owner_hash)) && allRoles.has(user.role);
   const headers = (request) => ({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', ...(config.staging ? { 'X-Robots-Tag': 'noindex, nofollow' } : {}), ...(request.headers.get('origin') === config.env.ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': config.env.ALLOWED_ORIGIN, Vary: 'Origin' } : {}) });
@@ -93,7 +93,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
   const googleSetup = config.googleSetupEnabled ? createGoogleSetup({ store, config, clock, validUser, admission, verifyProof: googleProofVerifier }) : null;
   const invitations = config.localInvitationsEnabled ? createLocalInvitations({ store, config, clock, admission, passwords: invitationPasswordHasher }) : null;
 
-  const accounts = store.accountsAvailable ? createAccounts({ store, config, clock, admission, dispatch: dispatchMail }) : null;
+  const accounts = accountsEnabled ? createAccounts({ store, config, clock, admission, dispatch: dispatchMail }) : null;
   async function handle(request, env, next) {
     const path = new URL(request.url).pathname, method = request.method;
     try {
