@@ -14,7 +14,7 @@ async function fixture(t) {
   await mkdir(applicationRoot, { mode: 0o700 });
   const content = { 'server/start.mjs': 'export {};\n', 'server/runtime.mjs': 'export const ready = true;\n',
     'package.json': '{"type":"module"}\n', 'package-lock.json': '{"lockfileVersion":3}\n', 'passenger.cjs': 'require("node:process");\n',
-    'cms-worker/worker.mjs': 'export default {};\n', 'site/admin/image-rules.mjs': 'export {};\n',
+    'cms-worker/worker.mjs': 'export default {};\n', 'site/admin/image-rules.mjs': 'export {};\n', 'site/admin/seo-model.mjs': 'export const SEO_VERSION = 1;\n',
     'scripts/setup-google-auth.mjs': 'export {};\n', 'scripts/setup-local-invitations.mjs': 'export {};\n' };
   const files = [];
   for (const [path, text] of Object.entries(content)) {
