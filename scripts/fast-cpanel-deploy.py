@@ -63,9 +63,13 @@ def head(token):
 def health(commit):
     cmd=['/usr/bin/curl','--silent','--show-error','--fail','--noproxy','*','--max-time','15','--resolve','hichal.yoterberama.com:443:64.204.250.80',ORIGIN+'/cms-api/version','-H','Origin: '+ORIGIN,'-H','Cache-Control: no-cache']
     value=json.loads(subprocess.check_output(cmd,stderr=subprocess.DEVNULL))
-    if value.get('commit')!=commit or not value.get('verified') or not value.get('schemaVerified') or value.get('deploymentCandidate'): raise RuntimeError('Canonical runtime health mismatch')
+    if value.get('commit')!=commit or not value.get('verified') or not value.get('schemaVerified') or value.get('deploymentCandidate'): raise RuntimeError('Canonical runtime health mismatch: '+str(value.get('commit')))
 def restart(app):
-    (app/'tmp').mkdir(exist_ok=True);(app/'tmp/restart.txt').touch()
+    relative=str(app.relative_to(HOME.parent))
+    if not re.fullmatch(r'heichal-cms/releases/[a-f0-9]{40}/app',relative): raise RuntimeError('Restart target rejected')
+    args=['/usr/sbin/cloudlinux-selector','restart','--json','--interpreter','nodejs','--user','yoterber','--app-root',relative]
+    result=json.loads(subprocess.check_output(args,stderr=subprocess.DEVNULL,timeout=60))
+    if result.get('result')!='success': raise RuntimeError('Native application restart failed')
 def durable_journal(j): atomic_json(STATE/'journal.json',j)
 def recover(config):
     path=STATE/'journal.json'
@@ -164,7 +168,11 @@ def deploy(config,token,commit):
         app=canonical(pathlib.Path(config['appRoot']))
         if current_marker(PUBLIC)!=old['commit'] or read_json(app/'app-release.json').get('commit')!=old['commit']: raise RuntimeError('Active roots changed outside deployer')
         run=STATE/('release-'+commit)
-        if run.exists(): remove_private(run)
+        if run.exists():
+            legacy=run/'account-backup'
+            if legacy.is_dir() and not (STATE/('legacy-account-backup-'+commit)).exists():
+                os.rename(legacy,STATE/('legacy-account-backup-'+commit))
+            remove_private(run)
         run.mkdir(mode=0o700)
         ps=run/'public';aps=run/'app';clone_public(PUBLIC,ps);aps.mkdir(mode=0o700)
         changed=0
@@ -241,6 +249,9 @@ def main():
     stop=time.monotonic()+50
     while True:
         remote=head(token);current=read_json(STATE/'current.json')['commit']
+        failure=read_json(STATE/'failure.json') if (STATE/'failure.json').exists() else {}
+        if failure.get('commit')==remote and int(time.time()*1000)-failure.get('checkedAt',0)<300000:
+            atomic_json(STATE/'status.json',failure);print(json.dumps(failure));return
         result={'outcome':'matched','commit':current} if remote==current else deploy(config,token,remote)
         atomic_json(STATE/'status.json',{**result,'checkedAt':int(time.time()*1000)})
         if time.monotonic()>=stop or result['outcome']=='committed': print(json.dumps(result));return
@@ -248,5 +259,8 @@ def main():
 if __name__=='__main__':
     try: main()
     except Exception as error:
-        if STATE.is_dir(): atomic_json(STATE/'status.json',{'outcome':'failed','error':str(error)[:200],'checkedAt':int(time.time()*1000)})
+        if STATE.is_dir():
+            old=read_json(STATE/'status.json') if (STATE/'status.json').exists() else {}
+            failure={'outcome':'failed','commit':old.get('commit'),'error':str(error)[:200],'checkedAt':int(time.time()*1000)}
+            atomic_json(STATE/'failure.json',failure);atomic_json(STATE/'status.json',failure)
         print('Fast deployment stopped; inspect private status.',file=sys.stderr);sys.exit(1)
