@@ -171,7 +171,7 @@ def deploy(config,token,commit):
             if m.isdir(): continue
             if not m.isfile() or name.startswith('/') or any(p in ['','.','..'] for p in name.split('/')) or name in members: raise RuntimeError('Invalid archive member')
             total+=m.size
-            if total>256*1024*1024: raise RuntimeError('Fast release expanded size limit')
+            if total>512*1024*1024: raise RuntimeError('Fast release expanded size limit')
             members[name]=m
         if 'release.json' not in members or members['release.json'].size>8*1024*1024: raise RuntimeError('Missing release description')
         release=json.load(tar.extractfile(members['release.json']))
