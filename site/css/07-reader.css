@@ -4,6 +4,9 @@
 .book-sheet{line-height:2.05}.book-sheet p{text-align:justify}
 .book-sheet .subt{font:900 1.25rem/1.5 var(--serif);color:var(--brand);text-align:center;letter-spacing:0;margin:1.6em 0 .8em}
 .book-sheet .psalm{font:900 1.125rem var(--serif);color:var(--brand);letter-spacing:0;margin:1.4em 0 .4em;text-align:center}
+.book-sheet .ixh{font:900 1.5rem var(--serif);color:var(--brand);margin:1.6em 0 .4em;padding-bottom:.2em;border-bottom:1px solid var(--line)}
+.book-sheet .ixs{font:900 1.15rem var(--serif);color:var(--brand);margin:1.2em 0 .3em}
+.book-sheet .ix{margin:.15em 0;text-indent:0;line-height:1.7}.book-sheet .ix a{text-decoration:underline;text-underline-offset:3px;padding:0 .12em}
 .book-sheet .inst{font:600 1rem/1.6 var(--sans);color:var(--brand);text-align:center}
 .book-sheet .tnote{font:.875rem/1.6 var(--sans);color:var(--mute);background:var(--sunk);border-radius:var(--r-md);padding:8px 12px}
 sup.fn{line-height:0;font-size:.7em;margin:0 1px}sup.fn a{text-decoration:none;font:700 1em var(--sans);color:var(--gold);padding:0 2px}

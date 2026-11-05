@@ -21,17 +21,34 @@ ${kt.groups.map(([g, n]) => `<section class="libcat" id="${g}"><h2 class="subh">
 
 const bookTexts = lib.books.filter((b) => b.text).map((b) => [b, read(b.text)]);
 const fnText = (txt, key, labels) => esc(txt).replace(/\[([^\]\s]{1,4})\]/g, (m, l) => (labels.has(l) ? `<sup class="fn"><a href="#fn-${key}-${l}" id="fr-${key}-${l}" aria-label="הערה ${l}">${l}</a></sup>` : m));
+// Hebrew numerals ("תתרעב" = 1072) for the printed indexes of a book: each number after a dash becomes a link to that section.
+const GEM = { א: 1, ב: 2, ג: 3, ד: 4, ה: 5, ו: 6, ז: 7, ח: 8, ט: 9, י: 10, כ: 20, ל: 30, מ: 40, נ: 50, ס: 60, ע: 70, פ: 80, צ: 90, ק: 100, ר: 200, ש: 300, ת: 400 };
+const gematria = (s) => [...s].reduce((a, ch) => a + (GEM[ch] || 0), 0);
+const NUMTOK = /(^|[\s.])(ת{0,2}[קרש]?(?:טו|טז|[יכלמנסעפצ]?[א-ט]?))(?=[.\s]|$)/g;
+const indexLine = (p, base, refs) => {
+  const e = esc(p);
+  if (/^[א-ת]$/.test(p)) return `<h3 class="ixh">${e}</h3>`;
+  if (!p.includes('–') && p.length < 40 && !/[.)]$/.test(p) && !/^[א-ת]{1,5}\./.test(p)) return `<h3 class="ixs">${e}</h3>`;
+  const link = (run) => run.replace(NUMTOK, (mm, pre, tok) => (tok && refs.get(gematria(tok)) ? `${pre}<a href="${base}${refs.get(gematria(tok))}/">${tok}</a>` : mm));
+  // a long entry wraps onto a line that starts with the numbers themselves
+  const cont = !p.includes('–') && /^ת{0,2}[קרש]?(?:טו|טז|[יכלמנסעפצ]?[א-ט]?)\./.test(p);
+  const linked = cont ? link(e) : e.replace(/(–\s*)([^()]*)/g, (m, dash, run) => dash + link(run));
+  return `<p class="ix">${linked}</p>`;
+};
 const readerPages = (bk, tx) => {
   const base = `/library/${bk.slug}/`;
+  const refs = new Map();
+  tx.sections.forEach((x) => { if (x.ref && !refs.has(x.ref)) refs.set(x.ref, x.n); });
   const chapters = [
-    { id: 'hakdama', label: 'הקדמה', title: tx.intro.title, paras: tx.intro.paras, notes: tx.intro.notes, heading2: tx.intro.heading2 },
-    ...tx.sections.map((x) => ({ id: String(x.n), label: `סעיף ${x.label}`, title: x.title.replace(/[.\s]+$/, ''), paras: x.paras, notes: x.notes })),
+    { id: 'hakdama', label: tx.intro.label || 'הקדמה', title: tx.intro.title, paras: tx.intro.paras, notes: tx.intro.notes, heading2: tx.intro.heading2 },
+    ...tx.sections.map((x) => ({ id: String(x.n), label: x.unit === '' ? x.label : `${x.unit ?? tx.unit ?? 'סעיף'} ${x.label}`, title: x.title.replace(/[.\s]+$/, ''), paras: x.paras, notes: x.notes, index: x.index })),
     ...(tx.tikkun ? [{ id: 'tikkun-haklali', label: 'נספח', title: tx.tikkun.title, paras: tx.tikkun.paras, notes: [], tikkun: true }] : []),
   ];
   chapters.forEach((c, k) => {
     const prev = chapters[k - 1], next = chapters[k + 1], url = `${base}${c.id}/`, labels = new Set(c.notes.map(([l]) => l));
     const body = c.tikkun
       ? c.paras.map((p) => (/^\[הערה\]/.test(p) ? `<p class="tnote">${esc(p.replace(/^\[הערה\]\s*/, ''))}</p>` : /^מזמור/.test(p) ? `<h2 class="psalm">${esc(p.replace(/\.$/, ''))}</h2>` : p.length < 60 && /:$/.test(p) ? `<p class="inst">${esc(p)}</p>` : p.length < 50 ? `<p class="opening">${esc(p)}</p>` : `<p>${esc(p)}</p>`)).join('')
+      : c.index ? c.paras.map((p) => indexLine(p, base, refs)).join('')
       : c.paras.map((p) => (p === c.heading2 ? `<h2 class="subt">${esc(p)}</h2>` : `<p>${fnText(p, c.id, labels)}</p>`)).join('');
     const notes = c.notes.length ? `<aside class="fnotes" aria-label="הערות"><h2>הערות</h2><ol>${c.notes.map(([l, t]) => `<li id="fn-${c.id}-${l}"><b>${l}</b><span>${fnText(t, c.id, labels)} <a href="#fr-${c.id}-${l}" aria-label="חזרה לטקסט">${icon('up', 'ico sm')}</a></span></li>`).join('')}</ol></aside>` : '';
     const navLink = (x, cls, arrow) => (x ? `<a class="${cls}" href="${base}${x.id}/"><small>${arrow}</small>${esc(x.label)}: ${esc(nik(x.title)).slice(0, 70)}</a>` : '<span></span>');
@@ -49,18 +66,18 @@ const bookChapters = Object.fromEntries(bookTexts.map(([bk, tx]) => [bk.slug, re
 for (const bk of lib.books) {
   const bookUrl = `/library/${bk.slug}/`, chs = bookChapters[bk.slug];
   const pdfBtns = `<div class="navbtns"><a class="btn" href="${bk.pdf}" target="_blank" rel="noopener">${icon('book', 'ico sm')}קריאה בספר</a><a class="btn ghost" href="${bk.pdf}" download>${icon('print', 'ico sm')}הורדה (PDF, ${bk.pdfSize})</a></div>`;
-  write(`library/${bk.slug}/index.html`, layout(bk.title, `<section class="band"><div class="wrap"><div class="bio-top"><div class="about lead1">${ps(bk.about)}</div><aside class="factbox" aria-label="פרטי הספר"><h2>${esc(bk.title)}</h2>${facts([['סוג', catName[bk.category]], ...bk.facts])}<div class="fbtns">${chs ? `<div class="navbtns"><a class="btn" href="${bookUrl}hakdama/">${icon('book', 'ico sm')}קריאה באתר</a><a class="btn ghost" href="${bk.pdf}" download>${icon('print', 'ico sm')}PDF (${bk.pdfSize})</a></div>` : pdfBtns}</div></aside></div></div></section>
+  write(`library/${bk.slug}/index.html`, layout(bk.title, `<section class="band"><div class="wrap"><div class="bio-top"><div class="about lead1">${ps(bk.about)}</div><aside class="factbox" aria-label="פרטי הספר"><h2>${esc(bk.title)}</h2>${facts([['סוג', catName[bk.category]], ...bk.facts])}<div class="fbtns">${chs ? `<div class="navbtns"><a class="btn" href="${bookUrl}hakdama/">${icon('book', 'ico sm')}קריאה באתר</a>${bk.pdf ? `<a class="btn ghost" href="${bk.pdf}" download>${icon('print', 'ico sm')}PDF (${bk.pdfSize})</a>` : ''}</div>` : pdfBtns}</div></aside></div></div></section>
 ${bk.parts ? `<section class="band soft" id="contents"><div class="wrap"><h2 class="sh">מה בספר</h2><p class="shsub">${bk.parts.length} חלקים</p><div class="steps3 six">${bk.parts.map(([t, x], i) => `<div class="card"><span class="num">${i + 1}</span><h3>${esc(t)}</h3><p>${esc(x)}</p></div>`).join('')}</div></div></section>` : ''}
-${chs ? `<section class="band" id="toc"><div class="wrap narrow"><h2 class="sh">תוכן העניינים</h2><p class="shsub">לחצו על חלק כדי לראות את הסעיפים שבו</p><p class="continue" data-continue="${bk.slug}" hidden></p>
-<ol class="toc"><li><a href="/library/${bk.slug}/hakdama/"><b>הקדמה</b><span>החלום שבעקבותיו החל לכתוב, ולמה נקרא הספר ״רגעי מוהרא״ש״</span></a></li></ol>
-${bk.parts.map(([t, , [from, to]], i) => `<details class="tocpart"><summary><span class="tn">${i + 1}</span><b>${esc(t)}</b><small>${to - from + 1} סעיפים</small><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><ol class="toc">${chs.slice(from, to + 1).map((c) => `<li><a href="/library/${bk.slug}/${c.id}/"><b>${esc(c.label)}</b><span>${esc(c.title)}</span></a></li>`).join('')}</ol></details>`).join('')}
+${chs ? `<section class="band" id="toc"><div class="wrap narrow"><h2 class="sh">תוכן העניינים</h2><p class="shsub">לחצו על חלק כדי לראות את ${bookTexts.find(([b]) => b === bk)?.[1].unitPlural ? `ה${bookTexts.find(([b]) => b === bk)[1].unitPlural}` : 'הסעיפים'} שבו</p><p class="continue" data-continue="${bk.slug}" hidden></p>
+<ol class="toc"><li><a href="/library/${bk.slug}/hakdama/"><b>${esc(chs[0].label)}</b><span>${esc(bk.introDesc || chs[0].title)}</span></a></li></ol>
+${bk.parts.map(([t, , [from, to], cnt], i) => `<details class="tocpart"><summary><span class="tn">${i + 1}</span><b>${esc(t)}</b><small>${to - from + 1} ${esc(cnt || bookTexts.find(([b]) => b === bk)?.[1].unitPlural || 'סעיפים')}</small><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><ol class="toc">${chs.slice(from, to + 1).map((c) => `<li><a href="/library/${bk.slug}/${c.id}/"><b>${esc(c.label)}</b><span>${esc(c.title)}</span></a></li>`).join('')}</ol></details>`).join('')}
 ${bookTexts.find(([b]) => b === bk)?.[1].tikkun ? `<h3 class="tocpart"><span>${icon('sparkle', 'ico sm')}</span>נספח</h3><ol class="toc"><li><a href="/library/${bk.slug}/tikkun-haklali/"><b>תיקון הכללי</b><span>עשרת המזמורים של רבי נחמן מברסלב</span></a></li></ol>` : ''}</div></section>` : ''}
 ${bk.noCopyright ? `<section class="band quoteband"><div class="wrap"><p class="kicker2">על הדפסת ספריו</p><blockquote class="pq small"><p>${esc(bk.noCopyright)}</p><cite>${esc(bk.noCopyrightBy)}</cite></blockquote></div></section>` : ''}
 <section class="band" id="dedicate"><div class="wrap"><a class="feature" href="/print/"><span class="fic">${icon('heart', 'ico lg')}</span><span class="ftxt"><em>שותפות בהפצת ספרי הצדיק</em><b>הקדשה והשתתפות בהדפסה</b><span>לרפואה, לפרנסה, לזיווג או לעילוי נשמה, בהדפסת ספרי מוהרא״ש.</span></span><span class="btn">להשתתפות ←</span></a></div></section>
-<section class="band final" id="read"><div class="wrap narrow"><h2>לקריאה ולהורדה</h2><p>${chs ? 'הספר המלא באתר, מנוקד, עם הערות, ולהורדה כ־PDF.' : 'הספר המלא, כפי שיצא לאור, בחינם.'}</p>${chs ? `<div class="navbtns"><a class="btn" href="${bookUrl}hakdama/">${icon('book', 'ico sm')}קריאה באתר</a><a class="btn ghost" href="${bk.pdf}" download>${icon('print', 'ico sm')}הורדה (PDF, ${bk.pdfSize})</a></div>` : pdfBtns}<p class="small"><a href="/library/">← לכל ספרי הספרייה</a></p></div></section>`,
+<section class="band final" id="read"><div class="wrap narrow"><h2>לקריאה ולהורדה</h2><p>${chs ? `הספר המלא באתר, מנוקד, עם הערות${bk.pdf ? ', ולהורדה כ־PDF' : ''}.` : 'הספר המלא, כפי שיצא לאור, בחינם.'}</p>${chs ? `<div class="navbtns"><a class="btn" href="${bookUrl}hakdama/">${icon('book', 'ico sm')}קריאה באתר</a>${bk.pdf ? `<a class="btn ghost" href="${bk.pdf}" download>${icon('print', 'ico sm')}הורדה (PDF, ${bk.pdfSize})</a>` : ''}</div>` : pdfBtns}<p class="small"><a href="/library/">← לכל ספרי הספרייה</a></p></div></section>`,
     { desc: `${bk.title}: ${bk.lead}`, path: '/library/', self: bookUrl, full: true,
       head: phead(`ספרייה · ${catName[bk.category]}`, esc(bk.title), esc(bk.lead), chs ? `<div class="navbtns hcta"><a class="btn" href="${bookUrl}hakdama/">${icon('book', 'ico sm')}קריאה באתר</a><a class="btn ghost" href="#toc">תוכן העניינים</a></div>` : `<div class="navbtns hcta"><a class="btn" href="${bk.pdf}" target="_blank" rel="noopener">${icon('book', 'ico sm')}קריאה בספר</a><a class="btn ghost" href="${bk.parts ? '#contents' : '#read'}">${bk.parts ? 'מה בספר' : 'הורדה'}</a></div>`),
-      head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'Book', name: bk.title, author: person, inLanguage: 'he', description: bk.lead, genre: catName[bk.category], bookFormat: 'https://schema.org/EBook', ...(bk.pages ? { numberOfPages: bk.pages } : {}), isAccessibleForFree: true, ...(absu(bookUrl) ? { url: absu(bookUrl), workExample: { '@type': 'Book', bookFormat: 'https://schema.org/EBook', encodingFormat: 'application/pdf', url: absu(bk.pdf) } } : {}) }, crumbs([['בית', '/'], ['ספרייה', '/library/'], [bk.title, bookUrl]])] }) }));
+      head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'Book', name: bk.title, author: person, inLanguage: 'he', description: bk.lead, genre: catName[bk.category], bookFormat: 'https://schema.org/EBook', ...(bk.pages ? { numberOfPages: bk.pages } : {}), isAccessibleForFree: true, ...(absu(bookUrl) ? { url: absu(bookUrl), ...(bk.pdf ? { workExample: { '@type': 'Book', bookFormat: 'https://schema.org/EBook', encodingFormat: 'application/pdf', url: absu(bk.pdf) } } : {}) } : {}) }, crumbs([['בית', '/'], ['ספרייה', '/library/'], [bk.title, bookUrl]])] }) }));
 }
 
 export { bookChapters };
