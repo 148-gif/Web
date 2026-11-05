@@ -6,6 +6,7 @@ Shared code is in `scripts/lib/` (core, layout, parts) and each part of the site
 When you change a helper in `scripts/lib/core.mjs` or `parts.mjs` that guards links or escaping, add or update its test.
 Styles live in numbered parts in `site/css/`, joined in order into `dist/style.css`; put a rule in the part for its topic (order matters: later parts win).
 The CSP has no `'unsafe-inline'` for styles: never write a `style="…"` attribute (the link check fails on one); use a class.
+The tests need Node 24, the server's runtime (CI uses it). On an older Node about 24 server/runtime tests fail with "Node: version24 or newer is required"; that is the local environment, not a bug: run them with Node 24 (for example `npx -y node@24 --test test/*.test.mjs`).
 `npm run lint` runs ESLint; a pre-commit hook (`.githooks/`, enabled by `npm run setup`) runs the tests and lint.
 The live site is https://hichal.yoterberama.com/ (cPanel), published from the `claude/greeting-2i183o` branch; see "Publishing to cPanel" below. The old GitHub Pages site is retired.
 
