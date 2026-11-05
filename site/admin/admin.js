@@ -443,7 +443,7 @@
       mine.forEach(function (t) { nav.append(link('#/topic/' + t.slug, t.icon || 'book', t.title)); });
     });
     nav.append(el('h3', { text: 'ניהול' }));
-    if (owner && cookieSession && authOptions && authOptions.accountsAvailable) nav.append(link('#/users','users','משתמשים'));
+    if (owner) nav.append(link('#/users','users','משתמשים'));
     if (draft) {
       var pl = link('#/changes', 'list', 'שינויים ממתינים'); pl.append(el('b', { id: 'hi-count', class: 'nb', text: String(pending.list.length) })); nav.append(pl);
       nav.append(link('#/media', 'image', 'ספריית מדיה'));
@@ -451,9 +451,7 @@
     }
     var lk = link('#/links', 'link', 'קישורים ו־SEO'); lk.append(el('b', { id: 'lk-count', class: 'nb', text: '' })); nav.append(lk);
     nav.append(link('#/file/site.json', 'gear', 'הגדרות האתר'));
-    if (owner) nav.append(link('#/editors', 'users', 'עורכים'));
     if (owner && authOptions && authOptions.settingsAvailable) nav.append(link('#/auth', 'gear', 'הגדרות התחברות'));
-    if (owner) nav.append(link('#/auth/google', 'gear', 'הגדרות Google'));
     if (cookieSession) nav.append(link('#/account','users','החשבון שלי'));
     // On a phone the header keeps only the essentials; the rest is here.
     nav.append(el('div', { class: 'navfoot' },
@@ -659,7 +657,7 @@
       tile('#/file/yavniel.json', 'mountain', 'זמני תפילות ושיעורים', 'עדכון המידע על יבנאל'),
       draft ? tile('#/changes', 'list', 'שינויים ממתינים', publisher ? 'מה נשמר ועוד לא באתר, ופרסום' : 'מה נשמר ועוד לא פורסם') : null,
       tile('#/links', 'link', 'קישורים ו־SEO', 'בדיקת קישורים, הצעות לחיבור עמודים ושאלות קשורות'),
-      owner ? tile('#/editors', 'users', 'עורכים', 'הוספה והסרה של מי שיכול לערוך, ומי מפרסם') : null,
+      owner ? tile('#/users', 'users', 'משתמשים', 'ניהול חשבונות המשתמשים והרשאות הגישה לאתר') : null,
       el('a', { class: 'tile', href: '../', target: '_blank', rel: 'noopener' }, el('span', { class: 'tic' }, icon('eye')), el('b', { text: 'צפייה באתר' }), el('span', { text: 'נפתח בלשונית חדשה' }))));
     m.append(el('section', { class: 'card how' }, el('h2', { text: 'איך זה עובד' }), el('ol', {},
       el('li', {}, el('b', { text: 'בוחרים' }), ' מהתפריט מה לערוך: דף שיצרתם, חלק קיים באתר, או שאלה מהשו״ת.'),
@@ -1248,7 +1246,7 @@
   function editorsApi(method, body) { return wapi(method, '/editors', body).then(function (j) { return j.editors; }); }
   function editorsScreen() {
     var m = main();
-    m.append(head('עורכים', 'מי שברשימה יכול להתחבר עם חשבון ה־Google שלו ולערוך את האתר. בעלי האתר תמיד יכולים להיכנס ולפרסם, ורק הם רואים את המסך הזה.'));
+    m.append(head('משתמשים', 'מי שברשימה יכול להתחבר עם חשבון ה־Google שלו ולערוך את האתר. בעלי האתר תמיד יכולים להיכנס ולפרסם, ורק הם רואים את המסך הזה.'));
     var card = el('section', { class: 'card' }); m.append(card); loading(card);
     var fail = function (x) { say(x.message, 'bad'); };
     var drawList = function (list) {
@@ -1264,7 +1262,7 @@
           el('button', { type: 'submit', class: 'btn pri' }, icon('plus'), 'הוספה')));
       form.addEventListener('submit', function (e) { e.preventDefault(); var v = inp.value.trim(); if (!v) return; editorsApi('PUT', { email: v, name: nm.value.trim(), publisher: pb.checked }).then(function (l) { say('העורך נוסף: ' + v, 'ok'); drawList(l); }, fail); });
       card.append(form, el('p', { class: 'help', text: 'כל עוד אפליקציית ההתחברות ב־Google במצב בדיקה, צריך להוסיף את העורך גם שם: Google Auth Platform › Audience › Test users. מפרסם יכול לפרסם שינויים לאתר; עורך רגיל רק שומר טיוטות.' }));
-      card.append(el('h3', { class: 'edh edlisth', text: 'עורכים' + (list.length ? ' (' + list.length + ')' : '') }));
+      card.append(el('h3', { class: 'edh edlisth', text: 'משתמשים' + (list.length ? ' (' + list.length + ')' : '') }));
       if (!list.length) card.append(el('p', { class: 'help', text: 'עדיין אין עורכים נוספים.' }));
       var ul = el('ul', { class: 'eds' });
       list.forEach(function (ed) {
@@ -2137,7 +2135,11 @@
     if (!force) cur = null;
     here = h; mark(h);
     if (userCaps && !userCaps.edit) { accountScreen(); return; }
-    if (h === '#/users' && owner && cookieSession && authOptions && authOptions.accountsAvailable) { usersScreen(); return; }
+    if (h === '#/users' && owner) {
+      if (cookieSession && authOptions && authOptions.accountsAvailable) usersScreen();
+      else editorsScreen();
+      return;
+    }
     if (h === '#/account' && cookieSession) { accountScreen(); return; }
     var m;
     if ((m = /^#\/page\/([a-z0-9-]+)$/.exec(h))) pageScreen(m[1]);
@@ -2152,7 +2154,10 @@
     else if (h === '#/links') linksScreen();
     else if (h === '#/editors' && owner) editorsScreen();
     else if (h === '#/auth' && owner && authOptions && authOptions.settingsAvailable) authSettingsScreen();
-    else if (h === '#/auth/google' && owner) authSettingsScreen(true);
+    else if (h === '#/auth/google' && owner) {
+      if (authOptions && authOptions.settingsAvailable) { history.replaceState(null, '', '#/auth'); here = '#/auth'; mark(here); authSettingsScreen(); }
+      else authSettingsScreen(true);
+    }
     else home();
   }
   window.addEventListener('hashchange', function () { route(); });
@@ -2520,7 +2525,7 @@
       }
       var local = method('auth-local-enabled', 'שם משתמש וסיסמה', settings.username ? 'חשבון מנהל: ' + settings.username : 'כניסה באמצעות חשבון מקומי שאושר.', !!settings.localEnabled, !!settings.canDisableLocal);
       var googleAvailable = settings.googleAvailable !== false;
-      var googleEnabled = method('auth-google-enabled', 'Google', googleAvailable ? 'ההרשאות של חשבונות Google נשארות כפי שהוגדרו ברשימת העורכים.' : 'Google אינו מופעל באתר הזה. ניתן להפעילו לאחר השלמת ההגדרה באחסון.', !!settings.googleEnabled, !!settings.canDisableGoogle);
+      var googleEnabled = method('auth-google-enabled', 'Google', googleAvailable ? 'ההרשאות של חשבונות Google נשארות כפי שהוגדרו בהרשאות המשתמשים.' : 'Google אינו מופעל באתר הזה. ניתן להפעילו לאחר השלמת ההגדרה באחסון.', !!settings.googleEnabled, !!settings.canDisableGoogle);
       if (!googleAvailable || (settings.googleSetup && !settings.googleEnabled)) googleEnabled.disabled = true;
       if (settings.googleSetup && !settings.googleEnabled) methods.append(el('p', { class: 'help', text: 'להפעלת Google יש להשלים את ההגדרה והאימות באשף שבהמשך.' }));
       var methodError = el('p', { class: 'err', role: 'alert' }), methodSave = el('button', { type: 'submit', class: 'btn pri', text: 'שמירת דרכי הכניסה' });
