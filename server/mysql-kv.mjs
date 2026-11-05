@@ -42,7 +42,7 @@ export function createMysqlKv(pool) {
       keyOf(key); valueOf(value);
       // Deliberately keep text representation, including spacing and Unicode.
       await withTransaction(pool, async (connection) => {
-        await lockResource(connection, `kv:${key}`);
+        await lockResource(connection, UPLOAD_KEY.test(key) ? 'media' : `kv:${key}`);
         await connection.execute('INSERT INTO editors_kv (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?', [key, value, value]);
       });
     },
@@ -51,7 +51,7 @@ export function createMysqlKv(pool) {
       keyOf(key);
       if (!UPLOAD_KEY.test(key)) throw new TypeError('Only transient media state may be deleted');
       await withTransaction(pool, async connection => {
-        await lockResource(connection, `kv:${key}`);
+        await lockResource(connection, UPLOAD_KEY.test(key) ? 'media' : `kv:${key}`);
         await connection.execute('DELETE FROM editors_kv WHERE `key` = ?', [key]);
       });
     },
@@ -63,7 +63,7 @@ export function createMysqlKv(pool) {
         // A seeded lock also covers a missing key without inserting placeholder
         // user data. INSERT IGNORE followed by a locking read would upgrade
         // duplicate-key shared locks and can deadlock concurrent first updates.
-        await lockResource(connection, `kv:${key}`);
+        await lockResource(connection, UPLOAD_KEY.test(key) ? 'media' : `kv:${key}`);
         const [rows] = await connection.execute('SELECT value FROM editors_kv WHERE `key` = ? FOR UPDATE', [key]);
         if (rows.length > 1) throw new Error('Invalid editor KV storage result');
         const previous = rows.length === 0 ? null : valueOf(rows[0].value);
