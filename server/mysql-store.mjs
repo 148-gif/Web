@@ -192,7 +192,6 @@ export function createMysqlDataStore(pool) {
         else await execute(connection, 'DELETE FROM media WHERE id = ?', [row.id]);
       });
     },
-    discardDrafts: (paths) => paths.length ? execute(pool, `DELETE FROM drafts WHERE path IN (${marks(paths.length)})`, paths) : Promise.resolve(),
     restorePublishedMedia: (id) => mediaTransaction((connection) => execute(connection, "UPDATE media SET status = 'published' WHERE id = ?", [id])),
     getStagedChunk: (id, n) => first("SELECT c.data FROM media_chunks c INNER JOIN media m ON m.id = c.id WHERE m.id = ? AND m.status = 'staged' AND c.n = ?", [id, n]),
     async listLog({ before, limit }) {

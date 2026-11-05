@@ -17,6 +17,8 @@ Yaakov, the other editor, publishes from the branch `yaakov`; the live site is b
 2. Merge both into your working branch (`git merge origin/yaakov`, `git merge origin/claude/greeting-2i183o`). Never overwrite, reset or force-push over their work: resolve so both sides' changes stay, and if both changed the same lines, stop and ask the user.
 3. Run `npm run check`; it includes `npm run sync` (`scripts/check-sync.mjs`), which fails if either branch has commits yours lacks. The same check runs in the `pre-push` hook (`npm run setup` enables it) and on every pull request.
 
+Editor publish never overwrites a live change silently: a draft is saved over the exact row it read (compare-and-swap in D1 and in MySQL), discard deletes only the rows it read (a newer save stays, reported as `kept`), the branch moves with `force: false`, and a file the live branch changed since the draft began is merged three ways (`cms-worker/json-merge.mjs`: base blob, live file, draft; fields and `id`-keyed list items; the same thing changed on both sides is a 409 conflict listed for a person, who can still `force`). Tests: `test/json-merge.test.mjs`, `test/worker.test.mjs`.
+
 Not visible in git: editor drafts saved in D1 until someone publishes them. A publish conflict there needs a look at the difference, never a blind `force`. Do not force-push to `yaakov` or the live branch.
 
 ## Editor (`/admin/`)

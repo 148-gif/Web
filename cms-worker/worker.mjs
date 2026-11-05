@@ -33,6 +33,7 @@ import { imageProblems, blockProblems, ownerOnlyChanges, registryShapeChanges, p
 import { boundedStream, readJsonBody, RequestBodyError } from './request-guards.mjs';
 import { loginLimit, writeLimit } from './rate-limit.mjs';
 import { getDataStore } from './data-store.mjs';
+import { mergeJsonText } from './json-merge.mjs';
 
 const SESSION_HOURS = 12;
 const enc = new TextEncoder();
@@ -210,6 +211,16 @@ const publishedSha = async (env, path) => { const j = await gh(env, at(env, path
 
 // The text of a file as published (null if the live site does not have it).
 const publishedText = async (env, path) => { const j = await gh(env, at(env, path), { allow404: true }); return j && !Array.isArray(j) ? fromB64(j.content) : null; };
+
+// A draft whose file changed on the live branch meanwhile: merge the three versions (the draft's base, the live file, the draft)
+// field by field. Returns the merged text, or null when the two sides touched the same thing and a person must decide.
+async function tryMerge(live, row, pub) {
+  if (row.deleted || !row.base_sha || !pub) return null;
+  const base = await gh(live, `git/blobs/${row.base_sha}`, { allow404: true });
+  const liveText = await publishedText(live, row.path);
+  if (!base || liveText === null) return null;
+  return mergeJsonText(fromB64(base.content), liveText, row.content);
+}
 
 // ---- what an editor may ask GitHub for (reads only; writes go through drafts and /publish) ----
 // Returns the GitHub API path, or null when the request is not allowed.
@@ -690,7 +701,12 @@ async function changes(env, check) {
     if (env.LOCAL_AUTHORIZE_PATH) { try { await env.LOCAL_AUTHORIZE_PATH(r.path,{draftEmail:r.email}); } catch (e) { if(e.status===403)continue;throw e; } }
     const sha = r.deleted ? null : await blobSha(r.content);
     const item = { path: r.path, status: r.deleted ? 'removed' : r.base_sha ? 'modified' : 'added', name: r.name, ts: r.updated_at, created: r.created_at, sha, base: r.base_sha };
-    if (check) { item.published = await publishedSha(env, r.path); item.conflict = item.published !== (r.base_sha || null) && item.published !== sha; }
+    if (check) {
+      item.published = await publishedSha(env, r.path);
+      item.conflict = item.published !== (r.base_sha || null) && item.published !== sha;
+      // Changed on both sides but in different places: publishing merges them by itself, so it is not a conflict.
+      if (item.conflict && await tryMerge(env, r, item.published)) { item.conflict = false; item.merged = true; }
+    }
     out.push(item);
   }
   // Media waiting in D1 to be committed (or to be removed) is a pending change too.
@@ -713,7 +729,7 @@ async function publish(env, me, paths, force, note) {
   const lines = [...rows.map((r) => `- ${label(r)}: ${r.path}`), ...media.map((m) => `- ${m.status === 'staged' ? 'קובץ חדש' : 'קובץ נמחק'}: ${m.key}`)];
   const total = rows.length + media.length;
   const subject = `פרסום: ${cleanName(note) || `${total} שינויים`}`;
-  let sha = null;
+  let sha = null, mergedPaths = [];
   for (let attempt = 0; ; attempt++) {
     const head = (await gh(env, `git/ref/heads/${env.BRANCH}`)).object.sha;
     // Every read in this attempt uses the same immutable commit, including
@@ -722,19 +738,30 @@ async function publish(env, me, paths, force, note) {
     const live = Object.create(env, { BRANCH: { value: head } });
     const pubs = new Map(await Promise.all(rows.map(async (r) => [r.path, await publishedSha(live, r.path)])));
     if (env.LOCAL_AUTHORIZE_PATH) { for (const row of rows) await env.LOCAL_AUTHORIZE_PATH(row.path,{published:Boolean(pubs.get(row.path)),draftEmail:row.email}); if (media.length && !capabilitiesLocalAll(me)) throw fail('בקשו מעורך לפרסם קבצי מדיה',403); }
-    const conflicts = rows.filter((r) => pubs.get(r.path) !== (r.base_sha || null) && pubs.get(r.path) !== shas.get(r.path) && !force.includes(r.path)).map((r) => r.path);
+    // A file the live branch changed since the draft began is merged with it when the changes are in different places (never
+    // overwritten); only a change to the same thing on both sides is a conflict that a person must settle.
+    const conflicts = [], mergedText = new Map();
+    for (const r of rows) {
+      const p = pubs.get(r.path);
+      if (p === (r.base_sha || null) || p === shas.get(r.path) || force.includes(r.path)) continue;
+      const m = await tryMerge(live, r, p);
+      if (m === null) conflicts.push(r.path); else mergedText.set(r.path, m);
+    }
     if (conflicts.length) throw fail('חלק מהקבצים שונו גם באתר החי מאז שהתחלתם לערוך אותם', 409, { conflicts });
+    const eff = rows.map((r) => mergedText.has(r.path) ? { ...r, content: mergedText.get(r.path) } : r);
+    for (const [path, text] of mergedText) shas.set(path, await blobSha(text));
+    mergedPaths = [...mergedText.keys()];
     // A page's referenced media must be in this commit or in the selected uploads.
-    for (const r of rows.filter((x) => !x.deleted && PAGE_FILE.test(x.path))) {
+    for (const r of eff.filter((x) => !x.deleted && PAGE_FILE.test(x.path))) {
       let blocks = []; try { blocks = JSON.parse(r.content).blocks || []; } catch { /* checked when saved */ }
       for (const b of blocks) {
         const m = /^\/media\/([a-z0-9][\w.-]*)$/.exec(String(b && b.src || ''));
         if (m && !together.has(`site/media/${m[1]}`) && !(await publishedSha(live, `site/media/${m[1]}`))) throw fail(`הדף ״${cleanName(JSON.parse(r.content).title)}״ משתמש בקובץ שעוד לא פורסם: ${m[1]}. סמנו גם אותו לפרסום.`, 400);
       }
     }
-    await photoPreflight(live, rows, together);
-    for (const r of rows) if (!r.deleted && pubs.get(r.path) !== shas.get(r.path) && !blobs.has(r.path)) blobs.set(r.path, (await gh(env, 'git/blobs', { method: 'POST', body: { content: toB64(r.content), encoding: 'base64' } })).sha);
-    const entries = rows.filter((r) => r.deleted ? pubs.get(r.path) : pubs.get(r.path) !== shas.get(r.path)).map((r) => ({ path: r.path, mode: '100644', type: 'blob', sha: r.deleted ? null : blobs.get(r.path) }));
+    await photoPreflight(live, eff, together);
+    for (const r of eff) if (!r.deleted && pubs.get(r.path) !== shas.get(r.path) && !blobs.has(r.path)) blobs.set(r.path, (await gh(env, 'git/blobs', { method: 'POST', body: { content: toB64(r.content), encoding: 'base64' } })).sha);
+    const entries = eff.filter((r) => r.deleted ? pubs.get(r.path) : pubs.get(r.path) !== shas.get(r.path)).map((r) => ({ path: r.path, mode: '100644', type: 'blob', sha: r.deleted ? null : blobs.get(r.path) }));
     for (const m of media) {
       if (m.status === 'staged') {
         if (!mediaBlobs.has(m.id)) {
@@ -763,7 +790,7 @@ async function publish(env, me, paths, force, note) {
   for (const r of rows) await logEntry(env, me, 'publish', r.path, `${label(r)} · נערך על ידי ${r.name}`, sha);
   for (const m of media) await logEntry(env, me, 'publish', m.key, `${m.status === 'staged' ? 'קובץ חדש' : 'קובץ נמחק'} · ${m.name}`, sha);
   await logEntry(env, me, 'publish-all', null, cleanName(note) || `${total} שינויים`, sha);
-  return { sha, published: [...rows.map((r) => r.path), ...media.map((m) => m.key)] };
+  return { sha, published: [...rows.map((r) => r.path), ...media.map((m) => m.key)], merged: mergedPaths };
 }
 
 async function discard(env, me, paths) {
@@ -772,14 +799,19 @@ async function discard(env, me, paths) {
   const media = await getDataStore(env).listPendingMedia(mpaths);
   // An editor may drop only their own work; a publisher may drop anyone's.
   if ((rows.some((r) => r.email !== me.email) || media.some((m) => m.email !== me.email)) && !me.publisher) throw fail('אפשר לבטל רק שינויים שביצעתם בעצמכם', 403);
-  if (rows.length) await getDataStore(env).discardDrafts(rows.map((r) => r.path));
+  // Delete exactly the rows that were read above: a draft someone saved after that stays, and is reported as kept.
+  let kept = [];
+  if (rows.length) {
+    await getDataStore(env).cleanupPublishedDrafts(rows);
+    kept = (await getDataStore(env).getDrafts(rows.map((r) => r.path))).map((r) => r.path);
+  }
   for (const m of media) {
     if (m.status === 'staged') await mediaDrop(env, m);
     else await getDataStore(env).restorePublishedMedia(m.id); // the removal is cancelled
   }
-  for (const r of rows) await logEntry(env, me, 'discard', r.path, `${label(r)} · נערך על ידי ${r.name}`);
+  for (const r of rows.filter((x) => !kept.includes(x.path))) await logEntry(env, me, 'discard', r.path, `${label(r)} · נערך על ידי ${r.name}`);
   for (const m of media) await logEntry(env, me, 'discard', m.key, m.name);
-  return { discarded: [...rows.map((r) => r.path), ...media.map((m) => m.key)] };
+  return { discarded: [...rows.map((r) => r.path).filter((x) => !kept.includes(x)), ...media.map((m) => m.key)], kept };
 }
 
 // Earlier versions of a file: the commits on BRANCH that touched it. The name is the one the publish wrote into the message.

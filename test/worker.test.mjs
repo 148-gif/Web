@@ -213,6 +213,50 @@ test('a file changed on the live branch meanwhile is a conflict until the publis
   assert.equal(github.read('data/pages/x.json'), '{"a":2}\n');
 });
 
+test('a file both sides changed in different places is merged at publish, not overwritten', async () => {
+  const w = await world();
+  await github.commit({ 'data/pages/m.json': '{\n  "a": 1,\n  "b": 1,\n  "list": [{ "id": "x", "t": 1 }]\n}\n' });
+  const cur = (await w.owner('GET', '/gh/contents/data/pages/m.json')).body;
+  await put(w.owner, 'data/pages/m.json', { a: 2, b: 1, list: [{ id: 'x', t: 1 }, { id: 'mine', t: 1 }] }, cur.sha);
+  await github.commit({ 'data/pages/m.json': '{\n  "a": 1,\n  "b": 9,\n  "list": [{ "id": "x", "t": 1 }, { "id": "yaakov", "t": 1 }]\n}\n' });
+  const ch = (await w.owner('GET', '/changes?check=1')).body.changes[0];
+  assert.equal(ch.conflict, false);
+  assert.equal(ch.merged, true);
+  const r = await w.owner('POST', '/publish', { paths: ['data/pages/m.json'] });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.merged, ['data/pages/m.json']);
+  const out = JSON.parse(github.read('data/pages/m.json'));
+  assert.equal(out.a, 2, 'my change kept');
+  assert.equal(out.b, 9, 'the live change kept');
+  assert.deepEqual(out.list.map((x) => x.id).sort(), ['mine', 'x', 'yaakov'], 'both added items kept');
+});
+
+test('the same field changed on both sides stays a conflict and nothing is overwritten', async () => {
+  const w = await world();
+  await github.commit({ 'data/pages/m2.json': '{"a":1,"b":1}\n' });
+  const cur = (await w.owner('GET', '/gh/contents/data/pages/m2.json')).body;
+  await put(w.owner, 'data/pages/m2.json', { a: 2, b: 1 }, cur.sha);
+  await github.commit({ 'data/pages/m2.json': '{"a":3,"b":1}\n' });
+  const r = await w.owner('POST', '/publish', { paths: ['data/pages/m2.json'] });
+  assert.equal(r.status, 409);
+  assert.deepEqual(r.body.conflicts, ['data/pages/m2.json']);
+  assert.equal(github.read('data/pages/m2.json'), '{"a":3,"b":1}\n');
+});
+
+test('discard removes only the draft that was read; a newer save by someone else stays', async () => {
+  const w = await world();
+  await put(w.owner, 'data/pages/race.json', { v: 1 }, null);
+  const store = (await import('../cms-worker/data-store.mjs')).getDataStore(w.e);
+  const orig = store.getDrafts.bind(store);
+  let first = true;
+  store.getDrafts = async (paths) => { const rows = await orig(paths); if (first) { first = false; await put(w.publisher, 'data/pages/race.json', { v: 2 }, (await w.publisher('GET', '/gh/contents/data/pages/race.json')).body.sha); } return rows; };
+  const r = await w.owner('POST', '/discard', { paths: ['data/pages/race.json'] });
+  store.getDrafts = orig;
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.kept, ['data/pages/race.json']);
+  assert.equal((await w.owner('GET', '/changes')).body.changes.length, 1);
+});
+
 test('discard: editors drop only their own work, publishers anyone\'s', async () => {
   const w = await world();
   await put(w.editor, 'data/pages/a.json', { a: 1 }, null);

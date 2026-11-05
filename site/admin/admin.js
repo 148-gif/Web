@@ -1819,7 +1819,8 @@
           ul.append(el('li', { class: c.conflict ? 'conflict' : '' }, r.cb,
             el('div', { class: 'grow' }, el('div', {}, el('span', { class: 'tag', text: info.label }), ' ', r.title, ' ', el('span', { class: 'tag st-' + c.status, text: STATUS[c.status] })), r.detail,
               el('small', { class: 'help', text: 'נערך על ידי ' + c.name + ' · ' + fmt(c.ts) }),
-              c.conflict ? el('small', { class: 'warn', text: 'הקובץ הזה השתנה גם באתר מאז שהתחלתם לערוך אותו. בפרסום תתבקשו להחליט.' }) : null),
+              c.conflict ? el('small', { class: 'warn', text: 'הקובץ הזה השתנה גם באתר מאז שהתחלתם לערוך אותו. בפרסום תתבקשו להחליט.' }) : null,
+              c.merged ? el('small', { class: 'help', text: 'הקובץ השתנה גם באתר, אבל במקומות אחרים. בפרסום השינויים ימוזגו ולא יידרסו.' }) : null),
             c.status === 'removed' ? null : el('a', { class: 'btn ghost sm', href: info.href }, 'פתיחה')));
           describe(c).then(function (d) { r.d = d; r.title.textContent = d.title; r.detail.textContent = d.detail; }, function () { /* the path stays as the title */ });
         });
