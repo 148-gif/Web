@@ -446,11 +446,11 @@
       if (built) built[1].forEach(function (f) { children.append(link('#/file/' + f[0], f[2], f[1])); });
       mine.forEach(function (t) { children.append(link('#/topic/' + t.slug, t.icon || 'book', t.title)); });
     });
-    if (draft) children.append(link('#/media', 'image', 'ספריית מדיה'));
     nav.append(el('h3', { text: 'ניהול' }));
     if (owner) nav.append(link('#/users','users','משתמשים'));
     if (draft) {
       var pl = link('#/changes', 'list', 'שינויים ממתינים'); pl.append(el('b', { id: 'hi-count', class: 'nb', text: String(pending.list.length) })); nav.append(pl);
+      nav.append(link('#/media', 'image', 'ספריית מדיה'));
       if (publisher) nav.append(link('#/log', 'clock', 'יומן פעילות'));
     }
     var lk = link('#/links', 'link', 'קישורים ו־SEO'); lk.append(el('b', { id: 'lk-count', class: 'nb', text: '' })); nav.append(lk);
