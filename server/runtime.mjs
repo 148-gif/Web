@@ -5,6 +5,8 @@ import { isAbsolute, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCmsServer } from './http.mjs';
 import { createFileMedia } from './file-media.mjs';
+import { createR2Media, LOCAL_MEDIA_BYTES } from './r2-media.mjs';
+import { createHybridMedia } from './hybrid-media.mjs';
 import { createInitializedMysqlPool } from './mysql-pool.mjs';
 import { readRuntimeIdentity } from './runtime-identity.mjs';
 import { loadRuntimeEnvironment } from './runtime-env.mjs';
@@ -43,6 +45,7 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
   if (typeof nodeVersion !== 'string' || !/^\d+\.\d+\.\d+/.test(nodeVersion) || Number(nodeVersion.split('.')[0]) < 24) invalid('Node', 'version24 or newer is required');
   const deploymentCandidate = flag(values, 'CMS_DEPLOYMENT_CANDIDATE');
   const readOnly = flag(values, 'CMS_READ_ONLY'), publishEnabled = flag(values, 'CMS_PUBLISH_ENABLED');
+  const hybridMediaEnabled = flag(values, 'CMS_MEDIA_HYBRID_ENABLED');
   if (deploymentCandidate && (!readOnly || publishEnabled)) invalid('CMS_DEPLOYMENT_CANDIDATE', 'requires CMS_READ_ONLY=true and CMS_PUBLISH_ENABLED=false');
   const allowLocal = flag(values, 'CMS_LOCAL_DEVELOPMENT');
   const publicOrigin = origin(values, 'CMS_PUBLIC_ORIGIN', allowLocal);
@@ -80,6 +83,15 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
   // exposed through an Apache public-directory mapping.
   if (values.MEDIA_PUBLIC_URL) invalid('MEDIA_PUBLIC_URL', 'the filesystem backend serves media through the configured API /m/ route');
   if (apiBasePath) env.MEDIA_PUBLIC_URL = `${publicOrigin}${apiBasePath}/m`;
+  if (values.CMS_MEDIA_PUBLIC_PATH !== undefined) {
+    if (!/^\/(?:[a-z][a-z0-9-]*\/)*[a-z][a-z0-9-]*$/.test(values.CMS_MEDIA_PUBLIC_PATH)) invalid('CMS_MEDIA_PUBLIC_PATH', 'must be a canonical public path');
+    env.MEDIA_PUBLIC_URL = publicOrigin + values.CMS_MEDIA_PUBLIC_PATH;
+  }
+  const r2Names = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'];
+  const hasR2 = r2Names.some(name => values[name] !== undefined);
+  if (hasR2 && (!hybridMediaEnabled || r2Names.some(name => !values[name]))) invalid('R2', 'hybrid storage and all private credentials are required');
+  const r2 = hasR2 ? { accountId:values.R2_ACCOUNT_ID,accessKeyId:values.R2_ACCESS_KEY_ID,secretAccessKey:values.R2_SECRET_ACCESS_KEY,bucket:values.R2_BUCKET || 'heichal-media' } : null;
+  if (hybridMediaEnabled) env.MEDIA_POLICY = 'hybrid';
   const host = text(values, 'MYSQL_HOST');
   if (!/^[A-Za-z0-9.:-]+$/.test(host)) invalid('MYSQL_HOST', 'must be a database hostname or IP address');
   const database = text(values, 'MYSQL_DATABASE'), user = text(values, 'MYSQL_USER');
@@ -104,7 +116,8 @@ export function runtimeConfiguration(values = process.env, nodeVersion = process
     publicOrigin, apiBasePath, env, ai, bindHost, trustedProxyIps, staging: env.CMS_STAGING, port: integer(values, 'PORT', 3000),
     publishEnabled, readOnly, deploymentCandidate, localAuthEnabled, localInvitationsEnabled, googleEnabled, googleSetupEnabled,
     mediaRoot: text(values, 'CMS_MEDIA_ROOT'), publicRoot: text(values, 'CMS_PUBLIC_ROOT'),
-    mediaMaxBytes: Number(env.MEDIA_R2_FILE_MB || 90) * 1024 ** 2,
+    hybridMediaEnabled, r2,
+    mediaMaxBytes: hybridMediaEnabled ? LOCAL_MEDIA_BYTES : Number(env.MEDIA_R2_FILE_MB || 90) * 1024 ** 2,
     appRoot: values.CMS_APP_ROOT, sslMode, caFile: values.MYSQL_SSL_CA,
     mysql: {
       host, port: integer(values, 'MYSQL_PORT', 3306), database, user, password: text(values, 'MYSQL_PASSWORD'),
@@ -233,6 +246,7 @@ export async function createRuntime({ values = process.env, nodeVersion = proces
     const store = makeStore(pool);
     await store.ensureSchema();
     const env = { ...config.env, ...(config.ai ? { AI: config.ai } : {}), DATA_STORE: store, EDITORS: makeKv(pool), RATE_LIMIT_STORE: makeRate(pool), MEDIA: createFileMedia({ root: paths.CMS_MEDIA_ROOT, maxBytes: config.mediaMaxBytes }) };
+    if (config.hybridMediaEnabled) env.MEDIA = createHybridMedia({ local:env.MEDIA,remote:config.r2 ? createR2Media(config.r2) : null,state:env.EDITORS });
     let handler = dependencies.handleRequest || worker.fetch;
     if (config.localAuthEnabled) {
       const makeAuth = dependencies.createAuthStore || (await import('./mysql-auth-store.mjs')).createMysqlAuthStore;
