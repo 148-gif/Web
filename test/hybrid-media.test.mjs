@@ -96,7 +96,7 @@ test('every ordinary hybrid upload bypasses Git; exactly 90 MiB stays local and 
   assert.equal(above.status,200); assert.equal(above.body.direct,true);
   assert.equal(w.row(above.body.id).status,'receiving'); assert.equal(w.state.begin,1);
   w.env.MEDIA.remoteAvailable = false;
-  assert.equal((await w.api('/media/init',{name:'unavailable.pdf',size:LOCAL_MEDIA_BYTES + 1})).status,503);
+  assert.equal((await w.api('/media/init',{name:'unavailable.pdf',size:LOCAL_MEDIA_BYTES + 1})).status,400);
 });
 test('direct completion claims an exclusive state; concurrent completion and cancellation cannot delete its object',async t => {
   const w = await world(t), init = await w.api('/media/init',{name:'large.pdf',size:LOCAL_MEDIA_BYTES + 1}), id = init.body.id;
