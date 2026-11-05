@@ -109,6 +109,7 @@ const unlinkHidden = (html) => {
 const yv = read('yavniel.json');
 const mk = read('mikveh.json');
 const mo = read('moharash.json');
+const ka = read('kamea.json');
 const lib = read('library.json');
 const rn = read('rabbi-nachman.json');
 const um = read('uman.json');
@@ -213,4 +214,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { ka, linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

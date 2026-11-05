@@ -17,6 +17,7 @@ const { pages } = await import('./lib/sections/qa.mjs');
 await import('./lib/sections/yeshiva.mjs');
 await import('./lib/sections/yavniel.mjs');
 await import('./lib/sections/moharash.mjs');
+await import('./lib/sections/kamea.mjs');
 await import('./lib/sections/library.mjs');
 await import('./lib/sections/rabbi-nachman.mjs');
 await import('./lib/sections/print.mjs');

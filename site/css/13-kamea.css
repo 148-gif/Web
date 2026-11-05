@@ -1,0 +1,26 @@
+/* The amulet page (/kamea/) and its landing page (/lp/kamea/). */
+.amulet{position:relative;width:112px;height:112px;margin:0 auto 20px;display:grid;place-items:center}
+.amulet-ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--gold2);background:radial-gradient(circle at 50% 35%,#2a5bc4,#0d2466 70%);box-shadow:0 0 0 8px rgba(230,196,102,.12),0 12px 36px rgba(0,0,0,.4)}
+.amulet-ring:after{content:"";position:absolute;inset:8px;border-radius:50%;border:1px dashed rgba(230,196,102,.55)}
+.amulet-core{position:relative;color:var(--gold3)}.amulet-core .ico{width:52px;height:52px}
+@media (prefers-reduced-motion:no-preference){.amulet-ring{animation:amuletglow 3s ease-in-out infinite}}
+@keyframes amuletglow{50%{box-shadow:0 0 0 14px rgba(230,196,102,.04),0 12px 36px rgba(0,0,0,.4)}}
+.kcta{margin-top:24px;justify-content:center}
+.kam-note{max-width:640px;margin:20px auto 0;font:.9375rem/1.7 var(--sans);color:var(--on-navy3)}
+.feats.three{grid-template-columns:repeat(3,1fr);max-width:900px;margin-inline:auto}
+.tst figcaption{margin-top:12px;font:700 .875rem var(--sans);color:var(--mute)}
+.svc.tst.two{grid-template-columns:repeat(2,1fr)}
+.hcta .btn.big{flex:0 1 auto}
+.lp-hero{background-color:var(--navy);background-image:var(--velvet),radial-gradient(120% 90% at 50% -10%,var(--royal) 0,var(--navy) 60%);text-align:center;padding:72px 0 64px;border-bottom:3px solid var(--gold2)}
+.lp-hero h1{color:#fff;font-size:3.25rem;margin:0 0 8px;text-wrap:balance;text-shadow:0 2px 18px rgba(0,0,0,.35)}
+.lp-hero .btn.ghost{color:var(--gold3);border-color:rgba(230,196,102,.7)}.lp-hero .btn.ghost:hover{background:rgba(230,196,102,.12)}
+.lp-hero .sub{color:var(--on-navy2);font-size:1.25rem;max-width:620px;margin:0 auto 8px}
+.lp-price{margin:20px 0 0;color:var(--on-navy2);font:1rem var(--sans)}.lp-price b{color:var(--gold3);font-size:1.75rem;font-family:var(--serif);margin-inline-end:6px}
+.lp-steps{list-style:none;counter-reset:s;padding:0;margin:24px auto 0;display:grid;gap:12px;max-width:620px}
+.lp-steps li{counter-increment:s;display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:16px;font-weight:700;color:var(--brand)}
+.lp-steps li:before{content:counter(s);flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,var(--gold3),var(--gold2));color:var(--on-gold);font:900 1.25rem var(--serif)}
+/* Landing page: one goal, so no site menu and no footer links. */
+.lp #mainnav,.lp .mbtn,.lp .hacts .iconbtn,.lp .foot nav,.lp .totop{display:none}
+.lp .top .bar{justify-content:center}
+@media (max-width:860px){.feats.three{grid-template-columns:1fr}.svc.tst.two{grid-template-columns:1fr}}
+@media (max-width:640px){.lp-hero{padding:40px 0 40px}.lp-hero h1{font-size:2.25rem}.lp-hero .sub{font-size:1.0625rem}.amulet{width:92px;height:92px}.hcta .btn{width:100%;justify-content:center}}

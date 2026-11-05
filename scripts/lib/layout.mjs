@@ -46,7 +46,7 @@ const CSP = [
 const baseGroups = [
   ['לימוד', [['/shut/', 'שו״ת ברסלב', 'chat', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות`], ['/letters/', 'מכתבים', 'letter', `${letters.length} מכתבים כלליים`], ['/library/', 'ספרייה', 'books', 'ספרי הצדיק לקריאה ולהורדה'], ['/halacha/', 'שו״ת הלכתי', 'scale', 'שאלות בהלכה']]],
   ['רבי נחמן מברסלב', [['/rabbi-nachman/', 'רבי נחמן', 'crown', 'רבינו, חייו, תורתו ודרכו'], ['/uman/', 'אומן', 'pin', 'ציון רבינו וקיבוץ ראש השנה'], ['/tikkun-haklali/', 'התיקון הכללי', 'lyre', 'עשרה מזמורי תהלים']]],
-  ['הצדיק מיבנאל', [['/moharash/', 'הצדיק מיבנאל', 'flame', 'מוהרא״ש: חייו ודרכו'], ['/moharash/tziyun/', 'ציון הצדיק', 'candle', 'ההבטחות ודרכי הגעה'], ['/yeshiva/', 'ישיבת בית מנחם', 'school', 'ישיבה חסידית בנשיאותו'], ['/print/', 'הדפסת אשר בנחל', 'print', 'שותפות בהדפסת ספריו']]],
+  ['הצדיק מיבנאל', [['/moharash/', 'הצדיק מיבנאל', 'flame', 'מוהרא״ש: חייו ודרכו'], ['/moharash/tziyun/', 'ציון הצדיק', 'candle', 'ההבטחות ודרכי הגעה'], ['/kamea/', 'הקמע של הצדיק', 'sparkle', 'שמירה והגנה, סיפורי ישועה'], ['/yeshiva/', 'ישיבת בית מנחם', 'school', 'ישיבה חסידית בנשיאותו'], ['/print/', 'הדפסת אשר בנחל', 'print', 'שותפות בהדפסת ספריו']]],
   ['יבנאל עיר ברסלב', [['/yavniel/', 'יבנאל', 'mountain', 'קהילה, תפילות ומידע'], ['/mikveh-malka/', 'מקווה מלכה', 'drop', 'מקווה טהרה לנשים'], ...(institutions.length ? [['/institutions/', 'מוסדות הקהילה', 'heart', 'תמיכה ותרומות']] : [])]],
 ].map(([g, xs]) => [g, [...xs]]);
 // Topics from the editor (/admin/) join a menu group by the title in their "group": one of the site's own groups, or a new one
@@ -119,14 +119,14 @@ const PRELOAD_FONTS = ['assistant-hebrew', 'assistant-latin', 'frank-ruhl-libre-
 const DESC = 'היכל הקודש, חסידות ברסלב: שו״ת ברסלב של מוהרא״ש, ספרי הצדיק לקריאה, רבי נחמן ואומן, התיקון הכללי, יבנאל והדפסת ״אשר בנחל״.';
 // Share previews (WhatsApp, Facebook) need absolute URLs, so canonical/og:url/og:image appear only when SITE_ORIGIN is set.
 const abs = (p) => esc(ORIGIN + BASE + p);
-const layout = (title, body, { desc = '', path = '/', self = path, head = '', full = false, reading = false, head_extra = '', index = true } = {}) => `<!doctype html>
+const layout = (title, body, { desc = '', path = '/', self = path, head = '', full = false, reading = false, head_extra = '', index = true, bare = false } = {}) => `<!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="strict-origin-when-cross-origin"><script>${HEAD_JS}</script>
 <title>${escAttr(nik(title))}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${escAttr(nik(desc || DESC))}">${index ? '' : '<meta name="robots" content="noindex">'}
 <meta name="theme-color" content="#0b1d50"><meta property="og:title" content="${escAttr(nik(title))}"><meta property="og:description" content="${escAttr(nik(desc || DESC))}"><meta property="og:site_name" content="${SITE}"><meta property="og:locale" content="he_IL"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">${ORIGIN && index ? `<link rel="canonical" href="${abs(self)}"><meta property="og:url" content="${abs(self)}"><meta property="og:image" content="${abs('/img/og.png')}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">` : ''}
 <link rel="manifest" href="/site.webmanifest"><link rel="apple-touch-icon" href="/img/icon-180.png"><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0b1d50"/><g fill="none" stroke="#e6c466" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON.flame}</g></svg>`)}">
 ${PRELOAD_FONTS.map((f) => `<link rel="preload" href="/${font(f)}" as="font" type="font/woff2" crossorigin>`).join('')}
 <noscript><link rel="stylesheet" href="/style.css?v=${BUILD}"></noscript><style>${SPLASH_CSS}</style>
-${head_extra}</head><body>
+${head_extra}</head><body${bare ? ' class="lp"' : ''}>
 ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 <header class="top"><div class="bar"><a class="brand" href="/"><span class="mark">${icon('flame')}</span><span>${SITE}<small>חסידות ברסלב</small></span></a><div class="hacts"><a class="iconbtn" href="/search/" aria-label="חיפוש">${icon('search')}</a><button class="iconbtn mbtn" type="button" aria-expanded="false" aria-controls="mainnav" aria-label="תפריט">${icon('menu', 'ico i-open')}${icon('close', 'ico i-close')}</button></div><nav id="mainnav" aria-label="ניווט ראשי">${mainMenu(path)}</nav></div>${reading ? '<div class="readbar" aria-hidden="true"><i></i></div>' : ''}</header>
 <main id="main">${head}${full ? body : `<div class="page">${body}</div>`}</main>
