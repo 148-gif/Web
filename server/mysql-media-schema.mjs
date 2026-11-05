@@ -24,7 +24,7 @@ export async function initializeMediaSchema(pool,{backupPath} = {}) {
     const [rows] = await pool.execute('SELECT * FROM ' + table); saved.tables[table] = rows;
   }
   try { await writeFile(join(dir,'before.json'),JSON.stringify(saved),{mode:0o600,flag:'wx'}); }
-  catch (error) { if (error.code !== 'EEXIST') throw error; const st = await lstat(join(dir,'before.json')); if (!st.isFile() || st.isSymbolicLink() || (st.mode & 0o077)) throw Error('Unsafe existing migration backup'); }
+  catch (error) { if (error.code !== 'EEXIST') throw error; const st = await lstat(join(dir,'before.json')); if (!st.isFile() || st.isSymbolicLink() || (st.mode & 0o077)) throw new Error('Unsafe existing migration backup',{cause:error}); }
   // Each ALTER is atomic in MySQL. An interrupted migration can resume safely;
   // both expansions remain compatible with the prior application version.
   if (!mediaReady) await pool.execute('ALTER TABLE media DROP CHECK `' + media.name + '`, ADD CONSTRAINT heichal_media_status_v2 CHECK (' + MEDIA_CHECK + ')');
