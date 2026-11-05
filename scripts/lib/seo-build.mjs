@@ -69,7 +69,7 @@ export function redirectRules(state = seo, base = '') {
 export function assertSeoTargets(paths, state = seo) {
   const known = new Set(paths);
   for (const [path, cfg] of Object.entries(state.records)) {
-    if (!known.has(path) && !cfg.redirectTo) throw new Error('SEO: העמוד אינו קיים: ' + path);
+    if (!known.has(path) && !cfg.redirectTo) continue; // A removed or not-yet-published item can keep dormant SEO preferences.
     const targets = [cfg.canonical, cfg.redirectTo && resolveRedirect(path, state.records), ...(cfg.links || []).map((x) => x.to), ...(cfg.related || []).map((x) => x.path)].filter(Boolean);
     for (const to of targets) if (!known.has(to)) throw new Error('SEO: יעד אינו קיים: ' + to);
   }
