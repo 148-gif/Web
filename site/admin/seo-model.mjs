@@ -3,7 +3,7 @@ export const SEO_VERSION = 1;
 const plainObject = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 export const pageKey = (path) => btoa(String.fromCharCode(...new TextEncoder().encode(path))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 export const seoFile = (path) => 'data/seo-' + pageKey(path) + '.json';
-export const cleanPath = (p) => typeof p === 'string' && p.length <= 160 && /^\/(?:[A-Za-z0-9_-]+\/)*$/.test(p);
+export const cleanPath = (p) => typeof p === 'string' && p.length <= 160 && /^\/(?:[A-Za-z0-9_-]+\/)*$/.test(p) && !/^\/(?:admin|cms-api|files|media|fonts|img|idx|books|offline|zmanim)(?:\/|$)/.test(p);
 export const normalize = (s) => String(s || '').normalize('NFKC').replace(/[֑-ׇ]/g, '').replace(/["'׳״]/g, '').replace(/־/g, ' ').toLowerCase();
 const STOP = new Set('את של על עם אל לא כן כל גם או אם אני אתה הוא היא הם הן זה זו זאת אשר מה איך למה האם כי יש אין היה היו להיות לי לו לה לנו לכם שלו שלי שלך מאוד מאד יותר כמו אבל רק כבר כדי כאשר עד עוד בין מתוך לפני אחרי רבי הרב רבינו הקדוש השם יתברך ברוך שלום תודה שאלה תשובה ספר בספר'.split(' '));
 export function terms(text) { return normalize(text).split(/[^\p{L}\p{N}]+/u).filter((x) => x.length > 2 && !STOP.has(x)); }
@@ -54,7 +54,7 @@ export const textOf = (html) => decodeHtml(String(html).replace(/<[^>]*>/g, ' ')
 export function paragraphsOf(html) {
   const main = (html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i) || [])[1] || html;
   const body = main.replace(/<(nav|aside|script|style)\b[\s\S]*?<\/\1>/gi, ' ');
-  return [...body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)].filter((m) => !/<a\b/i.test(m[1])).map((m) => textOf(m[1])).filter((p) => p.length >= 20 && p.length <= 3000);
+  return [...body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)].filter((m) => !/<a\b/i.test(m[1])).map((m) => decodeHtml(m[1].replace(/<[^>]*>/g, '')).trim()).filter((p) => p.length >= 20 && p.length <= 3000);
 }
 // Approved links are annotations, never raw HTML. Ambiguous or changed excerpts stay unlinked.
 export function annotateHtml(html, annotations) {
@@ -78,6 +78,16 @@ export function annotateHtml(html, annotations) {
   for (const n of nodes.filter((n) => n.ranges.length)) { let at = 0, result = ''; for (const r of n.ranges.sort((a, b) => a.start - b.start)) { result += escapeHtml(n.text.slice(at, r.start)) + '<a href="' + escapeHtml(r.to) + '">' + escapeHtml(n.text.slice(r.start, r.end)) + '</a>'; at = r.end; } parts[n.i] = result + escapeHtml(n.text.slice(at)); }
   return { html: parts.join(''), applied, stale };
 }
+// Preserve offsets in the original Hebrew text while comparing without niqqud and quote variants.
+export function findPhrase(text, phrase) {
+  let value = ''; const offsets = [];
+  for (let i = 0; i < text.length; i++) for (const c of normalize(text[i])) { const ch = /\s/.test(c) ? ' ' : c; if (ch === ' ' && value.endsWith(' ')) continue; value += ch; offsets.push(i); }
+  const wanted = normalize(phrase).replace(/\s+/g, ' '), at = value.indexOf(wanted);
+  if (!wanted || at < 0 || /[\p{L}\p{N}]/u.test(value[at + wanted.length] || '')) return null;
+  if (/[\p{L}\p{N}]{2}$/u.test(value.slice(Math.max(0, at - 2), at))) return null;
+  let end = offsets[at + wanted.length - 1] + 1; while (/[֑-ׇ]/.test(text[end] || '')) end++;
+  return { start: offsets[at], end, anchor: text.slice(offsets[at], end) };
+}
 export function shardFor(path) { let n = 0; for (const c of path) n = (n * 31 + c.charCodeAt(0)) >>> 0; return n % 16; }
 // BM25 over a local inverted index. Corpus statistics and explicit editorial metadata are the only inputs.
 export function contentRecommendations(pages, { records = {}, aliases = {}, ignorePairs = [] } = {}) {
@@ -99,7 +109,7 @@ export function contentRecommendations(pages, { records = {}, aliases = {}, igno
     related[p.path] = ranked.filter(([j]) => !(p.links || []).some((l) => l.to === docs[j].path && l.region === 'content')).slice(0, 5).map(([j, score]) => ({ to: docs[j].path, title: docs[j].title, score: Math.round(score * 100) / 100, terms: shared.get(j).slice(0, 6), reason: 'מילים משמעותיות משותפות בתוכן' }));
     const candidates = new Map(ranked.map(([j, s]) => [docs[j].path, { page: docs[j], score: s }]));
     // Exact named entities remain eligible even when a short page has too few statistical terms.
-    for (const t of entityTargets) { const names = [t.title, ...(records[t.path]?.aliases || []), ...(aliases[t.path] || [])]; if (names.some((n) => n.length >= 4 && p.text?.includes(n))) if (!candidates.has(t.path)) candidates.set(t.path, { page: t, score: 0 }); }
+    for (const t of entityTargets) { const names = [t.title, ...(records[t.path]?.aliases || []), ...(aliases[t.path] || [])]; if (names.some((n) => n.length >= 4 && normalize(p.text).includes(normalize(n)))) if (!candidates.has(t.path)) candidates.set(t.path, { page: t, score: 0 }); }
     const paras = p.paragraphs || [];
     for (const { page: t, score } of candidates.values()) {
       if (t.path === p.path || t.path === '/' || ignored.has(p.path + '|' + t.path)) continue;
@@ -108,11 +118,10 @@ export function contentRecommendations(pages, { records = {}, aliases = {}, igno
       let found;
       for (const quote of paras) {
         for (const anchor of names) {
-          const at = quote.indexOf(anchor); if (at < 0 || /[\p{L}\p{N}]/u.test(quote[at + anchor.length] || '')) continue;
-          const before = quote.slice(Math.max(0, at - 2), at); if (before && /[\p{L}\p{N}]{2}$/u.test(before)) continue;
+          const match = findPhrase(quote, anchor); if (!match) continue; const at = match.start;
           const context = quote.slice(Math.max(0, at - 50), at + anchor.length + 50);
           if (/^\/library\/[^/]+\/$/.test(t.path) && !/(?:ספר|פירוש|קונטרס|כרך|כרכי|בהקדמ)/.test(context)) continue;
-          found = { from: p.path, to: t.path, anchor, quote, context, score: Math.round(score * 100) / 100, reason: /^\/library\//.test(t.path) ? 'אזכור ספר בהקשר מפורש' : 'ביטוי יעד בתוך הפסקה' }; break;
+          found = { from: p.path, to: t.path, anchor: match.anchor, quote, context, score: Math.round(score * 100) / 100, reason: /^\/library\//.test(t.path) ? 'אזכור ספר בהקשר מפורש' : 'ביטוי יעד בתוך הפסקה' }; break;
         }
         if (found) break;
       }
