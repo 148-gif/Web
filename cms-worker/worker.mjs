@@ -729,7 +729,7 @@ async function publish(env, me, paths, force, note) {
   const lines = [...rows.map((r) => `- ${label(r)}: ${r.path}`), ...media.map((m) => `- ${m.status === 'staged' ? 'קובץ חדש' : 'קובץ נמחק'}: ${m.key}`)];
   const total = rows.length + media.length;
   const subject = `פרסום: ${cleanName(note) || `${total} שינויים`}`;
-  let sha = null, mergedPaths = [];
+  let sha = null, mergedPaths;
   for (let attempt = 0; ; attempt++) {
     const head = (await gh(env, `git/ref/heads/${env.BRANCH}`)).object.sha;
     // Every read in this attempt uses the same immutable commit, including
