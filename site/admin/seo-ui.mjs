@@ -2,7 +2,10 @@
 import { seoFile, cleanPath, normalize, validateSeo, validateSeoSettings, shardFor } from './seo-model.mjs';
 export function createSeoTools(ctx) {
   const e = ctx.el;
-  let indexPromise;
+  let indexPromise, managerDirty = null;
+  const dialogDirty = new Map();
+  const hasUnsaved = () => !!(managerDirty && managerDirty()) || [...dialogDirty.values()].some((check) => check());
+  const discardView = () => { managerDirty = null; for (const dlg of dialogDirty.keys()) dlg.close(); dialogDirty.clear(); };
   const action = (text, run, primary = false) => e('button', { type: 'button', class: 'btn ' + (primary ? 'pri' : 'ghost'), onclick: () => Promise.resolve().then(run).catch((x) => ctx.say(x.message, 'bad')) }, text);
   const input = (label, value, changed, multiline = false) => { const node = e(multiline ? 'textarea' : 'input', { type: multiline ? undefined : 'text', 'aria-label': label, rows: multiline ? '3' : undefined }); node.value = value || ''; node.addEventListener('input', () => changed(node.value)); return e('div', { class: 'fld' }, e('label', {}, label), node); };
   const select = (label, options, value, changed) => { const node = e('select', { 'aria-label': label }); for (const [v, title] of options) node.append(e('option', { value: v, text: title })); node.value = value || ''; node.addEventListener('change', () => changed(node.value)); return e('div', { class: 'fld' }, e('label', {}, label), node); };
@@ -25,11 +28,12 @@ export function createSeoTools(ctx) {
     ctx.assert(); if (!cleanPath(path)) throw new Error('כתובת העמוד אינה תקינה');
     const dlg = e('dialog', { class: 'dlg wide seo-dialog', 'aria-labelledby': 'seo-dialog-title', 'data-seo-dialog': '' }), body = e('div', { class: 'seo-dialog-body' }), error = e('p', { class: 'err', role: 'alert' });
     let f, cfg, original = '', busy = false;
-    const dirty = () => cfg && JSON.stringify(cfg) !== original;
+    const dirty = () => !!cfg && JSON.stringify(cfg) !== original;
+    dialogDirty.set(dlg, dirty);
     const close = () => { if (busy) return; if (!dirty() || confirm('יש הגדרות SEO שלא נשמרו. לסגור בלי לשמור?')) dlg.close(); };
     const beforeUnload = (event) => { if (dirty()) { event.preventDefault(); event.returnValue = ''; } };
     dlg.addEventListener('cancel', (event) => { event.preventDefault(); close(); });
-    dlg.addEventListener('close', () => { window.removeEventListener('beforeunload', beforeUnload); dlg.remove(); });
+    dlg.addEventListener('close', () => { window.removeEventListener('beforeunload', beforeUnload); dialogDirty.delete(dlg); dlg.remove(); });
     window.addEventListener('beforeunload', beforeUnload);
     dlg.append(e('header', { class: 'row' }, e('h2', { id: 'seo-dialog-title', class: 'grow', text: 'SEO וקישורים לפריט' }), action('סגירה', close)), e('p', { class: 'help ltr', text: path }), body, error);
     document.body.append(dlg); dlg.showModal(); body.append(e('p', { text: 'טוען את נתוני הפריט…' }));
@@ -44,7 +48,7 @@ export function createSeoTools(ctx) {
       body.append(e('p', { class: 'note', text: env.staging ? 'האתר במצב בנייה: האינדוקס חסום ברמת הפריסה. ההעדפות כאן יכובדו לאחר פתיחת האתר לחיפוש.' : 'כשירות לאינדוקס היא הגדרת האתר; היא אינה אישור שהעמוד מופיע בפועל בגוגל.' }), tabs, panes);
       tab('SEO ואינדוקס', (panel) => {
         const preview = e('div', { class: 'seo-preview' });
-        const drawPreview = () => { preview.textContent = ''; preview.append(e('small', { class: 'ltr', text: env.origin + (cfg.canonical || path) }), e('h3', { text: cfg.title || page.title }), e('p', { text: cfg.description || page.description || 'התיאור ייגזר מתוכן הפריט לאחר הפרסום.' })); };
+        const drawPreview = () => { preview.textContent = ''; preview.append(e('small', { class: 'ltr', text: env.origin + (cfg.canonical || path) }), e('h3', { text: cfg.title || page.searchTitle || page.title }), e('p', { text: cfg.description || page.description || 'התיאור ייגזר מתוכן הפריט לאחר הפרסום.' })); };
         panel.append(input('כותרת לחיפוש ולשיתוף', cfg.title, (v) => { cfg.title = v; drawPreview(); }), input('תיאור לחיפוש ולשיתוף', cfg.description, (v) => { cfg.description = v; drawPreview(); }, true), preview,
           e('p', { class: 'help', text: 'שדות ריקים משתמשים בברירת המחדל של הפריט. התצוגה היא המחשה; מנוע החיפוש יכול לבחור נוסח אחר.' }),
           select('העדפת אינדוקס לפריט', [['inherit', 'לפי הגדרות האתר'], ['index', 'לאפשר אינדוקס'], ['noindex', 'למנוע אינדוקס']], cfg.indexing || 'inherit', (v) => { cfg.indexing = v; }),
@@ -92,6 +96,7 @@ export function createSeoTools(ctx) {
       const [catalog, env] = await Promise.all([index(), environment()]); ctx.assert(); if (!host.isConnected) return; loading.remove();
       host.append(e('p', { class: 'note', text: env.staging ? 'מצב בנייה: האתר חסום לאינדוקס ברמת הפריסה. אפשר להכין את הגדרות העמודים לעתיד בלי לפתוח אותו לחיפוש.' : 'הגדרות האינדוקס כאן מתארות כשירות לחיפוש, לא הופעה מאומתת בגוגל.' }), e('p', { class: 'help', text: catalog.pages.length.toLocaleString('he-IL') + ' עמודים · ' + catalog.stats.errors + ' שגיאות קישורים · ' + catalog.stats.warnings + ' אזהרות · ' + catalog.suggestions.length + ' הצעות לקישור בטקסט. הדוח מתאריך ' + new Date(catalog.generated).toLocaleString('he-IL') }), e('div', { class: 'acts' }, action('בדיקות מבנה והגדרות הבודק', openAudit), e('a', { class: 'btn ghost', href: '#/changes', text: 'שינויים ממתינים לפרסום' })));
       let activeSettings = null, settingsOriginal = '';
+      managerDirty = () => host.isConnected && !!activeSettings && JSON.stringify(activeSettings) !== settingsOriginal;
       const controls = e('div', { class: 'seo-tabs' }), body = e('div'); host.append(controls, body);
       function table() {
         body.textContent = ''; let query = '', mode = 'all', page = 0; const rows = e('div'), count = e('p', { class: 'help' });
@@ -109,5 +114,5 @@ export function createSeoTools(ctx) {
       for (const [label, run] of [['עמודים', table], ['המלצות', recommendations], ['הגדרות וכללים', settings], ['הפניות', redirects]]) controls.append(action(label, () => { if (activeSettings && JSON.stringify(activeSettings) !== settingsOriginal && !confirm('יש הגדרות וכללים שלא נשמרו. לצאת בלי לשמור?')) return; activeSettings = null; return run(); })); table();
     } catch (x) { loading.textContent = 'לא ניתן לקרוא את אינדקס ה-SEO: ' + x.message; }
   }
-  return { inline, manager, openPage };
+  return { inline, manager, openPage, hasUnsaved, discardView };
 }
