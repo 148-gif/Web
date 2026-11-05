@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 
 import { createHash } from 'node:crypto';
 import { IMG_LIMITS, IMG_THUMBS, imgWidths, imageProblems, blockProblems, budgetFor } from '../../site/admin/image-rules.mjs';
 import { validateAuditConfig } from './linkaudit.mjs';
+import { transformSeo, filterSeoSitemap } from './seo-build.mjs';
 
 const SITE = 'היכל הקודש';
 const BASE = (process.env.SITE_BASE || '').replace(/\/$/, ''); // e.g. /Web when served from a sub-path
@@ -50,7 +51,8 @@ const dropHiddenLines = (c) => c
   .join('\n');
 const write = (p, c) => {
   if (isHidden(`/${p}`)) return;
-  if (p.endsWith('.html')) c = rebase(unlinkHidden(c));
+  if (p.endsWith('.html')) c = rebase(unlinkHidden(transformSeo(c, '/' + p.replace(/(?:^|\/)index\.html$/, '/').replace(/\.html$/, '').replace(/^\//, ''))));
+  else if (p === 'sitemap.xml') c = dropHiddenLines(filterSeoSitemap(c));
   else if (/\.(xml|txt)$/.test(p)) c = dropHiddenLines(c);
   mkdirSync(`dist/${p.split('/').slice(0, -1).join('/')}`, { recursive: true });
   writeFileSync(`dist/${p}`, c);
