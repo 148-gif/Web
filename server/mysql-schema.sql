@@ -51,7 +51,7 @@ CREATE TABLE media (
   created_at BIGINT UNSIGNED NOT NULL,
   CHECK (kind IN ('photo', 'image', 'video', 'audio', 'doc')),
   CHECK (store IN ('github', 'r2')),
-  CHECK (status IN ('uploading', 'receiving', 'staged', 'published', 'removing')),
+  CHECK (status IN ('uploading', 'receiving', 'finalizing', 'staged', 'published', 'removing')),
   CHECK (size BETWEEN 1 AND 9007199254740991 AND created_at <= 9007199254740991)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
@@ -76,7 +76,7 @@ CREATE TABLE ai_usage (
 CREATE TABLE editors_kv (
   `key` VARCHAR(32) NOT NULL PRIMARY KEY,
   value MEDIUMTEXT NOT NULL,
-  CHECK (`key` IN ('people', 'editors', 'owner-names')),
+  CHECK (`key` IN ('people', 'editors', 'owner-names') OR (CHAR_LENGTH(`key`) = 21 AND `key` LIKE 'media-upload:________')),
   CHECK (JSON_VALID(value))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 

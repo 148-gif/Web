@@ -228,7 +228,7 @@
   }
   function dirty() { return !!cur && JSON.stringify(cur.data) !== cur.orig; }
   window.addEventListener('beforeunload', function (e) { if (dirty()) { keepLocal(); e.preventDefault(); e.returnValue = ''; } });
-  function leave() { if (!dirty()) return true; if (!confirm('יש שינויים שלא נשמרו. לצאת בלי לשמור?')) return false; dropLocal(cur); return true; }
+  function leave() { if (seoToolsInstance && seoToolsInstance.hasUnsaved()) { if (!confirm('יש הגדרות SEO שלא נשמרו. לצאת בלי לשמור?')) return false; seoToolsInstance.discardView(); } if (!dirty()) return true; if (!confirm('יש שינויים שלא נשמרו. לצאת בלי לשמור?')) return false; dropLocal(cur); return true; }
   var stT, locT, autoT;
   var AUTO_MS = 30000; // idle time before a long session is saved to the server as a draft (config.json "autosaveSeconds")
   function touch() {
@@ -428,19 +428,23 @@
   // ---- layout ----
   function shell() {
     if (!token) return;
-    var nav = $('#nav'); nav.textContent = '';
+    var nav = $('#nav'), contentWasOpen = $('#nav-content') && $('#nav-content').open; nav.textContent = '';
     var link = function (hash, ic, text) { return el('a', { href: hash, 'data-h': hash }, icon(ic), el('span', { text: text })); };
     if (userCaps && !userCaps.edit) { nav.append(link('#/account','users','החשבון שלי')); mark(location.hash || '#/account'); return; }
     var ts = (cache.topics && cache.topics.data) || [];
-    nav.append(link('#/', 'home', 'לוח בקרה'), link('#/pages', 'page', 'נושאים ודפים'));
+    nav.append(link('#/', 'home', 'לוח בקרה'));
+    var content = el('details', { id:'nav-content',class:'navgroup' },el('summary', {},icon('book'),el('span', {text:'תוכן'})));
+    content.open = !!contentWasOpen;
+    var children = el('div', {class:'navchildren'},link('#/pages', 'page', 'נושאים ודפים'));
+    content.append(children); nav.append(content);
     groupTitles().forEach(function (title) {
       var built = GROUPS.filter(function (g) { return g[0] === title; })[0];
       var mine = ts.filter(function (t) { return (t.group || OTHER) === title; });
       if (!built && !mine.length) return;
-      nav.append(el('h3', { text: title }));
-      if (title === 'לימוד') nav.append(link('#/shut', 'chat', 'שו״ת ברסלב'));
-      if (built) built[1].forEach(function (f) { nav.append(link('#/file/' + f[0], f[2], f[1])); });
-      mine.forEach(function (t) { nav.append(link('#/topic/' + t.slug, t.icon || 'book', t.title)); });
+      children.append(el('h3', { text: title }));
+      if (title === 'לימוד') children.append(link('#/shut', 'chat', 'שו״ת ברסלב'));
+      if (built) built[1].forEach(function (f) { children.append(link('#/file/' + f[0], f[2], f[1])); });
+      mine.forEach(function (t) { children.append(link('#/topic/' + t.slug, t.icon || 'book', t.title)); });
     });
     nav.append(el('h3', { text: 'ניהול' }));
     if (owner) nav.append(link('#/users','users','משתמשים'));
@@ -464,6 +468,8 @@
   function mark(hash) {
     document.querySelectorAll('#nav a').forEach(function (a) { var h = a.getAttribute('data-h'); a.classList.toggle('cur', h === hash || (h !== '#/' && h !== '#/auth' && hash.indexOf(h + '/') === 0) || (h === '#/pages' && /^#\/page\//.test(hash))); });
     document.querySelectorAll('#nav a').forEach(function (a) { if (a.classList.contains('cur')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    var content = $('#nav-content');
+    if (content && content.querySelector('a.cur')) content.open = true;
     navOpen(false);
   }
   function navOpen(open, restoreFocus) {
@@ -957,6 +963,7 @@
           el('button', { type: 'button', class: 'btn ghost wide', onclick: function () { preview(p); } }, icon('eye'), 'תצוגה מקדימה'),
           viewLink(url, 'צפייה בדף באתר', 'wide'),
           el('button', { type: 'button', class: 'btn ghost wide dng', onclick: delPage }, icon('trash'), 'מחיקת הדף')));
+      seoInline(side, function () { return { path: '/' + p.topic + (single ? '/' : '/' + slug + '/'), title: p.title, paragraphs: (p.blocks || []).filter(function (b) { return b.type === 'text'; }).flatMap(function (b) { return b.paragraphs || []; }) }; });
       status();
     }, function (e) { m.textContent = ''; say(e.message === 'לא נמצא' ? 'הדף לא נמצא. אולי הוא נמחק.' : e.message, 'bad'); });
   }
@@ -1077,6 +1084,7 @@
       find.addEventListener('input', applyFind);
       draw();
       side.append(saveBox(function () { saveFile(name); }), el('div', { class: 'card' }, el('h3', { text: 'מתקדם' }), el('button', { type: 'button', class: 'btn ghost wide', onclick: function () { rawEditor(draw); } }, 'עריכת הקובץ כ־JSON'), el('p', { class: 'help', text: 'רק למי שמכיר את מבנה הקבצים.' })));
+      if (meta.url) seoInline(side, function () { return { path: meta.url, title: meta.name }; });
       status();
     }, function (e) { m.textContent = ''; say(e.message, 'bad'); });
   }
@@ -1214,6 +1222,7 @@
       side.append(saveBox(function () { saveShut(f.fresh); }),
         el('div', { class: 'card' }, el('h3', { text: 'פרטים' }), textInput(x, 'date', 'תאריך', { placeholder: 'למשל: ה׳ שבט תשע״ה' }), el('div', { class: 'fld' }, el('label', { for: 'skind', text: 'סוג' }), kindSel), el('p', { class: 'help', text: 'מספר: ' + x.id })),
         isNew ? null : el('div', { class: 'card stack' }, viewLink(base + x.id + '/', 'צפייה באתר', 'wide'), el('button', { type: 'button', class: 'btn ghost wide dng', onclick: hideShut }, icon('trash'), 'הסתרה מהאתר')));
+      seoInline(side, function () { return { path: (x.kind === 'letters' ? '/letters/' : '/shut/') + x.id + '/', title: x.title, paragraphs: x.q.concat(x.a) }; });
       status();
     }).catch(function (e) { m.textContent = ''; say(e.message, 'bad'); });
   }
@@ -1299,10 +1308,47 @@
       r.readAsDataURL(blob);
     });
   }
+
+  function uploadDirectMedia(file, init, onProgress, epoch) {
+    var urls = {}, total = Math.ceil(file.size / init.partBytes);
+    function part(number, attempt) {
+      sessionCheck(epoch);
+      if (!urls[number]) return wapi('POST','/media/parts',{id:init.id,from:number,count:16}).then(function (batch) {
+        batch.parts.forEach(function (p) { urls[p.number] = p; });
+        return part(number,attempt);
+      });
+      var signed = urls[number], start = (number - 1) * init.partBytes, blob = file.slice(start,Math.min(file.size,start + init.partBytes));
+      return new Promise(function (res,rej) {
+        sessionCheck(epoch);
+        var x = new XMLHttpRequest(); transfers.add(x);
+        x.open('PUT',signed.url); x.timeout = 300000;
+        Object.keys(signed.headers).forEach(function (name) { x.setRequestHeader(name,signed.headers[name]); });
+        x.upload.onprogress = function (event) { if (epoch === sessionEpoch && event.lengthComputable) onProgress((start + event.loaded) / file.size); };
+        x.onload = function () { if (epoch !== sessionEpoch) return rej(endedSession()); if (x.status >= 200 && x.status < 300) res(); else { delete urls[number]; rej(new Error('העלאת חלק מהקובץ לא הצליחה.')); } };
+        x.onerror = x.ontimeout = function () { rej(new Error('החיבור נפסק. נסו שוב.')); };
+        x.onabort = function () { rej(endedSession()); };
+        x.onloadend = function () { transfers.delete(x); };
+        x.send(blob);
+      }).catch(function (error) {
+        if (error.editorSessionEnded || attempt >= 2) throw error;
+        delete urls[number]; return part(number,attempt + 1);
+      }).then(function () { onProgress(Math.min(number * init.partBytes,file.size) / file.size); });
+    }
+    function next(number) {
+      sessionCheck(epoch);
+      if (number > total) return wapi('POST','/media/complete',{id:init.id}).then(function (j) { return j.item; });
+      return part(number,0).then(function () { return next(number + 1); });
+    }
+    return next(1).catch(function (error) {
+      return wapi('POST','/media/abort',{id:init.id}).catch(function () {}).then(function () { throw error; });
+    });
+  }
+
   // Uploads one file; onProgress gets 0..1. Resolves with the new library item.
   function uploadMedia(file, onProgress) {
     var epoch = sessionEpoch;
     return wapi('POST', '/media/init', { name: file.name, size: file.size }).then(function (init) {
+      if (init.direct) return uploadDirectMedia(file,init,onProgress,epoch);
       if (init.store === 'r2') {
         return new Promise(function (res, rej) {
           sessionCheck(epoch);
@@ -1400,7 +1446,7 @@
   function mediaScreen() {
     var epoch = sessionEpoch;
     var m = main();
-    m.append(head('ספריית מדיה', 'תמונות, סרטונים, שמע ומסמכים להוספה לדפים. הקבצים הקטנים נשמרים עם האתר ויפורסמו בפרסום, והגדולים והסרטונים נשמרים באחסון נפרד.'));
+    m.append(head('ספריית מדיה', 'תמונות, סרטונים, שמע ומסמכים להוספה לדפים. העלו קובץ והעתיקו קישור, או בחרו אותו בעת עריכת התוכן.'));
     var quota = el('section', { class: 'card' }), list = el('ul', { class: 'upl' });
     var input = el('input', { type: 'file', multiple: true, accept: MEDIA_ACCEPT, id: 'mfile', hidden: true });
     var pick = el('button', { type: 'button', class: 'btn pri', onclick: function () { input.click(); } }, icon('plus'), 'העלאת קבצים');
@@ -1411,8 +1457,9 @@
     var kind = '', data = { items: [], quota: null };
     var draw = function () {
       var w = q.value.trim();
-      quota.textContent = ''; quota.append(el('h2', { text: 'מכסת האחסון החינמית' }));
-      if (data.quota) quota.append(quotaBar('אחסון עם האתר (קבצים קטנים)', data.quota.github), quotaBar('אחסון קבצים גדולים וסרטונים', data.quota.r2, !data.quota.r2.enabled),
+      quota.textContent = ''; quota.append(el('h2', { text: data.quota && data.quota.automatic ? 'אחסון קבצים' : 'מכסת האחסון החינמית' }));
+      if (data.quota && data.quota.automatic) quota.append(quotaBar('הקבצים בספרייה',data.quota.r2),el('p',{class:'help',text:'ההעלאה והאחסון מנוהלים אוטומטית. עד ' + mbytes(data.quota.r2.fileMax) + ' לקובץ.'}));
+      else if (data.quota) quota.append(quotaBar('אחסון עם האתר (קבצים קטנים)', data.quota.github), quotaBar('אחסון קבצים גדולים וסרטונים', data.quota.r2, !data.quota.r2.enabled),
         el('p', { class: 'help', text: 'עד ' + mbytes(data.quota.github.fileMax) + ' לקובץ באחסון עם האתר' + (data.quota.r2.enabled ? ', ועד ' + mbytes(data.quota.r2.fileMax) + ' לקובץ באחסון הגדול' : '. סרטונים וקבצים גדולים יותר דורשים הפעלת אחסון הקבצים הגדולים (R2), או קישור לסרטון ב־YouTube') + '.' }));
       chips.textContent = '';
       [['', 'הכול']].concat(Object.keys(MEDIA_KINDS).map(function (k) { return [k, MEDIA_KINDS[k][0]]; })).forEach(function (c) { chips.append(el('button', { type: 'button', class: 'chipb', 'aria-pressed': String(kind === c[0]), onclick: function () { kind = c[0]; draw(); } }, c[1])); });
@@ -1704,6 +1751,7 @@
     var m;
     if ((m = PAGE_RX.exec(path))) return { kind: 'page', label: 'דף', title: m[1], href: '#/page/' + m[1], id: m[1] };
     if ((m = SHUT_RX.exec(path))) return { kind: 'shut', label: 'שו״ת', title: '#' + m[1], href: '#/shut/' + m[1], id: m[1] };
+    if (path === 'data/seo-settings.json' || /^data\/seo-[A-Za-z0-9_-]+\.json$/.test(path)) return { kind: 'file', label: 'SEO', title: path === 'data/seo-settings.json' ? 'הגדרות SEO וכללים' : 'הגדרות SEO לפריט', href: '#/links' };
     if (path === 'data/link-audit.json') return { kind: 'file', label: 'הגדרות', title: 'קישורים ו־SEO', href: '#/links' };
     var ph = /^data\/img\/([\w-]+)\/([\w.]+)$/.exec(path);
     if (ph) return { kind: 'media', label: 'תמונה', title: ph[1] + ' · ' + ph[2], href: '#/file/images.json' };
@@ -1775,7 +1823,8 @@
           ul.append(el('li', { class: c.conflict ? 'conflict' : '' }, r.cb,
             el('div', { class: 'grow' }, el('div', {}, el('span', { class: 'tag', text: info.label }), ' ', r.title, ' ', el('span', { class: 'tag st-' + c.status, text: STATUS[c.status] })), r.detail,
               el('small', { class: 'help', text: 'נערך על ידי ' + c.name + ' · ' + fmt(c.ts) }),
-              c.conflict ? el('small', { class: 'warn', text: 'הקובץ הזה השתנה גם באתר מאז שהתחלתם לערוך אותו. בפרסום תתבקשו להחליט.' }) : null),
+              c.conflict ? el('small', { class: 'warn', text: 'הקובץ הזה השתנה גם באתר מאז שהתחלתם לערוך אותו. בפרסום תתבקשו להחליט.' }) : null,
+              c.merged ? el('small', { class: 'help', text: 'הקובץ השתנה גם באתר, אבל במקומות אחרים. בפרסום השינויים ימוזגו ולא יידרסו.' }) : null),
             c.status === 'removed' ? null : el('a', { class: 'btn ghost sm', href: info.href }, 'פתיחה')));
           describe(c).then(function (d) { r.d = d; r.title.textContent = d.title; r.detail.textContent = d.detail; }, function () { /* the path stays as the title */ });
         });
@@ -1888,8 +1937,40 @@
     load();
   }
 
+  // Shared SEO workspace: public reports are separate from private, revision-checked editorial drafts.
+  var seoToolsPromise, seoToolsInstance, seoToolsEpoch = -1;
+  window.addEventListener('beforeunload', function (e) { if (seoToolsInstance && seoToolsInstance.hasUnsaved()) { e.preventDefault(); e.returnValue = ''; } });
+  function seoToolsFor() {
+    var epoch = sessionEpoch;
+    if (!seoToolsPromise || seoToolsEpoch !== epoch) {
+      seoToolsEpoch = epoch;
+      seoToolsPromise = import('./seo-ui.mjs?v=20261105-1').then(function (module) {
+        sessionCheck(epoch);
+        seoToolsInstance = module.createSeoTools({ el: el, head: head, say: say, label: function (code) { return (AUDIT[code] || [code])[0]; },
+          assert: function () { sessionCheck(epoch); }, writable: function () { return !contentReadOnly(); },
+          read: function (path) { sessionCheck(epoch); return getFile(path); },
+          json: function (url) { sessionCheck(epoch); return sessionFetch(url, { cache: 'no-store' }, function (r) { if (!r.ok) throw new Error('נתוני SEO עוד לא זמינים; השלימו פרסום ונסו שוב.'); return r.json(); }); },
+          save: function (path, data, sha, message, url) { sessionCheck(epoch); if (contentReadOnly()) return Promise.reject(new Error('העריכה אינה זמינה בחשבון זה')); return commit(path, data, 2, sha, message, url); }
+        });
+        return seoToolsInstance;
+      });
+    }
+    return seoToolsPromise;
+  }
+  function seoInline(host, options) {
+    var epoch = sessionEpoch;
+    seoToolsFor().then(function (tools) { sessionCheck(epoch); if (host.isConnected) tools.inline(host, options); }).catch(function (x) { if (!x.editorSessionEnded) say(x.message, 'bad'); });
+  }
+  function linksScreen() {
+    var epoch = sessionEpoch, m = main(); loading(m);
+    seoToolsFor().then(function (tools) { sessionCheck(epoch); m.textContent = ''; return tools.manager(m, function () { if (leave()) legacyLinksScreen(); }); }).catch(function (x) { if (!x.editorSessionEnded) { m.textContent = ''; say(x.message, 'bad'); } });
+  }
+
   // ---- links and SEO: the audit of the last build (admin/links.json) and the settings it reads (data/link-audit.json) ----
   var AUDIT = {
+    'missing-description': ['חסר תיאור לחיפוש', 'הוסיפו תיאור ברור לפריט.'],
+    'heading-count': ['מבנה כותרת ראשית', 'בדקו שקיימת כותרת H1 אחת ברורה.'],
+    'stale-annotation': ['סימון קישור שדורש עדכון', 'קטע המקור השתנה או אינו חד-משמעי. הקישור לא הוכנס.'],
     'broken-link': ['קישור פנימי שבור', 'הקישור מוביל לעמוד שלא קיים. תקנו את הכתובת או הסירו את הקישור.'],
     orphan: ['עמוד יתום', 'אף עמוד באתר לא מקשר אליו, ולכן גוגל ומנועי AI כמעט לא ימצאו אותו. הוסיפו אותו לרשימה או לדף של הנושא שלו.'],
     'empty-anchor': ['קישור בלי טקסט', 'קישור צריך טקסט (או תמונה עם תיאור) כדי שיהיה ברור לאן הוא מוביל.'],
@@ -1936,7 +2017,7 @@
       b.textContent = String(n); b.classList.toggle('bad', a.stats.errors > 0);
     });
   }
-  function linksScreen() {
+  function legacyLinksScreen() {
     var epoch = sessionEpoch;
     var m = main(); loading(m);
     var fresh = { path: 'data/link-audit.json', sha: null, indent: 2, data: {}, orig: '{}', fresh: true };
@@ -1946,7 +2027,7 @@
       cur.check = function () { return linksProblem(cur.data); }; cur.clean = auditTidy;
       applyLocal(cur); auditData(cur.data);
       m.textContent = '';
-      m.append(head('קישורים ו־SEO', 'בדיקה אוטומטית של הקישורים הפנימיים באתר, הצעות לחיבור עמודים, וההגדרות שלה.', [el('a', { class: 'btn ghost', href: 'https://github.com/' + cfg.repo + '/issues?q=is%3Aissue+label%3Alink-audit', target: '_blank', rel: 'noopener' }, icon('list'), 'הדוח השבועי ב־GitHub')]));
+      m.append(head('קישורים ו־SEO', 'בדיקה אוטומטית של הקישורים הפנימיים באתר, הצעות לחיבור עמודים, וההגדרות שלה.', [el('button', { type: 'button', class: 'btn ghost', onclick: linksScreen }, 'למרכז SEO המלא'), el('a', { class: 'btn ghost', href: 'https://github.com/' + cfg.repo + '/issues?q=is%3Aissue+label%3Alink-audit', target: '_blank', rel: 'noopener' }, icon('list'), 'הדוח השבועי ב־GitHub')]));
       var col = el('div', { class: 'col' }), side = el('aside', { class: 'side' });
       m.append(el('div', { class: 'split' }, col, side));
       var body = el('div'); col.append(body);
@@ -2625,6 +2706,7 @@
     transfers.forEach(function (r) { r.abort(); }); transfers.clear();
     timers.forEach(clearTimeout); timers.clear(); clearInterval(pollTimer); pollTimer = null;
     document.querySelectorAll('dialog').forEach(function (dlg) { dlg.close(); dlg.remove(); });
+    seoToolsPromise = null; seoToolsInstance = null; seoToolsEpoch = -1;
     // Detach the old screen: callbacks which still hold its nodes cannot refill the signed-out page.
     var oldMain = $('#main'); oldMain.replaceWith(oldMain.cloneNode(false));
     $('#preview-state').hidden = true;

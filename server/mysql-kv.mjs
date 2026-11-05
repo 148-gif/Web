@@ -1,12 +1,13 @@
-// Exact-text KV compatibility for the editor's three membership/name records.
+// Exact-text KV for membership/name records and private multipart upload state.
 // Schema installation is a separate, explicit migration step.
 import { withTransaction, lockResource } from './mysql-core.mjs';
 
 const KEYS = new Set(['people', 'editors', 'owner-names']);
+const UPLOAD_KEY = /^media-upload:[0-9a-f]{8}$/;
 const MAX_VALUE_BYTES = 16777215; // MEDIUMTEXT, measured after UTF-8 encoding.
 
 function keyOf(key) {
-  if (typeof key !== 'string' || !KEYS.has(key)) throw new TypeError('Unsupported editor KV key');
+  if (typeof key !== 'string' || (!KEYS.has(key) && !UPLOAD_KEY.test(key))) throw new TypeError('Unsupported editor KV key');
   return key;
 }
 
@@ -41,8 +42,17 @@ export function createMysqlKv(pool) {
       keyOf(key); valueOf(value);
       // Deliberately keep text representation, including spacing and Unicode.
       await withTransaction(pool, async (connection) => {
-        await lockResource(connection, `kv:${key}`);
+        await lockResource(connection, UPLOAD_KEY.test(key) ? 'media' : `kv:${key}`);
         await connection.execute('INSERT INTO editors_kv (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?', [key, value, value]);
+      });
+    },
+
+    async delete(key) {
+      keyOf(key);
+      if (!UPLOAD_KEY.test(key)) throw new TypeError('Only transient media state may be deleted');
+      await withTransaction(pool, async connection => {
+        await lockResource(connection, UPLOAD_KEY.test(key) ? 'media' : `kv:${key}`);
+        await connection.execute('DELETE FROM editors_kv WHERE `key` = ?', [key]);
       });
     },
 
@@ -53,7 +63,7 @@ export function createMysqlKv(pool) {
         // A seeded lock also covers a missing key without inserting placeholder
         // user data. INSERT IGNORE followed by a locking read would upgrade
         // duplicate-key shared locks and can deadlock concurrent first updates.
-        await lockResource(connection, `kv:${key}`);
+        await lockResource(connection, UPLOAD_KEY.test(key) ? 'media' : `kv:${key}`);
         const [rows] = await connection.execute('SELECT value FROM editors_kv WHERE `key` = ? FOR UPDATE', [key]);
         if (rows.length > 1) throw new Error('Invalid editor KV storage result');
         const previous = rows.length === 0 ? null : valueOf(rows[0].value);

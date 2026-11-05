@@ -138,7 +138,11 @@ export function createMysqlDataStore(pool) {
     },
     getUploadChunks: (id) => rows('SELECT n, LENGTH(data) AS len, data FROM media_chunks WHERE id = ? ORDER BY n', [id]),
     finishGithubUpload: (id, email) => transition(id, 'uploading', 'staged', { email }),
+    listReceivingMedia: before => rows("SELECT * FROM media WHERE store = 'r2' AND status IN ('receiving', 'finalizing') AND created_at < ? ORDER BY created_at LIMIT 20", [before]),
     claimR2Upload: (id, email) => transition(id, 'uploading', 'receiving', { email, store: 'r2' }),
+    claimR2Finalization: (id, email) => transition(id, 'receiving', 'finalizing', { email, store: 'r2' }),
+    finishR2Direct: id => transition(id, 'finalizing', 'published'),
+    resetR2Direct: id => transition(id, 'finalizing', 'uploading'),
     finishR2Upload: (id) => transition(id, 'receiving', 'published'),
     resetR2Upload: (id) => transition(id, 'receiving', 'uploading'),
     dropMedia(id) {
@@ -188,7 +192,6 @@ export function createMysqlDataStore(pool) {
         else await execute(connection, 'DELETE FROM media WHERE id = ?', [row.id]);
       });
     },
-    discardDrafts: (paths) => paths.length ? execute(pool, `DELETE FROM drafts WHERE path IN (${marks(paths.length)})`, paths) : Promise.resolve(),
     restorePublishedMedia: (id) => mediaTransaction((connection) => execute(connection, "UPDATE media SET status = 'published' WHERE id = ?", [id])),
     getStagedChunk: (id, n) => first("SELECT c.data FROM media_chunks c INNER JOIN media m ON m.id = c.id WHERE m.id = ? AND m.status = 'staged' AND c.n = ?", [id, n]),
     async listLog({ before, limit }) {

@@ -107,3 +107,12 @@ node scripts/package-cpanel.mjs \
 5. להגדיר ולבדוק את תהליך הפרסום החוזר לפני הפעלת `CMS_PUBLISH_ENABLED`: GitHub בונה תוצר מהמסטר, ו־Cron פרטי ב־cPanel מושך ומאמת אותו. היישום והפקודות מתועדים ב־[docs/cpanel-publication.txt](../docs/cpanel-publication.txt). הבנייה חסומה עד להפעלת משתנה המאגר, וה־runner מבצע dry-run כברירת מחדל. לא נוצר Cron או מפתח כחלק מהמימוש.
 6. חבילת cPanel מגדירה ללוח מעקב אחר תהליך הפרסום שלה; הצלחה דורשת גם רשומת פריסה וגם סמן קומיט תואם באתר. תצורת GitHub Pages המקורית ממשיכה לעקוב אחר Pages. פרסום סטטי שומר את הגדרות האחסון, הנתונים והמדיה הפרטית; שינוי בקובצי השרת מחייב עדכון נפרד ומאושר.
 7. מיזוג למסטר מפעיל גם את תהליכי GitHub Pages ו־Cloudflare הקיימים. מתאמים מיזוגים ופריסה ושומרים את המקורות והגיבויים במהלך המעבר.
+
+
+## Automatic media storage
+
+With `CMS_MEDIA_HYBRID_ENABLED=true`, ordinary uploads up to and including 90 MiB stay in the private `CMS_MEDIA_ROOT`. Larger uploads use authenticated multipart reservations and short-lived, exact-size signed URLs directly from the browser to the existing R2 bucket; they are never buffered in the hosting filesystem or committed to Git. Prepared photo variants retain their existing publication workflow.
+
+Store `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET` only in the private runtime environment. The R2 key needs object read/write permissions for that bucket only. Set `MEDIA_R2_FILE_MB=5120` for a 5 GiB per-file ceiling; the existing total capacity budget remains enforced atomically, including in-progress uploads. `CMS_MEDIA_PUBLIC_PATH=/files` produces stable same-origin links; configure Apache to route `/files/<media-key>` to `/cms-api/m/<media-key>`. Existing `/cms-api/m/` links remain supported. R2 responses redirect to a five-minute signed download URL so the hosting server does not relay object bytes.
+
+The bucket CORS rule must allow PUT from the exact site origin with `Content-Type`; do not make the bucket public. The browser sends no site cookies or session headers to R2. Completion validates the provider part list, total size and file signature before making the media row available. Completion/cancellation are mutually exclusive database transitions. Expired direct uploads are cleaned on subsequent uploads; failed provider cleanup keeps its capacity reservation. The explicit release setup expands the existing media status and private KV namespace checks after writing a private backup. No tables or user records are replaced; normal startup never executes DDL.

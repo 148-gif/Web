@@ -33,6 +33,8 @@ import { imageProblems, blockProblems, ownerOnlyChanges, registryShapeChanges, p
 import { boundedStream, readJsonBody, RequestBodyError } from './request-guards.mjs';
 import { loginLimit, writeLimit } from './rate-limit.mjs';
 import { getDataStore } from './data-store.mjs';
+import { mergeJsonText } from './json-merge.mjs';
+import { validateSeo, validateSeoSettings } from '../site/admin/seo-model.mjs';
 
 const SESSION_HOURS = 12;
 const enc = new TextEncoder();
@@ -211,6 +213,16 @@ const publishedSha = async (env, path) => { const j = await gh(env, at(env, path
 // The text of a file as published (null if the live site does not have it).
 const publishedText = async (env, path) => { const j = await gh(env, at(env, path), { allow404: true }); return j && !Array.isArray(j) ? fromB64(j.content) : null; };
 
+// A draft whose file changed on the live branch meanwhile: merge the three versions (the draft's base, the live file, the draft)
+// field by field. Returns the merged text, or null when the two sides touched the same thing and a person must decide.
+async function tryMerge(live, row, pub) {
+  if (row.deleted || !row.base_sha || !pub) return null;
+  const base = await gh(live, `git/blobs/${row.base_sha}`, { allow404: true });
+  const liveText = await publishedText(live, row.path);
+  if (!base || liveText === null) return null;
+  return mergeJsonText(fromB64(base.content), liveText, row.content);
+}
+
 // ---- what an editor may ask GitHub for (reads only; writes go through drafts and /publish) ----
 // Returns the GitHub API path, or null when the request is not allowed.
 function route(method, path) {
@@ -319,7 +331,9 @@ const mediaUrl = (env, row, origin) => (row.store === 'github' ? `/media/${row.k
 const mediaView = (env, r, origin) => ({ id: r.id, name: r.name, kind: r.kind, mime: r.mime, size: r.size, store: r.store, key: r.key, status: r.status, by: r.by_name, ts: r.created_at, url: mediaUrl(env, r, origin) });
 
 async function expireMediaReservations(env) {
-  await getDataStore(env).expireMedia(Date.now() - 36e5);
+  const store = getDataStore(env);
+  if (env.MEDIA?.cleanupDirect) await env.MEDIA.cleanupDirect(store);
+  await store.expireMedia(Date.now() - 36e5);
 }
 
 async function reserveMedia(env, me, item, lim) {
@@ -352,10 +366,18 @@ async function mediaInit(env, me, b) {
   const kind = ext && kindOfExt(ext);
   if (!kind) throw fail('סוג הקובץ לא נתמך. אפשר: תמונות (jpg, png, webp, gif, avif), סרטונים (mp4, webm), שמע (mp3, m4a, wav, ogg) ומסמכים (pdf, docx, xlsx, pptx, txt, epub).', 400);
   if (!Number.isInteger(size) || size < 1) throw fail('הקובץ ריק', 400);
+  if (env.MEDIA?.hybrid && size > env.MEDIA.localMaxBytes && !env.MEDIA.remoteAvailable) throw fail('העלאת הקובץ אינה זמינה כרגע. נסו שוב מאוחר יותר.', 400);
   await expireMediaReservations(env);
   const id = hex(crypto.getRandomValues(new Uint8Array(4))), file = `${id}-${mediaSlug(name)}.${ext}`, lim = limits(env);
+  if (env.MEDIA?.hybrid) lim.ghFile = 0; // Ordinary Node uploads never enter Git; prepared photos retain their publish workflow.
   const reserved = await reserveMedia(env, me, { id, name, kind, mime: EXT[kind][ext], size, githubKey: `site/media/${file}`, r2Key: file }, lim);
   if (!reserved) throw await reservationFailure(env, kind, size, lim);
+  if (reserved.store === 'r2' && env.MEDIA?.hybrid && size > env.MEDIA.localMaxBytes) {
+    const store = getDataStore(env), row = await store.getMedia(reserved.id);
+    if (!await store.claimR2Upload(row.id, me.email)) throw fail('ההעלאה השתנתה. נסו שוב.', 409);
+    try { return { ...reserved, ...await env.MEDIA.beginDirect(row) }; }
+    catch (error) { await store.resetR2Upload(row.id); await store.dropUploading(row.id); throw error; }
+  }
   return { ...reserved, chunk: CHUNK_B64 };
 }
 const uploading = async (env, me, id) => {
@@ -440,6 +462,7 @@ async function mediaR2(env, me, id, body) {
   if (row.status === 'receiving') throw fail('ההעלאה כבר מתבצעת. המתינו לסיומה.', 409);
   if (row.status !== 'uploading') throw fail('ההעלאה לא נמצאה. התחילו מחדש.', 404);
   if (row.store !== 'r2' || !env.MEDIA || !body) throw fail('אחסון הקבצים הגדולים לא זמין', 400);
+  if (env.MEDIA.hybrid && row.size > env.MEDIA.localMaxBytes) throw fail('יש להעלות את הקובץ בחלקים.', 413);
   const claimed = await getDataStore(env).claimR2Upload(row.id, me.email);
   if (!claimed) throw fail('ההעלאה כבר השתנתה. רעננו ונסו שוב.', 409);
   try {
@@ -461,6 +484,35 @@ async function mediaR2(env, me, id, body) {
   await logEntry(env, me, 'media-upload', row.key, `${row.name} · ${row.size} בתים`);
   return { item: mediaView(env, { ...row, status: 'published' }, '') };
 }
+
+async function directMedia(env,me,b,action) {
+  const store = getDataStore(env), row = await store.getMedia(String(b.id));
+  if (!row || row.email !== me.email || row.store !== 'r2' || !env.MEDIA?.hybrid || row.size <= env.MEDIA.localMaxBytes) throw fail('ההעלאה לא נמצאה.',404);
+  if (row.status === 'published' && action === 'complete') return { item:mediaView(env,row,'') };
+  if (row.status === 'published' && action === 'abort') return {ok:true};
+  if (row.status !== 'receiving') throw fail('ההעלאה השתנתה. התחילו מחדש.',409);
+  if (action === 'parts') return env.MEDIA.partUrls(row,Number(b.from),b.count === undefined ? 16 : Number(b.count));
+  if (action === 'abort') {
+    await env.MEDIA.abortDirect(row); await store.resetR2Upload(row.id); await store.dropUploading(row.id);
+    return {ok:true};
+  }
+  if (!await store.claimR2Finalization(row.id,me.email)) throw fail('ההעלאה כבר בהשלמה. המתינו לסיומה.',409);
+  try {
+    await env.MEDIA.finishDirect(row);
+    const head = await env.MEDIA.head(row.key), first = head?.size === row.size && await env.MEDIA.get(row.key,{range:{offset:0,length:16}});
+    if (!first || !sniff(row.key.split('.').pop(),new Uint8Array(await first.arrayBuffer()))) throw fail('תוכן הקובץ אינו מתאים לסוג שלו.',400);
+    const completed = await store.finishR2Direct(row.id);
+    if (!completed && (await store.getMedia(row.id))?.status !== 'published') throw fail('ההעלאה השתנתה. נסו שוב.',409);
+  } catch (error) {
+    // Provider cleanup must succeed before the database reservation is released.
+    await env.MEDIA.abortDirect(row); await store.resetR2Direct(row.id); await store.dropUploading(row.id);
+    throw error;
+  }
+  await env.MEDIA.forgetDirect(row).catch(() => {});
+  await logEntry(env,me,'media-upload',row.key,`${row.name} · ${row.size} בתים`);
+  return {item:mediaView(env,{...row,status:'published'},'')};
+}
+
 async function mediaDrop(env, row) {
   await getDataStore(env).dropMedia(row.id);
 }
@@ -468,7 +520,7 @@ async function mediaList(env, origin) {
   const lim = limits(env), used = await mediaUsage(env);
   // A photo's files belong to the photo library, not to the list of loose files.
   const rows = await getDataStore(env).listMedia();
-  return { items: rows.map((r) => mediaView(env, r, origin)), quota: { github: { used: used.github, max: lim.ghTotal, fileMax: lim.ghFile }, r2: { enabled: lim.r2, used: used.r2, max: lim.r2Total, fileMax: lim.r2File } } };
+  return { items: rows.map((r) => mediaView(env, r, origin)), quota: { github: { used: used.github, max: lim.ghTotal, fileMax: lim.ghFile }, r2: { enabled: lim.r2, used: used.r2, max: lim.r2Total, fileMax: lim.r2File }, automatic: !!env.MEDIA?.hybrid } };
 }
 async function mediaRemove(env, me, id) {
   const row = await getDataStore(env).getMedia(String(id));
@@ -498,6 +550,8 @@ async function serveMedia(env, req, file) {
   const h = { 'Content-Type': (head.httpMetadata && head.httpMetadata.contentType) || 'application/octet-stream', 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff', 'Content-Length': String(range ? range.length : head.size) };
   if (range) h['Content-Range'] = `bytes ${range.offset}-${range.offset + range.length - 1}/${head.size}`;
   if (req.method === 'HEAD') return new Response(null, { status: range ? 206 : 200, headers: h });
+  const direct = env.MEDIA.publicResponse?.(file, head, req);
+  if (direct) return direct;
   const obj = await env.MEDIA.get(file, range ? { range } : undefined);
   if (!obj) return new Response('not found', { status: 404 });
   return new Response(obj.body, { status: range ? 206 : 200, headers: h });
@@ -551,6 +605,10 @@ const registryNow = async (env, rows) => {
 };
 async function photoRulesOnSave(env, me, path, text, draftText) {
   const data = JSON.parse(text);
+  if (/^data\/seo-[A-Za-z0-9_-]+\.json$/.test(path)) {
+    try { if (path === 'data/seo-settings.json') validateSeoSettings(data); else validateSeo(data, path); } catch (e) { throw fail(e.message, 400); }
+    return;
+  }
   if (path === REGISTRY) {
     if (!Array.isArray(data)) throw fail('רשימת התמונות חייבת להיות רשימה', 400);
     const bad = data.flatMap((im) => imageProblems(im).map((m) => `תמונה ״${im.id}״: ${m}`));
@@ -571,6 +629,9 @@ async function photoRulesOnSave(env, me, path, text, draftText) {
 }
 // Before publishing: every photo a page shows is in the registry and approved, and every file of a new photo is live or goes out with it.
 async function photoPreflight(env, rows, together) {
+  for (const row of rows.filter((r) => !r.deleted && /^data\/seo-[A-Za-z0-9_-]+\.json$/.test(r.path))) {
+    try { const value = JSON.parse(row.content); if (row.path === 'data/seo-settings.json') validateSeoSettings(value); else validateSeo(value, row.path); } catch (e) { throw fail(e.message, 400); }
+  }
   const reg = await registryNow(env, rows), live = JSON.parse((await publishedText(env, REGISTRY)) || '[]');
   const has = async (key) => together.has(key) || !!(await publishedSha(env, key));
   const regRow = rows.find((r) => r.path === REGISTRY && !r.deleted);
@@ -648,7 +709,12 @@ async function changes(env, check) {
     if (env.LOCAL_AUTHORIZE_PATH) { try { await env.LOCAL_AUTHORIZE_PATH(r.path,{draftEmail:r.email}); } catch (e) { if(e.status===403)continue;throw e; } }
     const sha = r.deleted ? null : await blobSha(r.content);
     const item = { path: r.path, status: r.deleted ? 'removed' : r.base_sha ? 'modified' : 'added', name: r.name, ts: r.updated_at, created: r.created_at, sha, base: r.base_sha };
-    if (check) { item.published = await publishedSha(env, r.path); item.conflict = item.published !== (r.base_sha || null) && item.published !== sha; }
+    if (check) {
+      item.published = await publishedSha(env, r.path);
+      item.conflict = item.published !== (r.base_sha || null) && item.published !== sha;
+      // Changed on both sides but in different places: publishing merges them by itself, so it is not a conflict.
+      if (item.conflict && await tryMerge(env, r, item.published)) { item.conflict = false; item.merged = true; }
+    }
     out.push(item);
   }
   // Media waiting in D1 to be committed (or to be removed) is a pending change too.
@@ -671,7 +737,7 @@ async function publish(env, me, paths, force, note) {
   const lines = [...rows.map((r) => `- ${label(r)}: ${r.path}`), ...media.map((m) => `- ${m.status === 'staged' ? 'קובץ חדש' : 'קובץ נמחק'}: ${m.key}`)];
   const total = rows.length + media.length;
   const subject = `פרסום: ${cleanName(note) || `${total} שינויים`}`;
-  let sha = null;
+  let sha = null, mergedPaths;
   for (let attempt = 0; ; attempt++) {
     const head = (await gh(env, `git/ref/heads/${env.BRANCH}`)).object.sha;
     // Every read in this attempt uses the same immutable commit, including
@@ -680,19 +746,30 @@ async function publish(env, me, paths, force, note) {
     const live = Object.create(env, { BRANCH: { value: head } });
     const pubs = new Map(await Promise.all(rows.map(async (r) => [r.path, await publishedSha(live, r.path)])));
     if (env.LOCAL_AUTHORIZE_PATH) { for (const row of rows) await env.LOCAL_AUTHORIZE_PATH(row.path,{published:Boolean(pubs.get(row.path)),draftEmail:row.email}); if (media.length && !capabilitiesLocalAll(me)) throw fail('בקשו מעורך לפרסם קבצי מדיה',403); }
-    const conflicts = rows.filter((r) => pubs.get(r.path) !== (r.base_sha || null) && pubs.get(r.path) !== shas.get(r.path) && !force.includes(r.path)).map((r) => r.path);
+    // A file the live branch changed since the draft began is merged with it when the changes are in different places (never
+    // overwritten); only a change to the same thing on both sides is a conflict that a person must settle.
+    const conflicts = [], mergedText = new Map();
+    for (const r of rows) {
+      const p = pubs.get(r.path);
+      if (p === (r.base_sha || null) || p === shas.get(r.path) || force.includes(r.path)) continue;
+      const m = await tryMerge(live, r, p);
+      if (m === null) conflicts.push(r.path); else mergedText.set(r.path, m);
+    }
     if (conflicts.length) throw fail('חלק מהקבצים שונו גם באתר החי מאז שהתחלתם לערוך אותם', 409, { conflicts });
+    const eff = rows.map((r) => mergedText.has(r.path) ? { ...r, content: mergedText.get(r.path) } : r);
+    for (const [path, text] of mergedText) shas.set(path, await blobSha(text));
+    mergedPaths = [...mergedText.keys()];
     // A page's referenced media must be in this commit or in the selected uploads.
-    for (const r of rows.filter((x) => !x.deleted && PAGE_FILE.test(x.path))) {
+    for (const r of eff.filter((x) => !x.deleted && PAGE_FILE.test(x.path))) {
       let blocks = []; try { blocks = JSON.parse(r.content).blocks || []; } catch { /* checked when saved */ }
       for (const b of blocks) {
         const m = /^\/media\/([a-z0-9][\w.-]*)$/.exec(String(b && b.src || ''));
         if (m && !together.has(`site/media/${m[1]}`) && !(await publishedSha(live, `site/media/${m[1]}`))) throw fail(`הדף ״${cleanName(JSON.parse(r.content).title)}״ משתמש בקובץ שעוד לא פורסם: ${m[1]}. סמנו גם אותו לפרסום.`, 400);
       }
     }
-    await photoPreflight(live, rows, together);
-    for (const r of rows) if (!r.deleted && pubs.get(r.path) !== shas.get(r.path) && !blobs.has(r.path)) blobs.set(r.path, (await gh(env, 'git/blobs', { method: 'POST', body: { content: toB64(r.content), encoding: 'base64' } })).sha);
-    const entries = rows.filter((r) => r.deleted ? pubs.get(r.path) : pubs.get(r.path) !== shas.get(r.path)).map((r) => ({ path: r.path, mode: '100644', type: 'blob', sha: r.deleted ? null : blobs.get(r.path) }));
+    await photoPreflight(live, eff, together);
+    for (const r of eff) if (!r.deleted && pubs.get(r.path) !== shas.get(r.path) && !blobs.has(r.path)) blobs.set(r.path, (await gh(env, 'git/blobs', { method: 'POST', body: { content: toB64(r.content), encoding: 'base64' } })).sha);
+    const entries = eff.filter((r) => r.deleted ? pubs.get(r.path) : pubs.get(r.path) !== shas.get(r.path)).map((r) => ({ path: r.path, mode: '100644', type: 'blob', sha: r.deleted ? null : blobs.get(r.path) }));
     for (const m of media) {
       if (m.status === 'staged') {
         if (!mediaBlobs.has(m.id)) {
@@ -721,7 +798,7 @@ async function publish(env, me, paths, force, note) {
   for (const r of rows) await logEntry(env, me, 'publish', r.path, `${label(r)} · נערך על ידי ${r.name}`, sha);
   for (const m of media) await logEntry(env, me, 'publish', m.key, `${m.status === 'staged' ? 'קובץ חדש' : 'קובץ נמחק'} · ${m.name}`, sha);
   await logEntry(env, me, 'publish-all', null, cleanName(note) || `${total} שינויים`, sha);
-  return { sha, published: [...rows.map((r) => r.path), ...media.map((m) => m.key)] };
+  return { sha, published: [...rows.map((r) => r.path), ...media.map((m) => m.key)], merged: mergedPaths };
 }
 
 async function discard(env, me, paths) {
@@ -730,14 +807,19 @@ async function discard(env, me, paths) {
   const media = await getDataStore(env).listPendingMedia(mpaths);
   // An editor may drop only their own work; a publisher may drop anyone's.
   if ((rows.some((r) => r.email !== me.email) || media.some((m) => m.email !== me.email)) && !me.publisher) throw fail('אפשר לבטל רק שינויים שביצעתם בעצמכם', 403);
-  if (rows.length) await getDataStore(env).discardDrafts(rows.map((r) => r.path));
+  // Delete exactly the rows that were read above: a draft someone saved after that stays, and is reported as kept.
+  let kept = [];
+  if (rows.length) {
+    await getDataStore(env).cleanupPublishedDrafts(rows);
+    kept = (await getDataStore(env).getDrafts(rows.map((r) => r.path))).map((r) => r.path);
+  }
   for (const m of media) {
     if (m.status === 'staged') await mediaDrop(env, m);
     else await getDataStore(env).restorePublishedMedia(m.id); // the removal is cancelled
   }
-  for (const r of rows) await logEntry(env, me, 'discard', r.path, `${label(r)} · נערך על ידי ${r.name}`);
+  for (const r of rows.filter((x) => !kept.includes(x.path))) await logEntry(env, me, 'discard', r.path, `${label(r)} · נערך על ידי ${r.name}`);
   for (const m of media) await logEntry(env, me, 'discard', m.key, m.name);
-  return { discarded: [...rows.map((r) => r.path), ...media.map((m) => m.key)] };
+  return { discarded: [...rows.map((r) => r.path).filter((x) => !kept.includes(x)), ...media.map((m) => m.key)], kept };
 }
 
 // Earlier versions of a file: the commits on BRANCH that touched it. The name is the one the publish wrote into the message.
@@ -823,6 +905,7 @@ async function main(req, env, url, cors) {
   if (p === '/media/chunk' && req.method === 'POST') return json(await mediaChunk(env, me, await bodyOf(req)), 200, cors);
   if (p === '/media/done' && req.method === 'POST') return json(await mediaDone(env, me, await bodyOf(req)), 200, cors);
   if (p === '/media/r2' && req.method === 'PUT') return json(await mediaR2(env, me, q.get('id'), req.body), 200, cors);
+  if (['/media/parts','/media/complete','/media/abort'].includes(p) && req.method === 'POST') return json(await directMedia(env,me,await bodyOf(req),p.split('/').pop()),200,cors);
   let mm;
   if ((mm = /^\/media\/([0-9a-f]{8})$/.exec(p)) && req.method === 'DELETE') return json(await mediaRemove(env, me, mm[1]), 200, cors);
   // A waiting file, as base64 pieces, so the editor can show it before it is published.

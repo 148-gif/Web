@@ -91,6 +91,9 @@ export function createD1DataStore(db) {
     getUploadChunks: (id) => all('SELECT n, LENGTH(data) AS len, data FROM media_chunks WHERE id = ? ORDER BY n', [id]),
     finishGithubUpload: async (id, email) => !!(await first("UPDATE media SET status = 'staged' WHERE id = ? AND status = 'uploading' AND email = ? RETURNING id", [id, email])),
     claimR2Upload: async (id, email) => !!(await first("UPDATE media SET status = 'receiving' WHERE id = ? AND status = 'uploading' AND email = ? AND store = 'r2' RETURNING id", [id, email])),
+    claimR2Finalization: async (id, email) => !!(await first("UPDATE media SET status = 'finalizing' WHERE id = ? AND status = 'receiving' AND email = ? AND store = 'r2' RETURNING id", [id, email])),
+    finishR2Direct: async id => !!(await first("UPDATE media SET status = 'published' WHERE id = ? AND status = 'finalizing' RETURNING id", [id])),
+    resetR2Direct: id => run("UPDATE media SET status = 'uploading' WHERE id = ? AND status = 'finalizing'", [id]),
     finishR2Upload: async (id) => !!(await first("UPDATE media SET status = 'published' WHERE id = ? AND status = 'receiving' RETURNING id", [id])),
     resetR2Upload: (id) => run("UPDATE media SET status = 'uploading' WHERE id = ? AND status = 'receiving'", [id]),
     dropMedia: (id) => db.batch([
@@ -132,7 +135,6 @@ export function createD1DataStore(db) {
       if (row.status === 'staged') await run("UPDATE media SET status = 'published' WHERE id = ?", [row.id]);
       else await run('DELETE FROM media WHERE id = ?', [row.id]);
     },
-    discardDrafts: (paths) => paths.length ? run(`DELETE FROM drafts WHERE path IN (${marks(paths.length)})`, paths) : Promise.resolve(),
     restorePublishedMedia: (id) => run("UPDATE media SET status = 'published' WHERE id = ?", [id]),
     async getStagedChunk(id, n) {
       const row = await first("SELECT 1 AS x FROM media WHERE id = ? AND status = 'staged'", [id]);

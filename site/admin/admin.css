@@ -140,6 +140,16 @@ body.out .ah{display:none}
 #nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:var(--ink);text-decoration:none;font-weight:600;font-size:.97rem}
 #nav a .ico{color:var(--mute)}
 #nav a:hover{background:var(--sunk)}
+#nav .navgroup{margin:4px 0;border:0}
+#nav .navgroup>summary{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-weight:600;font-size:.97rem;cursor:pointer;list-style:none}
+#nav .navgroup>summary::-webkit-details-marker{display:none}
+#nav .navgroup>summary:hover{background:var(--sunk)}
+#nav .navgroup>summary .ico{color:var(--mute)}
+#nav .navgroup>summary::after{content:"";width:7px;height:7px;margin-inline-start:auto;border:solid var(--mute);border-width:0 2px 2px 0;transform:rotate(45deg)}
+#nav .navgroup[open]>summary::after{transform:rotate(-135deg)}
+#nav .navgroup>summary:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+#nav .navchildren{margin-inline-start:13px;padding-inline-start:6px;border-inline-start:1px solid var(--line)}
+#nav .navchildren h3{margin-top:14px}
 #nav a.cur{background:var(--pri);color:#fff}#nav a.cur .ico{color:var(--gold2)}
 #scrim{display:none}
 #main{padding:28px var(--s5) 120px;max-width:1240px;width:100%;min-width:0;scroll-margin-top:80px}
@@ -479,3 +489,26 @@ ul.chg li b{unicode-bidi:plaintext}
 .users-table tbody tr:hover{background:var(--bg)}
 .users-table .help{display:block;margin:4px 0 0;font-size:.8rem}
 .users-table .btn{white-space:nowrap;padding:7px 14px}
+
+/* SEO workspace uses the existing palette, spacing and controls. */
+.seo-dialog{width:min(1120px,96vw);max-height:90dvh;overflow:auto}
+.seo-dialog>header{position:sticky;top:0;background:var(--surface);z-index:2;padding-block:var(--s2);border-bottom:1px solid var(--line)}
+.seo-dialog-body{display:grid;gap:var(--s3)}
+.seo-tabs{display:flex;gap:var(--s2);flex-wrap:wrap;margin-block:var(--s3)}
+.seo-tabs button[aria-pressed="true"]{background:var(--tint);border-color:var(--brand);color:var(--brand)}
+.seo-pane{display:grid;gap:var(--s3)}
+.seo-pane[hidden]{display:none}
+.seo-preview{border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3);background:var(--item);overflow-wrap:anywhere}
+.seo-preview h3{font:700 1.2rem var(--sans);color:var(--brand);margin-block:var(--s2)}
+.seo-preview p{margin:0;color:var(--mute)}
+.seo-picker{display:grid;gap:var(--s2);padding-block:var(--s2)}
+.seo-picker>div{display:grid;gap:var(--s1)}
+.seo-list{display:grid;gap:var(--s2)}
+.seo-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-md)}
+.seo-table{width:100%;border-collapse:collapse;background:var(--surface);text-align:start;font-size:.94rem}
+.seo-table th,.seo-table td{padding:var(--s2) var(--s3);border-bottom:1px solid var(--line);vertical-align:top;text-align:start}
+.seo-table th{background:var(--sunk);white-space:nowrap}
+.seo-table td:first-child{min-width:240px}
+.seo-table td small{display:block;overflow-wrap:anywhere}
+.seo-dialog blockquote{margin:0;padding:var(--s3);border-inline-start:3px solid var(--gold2);background:var(--sunk);white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:640px){.seo-dialog{width:96vw;padding:var(--s3)}.seo-tabs .btn{flex:1 1 auto}.seo-dialog .row{flex-wrap:wrap}.seo-table th,.seo-table td{padding:var(--s2)}}
