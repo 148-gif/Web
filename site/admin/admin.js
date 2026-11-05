@@ -2465,10 +2465,10 @@
       if (settings.method !== 'local') return;
       if (settings.invitationsAvailable === true && cookieSession && owner) invitationPanel(content, epoch);
       var passwords = el('form', { class: 'card', id: 'auth-password-change', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/password' }, el('h2', { text: 'שינוי סיסמה' }),
-        el('p', { text: 'בחרו סיסמה ארוכה וייחודית, עם 15 תווים לפחות. החלפת הסיסמה תוציא את החשבון משאר ההתחברויות.' }));
+        el('p', { text: 'בחרו סיסמה ארוכה וייחודית, עם 8 תווים לפחות. החלפת הסיסמה תוציא את החשבון משאר ההתחברויות.' }));
       var fields = {};
       [['newPassword', 'סיסמה חדשה', 'new-password'], ['confirmation', 'הסיסמה החדשה שוב', 'new-password']].forEach(function (field) {
-        var id = 'auth-password-' + field[0], input = el('input', { id: id, name: field[0], type: 'password', autocomplete: field[2], dir: 'ltr', required: true, maxlength: '256', minlength: '15' });
+        var id = 'auth-password-' + field[0], input = el('input', { id: id, name: field[0], type: 'password', autocomplete: field[2], dir: 'ltr', required: true, maxlength: '256', minlength: '8' });
         fields[field[0]] = input;
         passwords.append(el('div', { class: 'fld auth-password-fields' }, el('label', { for: id, text: field[1] }), input));
       });

@@ -16,9 +16,9 @@ export class LocalAuthBusyError extends Error {
 }
 
 export function passwordAcceptable(password) {
-  if (typeof password !== 'string' || password.length < 15 || password.length > 256 || !password.isWellFormed()) return false;
+  if (typeof password !== 'string' || password.length < 8 || password.length > 256 || !password.isWellFormed()) return false;
   const length = [...password].length;
-  return length >= 15 && length <= 128 && Buffer.byteLength(password, 'utf8') <= 512;
+  return length >= 8 && length <= 128 && Buffer.byteLength(password, 'utf8') <= 512;
 }
 
 export function normalizeUsername(value) {
@@ -65,7 +65,7 @@ export function createPasswordHasher({ derive = nativeDerive } = {}) {
   };
   return {
     async hashPassword(password) {
-      if (!passwordAcceptable(password)) throw new TypeError('Password must contain15 to128 characters');
+      if (!passwordAcceptable(password)) throw new TypeError('Password must contain 8 to 128 characters');
       const salt = randomBytes(24);
       const hash = await calculate(password, salt);
       return `${PREFIX}${salt.toString('base64url')}$${hash.toString('base64url')}`;

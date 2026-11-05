@@ -195,7 +195,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
         const body = await bodyOf(request);
         await admission(request, env, authenticated.user.username);
         if (body.confirmation !== undefined && body.confirmation !== body.newPassword) throw fail('הסיסמאות החדשות אינן תואמות', 400);
-        if (!passwordAcceptable(body.newPassword)) throw fail('הסיסמה צריכה להכיל 15–128 תווים', 400);
+        if (!passwordAcceptable(body.newPassword)) throw fail('הסיסמה צריכה להכיל 8–128 תווים', 400);
         const passwordHash = await hashPassword(body.newPassword);
         let changed;
         const token = await store.atomic(async (tx) => {
