@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Private stable-root deployment. Keep one rollback; never touch DB or media."""
-import os, sys, json, hashlib, datetime, urllib.request, urllib.parse, time, pathlib, tarfile, zipfile, io, shutil, stat, subprocess, ctypes, uuid, re
+import os, sys, json, hashlib, datetime, signal, select, urllib.request, urllib.parse, time, pathlib, tarfile, zipfile, io, shutil, stat, subprocess, ctypes, uuid, re
 HOME=pathlib.Path('/home/yoterber/heichal-cms')
 PUBLIC=pathlib.Path('/home/yoterber/hichal.yoterberama.com')
 STATE=HOME/'fast-deploy'
@@ -64,12 +64,45 @@ def health(commit):
     cmd=['/usr/bin/curl','--silent','--show-error','--fail','--noproxy','*','--max-time','15','--resolve','hichal.yoterberama.com:443:64.204.250.80',ORIGIN+'/cms-api/version','-H','Origin: '+ORIGIN,'-H','Cache-Control: no-cache']
     value=json.loads(subprocess.check_output(cmd,stderr=subprocess.DEVNULL))
     if value.get('commit')!=commit or not value.get('verified') or not value.get('schemaVerified') or value.get('deploymentCandidate'): raise RuntimeError('Canonical runtime health mismatch: '+str(value.get('commit')))
-def restart(app):
+def restart(app,stale=None):
     relative=str(app.relative_to(HOME.parent))
     if not re.fullmatch(r'heichal-cms/releases/[a-f0-9]{40}/app',relative): raise RuntimeError('Restart target rejected')
-    args=['/usr/sbin/cloudlinux-selector','restart','--json','--interpreter','nodejs','--user','yoterber','--app-root',relative]
-    result=json.loads(subprocess.check_output(args,stderr=subprocess.DEVNULL,timeout=60))
-    if result.get('result')!='success': raise RuntimeError('Native application restart failed')
+    allowed={str(app)}
+    if stale is not None:
+        under(stale,STATE);allowed.add(str(stale))
+    def selector(action):
+        args=['/usr/sbin/cloudlinux-selector',action,'--json','--interpreter','nodejs','--user','yoterber','--app-root',relative]
+        result=json.loads(subprocess.check_output(args,stderr=subprocess.DEVNULL,timeout=60))
+        if result.get('result')!='success': raise RuntimeError('Native application control failed')
+    selector('stop')
+    handles=[]
+    try:
+        for item in pathlib.Path('/proc').iterdir():
+            if not item.name.isdigit(): continue
+            fd=None
+            try:
+                before=(item/'stat').read_text().rsplit(')',1)[1].split()[19]
+                if item.stat().st_uid!=os.getuid() or os.readlink(item/'exe')!=NODE or os.readlink(item/'cwd') not in allowed: continue
+                fd=os.pidfd_open(int(item.name))
+                after=(item/'stat').read_text().rsplit(')',1)[1].split()[19]
+                if before!=after or item.stat().st_uid!=os.getuid() or os.readlink(item/'exe')!=NODE or os.readlink(item/'cwd') not in allowed:
+                    os.close(fd);continue
+                handles.append(fd);fd=None
+            except (FileNotFoundError,ProcessLookupError,PermissionError):
+                if fd is not None: os.close(fd)
+        for fd in handles:
+            try: signal.pidfd_send_signal(fd,signal.SIGTERM)
+            except ProcessLookupError: pass
+        deadline=time.monotonic()+20
+        for fd in handles:
+            poll=select.poll();poll.register(fd,select.POLLIN)
+            if not poll.poll(max(0,int((deadline-time.monotonic())*1000))):
+                try: signal.pidfd_send_signal(fd,signal.SIGKILL)
+                except ProcessLookupError: pass
+                if not poll.poll(2000): raise RuntimeError('Managed Node process did not stop')
+    finally:
+        for fd in handles: os.close(fd)
+        selector('start')
 def durable_journal(j): atomic_json(STATE/'journal.json',j)
 def recover(config):
     path=STATE/'journal.json'
@@ -85,7 +118,7 @@ def recover(config):
         installed=read_json(root/'app-release.json').get('commit') if marker=='app' else current_marker(root)
         if installed==j['commit']:
             exchange(root,stage)
-    restart(app)
+    restart(app,pathlib.Path(j['appStage']))
     saved=read_json(pathlib.Path(j['publicStage']).parent/'before.json')
     atomic_json(STATE/'manifest.json',saved['manifest']);atomic_json(STATE/'current.json',saved['current'])
     health(j['previousCommit'])
@@ -220,7 +253,7 @@ def deploy(config,token,commit):
             # Maintenance spans both swaps; requests never enter mixed runtime/content.
             (PUBLIC/'.cpanel-maintenance').touch();(ps/'.cpanel-maintenance').touch()
             journal['phase']='swapping';durable_journal(journal)
-            exchange(PUBLIC,ps);exchange(app,aps);restart(app)
+            exchange(PUBLIC,ps);exchange(app,aps);restart(app,aps)
             journal['phase']='verifying';durable_journal(journal)
             for attempt in range(12):
                 try: health(commit);break
@@ -242,6 +275,8 @@ def deploy(config,token,commit):
             recover(config);raise
 def main():
     os.umask(0o077);canonical(HOME);canonical(PUBLIC);canonical(STATE)
+    fd=os.pidfd_open(os.getpid());os.close(fd)
+    if not hasattr(signal,'pidfd_send_signal'): raise RuntimeError('Managed process control unavailable')
     config=read_json(STATE/'config.json')
     if config.get('version')!=1 or config.get('enabled') is not True: raise RuntimeError('Fast deploy disabled')
     token=private(HOME/'config/github-actions.token').decode().strip()
