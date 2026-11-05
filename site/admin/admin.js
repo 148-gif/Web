@@ -428,25 +428,29 @@
   // ---- layout ----
   function shell() {
     if (!token) return;
-    var nav = $('#nav'); nav.textContent = '';
+    var nav = $('#nav'), contentWasOpen = $('#nav-content') && $('#nav-content').open; nav.textContent = '';
     var link = function (hash, ic, text) { return el('a', { href: hash, 'data-h': hash }, icon(ic), el('span', { text: text })); };
     if (userCaps && !userCaps.edit) { nav.append(link('#/account','users','החשבון שלי')); mark(location.hash || '#/account'); return; }
     var ts = (cache.topics && cache.topics.data) || [];
-    nav.append(link('#/', 'home', 'לוח בקרה'), link('#/pages', 'page', 'נושאים ודפים'));
+    nav.append(link('#/', 'home', 'לוח בקרה'));
+    var content = el('details', { id:'nav-content',class:'navgroup' },el('summary', {},icon('book'),el('span', {text:'תוכן'})));
+    content.open = !!contentWasOpen;
+    var children = el('div', {class:'navchildren'},link('#/pages', 'page', 'נושאים ודפים'));
+    content.append(children); nav.append(content);
     groupTitles().forEach(function (title) {
       var built = GROUPS.filter(function (g) { return g[0] === title; })[0];
       var mine = ts.filter(function (t) { return (t.group || OTHER) === title; });
       if (!built && !mine.length) return;
-      nav.append(el('h3', { text: title }));
-      if (title === 'לימוד') nav.append(link('#/shut', 'chat', 'שו״ת ברסלב'));
-      if (built) built[1].forEach(function (f) { nav.append(link('#/file/' + f[0], f[2], f[1])); });
-      mine.forEach(function (t) { nav.append(link('#/topic/' + t.slug, t.icon || 'book', t.title)); });
+      children.append(el('h3', { text: title }));
+      if (title === 'לימוד') children.append(link('#/shut', 'chat', 'שו״ת ברסלב'));
+      if (built) built[1].forEach(function (f) { children.append(link('#/file/' + f[0], f[2], f[1])); });
+      mine.forEach(function (t) { children.append(link('#/topic/' + t.slug, t.icon || 'book', t.title)); });
     });
+    if (draft) children.append(link('#/media', 'image', 'ספריית מדיה'));
     nav.append(el('h3', { text: 'ניהול' }));
     if (owner) nav.append(link('#/users','users','משתמשים'));
     if (draft) {
       var pl = link('#/changes', 'list', 'שינויים ממתינים'); pl.append(el('b', { id: 'hi-count', class: 'nb', text: String(pending.list.length) })); nav.append(pl);
-      nav.append(link('#/media', 'image', 'ספריית מדיה'));
       if (publisher) nav.append(link('#/log', 'clock', 'יומן פעילות'));
     }
     var lk = link('#/links', 'link', 'קישורים ו־SEO'); lk.append(el('b', { id: 'lk-count', class: 'nb', text: '' })); nav.append(lk);
@@ -464,6 +468,8 @@
   function mark(hash) {
     document.querySelectorAll('#nav a').forEach(function (a) { var h = a.getAttribute('data-h'); a.classList.toggle('cur', h === hash || (h !== '#/' && h !== '#/auth' && hash.indexOf(h + '/') === 0) || (h === '#/pages' && /^#\/page\//.test(hash))); });
     document.querySelectorAll('#nav a').forEach(function (a) { if (a.classList.contains('cur')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    var content = $('#nav-content');
+    if (content && content.querySelector('a.cur')) content.open = true;
     navOpen(false);
   }
   function navOpen(open, restoreFocus) {
@@ -1299,10 +1305,47 @@
       r.readAsDataURL(blob);
     });
   }
+
+  function uploadDirectMedia(file, init, onProgress, epoch) {
+    var urls = {}, total = Math.ceil(file.size / init.partBytes);
+    function part(number, attempt) {
+      sessionCheck(epoch);
+      if (!urls[number]) return wapi('POST','/media/parts',{id:init.id,from:number,count:16}).then(function (batch) {
+        batch.parts.forEach(function (p) { urls[p.number] = p; });
+        return part(number,attempt);
+      });
+      var signed = urls[number], start = (number - 1) * init.partBytes, blob = file.slice(start,Math.min(file.size,start + init.partBytes));
+      return new Promise(function (res,rej) {
+        sessionCheck(epoch);
+        var x = new XMLHttpRequest(); transfers.add(x);
+        x.open('PUT',signed.url); x.timeout = 300000;
+        Object.keys(signed.headers).forEach(function (name) { x.setRequestHeader(name,signed.headers[name]); });
+        x.upload.onprogress = function (event) { if (epoch === sessionEpoch && event.lengthComputable) onProgress((start + event.loaded) / file.size); };
+        x.onload = function () { if (epoch !== sessionEpoch) return rej(endedSession()); if (x.status >= 200 && x.status < 300) res(); else { delete urls[number]; rej(new Error('העלאת חלק מהקובץ לא הצליחה.')); } };
+        x.onerror = x.ontimeout = function () { rej(new Error('החיבור נפסק. נסו שוב.')); };
+        x.onabort = function () { rej(endedSession()); };
+        x.onloadend = function () { transfers.delete(x); };
+        x.send(blob);
+      }).catch(function (error) {
+        if (error.editorSessionEnded || attempt >= 2) throw error;
+        delete urls[number]; return part(number,attempt + 1);
+      }).then(function () { onProgress(Math.min(number * init.partBytes,file.size) / file.size); });
+    }
+    function next(number) {
+      sessionCheck(epoch);
+      if (number > total) return wapi('POST','/media/complete',{id:init.id}).then(function (j) { return j.item; });
+      return part(number,0).then(function () { return next(number + 1); });
+    }
+    return next(1).catch(function (error) {
+      return wapi('POST','/media/abort',{id:init.id}).catch(function () {}).then(function () { throw error; });
+    });
+  }
+
   // Uploads one file; onProgress gets 0..1. Resolves with the new library item.
   function uploadMedia(file, onProgress) {
     var epoch = sessionEpoch;
     return wapi('POST', '/media/init', { name: file.name, size: file.size }).then(function (init) {
+      if (init.direct) return uploadDirectMedia(file,init,onProgress,epoch);
       if (init.store === 'r2') {
         return new Promise(function (res, rej) {
           sessionCheck(epoch);
@@ -1400,7 +1443,7 @@
   function mediaScreen() {
     var epoch = sessionEpoch;
     var m = main();
-    m.append(head('ספריית מדיה', 'תמונות, סרטונים, שמע ומסמכים להוספה לדפים. הקבצים הקטנים נשמרים עם האתר ויפורסמו בפרסום, והגדולים והסרטונים נשמרים באחסון נפרד.'));
+    m.append(head('ספריית מדיה', 'תמונות, סרטונים, שמע ומסמכים להוספה לדפים. העלו קובץ והעתיקו קישור, או בחרו אותו בעת עריכת התוכן.'));
     var quota = el('section', { class: 'card' }), list = el('ul', { class: 'upl' });
     var input = el('input', { type: 'file', multiple: true, accept: MEDIA_ACCEPT, id: 'mfile', hidden: true });
     var pick = el('button', { type: 'button', class: 'btn pri', onclick: function () { input.click(); } }, icon('plus'), 'העלאת קבצים');
@@ -1411,8 +1454,9 @@
     var kind = '', data = { items: [], quota: null };
     var draw = function () {
       var w = q.value.trim();
-      quota.textContent = ''; quota.append(el('h2', { text: 'מכסת האחסון החינמית' }));
-      if (data.quota) quota.append(quotaBar('אחסון עם האתר (קבצים קטנים)', data.quota.github), quotaBar('אחסון קבצים גדולים וסרטונים', data.quota.r2, !data.quota.r2.enabled),
+      quota.textContent = ''; quota.append(el('h2', { text: data.quota && data.quota.automatic ? 'אחסון קבצים' : 'מכסת האחסון החינמית' }));
+      if (data.quota && data.quota.automatic) quota.append(quotaBar('הקבצים בספרייה',data.quota.r2),el('p',{class:'help',text:'ההעלאה והאחסון מנוהלים אוטומטית. עד ' + mbytes(data.quota.r2.fileMax) + ' לקובץ.'}));
+      else if (data.quota) quota.append(quotaBar('אחסון עם האתר (קבצים קטנים)', data.quota.github), quotaBar('אחסון קבצים גדולים וסרטונים', data.quota.r2, !data.quota.r2.enabled),
         el('p', { class: 'help', text: 'עד ' + mbytes(data.quota.github.fileMax) + ' לקובץ באחסון עם האתר' + (data.quota.r2.enabled ? ', ועד ' + mbytes(data.quota.r2.fileMax) + ' לקובץ באחסון הגדול' : '. סרטונים וקבצים גדולים יותר דורשים הפעלת אחסון הקבצים הגדולים (R2), או קישור לסרטון ב־YouTube') + '.' }));
       chips.textContent = '';
       [['', 'הכול']].concat(Object.keys(MEDIA_KINDS).map(function (k) { return [k, MEDIA_KINDS[k][0]]; })).forEach(function (c) { chips.append(el('button', { type: 'button', class: 'chipb', 'aria-pressed': String(kind === c[0]), onclick: function () { kind = c[0]; draw(); } }, c[1])); });

@@ -319,7 +319,9 @@ const mediaUrl = (env, row, origin) => (row.store === 'github' ? `/media/${row.k
 const mediaView = (env, r, origin) => ({ id: r.id, name: r.name, kind: r.kind, mime: r.mime, size: r.size, store: r.store, key: r.key, status: r.status, by: r.by_name, ts: r.created_at, url: mediaUrl(env, r, origin) });
 
 async function expireMediaReservations(env) {
-  await getDataStore(env).expireMedia(Date.now() - 36e5);
+  const store = getDataStore(env);
+  if (env.MEDIA?.cleanupDirect) await env.MEDIA.cleanupDirect(store);
+  await store.expireMedia(Date.now() - 36e5);
 }
 
 async function reserveMedia(env, me, item, lim) {
@@ -352,10 +354,18 @@ async function mediaInit(env, me, b) {
   const kind = ext && kindOfExt(ext);
   if (!kind) throw fail('סוג הקובץ לא נתמך. אפשר: תמונות (jpg, png, webp, gif, avif), סרטונים (mp4, webm), שמע (mp3, m4a, wav, ogg) ומסמכים (pdf, docx, xlsx, pptx, txt, epub).', 400);
   if (!Number.isInteger(size) || size < 1) throw fail('הקובץ ריק', 400);
+  if (env.MEDIA?.hybrid && size > env.MEDIA.localMaxBytes && !env.MEDIA.remoteAvailable) throw fail('העלאת הקובץ אינה זמינה כרגע. נסו שוב מאוחר יותר.', 503);
   await expireMediaReservations(env);
   const id = hex(crypto.getRandomValues(new Uint8Array(4))), file = `${id}-${mediaSlug(name)}.${ext}`, lim = limits(env);
+  if (env.MEDIA?.hybrid) lim.ghFile = 0; // Ordinary Node uploads never enter Git; prepared photos retain their publish workflow.
   const reserved = await reserveMedia(env, me, { id, name, kind, mime: EXT[kind][ext], size, githubKey: `site/media/${file}`, r2Key: file }, lim);
   if (!reserved) throw await reservationFailure(env, kind, size, lim);
+  if (reserved.store === 'r2' && env.MEDIA?.hybrid && size > env.MEDIA.localMaxBytes) {
+    const store = getDataStore(env), row = await store.getMedia(reserved.id);
+    if (!await store.claimR2Upload(row.id, me.email)) throw fail('ההעלאה השתנתה. נסו שוב.', 409);
+    try { return { ...reserved, ...await env.MEDIA.beginDirect(row) }; }
+    catch (error) { await store.resetR2Upload(row.id); await store.dropUploading(row.id); throw error; }
+  }
   return { ...reserved, chunk: CHUNK_B64 };
 }
 const uploading = async (env, me, id) => {
@@ -440,6 +450,7 @@ async function mediaR2(env, me, id, body) {
   if (row.status === 'receiving') throw fail('ההעלאה כבר מתבצעת. המתינו לסיומה.', 409);
   if (row.status !== 'uploading') throw fail('ההעלאה לא נמצאה. התחילו מחדש.', 404);
   if (row.store !== 'r2' || !env.MEDIA || !body) throw fail('אחסון הקבצים הגדולים לא זמין', 400);
+  if (env.MEDIA.hybrid && row.size > env.MEDIA.localMaxBytes) throw fail('יש להעלות את הקובץ בחלקים.', 413);
   const claimed = await getDataStore(env).claimR2Upload(row.id, me.email);
   if (!claimed) throw fail('ההעלאה כבר השתנתה. רעננו ונסו שוב.', 409);
   try {
@@ -461,6 +472,35 @@ async function mediaR2(env, me, id, body) {
   await logEntry(env, me, 'media-upload', row.key, `${row.name} · ${row.size} בתים`);
   return { item: mediaView(env, { ...row, status: 'published' }, '') };
 }
+
+async function directMedia(env,me,b,action) {
+  const store = getDataStore(env), row = await store.getMedia(String(b.id));
+  if (!row || row.email !== me.email || row.store !== 'r2' || !env.MEDIA?.hybrid || row.size <= env.MEDIA.localMaxBytes) throw fail('ההעלאה לא נמצאה.',404);
+  if (row.status === 'published' && action === 'complete') return { item:mediaView(env,row,'') };
+  if (row.status === 'published' && action === 'abort') return {ok:true};
+  if (row.status !== 'receiving') throw fail('ההעלאה השתנתה. התחילו מחדש.',409);
+  if (action === 'parts') return env.MEDIA.partUrls(row,Number(b.from),b.count === undefined ? 16 : Number(b.count));
+  if (action === 'abort') {
+    await env.MEDIA.abortDirect(row); await store.resetR2Upload(row.id); await store.dropUploading(row.id);
+    return {ok:true};
+  }
+  if (!await store.claimR2Finalization(row.id,me.email)) throw fail('ההעלאה כבר בהשלמה. המתינו לסיומה.',409);
+  try {
+    await env.MEDIA.finishDirect(row);
+    const head = await env.MEDIA.head(row.key), first = head?.size === row.size && await env.MEDIA.get(row.key,{range:{offset:0,length:16}});
+    if (!first || !sniff(row.key.split('.').pop(),new Uint8Array(await first.arrayBuffer()))) throw fail('תוכן הקובץ אינו מתאים לסוג שלו.',400);
+    const completed = await store.finishR2Direct(row.id);
+    if (!completed && (await store.getMedia(row.id))?.status !== 'published') throw fail('ההעלאה השתנתה. נסו שוב.',409);
+  } catch (error) {
+    // Provider cleanup must succeed before the database reservation is released.
+    await env.MEDIA.abortDirect(row); await store.resetR2Direct(row.id); await store.dropUploading(row.id);
+    throw error;
+  }
+  await env.MEDIA.forgetDirect(row).catch(() => {});
+  await logEntry(env,me,'media-upload',row.key,`${row.name} · ${row.size} בתים`);
+  return {item:mediaView(env,{...row,status:'published'},'')};
+}
+
 async function mediaDrop(env, row) {
   await getDataStore(env).dropMedia(row.id);
 }
@@ -468,7 +508,7 @@ async function mediaList(env, origin) {
   const lim = limits(env), used = await mediaUsage(env);
   // A photo's files belong to the photo library, not to the list of loose files.
   const rows = await getDataStore(env).listMedia();
-  return { items: rows.map((r) => mediaView(env, r, origin)), quota: { github: { used: used.github, max: lim.ghTotal, fileMax: lim.ghFile }, r2: { enabled: lim.r2, used: used.r2, max: lim.r2Total, fileMax: lim.r2File } } };
+  return { items: rows.map((r) => mediaView(env, r, origin)), quota: { github: { used: used.github, max: lim.ghTotal, fileMax: lim.ghFile }, r2: { enabled: lim.r2, used: used.r2, max: lim.r2Total, fileMax: lim.r2File }, automatic: !!env.MEDIA?.hybrid } };
 }
 async function mediaRemove(env, me, id) {
   const row = await getDataStore(env).getMedia(String(id));
@@ -498,6 +538,8 @@ async function serveMedia(env, req, file) {
   const h = { 'Content-Type': (head.httpMetadata && head.httpMetadata.contentType) || 'application/octet-stream', 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff', 'Content-Length': String(range ? range.length : head.size) };
   if (range) h['Content-Range'] = `bytes ${range.offset}-${range.offset + range.length - 1}/${head.size}`;
   if (req.method === 'HEAD') return new Response(null, { status: range ? 206 : 200, headers: h });
+  const direct = env.MEDIA.publicResponse?.(file, head, req);
+  if (direct) return direct;
   const obj = await env.MEDIA.get(file, range ? { range } : undefined);
   if (!obj) return new Response('not found', { status: 404 });
   return new Response(obj.body, { status: range ? 206 : 200, headers: h });
@@ -823,6 +865,7 @@ async function main(req, env, url, cors) {
   if (p === '/media/chunk' && req.method === 'POST') return json(await mediaChunk(env, me, await bodyOf(req)), 200, cors);
   if (p === '/media/done' && req.method === 'POST') return json(await mediaDone(env, me, await bodyOf(req)), 200, cors);
   if (p === '/media/r2' && req.method === 'PUT') return json(await mediaR2(env, me, q.get('id'), req.body), 200, cors);
+  if (['/media/parts','/media/complete','/media/abort'].includes(p) && req.method === 'POST') return json(await directMedia(env,me,await bodyOf(req),p.split('/').pop()),200,cors);
   let mm;
   if ((mm = /^\/media\/([0-9a-f]{8})$/.exec(p)) && req.method === 'DELETE') return json(await mediaRemove(env, me, mm[1]), 200, cors);
   // A waiting file, as base64 pieces, so the editor can show it before it is published.

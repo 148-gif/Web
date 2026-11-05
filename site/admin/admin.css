@@ -140,6 +140,16 @@ body.out .ah{display:none}
 #nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:var(--ink);text-decoration:none;font-weight:600;font-size:.97rem}
 #nav a .ico{color:var(--mute)}
 #nav a:hover{background:var(--sunk)}
+#nav .navgroup{margin:4px 0;border:0}
+#nav .navgroup>summary{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-weight:600;font-size:.97rem;cursor:pointer;list-style:none}
+#nav .navgroup>summary::-webkit-details-marker{display:none}
+#nav .navgroup>summary:hover{background:var(--sunk)}
+#nav .navgroup>summary .ico{color:var(--mute)}
+#nav .navgroup>summary::after{content:"";width:7px;height:7px;margin-inline-start:auto;border:solid var(--mute);border-width:0 2px 2px 0;transform:rotate(45deg)}
+#nav .navgroup[open]>summary::after{transform:rotate(-135deg)}
+#nav .navgroup>summary:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+#nav .navchildren{margin-inline-start:13px;padding-inline-start:6px;border-inline-start:1px solid var(--line)}
+#nav .navchildren h3{margin-top:14px}
 #nav a.cur{background:var(--pri);color:#fff}#nav a.cur .ico{color:var(--gold2)}
 #scrim{display:none}
 #main{padding:28px var(--s5) 120px;max-width:1240px;width:100%;min-width:0;scroll-margin-top:80px}
