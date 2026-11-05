@@ -123,7 +123,7 @@ export function contentRecommendations(pages, { records = {}, aliases = {}, igno
       const explicitNames = [...(records[t.path]?.aliases || []), ...(aliases[t.path] || [])];
       const sameBook = /^\/library\/[^/]+\//.exec(t.path)?.[0];
       const titleAllowed = t.entityType !== 'Chapter' || (sameBook && p.path.startsWith(sameBook));
-      const names = [...new Set([...explicitNames, ...(titleAllowed ? [t.title] : [])])].filter((n) => n && n.length >= 4).sort((a, b) => b.length - a.length);
+      const names = [...new Set([...explicitNames, ...(titleAllowed ? [t.title] : [])])].filter((n) => n && n.length >= 4 && normalizedText.includes(normalize(n))).sort((a, b) => b.length - a.length);
       let found;
       for (const quote of paras) {
         for (const anchor of names) {
