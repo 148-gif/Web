@@ -16,7 +16,7 @@ const config = existsSync(cfgFile) ? validateAuditConfig(JSON.parse(readFileSync
 const prevFile = opt('--previous');
 const previous = prevFile && existsSync(prevFile) ? JSON.parse(readFileSync(prevFile, 'utf8')).keys : null;
 
-const res = auditSite(files, { base: BASE, sitemap, config });
+const res = auditSite(files, { base: BASE, sitemap, config, seoChecks: true });
 const keys = reportKeys(res);
 const fresh = previous ? keys.filter((k) => !new Set(previous).has(k)).length : keys.length;
 const report = formatReport(res, { date: new Date().toISOString().slice(0, 10), previous });
