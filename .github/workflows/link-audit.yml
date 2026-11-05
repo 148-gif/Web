@@ -24,8 +24,7 @@ jobs:
       - run: node --test test/linkaudit.test.mjs
       - run: node scripts/build.mjs
         env:
-          SITE_BASE: /${{ github.event.repository.name }}
-          SITE_ORIGIN: https://${{ github.repository_owner }}.github.io
+          SITE_ORIGIN: https://hichal.yoterberama.com
       - name: Read the previous run from the issue
         env:
           GH_TOKEN: ${{ github.token }}
@@ -39,8 +38,6 @@ jobs:
           fi
       - name: Audit
         run: node scripts/audit-links.mjs --out report.md --json report.json --previous prev.json
-        env:
-          SITE_BASE: /${{ github.event.repository.name }}
       - name: Update the issue only when needed
         env:
           GH_TOKEN: ${{ github.token }}

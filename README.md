@@ -1,7 +1,9 @@
 # היכל הקודש
 
 אתר חסידות ברסלב בעברית: שו״ת ברסלב של מוהרא״ש, ספרייה, יבנאל, אומן, התיקון הכללי והדפסת ״אשר בנחל״.
-האתר סטטי: סקריפט אחד בונה מקובצי הנתונים את כל העמודים, בלי שרת ובלי מסד נתונים.
+האתר סטטי: סקריפט אחד בונה מקובצי הנתונים את כל העמודים. רק לוח העריכה (`/admin/`) נשען על שרת Node ומסד MySQL (`server/`).
+
+האתר החי: https://hichal.yoterberama.com/ (אחסון cPanel).
 
 ## הרצה
 
@@ -18,8 +20,8 @@ npm run preview   # מציג את dist/ בדפדפן בכתובת http://localho
 
 לפני כל commit רצים אוטומטית `npm test` ו־ESLint (`.githooks/pre-commit`). הבנייה המלאה ובדיקת הקישורים רצות ב־CI על כל PR.
 
-כשהאתר יושב בתת־תיקייה (כמו ב־GitHub Pages), מגדירים `SITE_BASE=/Web`.
-`SITE_ORIGIN=https://148-gif.github.io` נדרש לכתובות המלאות של sitemap, canonical ותצוגת השיתוף בוואטסאפ.
+`SITE_ORIGIN=https://hichal.yoterberama.com` נדרש לכתובות המלאות של sitemap, canonical ותצוגת השיתוף בוואטסאפ.
+האתר יושב בשורש הדומיין, ולכן אין צורך ב־`SITE_BASE` (נדרש רק כשהאתר יושב בתת־תיקייה).
 
 ## מבנה
 
@@ -45,5 +47,10 @@ npm run preview   # מציג את dist/ בדפדפן בכתובת http://localho
 
 ## פרסום
 
-כל push לענף `claude/greeting-2i183o` בונה את האתר ומפרסם אותו ב־GitHub Pages
-(`.github/workflows/pages.yml`). על כל PR רצה בנייה עם בדיקת קישורים (`.github/workflows/check.yml`).
+כל push לענף `claude/greeting-2i183o` מריץ את `.github/workflows/cpanel-release.yml`: בדיקות, בנייה וחבילת פרסום ששמורה ב־GitHub Actions.
+תהליך פרטי באחסון (Cron) מוריד את החבילה, מאמת אותה ומחליף את קובצי האתר. באחסון עצמו לא בונים כלום.
+הפרטים, השחזור לגרסה קודמת וההגדרות: `docs/cpanel-publication.txt` ו־`server/README.md`.
+על כל PR רצה בנייה עם בדיקת קישורים (`.github/workflows/check.yml`).
+
+האחסון הקודם כבר לא מקבל עדכונים: `pages.yml` הוא תהליך ידני שמחליף את האתר הישן ב־GitHub Pages בהפניה לכתובת החדשה,
+ושרת העריכה הקודם (Cloudflare Worker, `cms-worker/`) נפרס רק ידנית ונשמר לגיבוי.

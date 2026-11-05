@@ -49,12 +49,7 @@ jobs:
       # Same settings as the deploy, so links are checked exactly as they will be published.
       - run: node scripts/build.mjs
         env:
-          SITE_BASE: /${{ github.event.repository.name }}
-          SITE_ORIGIN: https://${{ github.repository_owner }}.github.io
+          SITE_ORIGIN: https://hichal.yoterberama.com
       - run: node scripts/check-links.mjs
-        env:
-          SITE_BASE: /${{ github.event.repository.name }}
       # Orphan pages and broken links fail the check; warnings and suggestions are only reported (weekly report: link-audit.yml).
       - run: node scripts/audit-links.mjs --strict
-        env:
-          SITE_BASE: /${{ github.event.repository.name }}
