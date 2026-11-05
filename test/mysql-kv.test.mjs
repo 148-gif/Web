@@ -79,3 +79,17 @@ test('atomic MySQL membership transforms do not resurrect a revoked editor', { s
     assert.equal(await kv.get('people'), '[]');
   });
 });
+
+
+test('transient media upload state persists through real MySQL and can be deleted without deleting membership', { skip: !mysqlEnabled }, async () => {
+  await withMysqlDatabase(async ({ pool }) => {
+    const kv = createMysqlKv(pool), key = 'media-upload:0123abcd';
+    const state = { key:'0123abcd-file.pdf',size:94371841,email:'local:fixture',uploadId:'private-provider-upload-id',created:Date.now(),completing:false };
+    await kv.put(key,JSON.stringify(state));
+    assert.deepEqual(await createMysqlKv(pool).get(key,'json'),state);
+    await kv.put('people','[]');
+    await assert.rejects(kv.delete('people'),/transient media/);
+    await kv.delete(key); assert.equal(await kv.get(key),null); assert.equal(await kv.get('people'),'[]');
+    for (const invalid of ['media-upload:','media-upload:0123ABCD','media-upload:0123abcd-more']) await assert.rejects(kv.put(invalid,'{}'),/Unsupported editor KV key/);
+  });
+});
