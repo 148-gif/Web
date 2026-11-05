@@ -14,7 +14,7 @@ export function validateSeo(record, file) {
   const allowed = new Set(['version', 'path', 'title', 'description', 'canonical', 'indexing', 'image', 'aliases', 'keywords', 'links', 'related', 'relatedAuto', 'redirectTo', 'dismissed']);
   if (Object.keys(record).some((k) => !allowed.has(k))) bad('שדה הגדרה לא מוכר');
   if (record.version !== undefined && record.version !== SEO_VERSION) bad('גרסת הגדרות לא נתמכת');
-  for (const [k, max] of [['title', 180], ['description', 500], ['image', 500]]) if (record[k] !== undefined && (typeof record[k] !== 'string' || record[k].length > max || /[\u0000-\u001f]/.test(record[k]))) bad('ערך לא תקין: ' + k);
+  for (const [k, max] of [['title', 180], ['description', 500], ['image', 500]]) if (record[k] !== undefined && (typeof record[k] !== 'string' || record[k].length > max || [...record[k]].some((c) => c.charCodeAt(0) < 32))) bad('ערך לא תקין: ' + k);
   if (record.image && !/^\/(?!\/)[^\s<>"'\\]+$/.test(record.image)) bad('תמונת שיתוף צריכה כתובת קבועה בתוך האתר');
   if (record.indexing !== undefined && !['inherit', 'index', 'noindex'].includes(record.indexing)) bad('מצב אינדוקס לא מוכר');
   for (const k of ['canonical', 'redirectTo']) if (record[k] && (!cleanPath(record[k]) || (k === 'redirectTo' && record[k] === record.path))) bad('כתובת לא תקינה: ' + k);
