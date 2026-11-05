@@ -44,6 +44,11 @@ export function resolve(raw, from, base = '') {
 
 export function extractPage(file, html, base = '') {
   const path = pagePath(file);
+  const entityTypes = [];
+  for (const m of html.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try { const data = JSON.parse(m[1]); for (const node of (Array.isArray(data) ? data : [data])) for (const root of [node, ...(node['@graph'] || [])]) entityTypes.push(...[].concat(root['@type'] || [])); } catch { /* Malformed optional structured data is not an entity signal. */ }
+  }
+  const entityType = ['Chapter', 'Book', 'Person', 'Place', 'LocalBusiness', 'Organization', 'Article', 'CollectionPage'].find((t) => entityTypes.includes(t)) || '';
   const robots = (html.match(/<meta\s+name="robots"\s+content="([^"]*)"/i) || [])[1] || '';
   const title = textOf((html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i) || html.match(/<title>([\s\S]*?)<\/title>/i) || ['', ''])[1]);
   const { chrome, content, related } = regions(html);
@@ -76,7 +81,7 @@ export function extractPage(file, html, base = '') {
   const searchTitle = textOf((html.match(/<title>([\s\S]*?)<\/title>/i) || ['', ''])[1]);
   const headingCount = [...html.matchAll(/<h1\b/gi)].length;
   const canonical = (html.match(/<link\s+rel="canonical"\s+href="([^"]*)"/i) || [])[1] || '';
-  return { path, title, searchTitle, headingCount, description: decode(description), canonical, noindex: /noindex/i.test(robots), links, problems, text, paragraphs: paragraphsOf(html).length ? paragraphsOf(html) : [text] };
+  return { path, title, entityType, searchTitle, headingCount, description: decode(description), canonical, noindex: /noindex/i.test(robots), links, problems, text, paragraphs: paragraphsOf(html).length ? paragraphsOf(html) : [text] };
 }
 
 // Index of `title` in `text` as a whole phrase (not inside a longer word or number, so "סעיף י" does not match "סעיף יב"); a one-letter Hebrew prefix (ה, ב, ל…) before it is allowed. -1 if absent.
