@@ -132,7 +132,7 @@ export function validateAuditConfig(c) {
 
 const isGeneric = (a) => GENERIC.has(a.toLowerCase().replace(/[\s.,:;!?…«»"'״׳()\-–—>←→»]+/g, ' ').trim());
 
-export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle = 4, config = {}, suggestFor = (p) => !isMinor(p.path) } = {}) {
+export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle = 4, config = {}, seoChecks = false, suggestFor = (p) => !isMinor(p.path) } = {}) {
   // config (data/link-audit.json): ignore = [{ code, path }] silences one finding; ignorePairs = [[from, to]] silences a suggestion; aliases = { path: [phrases] } are other names of a page, matched like its title.
   const ignored = new Set((config.ignore || []).map((x) => `${x.code}|${x.path}`));
   const aliases = config.aliases || {};
@@ -229,7 +229,7 @@ export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle
   const recommendations = contentRecommendations(indexable, { records: seo.records, aliases, ignorePairs: config.ignorePairs || [] });
   const suggestions = recommendations.inline;
 
-  for (const p of indexable) {
+  if (seoChecks) for (const p of indexable) {
     if (!p.description) add('warn', 'missing-description', p.path, 'חסר תיאור לחיפוש');
     if (p.headingCount !== 1) add('warn', 'heading-count', p.path, 'מספר כותרות H1: ' + p.headingCount);
     const rendered = seo.rendered.get(p.path);
