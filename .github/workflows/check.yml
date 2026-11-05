@@ -39,11 +39,12 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/google-wizard" --ignore-scripts --no-package-lock --no-audit --no-fund playwright@1.64.1
           export CHROMIUM_EXECUTABLE_PATH="$(command -v google-chrome)"
           test -x "$CHROMIUM_EXECUTABLE_PATH"
-          node --test test/local-auth-invitations.test.mjs test/local-auth.integration.test.mjs test/google-setup.integration.test.mjs
+          node --test test/local-auth-invitations.test.mjs test/local-auth.integration.test.mjs test/google-setup.integration.test.mjs test/accounts.integration.test.mjs
           node test/local-invitations.e2e.mjs | tee "$RUNNER_TEMP/owner-invitations.log"
           grep -q '^PASS real Chromium/MySQL:' "$RUNNER_TEMP/owner-invitations.log"
           node test/google-setup-browser.e2e.mjs | tee "$RUNNER_TEMP/google-wizard.log"
           grep -q '^PASS real Chromium/Node/MySQL Google wizard:' "$RUNNER_TEMP/google-wizard.log"
+      - run: python3 -c "import ast; ast.parse(open('scripts/fast-cpanel-deploy.py').read())"
       - run: npx eslint .
       # Same settings as the deploy, so links are checked exactly as they will be published.
       - run: node scripts/build.mjs
