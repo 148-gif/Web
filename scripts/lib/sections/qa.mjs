@@ -2,7 +2,7 @@
 import { PER_PAGE, esc, gist, write, shut, letters, halacha, linkAudit } from '../core.mjs';
 import { relatedMap } from '../related.mjs';
 import { icon, orn, phead, layout, sr, card } from '../layout.mjs';
-import { searchForm, pagerHtml } from '../parts.mjs';
+import { searchForm, pagerHtml, ld, crumbs } from '../parts.mjs';
 
 const para = (ps) => {
   // Short lines at the head of a letter (date, greeting) and at its end (blessing) are styled apart from the body.
@@ -30,7 +30,7 @@ const readPages = (list, base, section, [prevL, nextL, navL]) => list.forEach((x
 <section class="a">${x.q.length ? '<h2>התשובה</h2>' : ''}${para(x.a)}</section>${orn}</div>
 ${relatedHtml(x, base)}
 <nav class="qnav" aria-label="${navL}">${prev ? `<a class="prev" href="${base}${prev.id}/"><small>→ ${prevL}</small>${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="next" href="${base}${next.id}/"><small>${nextL} ←</small>${esc(next.title)}</a>` : '<span></span>'}</nav></article>`,
-  { desc: pageDesc(x), path: base, self: `${base}${x.id}/`, reading: true, head: `<section class="phead qhead"><div class="wrap"><p class="crumb"><a href="${base}">${section}</a>${x.date ? ' · ' + esc(x.date) : ''}</p><h1>${esc(x.title)}</h1></div></section>` }));
+  { head_extra: ld({ '@context': 'https://schema.org', ...crumbs([['בית', '/'], [section, base], [x.title, base + x.id + '/']]) }), desc: pageDesc(x), path: base, self: `${base}${x.id}/`, reading: true, head: `<section class="phead qhead"><div class="wrap"><p class="crumb"><a href="${base}">${section}</a>${x.date ? ' · ' + esc(x.date) : ''}</p><h1>${esc(x.title)}</h1></div></section>` }));
 });
 readPages(shut, '/shut/', 'שו״ת ברסלב', ['השאלה הקודמת', 'השאלה הבאה', 'שאלות סמוכות']);
 readPages(letters, '/letters/', 'מכתבים', ['המכתב הקודם', 'המכתב הבא', 'מכתבים סמוכים']);
@@ -45,7 +45,7 @@ const listDesc = (p, items) => (p === 1
 for (let p = 1; p <= pages; p++) {
   const items = shut.slice((p - 1) * PER_PAGE, p * PER_PAGE);
   const pager = pagerHtml(p, pages, (n) => (n === 1 ? '/shut/' : `/shut/page/${n}/`));
-  write(p === 1 ? 'shut/index.html' : `shut/page/${p}/index.html`, layout('שו״ת ברסלב', `${sr('רשימת השאלות')}<div class="grid">${items.map((x) => card(x)).join('')}</div>${pager}`, { path: '/shut/', self: p === 1 ? '/shut/' : `/shut/page/${p}/`, desc: listDesc(p, items), head: phead('מכתבי הצדיק מיבניאל זצ״ל', 'שו״ת ברסלב', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות בעבודת ה׳, באמונה ובדרכו של רבינו הקדוש.`, searchForm) }));
+  write(p === 1 ? 'shut/index.html' : `shut/page/${p}/index.html`, layout(p === 1 ? 'שו״ת ברסלב' : 'שו״ת ברסלב — עמוד ' + p, `${sr('רשימת השאלות')}<div class="grid">${items.map((x) => card(x)).join('')}</div>${pager}`, { path: '/shut/', self: p === 1 ? '/shut/' : `/shut/page/${p}/`, desc: listDesc(p, items), head: phead('מכתבי הצדיק מיבניאל זצ״ל', 'שו״ת ברסלב', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות בעבודת ה׳, באמונה ובדרכו של רבינו הקדוש.`, searchForm) }));
 }
 
 
