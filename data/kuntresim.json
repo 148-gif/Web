@@ -1,5 +1,5 @@
 {
-  "intro": "קונטרסים קצרים של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה בחינם. כל קונטרס קובץ PDF אחד.",
+  "intro": "קונטרסים ועלונים של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה בחינם: קונטרסים קצרים בנושאי שלום בית, התחזקות וחגים, שאלות ותשובות לפי נושאים, ועלוני ״תוך הנחל״ על פרשות השבוע והמועדים. כל פריט הוא קובץ PDF אחד.",
   "groups": [
     [
       "shalom",
@@ -16,6 +16,34 @@
     [
       "moadim",
       "חגים ומועדים"
+    ],
+    [
+      "shut-nosim",
+      "שאלות ותשובות לפי נושאים"
+    ],
+    [
+      "tn-bereshit",
+      "תוך הנחל: ספר בראשית"
+    ],
+    [
+      "tn-shemot",
+      "תוך הנחל: ספר שמות"
+    ],
+    [
+      "tn-vayikra",
+      "תוך הנחל: ספר ויקרא"
+    ],
+    [
+      "tn-bamidbar",
+      "תוך הנחל: ספר במדבר"
+    ],
+    [
+      "tn-devarim",
+      "תוך הנחל: ספר דברים"
+    ],
+    [
+      "tn-moadim",
+      "תוך הנחל: מועדים"
     ]
   ],
   "items": [
@@ -193,6 +221,4577 @@
       "group": "moadim",
       "pages": 24,
       "size": "269KB"
+    },
+    {
+      "slug": "hadereh-lehatzlacha",
+      "title": "הדרך להצלחה",
+      "group": "hitchazkut",
+      "pages": 31,
+      "size": "5.9MB"
+    },
+    {
+      "slug": "chag-haasif",
+      "title": "חג האסיף",
+      "group": "moadim",
+      "pages": 31,
+      "size": "6.3MB"
+    },
+    {
+      "slug": "hanitzachon-shelanu",
+      "title": "הנצחון שלנו",
+      "group": "hitchazkut",
+      "pages": 23,
+      "size": "5.1MB"
+    },
+    {
+      "slug": "hachaim-beyadcha",
+      "title": "החיים בידיך",
+      "group": "hitchazkut",
+      "pages": 30,
+      "size": "2.4MB"
+    },
+    {
+      "slug": "rosh-hashana-beuman",
+      "title": "ראש השנה באומן",
+      "group": "moadim",
+      "pages": 31,
+      "size": "1.4MB"
+    },
+    {
+      "slug": "yeshuatcha-krova",
+      "title": "ישועתך קרובה",
+      "group": "hitchazkut",
+      "pages": 25,
+      "size": "4.5MB"
+    },
+    {
+      "slug": "tihye-ragua",
+      "title": "תהיה רגוע",
+      "group": "hitchazkut",
+      "pages": 31,
+      "size": "18.7MB"
+    },
+    {
+      "slug": "matan-tora",
+      "title": "מתן תורה",
+      "group": "moadim",
+      "pages": 27,
+      "size": "1.5MB"
+    },
+    {
+      "slug": "shut-tefila-hitbodedut",
+      "title": "תפילה והתבודדות",
+      "group": "shut-nosim",
+      "pages": 31,
+      "size": "451KB"
+    },
+    {
+      "slug": "shut-limud-tora",
+      "title": "לימוד תורה",
+      "group": "shut-nosim",
+      "pages": 31,
+      "size": "282KB"
+    },
+    {
+      "slug": "shut-hareyon-veleida",
+      "title": "הריון ולידה",
+      "group": "shut-nosim",
+      "pages": 31,
+      "size": "440KB"
+    },
+    {
+      "slug": "shut-kibud-horim",
+      "title": "כיבוד הורים",
+      "group": "shut-nosim",
+      "pages": 30,
+      "size": "358KB"
+    },
+    {
+      "slug": "shut-refua-shlema",
+      "title": "רפואה שלמה",
+      "group": "shut-nosim",
+      "pages": 30,
+      "size": "370KB"
+    },
+    {
+      "slug": "shut-metziat-zivug",
+      "title": "מציאת זיווג",
+      "group": "shut-nosim",
+      "pages": 30,
+      "size": "356KB"
+    },
+    {
+      "slug": "shut-emuna",
+      "title": "אמונה",
+      "group": "shut-nosim",
+      "pages": 30,
+      "size": "373KB"
+    },
+    {
+      "slug": "shut-shalom-bayit",
+      "title": "שלום בית",
+      "group": "shut-nosim",
+      "pages": 25,
+      "size": "287KB"
+    },
+    {
+      "slug": "shut-chinuch-yeladim",
+      "title": "חינוך ילדים",
+      "group": "shut-nosim",
+      "pages": 24,
+      "size": "230KB"
+    },
+    {
+      "slug": "shut-parnasa",
+      "title": "פרנסה",
+      "group": "shut-nosim",
+      "pages": 25,
+      "size": "292KB"
+    },
+    {
+      "slug": "shut-simcha",
+      "title": "שמחה",
+      "group": "shut-nosim",
+      "pages": 25,
+      "size": "338KB"
+    },
+    {
+      "slug": "toch-bereshit-5774",
+      "title": "תוך הנחל, פרשת בראשית תשע״ד",
+      "group": "tn-bereshit",
+      "pages": 13,
+      "size": "401KB"
+    },
+    {
+      "slug": "toch-bereshit-5773",
+      "title": "תוך הנחל, פרשת בראשית תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 16,
+      "size": "251KB"
+    },
+    {
+      "slug": "toch-bereshit-5772",
+      "title": "תוך הנחל, פרשת בראשית תשע״ב",
+      "group": "tn-bereshit",
+      "pages": 22,
+      "size": "297KB"
+    },
+    {
+      "slug": "toch-bereshit-5771",
+      "title": "תוך הנחל, פרשת בראשית תשע״א",
+      "group": "tn-bereshit",
+      "pages": 16,
+      "size": "165KB"
+    },
+    {
+      "slug": "toch-bereshit-5769",
+      "title": "תוך הנחל, פרשת בראשית תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 9,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-bereshit-5768",
+      "title": "תוך הנחל, פרשת בראשית תשס״ח",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "42KB"
+    },
+    {
+      "slug": "toch-bereshit-5766",
+      "title": "תוך הנחל, פרשת בראשית תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "62KB"
+    },
+    {
+      "slug": "toch-bereshit-5765",
+      "title": "תוך הנחל, פרשת בראשית תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 11,
+      "size": "88KB"
+    },
+    {
+      "slug": "toch-bereshit-5764",
+      "title": "תוך הנחל, פרשת בראשית תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "122KB"
+    },
+    {
+      "slug": "toch-bereshit-5762",
+      "title": "תוך הנחל, פרשת בראשית תשס״ב",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "97KB"
+    },
+    {
+      "slug": "toch-bereshit-5761",
+      "title": "תוך הנחל, פרשת בראשית תשס״א",
+      "group": "tn-bereshit",
+      "pages": 12,
+      "size": "87KB"
+    },
+    {
+      "slug": "toch-bereshit-5760",
+      "title": "תוך הנחל, פרשת בראשית תש״ס",
+      "group": "tn-bereshit",
+      "pages": 11,
+      "size": "104KB"
+    },
+    {
+      "slug": "toch-bereshit-5759",
+      "title": "תוך הנחל, פרשת בראשית תשנ״ט",
+      "group": "tn-bereshit",
+      "pages": 16,
+      "size": "109KB"
+    },
+    {
+      "slug": "toch-bereshit-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת בראשית תשע״א",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "161KB"
+    },
+    {
+      "slug": "toch-bereshit-5771-spenish",
+      "title": "תוך הנחל בספרדית, פרשת בראשית תשע״א",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "430KB"
+    },
+    {
+      "slug": "toch-bereshit-5771-spenish2",
+      "title": "תוך הנחל בספרדית, פרשת בראשית תשע״א 2",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "418KB"
+    },
+    {
+      "slug": "toch-bereshit-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת בראשית תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "27KB"
+    },
+    {
+      "slug": "toch-bereshit-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת בראשית תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "47KB"
+    },
+    {
+      "slug": "toch-bereshit-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת בראשית תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "32KB"
+    },
+    {
+      "slug": "toch-noach-5774",
+      "title": "תוך הנחל, פרשת נח תשע״ד",
+      "group": "tn-bereshit",
+      "pages": 19,
+      "size": "448KB"
+    },
+    {
+      "slug": "toch-noach-5773",
+      "title": "תוך הנחל, פרשת נח תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 36,
+      "size": "498KB"
+    },
+    {
+      "slug": "toch-noach-5771",
+      "title": "תוך הנחל, פרשת נח תשע״א",
+      "group": "tn-bereshit",
+      "pages": 15,
+      "size": "157KB"
+    },
+    {
+      "slug": "toch-noach-5765",
+      "title": "תוך הנחל, פרשת נח תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 15,
+      "size": "228KB"
+    },
+    {
+      "slug": "toch-noach-5764",
+      "title": "תוך הנחל, פרשת נח תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "44KB"
+    },
+    {
+      "slug": "toch-noach-5759",
+      "title": "תוך הנחל, פרשת נח תשנ״ט",
+      "group": "tn-bereshit",
+      "pages": 12,
+      "size": "88KB"
+    },
+    {
+      "slug": "toch-noach-5749",
+      "title": "תוך הנחל, פרשת נח תשמ״ט",
+      "group": "tn-bereshit",
+      "pages": 26,
+      "size": "76KB"
+    },
+    {
+      "slug": "toch-noach-5765-english",
+      "title": "תוך הנחל באנגלית, פרשת נח תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "32KB"
+    },
+    {
+      "slug": "toch-noach-5765-idish",
+      "title": "תוך הנחל באידיש, פרשת נח תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 14,
+      "size": "258KB"
+    },
+    {
+      "slug": "toch-noach-5765-spenish",
+      "title": "תוך הנחל בספרדית, פרשת נח תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "44KB"
+    },
+    {
+      "slug": "toch-noach-5764-idish",
+      "title": "תוך הנחל באידיש, פרשת נח תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "245KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5774",
+      "title": "תוך הנחל, פרשת לך לך תשע״ד",
+      "group": "tn-bereshit",
+      "pages": 17,
+      "size": "468KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5773",
+      "title": "תוך הנחל, פרשת לך לך תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 17,
+      "size": "254KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5772",
+      "title": "תוך הנחל, פרשת לך לך תשע״ב",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "271KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5770",
+      "title": "תוך הנחל, פרשת לך לך תש״ע",
+      "group": "tn-bereshit",
+      "pages": 15,
+      "size": "326KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5767",
+      "title": "תוך הנחל, פרשת לך לך תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "280KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5765",
+      "title": "תוך הנחל, פרשת לך לך תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "76KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5764",
+      "title": "תוך הנחל, פרשת לך לך תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "73KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5770-english",
+      "title": "תוך הנחל באנגלית, פרשת לך לך תש״ע",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "173KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5770-idish",
+      "title": "תוך הנחל באידיש, פרשת לך לך תש״ע",
+      "group": "tn-bereshit",
+      "pages": 12,
+      "size": "246KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5770-spenish",
+      "title": "תוך הנחל בספרדית, פרשת לך לך תש״ע",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "391KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5767-english",
+      "title": "תוך הנחל באנגלית, פרשת לך לך תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "53KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5767-spenish",
+      "title": "תוך הנחל בספרדית, פרשת לך לך תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "41KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5765-english",
+      "title": "תוך הנחל באנגלית, פרשת לך לך תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "37KB"
+    },
+    {
+      "slug": "toch-lech-lecha-5765-idish",
+      "title": "תוך הנחל באידיש, פרשת לך לך תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 13,
+      "size": "257KB"
+    },
+    {
+      "slug": "toch-vaiera-5773",
+      "title": "תוך הנחל, פרשת וירא תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 24,
+      "size": "367KB"
+    },
+    {
+      "slug": "toch-vaiera-5770",
+      "title": "תוך הנחל, פרשת וירא תש״ע",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "46KB"
+    },
+    {
+      "slug": "toch-vaiera-5769",
+      "title": "תוך הנחל, פרשת וירא תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 14,
+      "size": "492KB"
+    },
+    {
+      "slug": "toch-vaiera-5768",
+      "title": "תוך הנחל, פרשת וירא תשס״ח",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "59KB"
+    },
+    {
+      "slug": "toch-vaiera-5767",
+      "title": "תוך הנחל, פרשת וירא תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-vaiera-5766",
+      "title": "תוך הנחל, פרשת וירא תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "57KB"
+    },
+    {
+      "slug": "toch-vaiera-5765",
+      "title": "תוך הנחל, פרשת וירא תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 2,
+      "size": "35KB"
+    },
+    {
+      "slug": "toch-vaiera-5763",
+      "title": "תוך הנחל, פרשת וירא תשס״ג",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "29KB"
+    },
+    {
+      "slug": "toch-vaiera-5762",
+      "title": "תוך הנחל, פרשת וירא תשס״ב",
+      "group": "tn-bereshit",
+      "pages": 19,
+      "size": "154KB"
+    },
+    {
+      "slug": "toch-vaiera-5761",
+      "title": "תוך הנחל, פרשת וירא תשס״א",
+      "group": "tn-bereshit",
+      "pages": 12,
+      "size": "106KB"
+    },
+    {
+      "slug": "toch-vaiera-5760",
+      "title": "תוך הנחל, פרשת וירא תש״ס",
+      "group": "tn-bereshit",
+      "pages": 14,
+      "size": "90KB"
+    },
+    {
+      "slug": "toch-vaiera-5770-idish",
+      "title": "תוך הנחל באידיש, פרשת וירא תש״ע",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "219KB"
+    },
+    {
+      "slug": "toch-vaiera-5767-english",
+      "title": "תוך הנחל באנגלית, פרשת וירא תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "38KB"
+    },
+    {
+      "slug": "toch-vaiera-5767-english2",
+      "title": "תוך הנחל באנגלית, פרשת וירא תשס״ז2",
+      "group": "tn-bereshit",
+      "pages": 2,
+      "size": "39KB"
+    },
+    {
+      "slug": "toch-vaiera-5767-idish",
+      "title": "תוך הנחל באידיש, פרשת וירא תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "240KB"
+    },
+    {
+      "slug": "toch-vaiera-5767-spenish",
+      "title": "תוך הנחל בספרדית, פרשת וירא תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 2,
+      "size": "99KB"
+    },
+    {
+      "slug": "toch-vaiera-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת וירא תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "36KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5773",
+      "title": "תוך הנחל, פרשת חיי שרה תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 11,
+      "size": "544KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5772",
+      "title": "תוך הנחל, פרשת חיי שרה תשע״ב",
+      "group": "tn-bereshit",
+      "pages": 15,
+      "size": "179KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5771",
+      "title": "תוך הנחל, פרשת חיי שרה תשע״א",
+      "group": "tn-bereshit",
+      "pages": 24,
+      "size": "346KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5768",
+      "title": "תוך הנחל, פרשת חיי שרה תשס״ח",
+      "group": "tn-bereshit",
+      "pages": 19,
+      "size": "513KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5767",
+      "title": "תוך הנחל, פרשת חיי שרה תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "59KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5766",
+      "title": "תוך הנחל, פרשת חיי שרה תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "70KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5765",
+      "title": "תוך הנחל, פרשת חיי שרה תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "69KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5764",
+      "title": "תוך הנחל, פרשת חיי שרה תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "54KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5762",
+      "title": "תוך הנחל, פרשת חיי שרה תשס״ב",
+      "group": "tn-bereshit",
+      "pages": 12,
+      "size": "102KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5761",
+      "title": "תוך הנחל, פרשת חיי שרה תשס״א",
+      "group": "tn-bereshit",
+      "pages": 11,
+      "size": "100KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5760",
+      "title": "תוך הנחל, פרשת חיי שרה תש״ס",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "81KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5752",
+      "title": "תוך הנחל, פרשת חיי שרה תשנ״ב",
+      "group": "tn-bereshit",
+      "pages": 18,
+      "size": "103KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת חיי שרה תשע״א",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "419KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5771-spenish",
+      "title": "תוך הנחל בספרדית, פרשת חיי שרה תשע״א",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "393KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5767-english",
+      "title": "תוך הנחל באנגלית, פרשת חיי שרה תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "29KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5767-idish",
+      "title": "תוך הנחל באידיש, פרשת חיי שרה תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "35KB"
+    },
+    {
+      "slug": "toch-chaye-sara-5767-spenish",
+      "title": "תוך הנחל בספרדית, פרשת חיי שרה תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "35KB"
+    },
+    {
+      "slug": "toch-toldot-5774",
+      "title": "תוך הנחל, פרשת תולדות תשע״ד",
+      "group": "tn-bereshit",
+      "pages": 17,
+      "size": "505KB"
+    },
+    {
+      "slug": "toch-toldot-5773",
+      "title": "תוך הנחל, פרשת תולדות תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 12,
+      "size": "306KB"
+    },
+    {
+      "slug": "toch-toldot-5772",
+      "title": "תוך הנחל, פרשת תולדות תשע״ב",
+      "group": "tn-bereshit",
+      "pages": 13,
+      "size": "248KB"
+    },
+    {
+      "slug": "toch-toldot-5771",
+      "title": "תוך הנחל, פרשת תולדות תשע״א",
+      "group": "tn-bereshit",
+      "pages": 16,
+      "size": "160KB"
+    },
+    {
+      "slug": "toch-toldot-5770",
+      "title": "תוך הנחל, פרשת תולדות תש״ע",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "240KB"
+    },
+    {
+      "slug": "toch-toldot-5769",
+      "title": "תוך הנחל, פרשת תולדות תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "71KB"
+    },
+    {
+      "slug": "toch-toldot-5768",
+      "title": "תוך הנחל, פרשת תולדות תשס״ח",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "50KB"
+    },
+    {
+      "slug": "toch-toldot-5767",
+      "title": "תוך הנחל, פרשת תולדות תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "54KB"
+    },
+    {
+      "slug": "toch-toldot-5766",
+      "title": "תוך הנחל, פרשת תולדות תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-toldot-5765",
+      "title": "תוך הנחל, פרשת תולדות תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "59KB"
+    },
+    {
+      "slug": "toch-toldot-5763",
+      "title": "תוך הנחל, פרשת תולדות תשס״ג",
+      "group": "tn-bereshit",
+      "pages": 9,
+      "size": "67KB"
+    },
+    {
+      "slug": "toch-toldot-5762",
+      "title": "תוך הנחל, פרשת תולדות תשס״ב",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "75KB"
+    },
+    {
+      "slug": "toch-toldot-5760",
+      "title": "תוך הנחל, פרשת תולדות תש״ס",
+      "group": "tn-bereshit",
+      "pages": 11,
+      "size": "86KB"
+    },
+    {
+      "slug": "toch-toldot-5759",
+      "title": "תוך הנחל, פרשת תולדות תשנ״ט",
+      "group": "tn-bereshit",
+      "pages": 14,
+      "size": "89KB"
+    },
+    {
+      "slug": "toch-toldot-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת תולדות תשע״א",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "498KB"
+    },
+    {
+      "slug": "toch-toldot-5771-spenish",
+      "title": "תוך הנחל בספרדית, פרשת תולדות תשע״א",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "473KB"
+    },
+    {
+      "slug": "toch-toldot-5770-idish",
+      "title": "תוך הנחל באידיש, פרשת תולדות תש״ע",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "228KB"
+    },
+    {
+      "slug": "toch-toldot-5767-english",
+      "title": "תוך הנחל באנגלית, פרשת תולדות תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "43KB"
+    },
+    {
+      "slug": "toch-toldot-5767-idish",
+      "title": "תוך הנחל באידיש, פרשת תולדות תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "231KB"
+    },
+    {
+      "slug": "toch-toldot-5767-spenish",
+      "title": "תוך הנחל בספרדית, פרשת תולדות תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "35KB"
+    },
+    {
+      "slug": "toch-toldot-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת תולדות תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "37KB"
+    },
+    {
+      "slug": "toch-vayetze-5773",
+      "title": "תוך הנחל, פרשת ויצא תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 20,
+      "size": "869KB"
+    },
+    {
+      "slug": "toch-vayetze-5772",
+      "title": "תוך הנחל, פרשת ויצא תשע״ב",
+      "group": "tn-bereshit",
+      "pages": 18,
+      "size": "917KB"
+    },
+    {
+      "slug": "toch-vayetze-5771",
+      "title": "תוך הנחל, פרשת ויצא תשע״א",
+      "group": "tn-bereshit",
+      "pages": 16,
+      "size": "924KB"
+    },
+    {
+      "slug": "toch-vayetze-5770",
+      "title": "תוך הנחל, פרשת ויצא תש״ע",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "246KB"
+    },
+    {
+      "slug": "toch-vayetze-5766",
+      "title": "תוך הנחל, פרשת ויצא תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 9,
+      "size": "67KB"
+    },
+    {
+      "slug": "toch-vayetze-5765",
+      "title": "תוך הנחל, פרשת ויצא תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-vayetze-5764",
+      "title": "תוך הנחל, פרשת ויצא תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-vayetze-5762",
+      "title": "תוך הנחל, פרשת ויצא תשס״ב",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "94KB"
+    },
+    {
+      "slug": "toch-vayetze-5761",
+      "title": "תוך הנחל, פרשת ויצא תשס״א",
+      "group": "tn-bereshit",
+      "pages": 11,
+      "size": "81KB"
+    },
+    {
+      "slug": "toch-vayetze-5759",
+      "title": "תוך הנחל, פרשת ויצא תשנ״ט",
+      "group": "tn-bereshit",
+      "pages": 17,
+      "size": "105KB"
+    },
+    {
+      "slug": "toch-vayetze-5764-english",
+      "title": "תוך הנחל באנגלית, פרשת ויצא תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "37KB"
+    },
+    {
+      "slug": "toch-vayshlach-5774",
+      "title": "תוך הנחל, פרשת וישלח תשע״ד",
+      "group": "tn-bereshit",
+      "pages": 17,
+      "size": "511KB"
+    },
+    {
+      "slug": "toch-vayshlach-5773",
+      "title": "תוך הנחל, פרשת וישלח תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 9,
+      "size": "213KB"
+    },
+    {
+      "slug": "toch-vayshlach-5770",
+      "title": "תוך הנחל, פרשת וישלח תש״ע",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "52KB"
+    },
+    {
+      "slug": "toch-vayshlach-5769",
+      "title": "תוך הנחל, פרשת וישלח תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "68KB"
+    },
+    {
+      "slug": "toch-vayshlach-5768",
+      "title": "תוך הנחל, פרשת וישלח תשס״ח",
+      "group": "tn-bereshit",
+      "pages": 9,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-vayshlach-5765-vayishlach",
+      "title": "תוך הנחל, פרשת וישלח תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 25,
+      "size": "642KB"
+    },
+    {
+      "slug": "toch-vayshlach-5764",
+      "title": "תוך הנחל, פרשת וישלח תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 12,
+      "size": "141KB"
+    },
+    {
+      "slug": "toch-vayshlach-5761",
+      "title": "תוך הנחל, פרשת וישלח תשס״א",
+      "group": "tn-bereshit",
+      "pages": 12,
+      "size": "83KB"
+    },
+    {
+      "slug": "toch-vayshlach-5759",
+      "title": "תוך הנחל, פרשת וישלח תשנ״ט",
+      "group": "tn-bereshit",
+      "pages": 15,
+      "size": "93KB"
+    },
+    {
+      "slug": "toch-vayshlach-5769-english",
+      "title": "תוך הנחל באנגלית, פרשת וישלח תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "32KB"
+    },
+    {
+      "slug": "toch-vayshlach-5769-spenish",
+      "title": "תוך הנחל בספרדית, פרשת וישלח תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "33KB"
+    },
+    {
+      "slug": "toch-vayshlach-5761-english",
+      "title": "תוך הנחל באנגלית, פרשת וישלח תשס״א",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "37KB"
+    },
+    {
+      "slug": "toch-vayshlach-5761-idish",
+      "title": "תוך הנחל באידיש, פרשת וישלח תשס״א",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "42KB"
+    },
+    {
+      "slug": "toch-vayeshev-5774",
+      "title": "תוך הנחל, פרשת וישב תשע״ד",
+      "group": "tn-bereshit",
+      "pages": 12,
+      "size": "470KB"
+    },
+    {
+      "slug": "toch-vayeshev-5773",
+      "title": "תוך הנחל, פרשת וישב תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 13,
+      "size": "228KB"
+    },
+    {
+      "slug": "toch-vayeshev-5772",
+      "title": "תוך הנחל, פרשת וישב תשע״ב",
+      "group": "tn-bereshit",
+      "pages": 14,
+      "size": "188KB"
+    },
+    {
+      "slug": "toch-vayeshev-5771",
+      "title": "תוך הנחל, פרשת וישב תשע״א",
+      "group": "tn-bereshit",
+      "pages": 17,
+      "size": "269KB"
+    },
+    {
+      "slug": "toch-vayeshev-5770",
+      "title": "תוך הנחל, פרשת וישב תש״ע",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "246KB"
+    },
+    {
+      "slug": "toch-vayeshev-5769",
+      "title": "תוך הנחל, פרשת וישב תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "70KB"
+    },
+    {
+      "slug": "toch-vayeshev-5768",
+      "title": "תוך הנחל, פרשת וישב תשס״ח",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "60KB"
+    },
+    {
+      "slug": "toch-vayeshev-5767",
+      "title": "תוך הנחל, פרשת וישב תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "60KB"
+    },
+    {
+      "slug": "toch-vayeshev-5766",
+      "title": "תוך הנחל, פרשת וישב תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "62KB"
+    },
+    {
+      "slug": "toch-vayeshev-5765",
+      "title": "תוך הנחל, פרשת וישב תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 9,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-vayeshev-5764",
+      "title": "תוך הנחל, פרשת וישב תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "59KB"
+    },
+    {
+      "slug": "toch-vayeshev-5761",
+      "title": "תוך הנחל, פרשת וישב תשס״א",
+      "group": "tn-bereshit",
+      "pages": 13,
+      "size": "109KB"
+    },
+    {
+      "slug": "toch-vayeshev-5759",
+      "title": "תוך הנחל, פרשת וישב תשנ״ט",
+      "group": "tn-bereshit",
+      "pages": 11,
+      "size": "78KB"
+    },
+    {
+      "slug": "toch-vayeshev-5767-english",
+      "title": "תוך הנחל באנגלית, פרשת וישב תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "28KB"
+    },
+    {
+      "slug": "toch-vayeshev-5767-spenish",
+      "title": "תוך הנחל בספרדית, פרשת וישב תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "42KB"
+    },
+    {
+      "slug": "toch-vayeshev-5764-english",
+      "title": "תוך הנחל באנגלית, פרשת וישב תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "30KB"
+    },
+    {
+      "slug": "toch-vayeshev-5764-idish",
+      "title": "תוך הנחל באידיש, פרשת וישב תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "35KB"
+    },
+    {
+      "slug": "toch-miketz-5774",
+      "title": "תוך הנחל, פרשת מקץ תשע״ד",
+      "group": "tn-bereshit",
+      "pages": 21,
+      "size": "536KB"
+    },
+    {
+      "slug": "toch-miketz-5773",
+      "title": "תוך הנחל, פרשת מקץ תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 23,
+      "size": "375KB"
+    },
+    {
+      "slug": "toch-miketz-5771",
+      "title": "תוך הנחל, פרשת מקץ תשע״א",
+      "group": "tn-bereshit",
+      "pages": 22,
+      "size": "175KB"
+    },
+    {
+      "slug": "toch-miketz-5770",
+      "title": "תוך הנחל, פרשת מקץ תש״ע",
+      "group": "tn-bereshit",
+      "pages": 18,
+      "size": "274KB"
+    },
+    {
+      "slug": "toch-miketz-5769",
+      "title": "תוך הנחל, פרשת מקץ תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 11,
+      "size": "75KB"
+    },
+    {
+      "slug": "toch-miketz-5768",
+      "title": "תוך הנחל, פרשת מקץ תשס״ח",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "47KB"
+    },
+    {
+      "slug": "toch-miketz-5767",
+      "title": "תוך הנחל, פרשת מקץ תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-miketz-5766",
+      "title": "תוך הנחל, פרשת מקץ תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 9,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-miketz-5765",
+      "title": "תוך הנחל, פרשת מקץ תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "69KB"
+    },
+    {
+      "slug": "toch-miketz-5764",
+      "title": "תוך הנחל, פרשת מקץ תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "55KB"
+    },
+    {
+      "slug": "toch-miketz-5761",
+      "title": "תוך הנחל, פרשת מקץ תשס״א",
+      "group": "tn-bereshit",
+      "pages": 14,
+      "size": "105KB"
+    },
+    {
+      "slug": "toch-miketz-5759",
+      "title": "תוך הנחל, פרשת מקץ תשנ״ט",
+      "group": "tn-bereshit",
+      "pages": 15,
+      "size": "91KB"
+    },
+    {
+      "slug": "toch-miketz-5764-english",
+      "title": "תוך הנחל באנגלית, פרשת מקץ תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "30KB"
+    },
+    {
+      "slug": "toch-miketz-5764-idish",
+      "title": "תוך הנחל באידיש, פרשת מקץ תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "35KB"
+    },
+    {
+      "slug": "toch-miketz-5764-spenish",
+      "title": "תוך הנחל בספרדית, פרשת מקץ תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "42KB"
+    },
+    {
+      "slug": "toch-vaygash-5773",
+      "title": "תוך הנחל, פרשת ויגש תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 9,
+      "size": "201KB"
+    },
+    {
+      "slug": "toch-vaygash-5772",
+      "title": "תוך הנחל, פרשת ויגש תשע״ב",
+      "group": "tn-bereshit",
+      "pages": 16,
+      "size": "258KB"
+    },
+    {
+      "slug": "toch-vaygash-5771",
+      "title": "תוך הנחל, פרשת ויגש תשע״א",
+      "group": "tn-bereshit",
+      "pages": 13,
+      "size": "146KB"
+    },
+    {
+      "slug": "toch-vaygash-5770",
+      "title": "תוך הנחל, פרשת ויגש תש״ע",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "242KB"
+    },
+    {
+      "slug": "toch-vaygash-5769",
+      "title": "תוך הנחל, פרשת ויגש תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "106KB"
+    },
+    {
+      "slug": "toch-vaygash-5767",
+      "title": "תוך הנחל, פרשת ויגש תשס״ז",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "66KB"
+    },
+    {
+      "slug": "toch-vaygash-5766",
+      "title": "תוך הנחל, פרשת ויגש תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-vaygash-5765",
+      "title": "תוך הנחל, פרשת ויגש תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-vaygash-5764",
+      "title": "תוך הנחל, פרשת ויגש תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "60KB"
+    },
+    {
+      "slug": "toch-vaygash-5762",
+      "title": "תוך הנחל, פרשת ויגש תשס״ב",
+      "group": "tn-bereshit",
+      "pages": 13,
+      "size": "107KB"
+    },
+    {
+      "slug": "toch-vaygash-5761",
+      "title": "תוך הנחל, פרשת ויגש תשס״א",
+      "group": "tn-bereshit",
+      "pages": 14,
+      "size": "158KB"
+    },
+    {
+      "slug": "toch-vaygash-5759",
+      "title": "תוך הנחל, פרשת ויגש תשנ״ט",
+      "group": "tn-bereshit",
+      "pages": 15,
+      "size": "90KB"
+    },
+    {
+      "slug": "toch-vaygash-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת ויגש תשע״א",
+      "group": "tn-bereshit",
+      "pages": 5,
+      "size": "906KB"
+    },
+    {
+      "slug": "toch-vaygash-5771-spenish",
+      "title": "תוך הנחל בספרדית, פרשת ויגש תשע״א",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "394KB"
+    },
+    {
+      "slug": "toch-vaygash-5770-idish",
+      "title": "תוך הנחל באידיש, פרשת ויגש תש״ע",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "181KB"
+    },
+    {
+      "slug": "toch-vaygash-5769-idish",
+      "title": "תוך הנחל באידיש, פרשת ויגש תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "51KB"
+    },
+    {
+      "slug": "toch-vaygash-5765-english",
+      "title": "תוך הנחל באנגלית, פרשת ויגש תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 4,
+      "size": "32KB"
+    },
+    {
+      "slug": "toch-vayechi-5774",
+      "title": "תוך הנחל, פרשת ויחי תשע״ד",
+      "group": "tn-bereshit",
+      "pages": 16,
+      "size": "501KB"
+    },
+    {
+      "slug": "toch-vayechi-5773",
+      "title": "תוך הנחל, פרשת ויחי תשע״ג",
+      "group": "tn-bereshit",
+      "pages": 32,
+      "size": "345KB"
+    },
+    {
+      "slug": "toch-vayechi-5772",
+      "title": "תוך הנחל, פרשת ויחי תשע״ב",
+      "group": "tn-bereshit",
+      "pages": 20,
+      "size": "261KB"
+    },
+    {
+      "slug": "toch-vayechi-5771",
+      "title": "תוך הנחל, פרשת ויחי תשע״א",
+      "group": "tn-bereshit",
+      "pages": 19,
+      "size": "227KB"
+    },
+    {
+      "slug": "toch-vayechi-5769",
+      "title": "תוך הנחל, פרשת ויחי תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-vayechi-5768",
+      "title": "תוך הנחל, פרשת ויחי תשס״ח",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "109KB"
+    },
+    {
+      "slug": "toch-vayechi-5766",
+      "title": "תוך הנחל, פרשת ויחי תשס״ו",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "69KB"
+    },
+    {
+      "slug": "toch-vayechi-5765",
+      "title": "תוך הנחל, פרשת ויחי תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "56KB"
+    },
+    {
+      "slug": "toch-vayechi-5764",
+      "title": "תוך הנחל, פרשת ויחי תשס״ד",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "57KB"
+    },
+    {
+      "slug": "toch-vayechi-5763",
+      "title": "תוך הנחל, פרשת ויחי תשס״ג",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "201KB"
+    },
+    {
+      "slug": "toch-vayechi-5762",
+      "title": "תוך הנחל, פרשת ויחי תשס״ב",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "96KB"
+    },
+    {
+      "slug": "toch-vayechi-5760",
+      "title": "תוך הנחל, פרשת ויחי תש״ס",
+      "group": "tn-bereshit",
+      "pages": 14,
+      "size": "111KB"
+    },
+    {
+      "slug": "toch-vayechi-5759",
+      "title": "תוך הנחל, פרשת ויחי תשנ״ט",
+      "group": "tn-bereshit",
+      "pages": 10,
+      "size": "68KB"
+    },
+    {
+      "slug": "toch-vayechi-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת ויחי תשע״א",
+      "group": "tn-bereshit",
+      "pages": 7,
+      "size": "480KB"
+    },
+    {
+      "slug": "toch-vayechi-5771-spenish",
+      "title": "תוך הנחל בספרדית, פרשת ויחי תשע״א",
+      "group": "tn-bereshit",
+      "pages": 8,
+      "size": "383KB"
+    },
+    {
+      "slug": "toch-vayechi-5769-idish",
+      "title": "תוך הנחל באידיש, פרשת ויחי תשס״ט",
+      "group": "tn-bereshit",
+      "pages": 6,
+      "size": "189KB"
+    },
+    {
+      "slug": "toch-vayechi-5765-english",
+      "title": "תוך הנחל באנגלית, פרשת ויחי תשס״ה",
+      "group": "tn-bereshit",
+      "pages": 3,
+      "size": "27KB"
+    },
+    {
+      "slug": "toch-shmot-5774",
+      "title": "תוך הנחל, פרשת שמות תשע״ד",
+      "group": "tn-shemot",
+      "pages": 21,
+      "size": "548KB"
+    },
+    {
+      "slug": "toch-shmot-5773",
+      "title": "תוך הנחל, פרשת שמות תשע״ג",
+      "group": "tn-shemot",
+      "pages": 11,
+      "size": "219KB"
+    },
+    {
+      "slug": "toch-shmot-5772",
+      "title": "תוך הנחל, פרשת שמות תשע״ב",
+      "group": "tn-shemot",
+      "pages": 12,
+      "size": "242KB"
+    },
+    {
+      "slug": "toch-shmot-5771",
+      "title": "תוך הנחל, פרשת שמות תשע״א",
+      "group": "tn-shemot",
+      "pages": 17,
+      "size": "135KB"
+    },
+    {
+      "slug": "toch-shmot-5769",
+      "title": "תוך הנחל, פרשת שמות תשס״ט",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "209KB"
+    },
+    {
+      "slug": "toch-shmot-5768",
+      "title": "תוך הנחל, פרשת שמות תשס״ח",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-shmot-5767",
+      "title": "תוך הנחל, פרשת שמות תשס״ז",
+      "group": "tn-shemot",
+      "pages": 6,
+      "size": "55KB"
+    },
+    {
+      "slug": "toch-shmot-5766",
+      "title": "תוך הנחל, פרשת שמות תשס״ו",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "55KB"
+    },
+    {
+      "slug": "toch-shmot-5765",
+      "title": "תוך הנחל, פרשת שמות תשס״ה",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-shmot-5762",
+      "title": "תוך הנחל, פרשת שמות תשס״ב",
+      "group": "tn-shemot",
+      "pages": 11,
+      "size": "104KB"
+    },
+    {
+      "slug": "toch-shmot-5761",
+      "title": "תוך הנחל, פרשת שמות תשס״א",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "60KB"
+    },
+    {
+      "slug": "toch-shmot-5759",
+      "title": "תוך הנחל, פרשת שמות תשנ״ט",
+      "group": "tn-shemot",
+      "pages": 10,
+      "size": "72KB"
+    },
+    {
+      "slug": "toch-shmot-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת שמות תשע״א",
+      "group": "tn-shemot",
+      "pages": 6,
+      "size": "40KB"
+    },
+    {
+      "slug": "toch-shmot-5771-spenish",
+      "title": "תוך הנחל בספרדית, פרשת שמות תשע״א",
+      "group": "tn-shemot",
+      "pages": 6,
+      "size": "213KB"
+    },
+    {
+      "slug": "toch-shmot-5769-idish",
+      "title": "תוך הנחל באידיש, פרשת שמות תשס״ט",
+      "group": "tn-shemot",
+      "pages": 5,
+      "size": "184KB"
+    },
+    {
+      "slug": "toch-shmot-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת שמות תשס״ו",
+      "group": "tn-shemot",
+      "pages": 3,
+      "size": "29KB"
+    },
+    {
+      "slug": "toch-vaera-5774",
+      "title": "תוך הנחל, פרשת וארא תשע״ד",
+      "group": "tn-shemot",
+      "pages": 15,
+      "size": "481KB"
+    },
+    {
+      "slug": "toch-vaera-5773",
+      "title": "תוך הנחל, פרשת וארא תשע״ג",
+      "group": "tn-shemot",
+      "pages": 16,
+      "size": "248KB"
+    },
+    {
+      "slug": "toch-vaera-5772",
+      "title": "תוך הנחל, פרשת וארא תשע״ב",
+      "group": "tn-shemot",
+      "pages": 18,
+      "size": "276KB"
+    },
+    {
+      "slug": "toch-vaera-5771",
+      "title": "תוך הנחל, פרשת וארא תשע״א",
+      "group": "tn-shemot",
+      "pages": 12,
+      "size": "203KB"
+    },
+    {
+      "slug": "toch-vaera-5770",
+      "title": "תוך הנחל, פרשת וארא תש״ע",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "206KB"
+    },
+    {
+      "slug": "toch-vaera-5769",
+      "title": "תוך הנחל, פרשת וארא תשס״ט",
+      "group": "tn-shemot",
+      "pages": 6,
+      "size": "57KB"
+    },
+    {
+      "slug": "toch-vaera-5768",
+      "title": "תוך הנחל, פרשת וארא תשס״ח",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "62KB"
+    },
+    {
+      "slug": "toch-vaera-5767",
+      "title": "תוך הנחל, פרשת וארא תשס״ז",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "95KB"
+    },
+    {
+      "slug": "toch-vaera-5766",
+      "title": "תוך הנחל, פרשת וארא תשס״ו",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "62KB"
+    },
+    {
+      "slug": "toch-vaera-5765",
+      "title": "תוך הנחל, פרשת וארא תשס״ה",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-vaera-5764",
+      "title": "תוך הנחל, פרשת וארא תשס״ד",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "104KB"
+    },
+    {
+      "slug": "toch-vaera-5762",
+      "title": "תוך הנחל, פרשת וארא תשס״ב",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "104KB"
+    },
+    {
+      "slug": "toch-vaera-5761",
+      "title": "תוך הנחל, פרשת וארא תשס״א",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "81KB"
+    },
+    {
+      "slug": "toch-vaera-5760",
+      "title": "תוך הנחל, פרשת וארא תש״ס",
+      "group": "tn-shemot",
+      "pages": 11,
+      "size": "70KB"
+    },
+    {
+      "slug": "toch-vaera-5759",
+      "title": "תוך הנחל, פרשת וארא תשנ״ט",
+      "group": "tn-shemot",
+      "pages": 10,
+      "size": "69KB"
+    },
+    {
+      "slug": "toch-vaera-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת וארא תשע״א",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "459KB"
+    },
+    {
+      "slug": "toch-vaera-5771-spenish",
+      "title": "תוך הנחל בספרדית, פרשת וארא תשע״א",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "458KB"
+    },
+    {
+      "slug": "toch-vaera-5770-idish",
+      "title": "תוך הנחל באידיש, פרשת וארא תש״ע",
+      "group": "tn-shemot",
+      "pages": 5,
+      "size": "187KB"
+    },
+    {
+      "slug": "toch-bo-5774",
+      "title": "תוך הנחל, פרשת בא תשע״ד",
+      "group": "tn-shemot",
+      "pages": 16,
+      "size": "490KB"
+    },
+    {
+      "slug": "toch-bo-5773",
+      "title": "תוך הנחל, פרשת בא תשע״ג",
+      "group": "tn-shemot",
+      "pages": 25,
+      "size": "349KB"
+    },
+    {
+      "slug": "toch-bo-5770",
+      "title": "תוך הנחל, פרשת בא תש״ע",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "215KB"
+    },
+    {
+      "slug": "toch-bo-5769",
+      "title": "תוך הנחל, פרשת בא תשס״ט",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "69KB"
+    },
+    {
+      "slug": "toch-bo-5768",
+      "title": "תוך הנחל, פרשת בא תשס״ח",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "53KB"
+    },
+    {
+      "slug": "toch-bo-5767",
+      "title": "תוך הנחל, פרשת בא תשס״ז",
+      "group": "tn-shemot",
+      "pages": 6,
+      "size": "49KB"
+    },
+    {
+      "slug": "toch-bo-5766",
+      "title": "תוך הנחל, פרשת בא תשס״ו",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "69KB"
+    },
+    {
+      "slug": "toch-bo-5765",
+      "title": "תוך הנחל, פרשת בא תשס״ה",
+      "group": "tn-shemot",
+      "pages": 18,
+      "size": "319KB"
+    },
+    {
+      "slug": "toch-bo-5764",
+      "title": "תוך הנחל, פרשת בא תשס״ד",
+      "group": "tn-shemot",
+      "pages": 15,
+      "size": "131KB"
+    },
+    {
+      "slug": "toch-bo-5761",
+      "title": "תוך הנחל, פרשת בא תשס״א",
+      "group": "tn-shemot",
+      "pages": 12,
+      "size": "83KB"
+    },
+    {
+      "slug": "toch-bo-5760",
+      "title": "תוך הנחל, פרשת בא תש״ס",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "47KB"
+    },
+    {
+      "slug": "toch-bo-5759",
+      "title": "תוך הנחל, פרשת בא תשנ״ט",
+      "group": "tn-shemot",
+      "pages": 13,
+      "size": "84KB"
+    },
+    {
+      "slug": "toch-bo-5770-idish",
+      "title": "תוך הנחל באידיש, פרשת בא תש״ע",
+      "group": "tn-shemot",
+      "pages": 5,
+      "size": "177KB"
+    },
+    {
+      "slug": "toch-bo-5764-english",
+      "title": "תוך הנחל באנגלית, פרשת בא תשס״ד",
+      "group": "tn-shemot",
+      "pages": 5,
+      "size": "542KB"
+    },
+    {
+      "slug": "toch-bo-5764-spenish",
+      "title": "תוך הנחל בספרדית, פרשת בא תשס״ד",
+      "group": "tn-shemot",
+      "pages": 5,
+      "size": "444KB"
+    },
+    {
+      "slug": "toch-beshalach-5774",
+      "title": "תוך הנחל, פרשת בשלח תשע״ד",
+      "group": "tn-shemot",
+      "pages": 20,
+      "size": "520KB"
+    },
+    {
+      "slug": "toch-beshalach-5773",
+      "title": "תוך הנחל, פרשת בשלח תשע״ג",
+      "group": "tn-shemot",
+      "pages": 39,
+      "size": "452KB"
+    },
+    {
+      "slug": "toch-beshalach-5770",
+      "title": "תוך הנחל, פרשת בשלח תש״ע",
+      "group": "tn-shemot",
+      "pages": 10,
+      "size": "243KB"
+    },
+    {
+      "slug": "toch-beshalach-5769",
+      "title": "תוך הנחל, פרשת בשלח תשס״ט",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-beshalach-5768",
+      "title": "תוך הנחל, פרשת בשלח תשס״ח",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "53KB"
+    },
+    {
+      "slug": "toch-beshalach-5766",
+      "title": "תוך הנחל, פרשת בשלח תשס״ו",
+      "group": "tn-shemot",
+      "pages": 6,
+      "size": "53KB"
+    },
+    {
+      "slug": "toch-beshalach-5765",
+      "title": "תוך הנחל, פרשת בשלח תשס״ה",
+      "group": "tn-shemot",
+      "pages": 20,
+      "size": "339KB"
+    },
+    {
+      "slug": "toch-beshalach-5764",
+      "title": "תוך הנחל, פרשת בשלח תשס״ד",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-beshalach-5759",
+      "title": "תוך הנחל, פרשת בשלח תשנ״ט",
+      "group": "tn-shemot",
+      "pages": 15,
+      "size": "100KB"
+    },
+    {
+      "slug": "toch-beshalach-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת בשלח תשס״ו",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "31KB"
+    },
+    {
+      "slug": "toch-itro-5774",
+      "title": "תוך הנחל, פרשת יתרו תשע״ד",
+      "group": "tn-shemot",
+      "pages": 15,
+      "size": "258KB"
+    },
+    {
+      "slug": "toch-itro-5773",
+      "title": "תוך הנחל, פרשת יתרו תשע״ג",
+      "group": "tn-shemot",
+      "pages": 11,
+      "size": "216KB"
+    },
+    {
+      "slug": "toch-itro-5772",
+      "title": "תוך הנחל, פרשת יתרו תשע״ב",
+      "group": "tn-shemot",
+      "pages": 20,
+      "size": "317KB"
+    },
+    {
+      "slug": "toch-itro-5771",
+      "title": "תוך הנחל, פרשת יתרו תשע״א",
+      "group": "tn-shemot",
+      "pages": 14,
+      "size": "207KB"
+    },
+    {
+      "slug": "toch-itro-5771-spanish",
+      "title": "תוך הנחל בספרדית, פרשת יתרו תשע״א",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "436KB"
+    },
+    {
+      "slug": "toch-itro-5769",
+      "title": "תוך הנחל, פרשת יתרו תשס״ט",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-itro-5767",
+      "title": "תוך הנחל, פרשת יתרו תשס״ז",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "55KB"
+    },
+    {
+      "slug": "toch-itro-5765",
+      "title": "תוך הנחל, פרשת יתרו תשס״ה",
+      "group": "tn-shemot",
+      "pages": 13,
+      "size": "84KB"
+    },
+    {
+      "slug": "toch-itro-5762",
+      "title": "תוך הנחל, פרשת יתרו תשס״ב",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "100KB"
+    },
+    {
+      "slug": "toch-itro-5762-yiddish",
+      "title": "תוך הנחל באידיש, פרשת יתרו תשס״ב",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "184KB"
+    },
+    {
+      "slug": "toch-itro-5761",
+      "title": "תוך הנחל, פרשת יתרו תשס״א",
+      "group": "tn-shemot",
+      "pages": 11,
+      "size": "101KB"
+    },
+    {
+      "slug": "toch-itro-5760",
+      "title": "תוך הנחל, פרשת יתרו תש״ס",
+      "group": "tn-shemot",
+      "pages": 12,
+      "size": "82KB"
+    },
+    {
+      "slug": "toch-itro-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת יתרו תשע״א",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "167KB"
+    },
+    {
+      "slug": "toch-itro-5762-english",
+      "title": "תוך הנחל באנגלית, פרשת יתרו תשס״ב",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "31KB"
+    },
+    {
+      "slug": "toch-itro-5762-english2",
+      "title": "תוך הנחל באנגלית, פרשת יתרו תשס״ב 2",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "34KB"
+    },
+    {
+      "slug": "toch-itro-5762-spenish",
+      "title": "תוך הנחל בספרדית, פרשת יתרו תשס״ב",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "49KB"
+    },
+    {
+      "slug": "toch-mishpatim-5774",
+      "title": "תוך הנחל, פרשת משפטים תשע״ד",
+      "group": "tn-shemot",
+      "pages": 19,
+      "size": "588KB"
+    },
+    {
+      "slug": "toch-mishpatim-5773",
+      "title": "תוך הנחל, פרשת משפטים תשע״ג",
+      "group": "tn-shemot",
+      "pages": 10,
+      "size": "206KB"
+    },
+    {
+      "slug": "toch-mishpatim-5772",
+      "title": "תוך הנחל, פרשת משפטים תשע״ב",
+      "group": "tn-shemot",
+      "pages": 16,
+      "size": "305KB"
+    },
+    {
+      "slug": "toch-mishpatim-5770",
+      "title": "תוך הנחל, פרשת משפטים תש״ע",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "217KB"
+    },
+    {
+      "slug": "toch-mishpatim-5769",
+      "title": "תוך הנחל, פרשת משפטים תשס״ט",
+      "group": "tn-shemot",
+      "pages": 6,
+      "size": "55KB"
+    },
+    {
+      "slug": "toch-mishpatim-5767",
+      "title": "תוך הנחל, פרשת משפטים תשס״ז",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-mishpatim-5766",
+      "title": "תוך הנחל, פרשת משפטים תשס״ו",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-mishpatim-5765",
+      "title": "תוך הנחל, פרשת משפטים תשס״ה",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "70KB"
+    },
+    {
+      "slug": "toch-mishpatim-5765-english",
+      "title": "תוך הנחל באנגלית, פרשת משפטים תשס״ה",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "33KB"
+    },
+    {
+      "slug": "toch-truma-5773",
+      "title": "תוך הנחל, פרשת תרומה תשע״ג",
+      "group": "tn-shemot",
+      "pages": 16,
+      "size": "247KB"
+    },
+    {
+      "slug": "toch-truma-5772",
+      "title": "תוך הנחל, פרשת תרומה תשע״ב",
+      "group": "tn-shemot",
+      "pages": 17,
+      "size": "308KB"
+    },
+    {
+      "slug": "toch-truma-5770",
+      "title": "תוך הנחל, פרשת תרומה תש״ע",
+      "group": "tn-shemot",
+      "pages": 6,
+      "size": "198KB"
+    },
+    {
+      "slug": "toch-truma-5769",
+      "title": "תוך הנחל, פרשת תרומה תשס״ט",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "60KB"
+    },
+    {
+      "slug": "toch-truma-5768",
+      "title": "תוך הנחל, פרשת תרומה תשס״ח",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "60KB"
+    },
+    {
+      "slug": "toch-truma-5767",
+      "title": "תוך הנחל, פרשת תרומה תשס״ז",
+      "group": "tn-shemot",
+      "pages": 6,
+      "size": "52KB"
+    },
+    {
+      "slug": "toch-truma-5766",
+      "title": "תוך הנחל, פרשת תרומה תשס״ו",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "55KB"
+    },
+    {
+      "slug": "toch-truma-5765",
+      "title": "תוך הנחל, פרשת תרומה תשס״ה",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "69KB"
+    },
+    {
+      "slug": "toch-truma-5763",
+      "title": "תוך הנחל, פרשת תרומה תשס״ג",
+      "group": "tn-shemot",
+      "pages": 5,
+      "size": "79KB"
+    },
+    {
+      "slug": "toch-truma-5762",
+      "title": "תוך הנחל, פרשת תרומה תשס״ב",
+      "group": "tn-shemot",
+      "pages": 10,
+      "size": "93KB"
+    },
+    {
+      "slug": "toch-truma-5759",
+      "title": "תוך הנחל, פרשת תרומה תשנ״ט",
+      "group": "tn-shemot",
+      "pages": 13,
+      "size": "87KB"
+    },
+    {
+      "slug": "toch-truma-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת תרומה תשס״ו",
+      "group": "tn-shemot",
+      "pages": 3,
+      "size": "31KB"
+    },
+    {
+      "slug": "toch-truma-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת תרומה תשע״ד",
+      "group": "tn-shemot",
+      "pages": 3,
+      "size": "141KB"
+    },
+    {
+      "slug": "toch-tetzave-5772",
+      "title": "תוך הנחל, פרשת תצוה תשע״ב",
+      "group": "tn-shemot",
+      "pages": 20,
+      "size": "357KB"
+    },
+    {
+      "slug": "toch-tetzave-5770",
+      "title": "תוך הנחל, פרשת תצוה תש״ע",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "202KB"
+    },
+    {
+      "slug": "toch-tetzave-5769",
+      "title": "תוך הנחל, פרשת תצוה תשס״ט",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "90KB"
+    },
+    {
+      "slug": "toch-tetzave-5768",
+      "title": "תוך הנחל, פרשת תצוה תשס״ח",
+      "group": "tn-shemot",
+      "pages": 10,
+      "size": "73KB"
+    },
+    {
+      "slug": "toch-tetzave-5766",
+      "title": "תוך הנחל, פרשת תצוה תשס״ו",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "74KB"
+    },
+    {
+      "slug": "toch-tetzave-5766-spanish",
+      "title": "תוך הנחל בספרדית, פרשת תצוה תשס״ו",
+      "group": "tn-shemot",
+      "pages": 6,
+      "size": "468KB"
+    },
+    {
+      "slug": "toch-tetzave-5766-yiddish",
+      "title": "תוך הנחל באידיש, פרשת תצוה תשס״ו",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "50KB"
+    },
+    {
+      "slug": "toch-tetzave-5765",
+      "title": "תוך הנחל, פרשת תצוה תשס״ה",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "65KB"
+    },
+    {
+      "slug": "toch-tetzave-5762",
+      "title": "תוך הנחל, פרשת תצוה תשס״ב",
+      "group": "tn-shemot",
+      "pages": 14,
+      "size": "133KB"
+    },
+    {
+      "slug": "toch-tetzave-5760",
+      "title": "תוך הנחל, פרשת תצוה תש״ס",
+      "group": "tn-shemot",
+      "pages": 29,
+      "size": "350KB"
+    },
+    {
+      "slug": "toch-tetzave-5759",
+      "title": "תוך הנחל, פרשת תצוה תשנ״ט",
+      "group": "tn-shemot",
+      "pages": 13,
+      "size": "109KB"
+    },
+    {
+      "slug": "toch-tetzave-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת תצוה תשס״ו",
+      "group": "tn-shemot",
+      "pages": 5,
+      "size": "39KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5774",
+      "title": "תוך הנחל, פרשת כי תשא תשע״ד",
+      "group": "tn-shemot",
+      "pages": 19,
+      "size": "266KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5773",
+      "title": "תוך הנחל, פרשת כי תשא תשע״ג",
+      "group": "tn-shemot",
+      "pages": 23,
+      "size": "309KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5772",
+      "title": "תוך הנחל, פרשת כי תשא תשע״ב",
+      "group": "tn-shemot",
+      "pages": 24,
+      "size": "352KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5769",
+      "title": "תוך הנחל, פרשת כי תשא תשס״ט",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "77KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5768",
+      "title": "תוך הנחל, פרשת כי תשא תשס״ח",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5767",
+      "title": "תוך הנחל, פרשת כי תשא תשס״ז",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "61KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5766",
+      "title": "תוך הנחל, פרשת כי תשא תשס״ו",
+      "group": "tn-shemot",
+      "pages": 11,
+      "size": "80KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5765",
+      "title": "תוך הנחל, פרשת כי תשא תשס״ה",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5764",
+      "title": "תוך הנחל, פרשת כי תשא תשס״ד",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "78KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5762",
+      "title": "תוך הנחל, פרשת כי תשא תשס״ב",
+      "group": "tn-shemot",
+      "pages": 12,
+      "size": "123KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5760",
+      "title": "תוך הנחל, פרשת כי תשא תש״ס",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "106KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5759",
+      "title": "תוך הנחל, פרשת כי תשא תשנ״ט",
+      "group": "tn-shemot",
+      "pages": 11,
+      "size": "84KB"
+    },
+    {
+      "slug": "toch-ki-tesa-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת כי תשא תשס״ו",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "45KB"
+    },
+    {
+      "slug": "toch-vayakel-5771",
+      "title": "תוך הנחל, פרשת ויקהל תשע״א",
+      "group": "tn-shemot",
+      "pages": 17,
+      "size": "252KB"
+    },
+    {
+      "slug": "toch-vayakel-5765",
+      "title": "תוך הנחל, פרשת ויקהל תשס״ה",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-vayakel-5760",
+      "title": "תוך הנחל, פרשת ויקהל תש״ס",
+      "group": "tn-shemot",
+      "pages": 15,
+      "size": "185KB"
+    },
+    {
+      "slug": "toch-vayakel-5765-english",
+      "title": "תוך הנחל באנגלית, פרשת ויקהל תשס״ה",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "165KB"
+    },
+    {
+      "slug": "toch-vayakel-5765-spenish",
+      "title": "תוך הנחל בספרדית, פרשת ויקהל תשס״ה",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "248KB"
+    },
+    {
+      "slug": "toch-pekudey-5765",
+      "title": "תוך הנחל, פרשת פקודי תשס״ה",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "59KB"
+    },
+    {
+      "slug": "toch-vayakel-pikudey-5769",
+      "title": "תוך הנחל, פרשת ויקהל פקודי תשס״ט",
+      "group": "tn-shemot",
+      "pages": 7,
+      "size": "59KB"
+    },
+    {
+      "slug": "toch-vayakel-pikudey-5767",
+      "title": "תוך הנחל, פרשת ויקהל פקודי תשס״ז",
+      "group": "tn-shemot",
+      "pages": 16,
+      "size": "299KB"
+    },
+    {
+      "slug": "toch-vayakel-pikudey-5766",
+      "title": "תוך הנחל, פרשת ויקהל פקודי תשס״ו",
+      "group": "tn-shemot",
+      "pages": 18,
+      "size": "533KB"
+    },
+    {
+      "slug": "toch-vayakel-pikudey-5764",
+      "title": "תוך הנחל, פרשת ויקהל פקודי תשס״ד",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "59KB"
+    },
+    {
+      "slug": "toch-vayakel-pikudey-5762",
+      "title": "תוך הנחל, פרשת ויקהל פקודי תשס״ב",
+      "group": "tn-shemot",
+      "pages": 9,
+      "size": "101KB"
+    },
+    {
+      "slug": "toch-vayakel-pikudey-5764-english",
+      "title": "תוך הנחל באנגלית, פרשת ויקהל פקודי תשס״ד",
+      "group": "tn-shemot",
+      "pages": 8,
+      "size": "52KB"
+    },
+    {
+      "slug": "toch-vayakel-pikudey-5764-idish",
+      "title": "תוך הנחל באידיש, פרשת ויקהל פקודי תשס״ד",
+      "group": "tn-shemot",
+      "pages": 11,
+      "size": "96KB"
+    },
+    {
+      "slug": "toch-vayakel-pikudey-5764-spenish",
+      "title": "תוך הנחל בספרדית, פרשת ויקהל פקודי תשס״ד",
+      "group": "tn-shemot",
+      "pages": 4,
+      "size": "33KB"
+    },
+    {
+      "slug": "toch-vaikra-5773",
+      "title": "תוך הנחל, פרשת ויקרא תשע״ג",
+      "group": "tn-vayikra",
+      "pages": 15,
+      "size": "230KB"
+    },
+    {
+      "slug": "toch-vaikra-5769",
+      "title": "תוך הנחל, פרשת ויקרא תשס״ט",
+      "group": "tn-vayikra",
+      "pages": 5,
+      "size": "62KB"
+    },
+    {
+      "slug": "toch-vaikra-5767",
+      "title": "תוך הנחל, פרשת ויקרא תשס״ז",
+      "group": "tn-vayikra",
+      "pages": 7,
+      "size": "52KB"
+    },
+    {
+      "slug": "toch-vaikra-5765",
+      "title": "תוך הנחל, פרשת ויקרא תשס״ה",
+      "group": "tn-vayikra",
+      "pages": 8,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-vaikra-5764",
+      "title": "תוך הנחל, פרשת ויקרא תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 18,
+      "size": "312KB"
+    },
+    {
+      "slug": "toch-vaikra-5759",
+      "title": "תוך הנחל, פרשת ויקרא תשנ״ט",
+      "group": "tn-vayikra",
+      "pages": 17,
+      "size": "109KB"
+    },
+    {
+      "slug": "toch-vaikra-5764-spenish",
+      "title": "תוך הנחל בספרדית, פרשת ויקרא תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 3,
+      "size": "32KB"
+    },
+    {
+      "slug": "toch-tzav-5772",
+      "title": "תוך הנחל, פרשת צו תשע״ב",
+      "group": "tn-vayikra",
+      "pages": 17,
+      "size": "324KB"
+    },
+    {
+      "slug": "toch-tzav-5769",
+      "title": "תוך הנחל, פרשת צו תשס״ט",
+      "group": "tn-vayikra",
+      "pages": 21,
+      "size": "579KB"
+    },
+    {
+      "slug": "toch-tzav-5768",
+      "title": "תוך הנחל, פרשת צו תשס״ח",
+      "group": "tn-vayikra",
+      "pages": 8,
+      "size": "98KB"
+    },
+    {
+      "slug": "toch-tzav-5766",
+      "title": "תוך הנחל, פרשת צו תשס״ו",
+      "group": "tn-vayikra",
+      "pages": 2,
+      "size": "33KB"
+    },
+    {
+      "slug": "toch-tzav-5765",
+      "title": "תוך הנחל, פרשת צו תשס״ה",
+      "group": "tn-vayikra",
+      "pages": 13,
+      "size": "79KB"
+    },
+    {
+      "slug": "toch-tzav-5764",
+      "title": "תוך הנחל, פרשת צו תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 6,
+      "size": "51KB"
+    },
+    {
+      "slug": "toch-tzav-5763",
+      "title": "תוך הנחל, פרשת צו תשס״ג",
+      "group": "tn-vayikra",
+      "pages": 10,
+      "size": "132KB"
+    },
+    {
+      "slug": "toch-tzav-5759",
+      "title": "תוך הנחל, פרשת צו תשנ״ט",
+      "group": "tn-vayikra",
+      "pages": 14,
+      "size": "96KB"
+    },
+    {
+      "slug": "toch-tzav-5769-english",
+      "title": "תוך הנחל באנגלית, פרשת צו תשס״ט",
+      "group": "tn-vayikra",
+      "pages": 5,
+      "size": "471KB"
+    },
+    {
+      "slug": "toch-tzav-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת צו תשס״ו",
+      "group": "tn-vayikra",
+      "pages": 3,
+      "size": "27KB"
+    },
+    {
+      "slug": "toch-tzav-5764-english",
+      "title": "תוך הנחל באנגלית, פרשת צו תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 3,
+      "size": "25KB"
+    },
+    {
+      "slug": "toch-tzav-5764-spenish",
+      "title": "תוך הנחל בספרדית, פרשת צו תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 2,
+      "size": "31KB"
+    },
+    {
+      "slug": "toch-shmini-5773",
+      "title": "תוך הנחל, פרשת שמיני תשע״ג",
+      "group": "tn-vayikra",
+      "pages": 16,
+      "size": "235KB"
+    },
+    {
+      "slug": "toch-shmini-5769",
+      "title": "תוך הנחל, פרשת שמיני תשס״ט",
+      "group": "tn-vayikra",
+      "pages": 22,
+      "size": "572KB"
+    },
+    {
+      "slug": "toch-shmini-5766",
+      "title": "תוך הנחל, פרשת שמיני תשס״ו",
+      "group": "tn-vayikra",
+      "pages": 8,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-shmini-5765",
+      "title": "תוך הנחל, פרשת שמיני תשס״ה",
+      "group": "tn-vayikra",
+      "pages": 9,
+      "size": "65KB"
+    },
+    {
+      "slug": "toch-shmini-5764",
+      "title": "תוך הנחל, פרשת שמיני תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 6,
+      "size": "54KB"
+    },
+    {
+      "slug": "toch-shmini-5763",
+      "title": "תוך הנחל, פרשת שמיני תשס״ג",
+      "group": "tn-vayikra",
+      "pages": 20,
+      "size": "325KB"
+    },
+    {
+      "slug": "toch-shmini-5762",
+      "title": "תוך הנחל, פרשת שמיני תשס״ב",
+      "group": "tn-vayikra",
+      "pages": 4,
+      "size": "54KB"
+    },
+    {
+      "slug": "toch-shmini-5761",
+      "title": "תוך הנחל, פרשת שמיני תשס״א",
+      "group": "tn-vayikra",
+      "pages": 21,
+      "size": "115KB"
+    },
+    {
+      "slug": "toch-shmini-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת שמיני תשס״ו",
+      "group": "tn-vayikra",
+      "pages": 4,
+      "size": "34KB"
+    },
+    {
+      "slug": "toch-shmini-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת שמיני תשס״ו",
+      "group": "tn-vayikra",
+      "pages": 4,
+      "size": "53KB"
+    },
+    {
+      "slug": "toch-shmini-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת שמיני תשס״ו",
+      "group": "tn-vayikra",
+      "pages": 4,
+      "size": "39KB"
+    },
+    {
+      "slug": "toch-tazria-metzora-5773",
+      "title": "תוך הנחל, פרשת תזריע מצורע תשע״ג",
+      "group": "tn-vayikra",
+      "pages": 15,
+      "size": "326KB"
+    },
+    {
+      "slug": "toch-tazria-metzora-5768",
+      "title": "תוך הנחל, פרשת מצורע תשס״ח",
+      "group": "tn-vayikra",
+      "pages": 16,
+      "size": "434KB"
+    },
+    {
+      "slug": "toch-tazria-metzora-5766",
+      "title": "תוך הנחל, פרשת תזריע מצורע תשס״ו",
+      "group": "tn-vayikra",
+      "pages": 7,
+      "size": "55KB"
+    },
+    {
+      "slug": "toch-tazria-metzora-5764",
+      "title": "תוך הנחל, פרשת תזריע מצורע תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 17,
+      "size": "309KB"
+    },
+    {
+      "slug": "toch-tazria-metzora-5761",
+      "title": "תוך הנחל, פרשת תזריע מצורע תשס״א",
+      "group": "tn-vayikra",
+      "pages": 12,
+      "size": "78KB"
+    },
+    {
+      "slug": "toch-tazria-metzora-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת תזריע מצורע תשס״ו",
+      "group": "tn-vayikra",
+      "pages": 4,
+      "size": "34KB"
+    },
+    {
+      "slug": "toch-acharey-kdoshim-5773",
+      "title": "תוך הנחל, פרשת אחרי קדושים תשע״ג",
+      "group": "tn-vayikra",
+      "pages": 41,
+      "size": "448KB"
+    },
+    {
+      "slug": "toch-acharey-kdoshim-5765",
+      "title": "תוך הנחל, פרשת קדושים תשס״ה",
+      "group": "tn-vayikra",
+      "pages": 22,
+      "size": "626KB"
+    },
+    {
+      "slug": "toch-acharey-kdoshim-5764",
+      "title": "תוך הנחל, פרשת אחרי קדושים תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 19,
+      "size": "459KB"
+    },
+    {
+      "slug": "toch-acharey-kdoshim-5763",
+      "title": "תוך הנחל, פרשת אחרי תשס״ג",
+      "group": "tn-vayikra",
+      "pages": 6,
+      "size": "356KB"
+    },
+    {
+      "slug": "toch-acharey-kdoshim-5761",
+      "title": "תוך הנחל, פרשת אחרי קדושים תשס״א",
+      "group": "tn-vayikra",
+      "pages": 11,
+      "size": "98KB"
+    },
+    {
+      "slug": "toch-acharey-kdoshim-5764-english",
+      "title": "תוך הנחל באנגלית, פרשת אחרי קדושים תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 7,
+      "size": "44KB"
+    },
+    {
+      "slug": "toch-acharey-kdoshim-5764-idish",
+      "title": "תוך הנחל באידיש, פרשת אחרי קדושים תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 4,
+      "size": "88KB"
+    },
+    {
+      "slug": "toch-acharey-kdoshim-5764-spenish",
+      "title": "תוך הנחל בספרדית, פרשת אחרי קדושים תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 6,
+      "size": "53KB"
+    },
+    {
+      "slug": "toch-emor-5773",
+      "title": "תוך הנחל, פרשת אמור תשע״ג",
+      "group": "tn-vayikra",
+      "pages": 31,
+      "size": "387KB"
+    },
+    {
+      "slug": "toch-emor-5772",
+      "title": "תוך הנחל, פרשת אמור תשע״ב",
+      "group": "tn-vayikra",
+      "pages": 12,
+      "size": "282KB"
+    },
+    {
+      "slug": "toch-emor-5769",
+      "title": "תוך הנחל, פרשת אמור תשס״ט",
+      "group": "tn-vayikra",
+      "pages": 8,
+      "size": "61KB"
+    },
+    {
+      "slug": "toch-emor-5767",
+      "title": "תוך הנחל, פרשת אמור תשס״ז",
+      "group": "tn-vayikra",
+      "pages": 14,
+      "size": "147KB"
+    },
+    {
+      "slug": "toch-emor-5766",
+      "title": "תוך הנחל, פרשת אמור תשס״ו",
+      "group": "tn-vayikra",
+      "pages": 7,
+      "size": "55KB"
+    },
+    {
+      "slug": "toch-emor-5765",
+      "title": "תוך הנחל, פרשת אמור תשס״ה",
+      "group": "tn-vayikra",
+      "pages": 6,
+      "size": "54KB"
+    },
+    {
+      "slug": "toch-emor-5764",
+      "title": "תוך הנחל, פרשת אמור תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 16,
+      "size": "425KB"
+    },
+    {
+      "slug": "toch-emor-5763",
+      "title": "תוך הנחל, פרשת אמור תשס״ג",
+      "group": "tn-vayikra",
+      "pages": 7,
+      "size": "107KB"
+    },
+    {
+      "slug": "toch-emor-5760",
+      "title": "תוך הנחל, פרשת אמור תש״ס",
+      "group": "tn-vayikra",
+      "pages": 12,
+      "size": "108KB"
+    },
+    {
+      "slug": "toch-emor-5757",
+      "title": "תוך הנחל, פרשת אמור תשנ״ז",
+      "group": "tn-vayikra",
+      "pages": 15,
+      "size": "61KB"
+    },
+    {
+      "slug": "toch-emor-5764-english",
+      "title": "תוך הנחל באנגלית, פרשת אמור תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 5,
+      "size": "37KB"
+    },
+    {
+      "slug": "toch-bahar-bechukutay-5773",
+      "title": "תוך הנחל, פרשת בהר בחוקותי תשע״ג",
+      "group": "tn-vayikra",
+      "pages": 30,
+      "size": "387KB"
+    },
+    {
+      "slug": "toch-bahar-bechukutay-5772",
+      "title": "תוך הנחל, פרשת בהר בחוקותי תשע״ב",
+      "group": "tn-vayikra",
+      "pages": 14,
+      "size": "299KB"
+    },
+    {
+      "slug": "toch-bahar-bechukutay-5769",
+      "title": "תוך הנחל, פרשת בהר בחוקותי תשס״ט",
+      "group": "tn-vayikra",
+      "pages": 16,
+      "size": "451KB"
+    },
+    {
+      "slug": "toch-bahar-bechukutay-5766",
+      "title": "תוך הנחל, פרשת בהר בחוקותי תשס״ו",
+      "group": "tn-vayikra",
+      "pages": 13,
+      "size": "107KB"
+    },
+    {
+      "slug": "toch-bahar-bechukutay-5764",
+      "title": "תוך הנחל, פרשת בהר בחוקותי תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 7,
+      "size": "54KB"
+    },
+    {
+      "slug": "toch-bahar-bechukutay-5764-english",
+      "title": "תוך הנחל באנגלית, פרשת בהר בחוקותי תשס״ד",
+      "group": "tn-vayikra",
+      "pages": 3,
+      "size": "28KB"
+    },
+    {
+      "slug": "toch-bamidbar-5773",
+      "title": "תוך הנחל, פרשת במדבר תשע״ג",
+      "group": "tn-bamidbar",
+      "pages": 16,
+      "size": "478KB"
+    },
+    {
+      "slug": "toch-bamidbar-5771",
+      "title": "תוך הנחל, פרשת במדבר תשע״א",
+      "group": "tn-bamidbar",
+      "pages": 19,
+      "size": "242KB"
+    },
+    {
+      "slug": "toch-bamidbar-5770",
+      "title": "תוך הנחל, פרשת במדבר תש״ע",
+      "group": "tn-bamidbar",
+      "pages": 16,
+      "size": "226KB"
+    },
+    {
+      "slug": "toch-bamidbar-5769",
+      "title": "תוך הנחל, פרשת במדבר תשס״ט",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "68KB"
+    },
+    {
+      "slug": "toch-bamidbar-5768",
+      "title": "תוך הנחל, פרשת במדבר תשס״ח",
+      "group": "tn-bamidbar",
+      "pages": 13,
+      "size": "148KB"
+    },
+    {
+      "slug": "toch-bamidbar-5767",
+      "title": "תוך הנחל, פרשת במדבר תשס״ז",
+      "group": "tn-bamidbar",
+      "pages": 6,
+      "size": "47KB"
+    },
+    {
+      "slug": "toch-bamidbar-5766",
+      "title": "תוך הנחל, פרשת במדבר תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-bamidbar-5765",
+      "title": "תוך הנחל, פרשת במדבר תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 8,
+      "size": "63KB"
+    },
+    {
+      "slug": "toch-bamidbar-5764",
+      "title": "תוך הנחל, פרשת במדבר תשס״ד",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "93KB"
+    },
+    {
+      "slug": "toch-bamidbar-5761",
+      "title": "תוך הנחל, פרשת במדבר תשס״א",
+      "group": "tn-bamidbar",
+      "pages": 19,
+      "size": "154KB"
+    },
+    {
+      "slug": "toch-bamidbar-5760",
+      "title": "תוך הנחל, פרשת במדבר תש״ס",
+      "group": "tn-bamidbar",
+      "pages": 15,
+      "size": "130KB"
+    },
+    {
+      "slug": "toch-bamidbar-5759",
+      "title": "תוך הנחל, פרשת במדבר תשנ״ט",
+      "group": "tn-bamidbar",
+      "pages": 12,
+      "size": "90KB"
+    },
+    {
+      "slug": "toch-bamidbar-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת במדבר תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 6,
+      "size": "41KB"
+    },
+    {
+      "slug": "toch-nasa-5773",
+      "title": "תוך הנחל, פרשת נשא תשע״ג",
+      "group": "tn-bamidbar",
+      "pages": 18,
+      "size": "412KB"
+    },
+    {
+      "slug": "toch-nasa-5772",
+      "title": "תוך הנחל, פרשת נשא תשע״ב",
+      "group": "tn-bamidbar",
+      "pages": 17,
+      "size": "234KB"
+    },
+    {
+      "slug": "toch-nasa-5770",
+      "title": "תוך הנחל, פרשת נשא תש״ע",
+      "group": "tn-bamidbar",
+      "pages": 13,
+      "size": "138KB"
+    },
+    {
+      "slug": "toch-nasa-5769",
+      "title": "תוך הנחל, פרשת נשא תשס״ט",
+      "group": "tn-bamidbar",
+      "pages": 8,
+      "size": "89KB"
+    },
+    {
+      "slug": "toch-nasa-5768",
+      "title": "תוך הנחל, פרשת נשא תשס״ח",
+      "group": "tn-bamidbar",
+      "pages": 5,
+      "size": "45KB"
+    },
+    {
+      "slug": "toch-nasa-5767",
+      "title": "תוך הנחל, פרשת נשא תשס״ז",
+      "group": "tn-bamidbar",
+      "pages": 6,
+      "size": "48KB"
+    },
+    {
+      "slug": "toch-nasa-5766",
+      "title": "תוך הנחל, פרשת נשא תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 6,
+      "size": "51KB"
+    },
+    {
+      "slug": "toch-nasa-5765",
+      "title": "תוך הנחל, פרשת נשא תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 7,
+      "size": "60KB"
+    },
+    {
+      "slug": "toch-nasa-5764",
+      "title": "תוך הנחל, פרשת נשא תשס״ד",
+      "group": "tn-bamidbar",
+      "pages": 6,
+      "size": "54KB"
+    },
+    {
+      "slug": "toch-nasa-5761",
+      "title": "תוך הנחל, פרשת נשא תשס״א",
+      "group": "tn-bamidbar",
+      "pages": 12,
+      "size": "104KB"
+    },
+    {
+      "slug": "toch-nasa-5759",
+      "title": "תוך הנחל, פרשת נשא תשנ״ט",
+      "group": "tn-bamidbar",
+      "pages": 11,
+      "size": "99KB"
+    },
+    {
+      "slug": "toch-nasa-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת נשא תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 5,
+      "size": "36KB"
+    },
+    {
+      "slug": "toch-behalotecha-5773",
+      "title": "תוך הנחל, פרשת בהעלותך תשע״ג",
+      "group": "tn-bamidbar",
+      "pages": 16,
+      "size": "462KB"
+    },
+    {
+      "slug": "toch-behalotecha-5772",
+      "title": "תוך הנחל, פרשת בהעלותך תשע״ב",
+      "group": "tn-bamidbar",
+      "pages": 11,
+      "size": "294KB"
+    },
+    {
+      "slug": "toch-behalotecha-5770",
+      "title": "תוך הנחל, פרשת בהעלותך תש״ע",
+      "group": "tn-bamidbar",
+      "pages": 12,
+      "size": "131KB"
+    },
+    {
+      "slug": "toch-behalotecha-5769",
+      "title": "תוך הנחל, פרשת בהעלותך תשס״ט",
+      "group": "tn-bamidbar",
+      "pages": 8,
+      "size": "65KB"
+    },
+    {
+      "slug": "toch-behalotecha-5768",
+      "title": "תוך הנחל, פרשת בהעלותך תשס״ח",
+      "group": "tn-bamidbar",
+      "pages": 7,
+      "size": "56KB"
+    },
+    {
+      "slug": "toch-behalotecha-5767",
+      "title": "תוך הנחל, פרשת בהעלותך תשס״ז",
+      "group": "tn-bamidbar",
+      "pages": 7,
+      "size": "51KB"
+    },
+    {
+      "slug": "toch-behalotecha-5766",
+      "title": "תוך הנחל, פרשת בהעלותך תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 10,
+      "size": "67KB"
+    },
+    {
+      "slug": "toch-behalotecha-5765",
+      "title": "תוך הנחל, פרשת בהעלותך תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 6,
+      "size": "56KB"
+    },
+    {
+      "slug": "toch-behalotecha-5764",
+      "title": "תוך הנחל, פרשת בהעלותך תשס״ד",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "88KB"
+    },
+    {
+      "slug": "toch-behalotecha-5763",
+      "title": "תוך הנחל, פרשת בהעלותך תשס״ג",
+      "group": "tn-bamidbar",
+      "pages": 7,
+      "size": "108KB"
+    },
+    {
+      "slug": "toch-behalotecha-5760",
+      "title": "תוך הנחל, פרשת בהעלותך תש״ס",
+      "group": "tn-bamidbar",
+      "pages": 13,
+      "size": "117KB"
+    },
+    {
+      "slug": "toch-behalotecha-5759",
+      "title": "תוך הנחל, פרשת בהעלותך תשנ״ט",
+      "group": "tn-bamidbar",
+      "pages": 12,
+      "size": "103KB"
+    },
+    {
+      "slug": "toch-behalotecha-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת בהעלותך תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 5,
+      "size": "36KB"
+    },
+    {
+      "slug": "toch-behalotecha-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת בהעלותך תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "38KB"
+    },
+    {
+      "slug": "toch-shlach-5773",
+      "title": "תוך הנחל, פרשת שלח לך תשע״ג",
+      "group": "tn-bamidbar",
+      "pages": 21,
+      "size": "549KB"
+    },
+    {
+      "slug": "toch-shlach-5772",
+      "title": "תוך הנחל, פרשת שלח לך תשע״ב",
+      "group": "tn-bamidbar",
+      "pages": 14,
+      "size": "257KB"
+    },
+    {
+      "slug": "toch-shlach-5767",
+      "title": "תוך הנחל, פרשת שלח לך תשס״ז",
+      "group": "tn-bamidbar",
+      "pages": 7,
+      "size": "56KB"
+    },
+    {
+      "slug": "toch-shlach-5765",
+      "title": "תוך הנחל, פרשת שלח לך תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 8,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-shlach-5764",
+      "title": "תוך הנחל, פרשת שלח לך תשס״ד",
+      "group": "tn-bamidbar",
+      "pages": 11,
+      "size": "83KB"
+    },
+    {
+      "slug": "toch-shlach-5761",
+      "title": "תוך הנחל, פרשת שלח לך תשס״א",
+      "group": "tn-bamidbar",
+      "pages": 10,
+      "size": "98KB"
+    },
+    {
+      "slug": "toch-shlach-5760",
+      "title": "תוך הנחל, פרשת שלח לך תש״ס",
+      "group": "tn-bamidbar",
+      "pages": 12,
+      "size": "99KB"
+    },
+    {
+      "slug": "toch-shlach-5760-english",
+      "title": "תוך הנחל באנגלית, פרשת שלח לך תש״ס",
+      "group": "tn-bamidbar",
+      "pages": 7,
+      "size": "48KB"
+    },
+    {
+      "slug": "toch-korach-5773",
+      "title": "תוך הנחל, פרשת קרח תשע״ג",
+      "group": "tn-bamidbar",
+      "pages": 23,
+      "size": "553KB"
+    },
+    {
+      "slug": "toch-korach-5772",
+      "title": "תוך הנחל, פרשת קרח תשע״ב",
+      "group": "tn-bamidbar",
+      "pages": 16,
+      "size": "216KB"
+    },
+    {
+      "slug": "toch-korach-5767",
+      "title": "תוך הנחל, פרשת קרח תשס״ז",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "62KB"
+    },
+    {
+      "slug": "toch-korach-5765",
+      "title": "תוך הנחל, פרשת קרח תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 8,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-korach-5764",
+      "title": "תוך הנחל, פרשת קרח תשס״ד",
+      "group": "tn-bamidbar",
+      "pages": 13,
+      "size": "85KB"
+    },
+    {
+      "slug": "toch-korach-5761",
+      "title": "תוך הנחל, פרשת קרח תשס״א",
+      "group": "tn-bamidbar",
+      "pages": 12,
+      "size": "120KB"
+    },
+    {
+      "slug": "toch-korach-5765-english",
+      "title": "תוך הנחל באנגלית, פרשת קרח תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "35KB"
+    },
+    {
+      "slug": "toch-korach-5765-spenish",
+      "title": "תוך הנחל בספרדית, פרשת קרח תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "40KB"
+    },
+    {
+      "slug": "toch-chukat-5773",
+      "title": "תוך הנחל, פרשת חוקת תשע״ג",
+      "group": "tn-bamidbar",
+      "pages": 17,
+      "size": "493KB"
+    },
+    {
+      "slug": "toch-chukat-5772",
+      "title": "תוך הנחל, פרשת חוקת תשע״ב",
+      "group": "tn-bamidbar",
+      "pages": 18,
+      "size": "217KB"
+    },
+    {
+      "slug": "toch-chukat-5770",
+      "title": "תוך הנחל, פרשת חוקת תש״ע",
+      "group": "tn-bamidbar",
+      "pages": 14,
+      "size": "823KB"
+    },
+    {
+      "slug": "toch-chukat-5768",
+      "title": "תוך הנחל, פרשת חוקת תשס״ח",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-chukat-5767",
+      "title": "תוך הנחל, פרשת חוקת תשס״ז",
+      "group": "tn-bamidbar",
+      "pages": 22,
+      "size": "307KB"
+    },
+    {
+      "slug": "toch-chukat-5765",
+      "title": "תוך הנחל, פרשת חוקת תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 10,
+      "size": "95KB"
+    },
+    {
+      "slug": "toch-chukat-5758",
+      "title": "תוך הנחל, פרשת חוקת תשנ״ח",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "100KB"
+    },
+    {
+      "slug": "toch-chukat-5767-spenish",
+      "title": "תוך הנחל בספרדית, פרשת חוקת תשס״ז",
+      "group": "tn-bamidbar",
+      "pages": 5,
+      "size": "466KB"
+    },
+    {
+      "slug": "toch-chukat-5765-english",
+      "title": "תוך הנחל באנגלית, פרשת חוקת תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "33KB"
+    },
+    {
+      "slug": "toch-chukat-5765-idish",
+      "title": "תוך הנחל באידיש, פרשת חוקת תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "39KB"
+    },
+    {
+      "slug": "toch-chukat-5765-spenish",
+      "title": "תוך הנחל בספרדית, פרשת חוקת תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "37KB"
+    },
+    {
+      "slug": "toch-balak-5773",
+      "title": "תוך הנחל, פרשת בלק תשע״ג",
+      "group": "tn-bamidbar",
+      "pages": 19,
+      "size": "524KB"
+    },
+    {
+      "slug": "toch-balak-5772",
+      "title": "תוך הנחל, פרשת בלק תשע״ב",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "168KB"
+    },
+    {
+      "slug": "toch-balak-5771",
+      "title": "תוך הנחל, פרשת בלק תשע״א",
+      "group": "tn-bamidbar",
+      "pages": 14,
+      "size": "240KB"
+    },
+    {
+      "slug": "toch-balak-5770",
+      "title": "תוך הנחל, פרשת בלק תש״ע",
+      "group": "tn-bamidbar",
+      "pages": 19,
+      "size": "893KB"
+    },
+    {
+      "slug": "toch-balak-5768",
+      "title": "תוך הנחל, פרשת בלק תשס״ח",
+      "group": "tn-bamidbar",
+      "pages": 10,
+      "size": "97KB"
+    },
+    {
+      "slug": "toch-balak-5767",
+      "title": "תוך הנחל, פרשת בלק תשס״ז",
+      "group": "tn-bamidbar",
+      "pages": 10,
+      "size": "93KB"
+    },
+    {
+      "slug": "toch-balak-5765",
+      "title": "תוך הנחל, פרשת בלק תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 11,
+      "size": "99KB"
+    },
+    {
+      "slug": "toch-balak-5764",
+      "title": "תוך הנחל, פרשת בלק תשס״ד",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "90KB"
+    },
+    {
+      "slug": "toch-balak-5765-english",
+      "title": "תוך הנחל באנגלית, פרשת בלק תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "33KB"
+    },
+    {
+      "slug": "toch-balak-5764-english",
+      "title": "תוך הנחל באנגלית, פרשת בלק תשס״ד",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "33KB"
+    },
+    {
+      "slug": "toch-pinchas-5773",
+      "title": "תוך הנחל, פרשת פנחס תשע״ג",
+      "group": "tn-bamidbar",
+      "pages": 11,
+      "size": "425KB"
+    },
+    {
+      "slug": "toch-pinchas-5772",
+      "title": "תוך הנחל, פרשת פנחס תשע״ב",
+      "group": "tn-bamidbar",
+      "pages": 12,
+      "size": "188KB"
+    },
+    {
+      "slug": "toch-pinchas-5771",
+      "title": "תוך הנחל, פרשת פנחס תשע״א",
+      "group": "tn-bamidbar",
+      "pages": 15,
+      "size": "200KB"
+    },
+    {
+      "slug": "toch-pinchas-5769",
+      "title": "תוך הנחל, פרשת פנחס תשס״ט",
+      "group": "tn-bamidbar",
+      "pages": 19,
+      "size": "830KB"
+    },
+    {
+      "slug": "toch-pinchas-5768",
+      "title": "תוך הנחל, פרשת פנחס תשס״ח",
+      "group": "tn-bamidbar",
+      "pages": 6,
+      "size": "51KB"
+    },
+    {
+      "slug": "toch-pinchas-5767",
+      "title": "תוך הנחל, פרשת פנחס תשס״ז",
+      "group": "tn-bamidbar",
+      "pages": 7,
+      "size": "53KB"
+    },
+    {
+      "slug": "toch-pinchas-5766",
+      "title": "תוך הנחל, פרשת פנחס תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 8,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-pinchas-5765",
+      "title": "תוך הנחל, פרשת פנחס תשס״ה",
+      "group": "tn-bamidbar",
+      "pages": 8,
+      "size": "67KB"
+    },
+    {
+      "slug": "toch-pinchas-5764",
+      "title": "תוך הנחל, פרשת פנחס תשס״ד",
+      "group": "tn-bamidbar",
+      "pages": 18,
+      "size": "135KB"
+    },
+    {
+      "slug": "toch-pinchas-5761",
+      "title": "תוך הנחל, פרשת פנחס תשס״א",
+      "group": "tn-bamidbar",
+      "pages": 12,
+      "size": "192KB"
+    },
+    {
+      "slug": "toch-pinchas-5760",
+      "title": "תוך הנחל, פרשת פנחס תש״ס",
+      "group": "tn-bamidbar",
+      "pages": 8,
+      "size": "150KB"
+    },
+    {
+      "slug": "toch-pinchas-5759",
+      "title": "תוך הנחל, פרשת פנחס תשנ״ט",
+      "group": "tn-bamidbar",
+      "pages": 11,
+      "size": "78KB"
+    },
+    {
+      "slug": "toch-pinchas-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת פנחס תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "33KB"
+    },
+    {
+      "slug": "toch-pinchas-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת פנחס תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "36KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5773",
+      "title": "תוך הנחל, פרשת מטות מסעי תשע״ג",
+      "group": "tn-bamidbar",
+      "pages": 11,
+      "size": "202KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5772",
+      "title": "תוך הנחל, פרשת מטות מסעי תשע״ב",
+      "group": "tn-bamidbar",
+      "pages": 13,
+      "size": "209KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5769",
+      "title": "תוך הנחל, פרשת מטות מסעי תשס״ט",
+      "group": "tn-bamidbar",
+      "pages": 20,
+      "size": "834KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5767",
+      "title": "תוך הנחל, פרשת מטות מסעי תשס״ז",
+      "group": "tn-bamidbar",
+      "pages": 7,
+      "size": "106KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5766",
+      "title": "תוך הנחל, פרשת מטות מסעי תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 8,
+      "size": "59KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5764",
+      "title": "תוך הנחל, פרשת מטות מסעי תשס״ד",
+      "group": "tn-bamidbar",
+      "pages": 12,
+      "size": "125KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5761",
+      "title": "תוך הנחל, פרשת מטות מסעי תשס״א",
+      "group": "tn-bamidbar",
+      "pages": 13,
+      "size": "113KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5760",
+      "title": "תוך הנחל, פרשת מטות מסעי תש״ס",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "133KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5759",
+      "title": "תוך הנחל, פרשת מטות מסעי תשנ״ח",
+      "group": "tn-bamidbar",
+      "pages": 9,
+      "size": "91KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת מטות מסעי תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "34KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת מטות מסעי תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 12,
+      "size": "62KB"
+    },
+    {
+      "slug": "toch-matot-masaey-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת מטות מסעי תשס״ו",
+      "group": "tn-bamidbar",
+      "pages": 4,
+      "size": "37KB"
+    },
+    {
+      "slug": "toch-dvarim-5773",
+      "title": "תוך הנחל, פרשת דברים תשע״ג",
+      "group": "tn-devarim",
+      "pages": 19,
+      "size": "437KB"
+    },
+    {
+      "slug": "toch-dvarim-5771",
+      "title": "תוך הנחל, פרשת דברים תשע״א",
+      "group": "tn-devarim",
+      "pages": 15,
+      "size": "202KB"
+    },
+    {
+      "slug": "toch-dvarim-5770",
+      "title": "תוך הנחל, פרשת דברים תש״ע",
+      "group": "tn-devarim",
+      "pages": 14,
+      "size": "137KB"
+    },
+    {
+      "slug": "toch-dvarim-5769",
+      "title": "תוך הנחל, פרשת דברים תשס״ט",
+      "group": "tn-devarim",
+      "pages": 12,
+      "size": "264KB"
+    },
+    {
+      "slug": "toch-dvarim-5767",
+      "title": "תוך הנחל, פרשת דברים תשס״ז",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-dvarim-5766",
+      "title": "תוך הנחל, פרשת דברים תשס״ו",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "51KB"
+    },
+    {
+      "slug": "toch-dvarim-5764",
+      "title": "תוך הנחל, פרשת דברים תשס״ד",
+      "group": "tn-devarim",
+      "pages": 10,
+      "size": "81KB"
+    },
+    {
+      "slug": "toch-dvarim-5761",
+      "title": "תוך הנחל, פרשת דברים תשס״א",
+      "group": "tn-devarim",
+      "pages": 8,
+      "size": "169KB"
+    },
+    {
+      "slug": "toch-dvarim-5759",
+      "title": "תוך הנחל, פרשת דברים תשנ״ט",
+      "group": "tn-devarim",
+      "pages": 8,
+      "size": "71KB"
+    },
+    {
+      "slug": "toch-dvarim-5749",
+      "title": "תוך הנחל, פרשת דברים תשמ״ט",
+      "group": "tn-devarim",
+      "pages": 86,
+      "size": "769KB"
+    },
+    {
+      "slug": "toch-dvarim-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת דברים תשע״א",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "518KB"
+    },
+    {
+      "slug": "toch-dvarim-5771-spenish",
+      "title": "תוך הנחל בספרדית, פרשת דברים תשע״א",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "421KB"
+    },
+    {
+      "slug": "toch-dvarim-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת דברים תשס״ו",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "36KB"
+    },
+    {
+      "slug": "toch-dvarim-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת דברים תשס״ו",
+      "group": "tn-devarim",
+      "pages": 8,
+      "size": "47KB"
+    },
+    {
+      "slug": "toch-dvarim-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת דברים תשס״ו",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "49KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5773",
+      "title": "תוך הנחל, פרשת ואתחנן תשע״ג",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "381KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5771",
+      "title": "תוך הנחל, פרשת ואתחנן תשע״א",
+      "group": "tn-devarim",
+      "pages": 13,
+      "size": "194KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5770",
+      "title": "תוך הנחל, פרשת ואתחנן תש״ע",
+      "group": "tn-devarim",
+      "pages": 18,
+      "size": "268KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5769",
+      "title": "תוך הנחל, פרשת ואתחנן תשס״ט",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "259KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5768",
+      "title": "תוך הנחל, פרשת ואתחנן תשס״ח",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "54KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5766",
+      "title": "תוך הנחל, פרשת ואתחנן תשס״ו",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "48KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5765",
+      "title": "תוך הנחל, פרשת ואתחנן תשס״ה",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "81KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5764",
+      "title": "תוך הנחל, פרשת ואתחנן תשס״ד",
+      "group": "tn-devarim",
+      "pages": 13,
+      "size": "83KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5761",
+      "title": "תוך הנחל, פרשת ואתחנן תשס״א",
+      "group": "tn-devarim",
+      "pages": 15,
+      "size": "127KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5749",
+      "title": "תוך הנחל, פרשת ואתחנן תשמ״ט",
+      "group": "tn-devarim",
+      "pages": 92,
+      "size": "749KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת ואתחנן תשס״ו",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "44KB"
+    },
+    {
+      "slug": "toch-vaetchanan-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת ואתחנן תשס״ו",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "45KB"
+    },
+    {
+      "slug": "toch-ekev-5773",
+      "title": "תוך הנחל, פרשת עקב תשע״ג",
+      "group": "tn-devarim",
+      "pages": 30,
+      "size": "297KB"
+    },
+    {
+      "slug": "toch-ekev-5772",
+      "title": "תוך הנחל, פרשת עקב תשע״ב",
+      "group": "tn-devarim",
+      "pages": 27,
+      "size": "267KB"
+    },
+    {
+      "slug": "toch-ekev-5771",
+      "title": "תוך הנחל, פרשת עקב תשע״א",
+      "group": "tn-devarim",
+      "pages": 12,
+      "size": "189KB"
+    },
+    {
+      "slug": "toch-ekev-5770",
+      "title": "תוך הנחל, פרשת עקב תש״ע",
+      "group": "tn-devarim",
+      "pages": 20,
+      "size": "230KB"
+    },
+    {
+      "slug": "toch-ekev-5768",
+      "title": "תוך הנחל, פרשת עקב תשס״ח",
+      "group": "tn-devarim",
+      "pages": 21,
+      "size": "841KB"
+    },
+    {
+      "slug": "toch-ekev-5766",
+      "title": "תוך הנחל, פרשת עקב תשס״ו",
+      "group": "tn-devarim",
+      "pages": 8,
+      "size": "61KB"
+    },
+    {
+      "slug": "toch-ekev-5765",
+      "title": "תוך הנחל, פרשת עקב תשס״ה",
+      "group": "tn-devarim",
+      "pages": 29,
+      "size": "594KB"
+    },
+    {
+      "slug": "toch-ekev-5764",
+      "title": "תוך הנחל, פרשת עקב תשס״ד",
+      "group": "tn-devarim",
+      "pages": 12,
+      "size": "79KB"
+    },
+    {
+      "slug": "toch-ekev-5760",
+      "title": "תוך הנחל, פרשת עקב תש״ס",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "89KB"
+    },
+    {
+      "slug": "toch-ekev-5758",
+      "title": "תוך הנחל, פרשת עקב תשנ״ח",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "83KB"
+    },
+    {
+      "slug": "toch-ekev-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת עקב תשע״א",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "509KB"
+    },
+    {
+      "slug": "toch-ekev-5771-spenish",
+      "title": "תוך הנחל בספרדית, פרשת עקב תשע״א",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "424KB"
+    },
+    {
+      "slug": "toch-ekev-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת עקב תשס״ו",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "38KB"
+    },
+    {
+      "slug": "toch-ekev-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת עקב תשס״ו",
+      "group": "tn-devarim",
+      "pages": 15,
+      "size": "256KB"
+    },
+    {
+      "slug": "toch-ekev-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת עקב תשס״ו",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "40KB"
+    },
+    {
+      "slug": "toch-reye-5773",
+      "title": "תוך הנחל, פרשת ראה תשע״ג",
+      "group": "tn-devarim",
+      "pages": 29,
+      "size": "509KB"
+    },
+    {
+      "slug": "toch-reye-5772",
+      "title": "תוך הנחל, פרשת ראה תשע״ב",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "159KB"
+    },
+    {
+      "slug": "toch-reye-5768",
+      "title": "תוך הנחל, פרשת ראה תשס״ח",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "48KB"
+    },
+    {
+      "slug": "toch-reye-5766",
+      "title": "תוך הנחל, פרשת ראה תשס״ו",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "52KB"
+    },
+    {
+      "slug": "toch-reye-5765",
+      "title": "תוך הנחל, פרשת ראה תשס״ה",
+      "group": "tn-devarim",
+      "pages": 17,
+      "size": "326KB"
+    },
+    {
+      "slug": "toch-reye-5764",
+      "title": "תוך הנחל, פרשת ראה תשס״ד",
+      "group": "tn-devarim",
+      "pages": 10,
+      "size": "79KB"
+    },
+    {
+      "slug": "toch-reye-5761",
+      "title": "תוך הנחל, פרשת ראה תשס״א",
+      "group": "tn-devarim",
+      "pages": 15,
+      "size": "151KB"
+    },
+    {
+      "slug": "toch-reye-5758",
+      "title": "תוך הנחל, פרשת ראה תשנ״ח",
+      "group": "tn-devarim",
+      "pages": 13,
+      "size": "115KB"
+    },
+    {
+      "slug": "toch-reye-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת ראה תשס״ו",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "39KB"
+    },
+    {
+      "slug": "toch-reye-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת ראה תשס״ו",
+      "group": "tn-devarim",
+      "pages": 17,
+      "size": "248KB"
+    },
+    {
+      "slug": "toch-reye-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת ראה תשס״ו",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "32KB"
+    },
+    {
+      "slug": "toch-shoftim-5773",
+      "title": "תוך הנחל, פרשת שופטים תשע״ג",
+      "group": "tn-devarim",
+      "pages": 23,
+      "size": "339KB"
+    },
+    {
+      "slug": "toch-shoftim-5771",
+      "title": "תוך הנחל, פרשת שופטים תשע״א",
+      "group": "tn-devarim",
+      "pages": 21,
+      "size": "448KB"
+    },
+    {
+      "slug": "toch-shoftim-5770",
+      "title": "תוך הנחל, פרשת שופטים תש״ע",
+      "group": "tn-devarim",
+      "pages": 15,
+      "size": "158KB"
+    },
+    {
+      "slug": "toch-shoftim-5768",
+      "title": "תוך הנחל, פרשת שופטים תשס״ח",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "51KB"
+    },
+    {
+      "slug": "toch-shoftim-5767",
+      "title": "תוך הנחל, פרשת שופטים תשס״ז",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "67KB"
+    },
+    {
+      "slug": "toch-shoftim-5765",
+      "title": "תוך הנחל, פרשת שופטים תשס״ה",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "51KB"
+    },
+    {
+      "slug": "toch-shoftim-5764",
+      "title": "תוך הנחל, פרשת שופטים תשס״ד",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "72KB"
+    },
+    {
+      "slug": "toch-shoftim-5761",
+      "title": "תוך הנחל, פרשת שופטים תשס״א",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "112KB"
+    },
+    {
+      "slug": "toch-shoftim-5760",
+      "title": "תוך הנחל, פרשת שופטים תש״ס",
+      "group": "tn-devarim",
+      "pages": 12,
+      "size": "108KB"
+    },
+    {
+      "slug": "toch-shoftim-5759",
+      "title": "תוך הנחל, פרשת שופטים תשנ״ט",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "83KB"
+    },
+    {
+      "slug": "toch-shoftim-5771-english",
+      "title": "תוך הנחל באנגלית, פרשת שופטים תשע״א",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "512KB"
+    },
+    {
+      "slug": "toch-shoftim-5771-spenish",
+      "title": "תוך הנחל בספרדית, פרשת שופטים תשע״א",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "414KB"
+    },
+    {
+      "slug": "toch-shoftim-5760-english",
+      "title": "תוך הנחל באנגלית, פרשת שופטים תש״ס",
+      "group": "tn-devarim",
+      "pages": 8,
+      "size": "58KB"
+    },
+    {
+      "slug": "toch-shoftim-5760-idish",
+      "title": "תוך הנחל באידיש, פרשת שופטים תש״ס",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "261KB"
+    },
+    {
+      "slug": "toch-shoftim-5760-spenish",
+      "title": "תוך הנחל בספרדית, פרשת שופטים תש״ס",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "60KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5773",
+      "title": "תוך הנחל, פרשת כי תצא תשע״ג",
+      "group": "tn-devarim",
+      "pages": 18,
+      "size": "213KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5772",
+      "title": "תוך הנחל, פרשת כי תצא תשע״ב",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "260KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5771",
+      "title": "תוך הנחל, פרשת כי תצא תשע״א",
+      "group": "tn-devarim",
+      "pages": 16,
+      "size": "258KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5770",
+      "title": "תוך הנחל, פרשת כי תצא תש״ע",
+      "group": "tn-devarim",
+      "pages": 16,
+      "size": "149KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5769",
+      "title": "תוך הנחל, פרשת כי תצא תשס״ט",
+      "group": "tn-devarim",
+      "pages": 8,
+      "size": "250KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5768",
+      "title": "תוך הנחל, פרשת כי תצא תשס״ח",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "59KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5767",
+      "title": "תוך הנחל, פרשת כי תצא תשס״ז",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "37KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5766",
+      "title": "תוך הנחל, פרשת כי תצא תשס״ו",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "55KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5765",
+      "title": "תוך הנחל, פרשת כי תצא תשס״ה",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "57KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5764",
+      "title": "תוך הנחל, פרשת כי תצא תשס״ד",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "68KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5759",
+      "title": "תוך הנחל, פרשת כי תצא תשנ״ט",
+      "group": "tn-devarim",
+      "pages": 12,
+      "size": "115KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5767-english",
+      "title": "תוך הנחל באנגלית, פרשת כי תצא תשס״ז",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "259KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5767-spenish",
+      "title": "תוך הנחל בספרדית, פרשת כי תצא תשס״ז",
+      "group": "tn-devarim",
+      "pages": 3,
+      "size": "24KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת כי תצא תשס״ו",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "48KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת כי תצא תשס״ו",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "119KB"
+    },
+    {
+      "slug": "toch-ki-tetse-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת כי תצא תשס״ו",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "36KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5773",
+      "title": "תוך הנחל, פרשת כי תבוא תשע״ג",
+      "group": "tn-devarim",
+      "pages": 12,
+      "size": "290KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5772",
+      "title": "תוך הנחל, פרשת כי תבוא תשע״ב",
+      "group": "tn-devarim",
+      "pages": 18,
+      "size": "205KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5771",
+      "title": "תוך הנחל, פרשת כי תבוא תשע״א",
+      "group": "tn-devarim",
+      "pages": 21,
+      "size": "432KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5770",
+      "title": "תוך הנחל, פרשת כי תבוא תש״ע",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "136KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5768",
+      "title": "תוך הנחל, פרשת כי תבוא תשס״ח",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "54KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5767",
+      "title": "תוך הנחל, פרשת כי תבוא תשס״ז",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "61KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5766",
+      "title": "תוך הנחל, פרשת כי תבוא תשס״ו",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5765",
+      "title": "תוך הנחל, פרשת כי תבוא תשס״ה",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "64KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5764",
+      "title": "תוך הנחל, פרשת כי תבוא תשס״ד",
+      "group": "tn-devarim",
+      "pages": 10,
+      "size": "78KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5759",
+      "title": "תוך הנחל, פרשת כי תבוא תשנ״ט",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "70KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת כי תבוא תשס״ו",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "182KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת כי תבוא תשס״ו",
+      "group": "tn-devarim",
+      "pages": 10,
+      "size": "122KB"
+    },
+    {
+      "slug": "toch-ki-tavo-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת כי תבוא תשס״ו",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "178KB"
+    },
+    {
+      "slug": "toch-nitsavim-vayelech-5773",
+      "title": "תוך הנחל, פרשת נצבים וילך תשע״ג",
+      "group": "tn-devarim",
+      "pages": 10,
+      "size": "377KB"
+    },
+    {
+      "slug": "toch-nitsavim-vayelech-5771",
+      "title": "תוך הנחל, פרשת נצבים וילך תשע״א",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "391KB"
+    },
+    {
+      "slug": "toch-nitsavim-vayelech-5770",
+      "title": "תוך הנחל, פרשת נצבים וילך תש״ע",
+      "group": "tn-devarim",
+      "pages": 12,
+      "size": "130KB"
+    },
+    {
+      "slug": "toch-nitsavim-vayelech-5769",
+      "title": "תוך הנחל, פרשת נצבים וילך תשס״ט",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "270KB"
+    },
+    {
+      "slug": "toch-nitsavim-vayelech-5766",
+      "title": "תוך הנחל, פרשת נצבים וילך תשס״ו",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "54KB"
+    },
+    {
+      "slug": "toch-nitsavim-vayelech-5764",
+      "title": "תוך הנחל, פרשת נצבים וילך תשס״ד",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "65KB"
+    },
+    {
+      "slug": "toch-nitsavim-vayelech-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת נצבים וילך תשס״ו",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "46KB"
+    },
+    {
+      "slug": "toch-nitsavim-vayelech-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת נצבים וילך תשס״ו",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "38KB"
+    },
+    {
+      "slug": "toch-nitsavim-vayelech-5766-spenish",
+      "title": "תוך הנחל בספרדית, פרשת נצבים וילך תשס״ו",
+      "group": "tn-devarim",
+      "pages": 2,
+      "size": "32KB"
+    },
+    {
+      "slug": "toch-ahazino-5771",
+      "title": "תוך הנחל, פרשת האזינו תשע״א",
+      "group": "tn-devarim",
+      "pages": 34,
+      "size": "180KB"
+    },
+    {
+      "slug": "toch-ahazino-5769",
+      "title": "תוך הנחל, פרשת האזינו תשס״ט",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "57KB"
+    },
+    {
+      "slug": "toch-ahazino-5768",
+      "title": "תוך הנחל, פרשת האזינו תשס״ח",
+      "group": "tn-devarim",
+      "pages": 12,
+      "size": "74KB"
+    },
+    {
+      "slug": "toch-ahazino-5767",
+      "title": "תוך הנחל, פרשת האזינו תשס״ז",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "53KB"
+    },
+    {
+      "slug": "toch-ahazino-5766",
+      "title": "תוך הנחל, פרשת האזינו תשס״ו",
+      "group": "tn-devarim",
+      "pages": 15,
+      "size": "831KB"
+    },
+    {
+      "slug": "toch-ahazino-5764",
+      "title": "תוך הנחל, פרשת האזינו תשס״ד",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "67KB"
+    },
+    {
+      "slug": "toch-ahazino-5760",
+      "title": "תוך הנחל, פרשת האזינו תש״ס",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "49KB"
+    },
+    {
+      "slug": "toch-ahazino-5767-english",
+      "title": "תוך הנחל באנגלית, פרשת האזינו תשס״ז",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "53KB"
+    },
+    {
+      "slug": "toch-ahazino-5767-idish",
+      "title": "תוך הנחל באידיש, פרשת האזינו תשס״ז",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "42KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5774",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשע״ד",
+      "group": "tn-devarim",
+      "pages": 11,
+      "size": "385KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5772",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשע״ב",
+      "group": "tn-devarim",
+      "pages": 8,
+      "size": "1.0MB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5772-2",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשע״ב -2",
+      "group": "tn-devarim",
+      "pages": 14,
+      "size": "1.1MB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5771",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשע״א",
+      "group": "tn-devarim",
+      "pages": 21,
+      "size": "315KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5770",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תש״ע",
+      "group": "tn-devarim",
+      "pages": 7,
+      "size": "245KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5769",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשס״ט",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "78KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5769-2",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשס״ט -2",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "76KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5768",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשס״ח",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "78KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5768-2",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשס״ח -2",
+      "group": "tn-devarim",
+      "pages": 9,
+      "size": "92KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5767",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשס״ז",
+      "group": "tn-devarim",
+      "pages": 4,
+      "size": "93KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5766",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשס״ו",
+      "group": "tn-devarim",
+      "pages": 6,
+      "size": "82KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5752",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשנ״ב",
+      "group": "tn-devarim",
+      "pages": 77,
+      "size": "621KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5750",
+      "title": "תוך הנחל, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תש״ן",
+      "group": "tn-devarim",
+      "pages": 98,
+      "size": "665KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5766-english",
+      "title": "תוך הנחל באנגלית, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשס״ו",
+      "group": "tn-devarim",
+      "pages": 5,
+      "size": "38KB"
+    },
+    {
+      "slug": "toch-zot-abracha-sucot-rabeno-5766-idish",
+      "title": "תוך הנחל באידיש, פרשת וזאת הברכה-סוכות-הילולת רבינו ז״ל תשס״ו",
+      "group": "tn-devarim",
+      "pages": 8,
+      "size": "65KB"
+    },
+    {
+      "slug": "toch-rosh-hashana-rosh-hashana-hebrew-5772",
+      "title": "תוך הנחל, ראש השנה תשע״ב",
+      "group": "tn-moadim",
+      "pages": 18,
+      "size": "964KB"
+    },
+    {
+      "slug": "toch-rosh-hashana-rosh-hashana-hebrew-5774",
+      "title": "תוך הנחל, ראש השנה תשע״ד",
+      "group": "tn-moadim",
+      "pages": 20,
+      "size": "449KB"
+    },
+    {
+      "slug": "toch-pesach-acharon-5770",
+      "title": "תוך הנחל, אחרון של פסח תש״ע",
+      "group": "tn-moadim",
+      "pages": 5,
+      "size": "81KB"
+    },
+    {
+      "slug": "toch-pesach-5769",
+      "title": "תוך הנחל, שביעי של פסח תשס״ט",
+      "group": "tn-moadim",
+      "pages": 6,
+      "size": "82KB"
+    },
+    {
+      "slug": "toch-pesach-acharon-5769",
+      "title": "תוך הנחל, אחרון של פסח תשס״ט",
+      "group": "tn-moadim",
+      "pages": 4,
+      "size": "74KB"
+    },
+    {
+      "slug": "toch-pesach-5768",
+      "title": "תוך הנחל, שביעי של פסח תשס״ח",
+      "group": "tn-moadim",
+      "pages": 3,
+      "size": "37KB"
+    },
+    {
+      "slug": "toch-pesach-acharon-5768",
+      "title": "תוך הנחל, אחרון של פסח תשס״ח",
+      "group": "tn-moadim",
+      "pages": 5,
+      "size": "43KB"
+    },
+    {
+      "slug": "toch-pesach-5767",
+      "title": "תוך הנחל, שביעי של פסח תשס״ז",
+      "group": "tn-moadim",
+      "pages": 2,
+      "size": "33KB"
+    },
+    {
+      "slug": "toch-pesach-acharon-5767",
+      "title": "תוך הנחל, אחרון של פסח תשס״ז",
+      "group": "tn-moadim",
+      "pages": 3,
+      "size": "34KB"
+    },
+    {
+      "slug": "toch-pesach-acharon-5766",
+      "title": "תוך הנחל, אחרון של פסח תשס״ו",
+      "group": "tn-moadim",
+      "pages": 4,
+      "size": "43KB"
+    },
+    {
+      "slug": "toch-pesach-5757",
+      "title": "תוך הנחל, שביעי של פסח תשנ״ז",
+      "group": "tn-moadim",
+      "pages": 3,
+      "size": "32KB"
+    },
+    {
+      "slug": "toch-pesach-5747",
+      "title": "תוך הנחל, שבת חול המועד פסח תשמ״ז",
+      "group": "tn-moadim",
+      "pages": 97,
+      "size": "1.4MB"
+    },
+    {
+      "slug": "toch-pesach-acharon-5766-english",
+      "title": "תוך הנחל באנגלית, אחרון של פסח תשס״ו",
+      "group": "tn-moadim",
+      "pages": 6,
+      "size": "43KB"
+    },
+    {
+      "slug": "toch-pesach-acharon-5766-spenish",
+      "title": "תוך הנחל בספרדית, אחרון של פסח תשס״ו",
+      "group": "tn-moadim",
+      "pages": 6,
+      "size": "41KB"
+    },
+    {
+      "slug": "toch-moadim-maoz-tzur",
+      "title": "תוך הנחל, מעוז צור",
+      "group": "tn-moadim",
+      "pages": 35,
+      "size": "371KB"
+    },
+    {
+      "slug": "toch-hilulat-rabinu-vezot-habracha-5772",
+      "title": "תוך הנחל, הילולת רביז״ל / פרשת וזאת הברכה תשע״ב",
+      "group": "tn-moadim",
+      "pages": 14,
+      "size": "1.1MB"
     }
   ]
 }

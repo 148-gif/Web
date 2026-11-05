@@ -1,7 +1,7 @@
 // Library index, kuntresim, book pages and the book reader.
 import { esc, url, nik, read, write, lib, catName } from '../core.mjs';
 import { icon, orn, phead, layout } from '../layout.mjs';
-import { ps, ld, absu, crumbs, facts, person } from '../parts.mjs';
+import { ps, ld, absu, crumbs, facts, person, pagerHtml } from '../parts.mjs';
 
 const libCats = lib.categories.filter(([c]) => lib.books.some((b) => b.category === c) || lib.online.some(([oc]) => oc === c));
 write('library/index.html', layout('ספרייה', `<section class="band"><div class="wrap">${libCats.length > 1 ? `<nav class="chips lchips" aria-label="קטגוריות">${libCats.map(([c, n]) => `<a href="#${c}">${esc(n)}</a>`).join('')}</nav>` : ''}
@@ -14,10 +14,27 @@ ${libCats.map(([c, n]) => `<section class="libcat" id="${c}"><h2 class="subh">${
 // Book reader: one page per section of every book with a text file (introduction, sections, closing prayer)
 // Short kuntresim (data/kuntresim.json): one page grouped by topic, each item a PDF in site/books/kuntresim/
 const kt = read('kuntresim.json');
-write('library/kuntresim/index.html', layout('קונטרסים', `<section class="band"><div class="wrap"><nav class="chips lchips" aria-label="נושאים">${kt.groups.map(([g, n]) => `<a href="#${g}">${esc(n)}</a>`).join('')}</nav>
-${kt.groups.map(([g, n]) => `<section class="libcat" id="${g}"><h2 class="subh">${icon('book', 'ico')}${esc(n)}</h2><div class="grid">${kt.items.filter((k) => k.group === g).map((k) => `<a class="card book" href="/books/kuntresim/${k.slug}.pdf">${icon('book', 'ico lg')}<h3>${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">קריאה והורדה · PDF ←</span></a>`).join('')}</div></section>`).join('')}</div></section>`,
-  { desc: `קונטרסים קצרים של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה בחינם: ${kt.groups.map(([, n]) => n).join(', ')}.`, path: '/library/', self: '/library/kuntresim/', full: true, head: phead('מוהרא״ש · הצדיק מיבנאל', 'קונטרסים', esc(kt.intro)),
+const kuntresCard = (k) => `<a class="card book" href="/books/kuntresim/${k.slug}.pdf">${icon('book', 'ico lg')}<h3>${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">קריאה והורדה · PDF ←</span></a>`;
+// A topic with many items gets its own numbered pages (/library/kuntresim/<topic>/, .../page/<n>/); the small ones stay on the main page.
+const KPER = 60, KBIG = 30;
+const kItems = (g) => kt.items.filter((k) => k.group === g);
+const kBig = new Set(kt.groups.filter(([g]) => kItems(g).length > KBIG).map(([g]) => g));
+const kHref = (g) => (kBig.has(g) ? `/library/kuntresim/${g}/` : `/library/kuntresim/#${g}`);
+const kChips = (cur) => `<nav class="chips lchips" aria-label="נושאים">${kt.groups.map(([g, n]) => `<a href="${kHref(g)}"${g === cur ? ' aria-current="page"' : ''}>${esc(n)}</a>`).join('')}</nav>`;
+write('library/kuntresim/index.html', layout('קונטרסים', `<section class="band"><div class="wrap">${kChips('')}
+${kt.groups.filter(([g]) => !kBig.has(g)).map(([g, n]) => `<section class="libcat" id="${g}"><h2 class="subh">${icon('book', 'ico')}${esc(n)}</h2><div class="grid">${kItems(g).map(kuntresCard).join('')}</div></section>`).join('')}
+${kBig.size ? `<section class="libcat" id="more"><h2 class="subh">${icon('book', 'ico')}עוד נושאים</h2><div class="grid">${kt.groups.filter(([g]) => kBig.has(g)).map(([g, n]) => `<a class="card book" href="${kHref(g)}">${icon('book', 'ico lg')}<h3>${esc(n)}</h3><p>${kItems(g).length} קונטרסים</p><span class="go">לרשימה ←</span></a>`).join('')}</div></section>` : ''}</div></section>`,
+  { desc: `קונטרסים של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה בחינם: ${kt.groups.map(([, n]) => n).join(', ')}.`, path: '/library/', self: '/library/kuntresim/', full: true, head: phead('מוהרא״ש · הצדיק מיבנאל', 'קונטרסים', esc(kt.intro)),
     head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: 'קונטרסים', description: kt.intro }, crumbs([['בית', '/'], ['ספרייה', '/library/'], ['קונטרסים', '/library/kuntresim/']])] }) }));
+for (const g of kBig) {
+  const name = kt.groups.find(([x]) => x === g)[1], all = kItems(g), total = Math.ceil(all.length / KPER), base = `/library/kuntresim/${g}/`;
+  for (let n = 1; n <= total; n++) {
+    const items = all.slice((n - 1) * KPER, n * KPER), self = n === 1 ? base : `${base}page/${n}/`;
+    write(`${self.slice(1)}index.html`, layout(n === 1 ? name : `${name} — עמוד ${n}`, `<section class="band"><div class="wrap">${kChips(g)}<div class="grid">${items.map(kuntresCard).join('')}</div>${pagerHtml(n, total, (x) => (x === 1 ? base : `${base}page/${x}/`))}<p class="small"><a href="/library/kuntresim/">← לכל נושאי הקונטרסים</a></p></div></section>`,
+      { desc: (n === 1 ? `${name}: ${all.length} קונטרסים לקריאה ולהורדה בחינם.` : `${name}, עמוד ${n} מתוך ${total}: ${items.slice(0, 3).map((k) => k.title).join(' · ')}`).slice(0, 155), path: '/library/', self, full: true, head: phead('ספרייה · קונטרסים', esc(name), `${all.length} קונטרסים, עמוד ${n} מתוך ${total}.`),
+        head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name, description: `${all.length} קונטרסים`, inLanguage: 'he' }, crumbs([['בית', '/'], ['ספרייה', '/library/'], ['קונטרסים', '/library/kuntresim/'], [name, base]])] }) }));
+  }
+}
 
 const bookTexts = lib.books.filter((b) => b.text).map((b) => [b, read(b.text)]);
 const fnText = (txt, key, labels) => esc(txt).replace(/\[([^\]\s]{1,4})\]/g, (m, l) => (labels.has(l) ? `<sup class="fn"><a href="#fn-${key}-${l}" id="fr-${key}-${l}" aria-label="הערה ${l}">${l}</a></sup>` : m));
