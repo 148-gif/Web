@@ -105,7 +105,7 @@ export function contentRecommendations(pages, { records = {}, aliases = {}, igno
     for (const [t, tf] of counts) { if (!post.has(t)) post.set(t, []); post.get(t).push([i, tf]); }
   });
   const average = total / Math.max(1, docs.length), ignored = new Set(ignorePairs.map((p) => p.join('|'))), inline = [], related = {};
-  const entityTargets = docs.filter((x) => !/^\/(?:shut|letters|halacha)\/\d+\/$/.test(x.path) && !/\/page\/\d+\/$/.test(x.path));
+  const entityTargets = docs.filter((x) => (records[x.path]?.aliases?.length || aliases[x.path]?.length || ['Book', 'Person', 'Place', 'LocalBusiness', 'Organization'].includes(x.entityType) || (!x.entityType && /^\/library\/[^/]+\/$/.test(x.path))) && !/\/page\/\d+\/$/.test(x.path));
   docs.forEach((p, i) => {
     const normalizedText = normalize(p.text);
     const query = [...vectors[i]].filter(([t]) => post.get(t).length <= Math.max(2, docs.length * 0.15)).sort((a, b) => b[1] - a[1]).slice(0, 16);
@@ -120,13 +120,17 @@ export function contentRecommendations(pages, { records = {}, aliases = {}, igno
     for (const { page: t, score } of candidates.values()) {
       if (t.path === p.path || t.path === '/' || ignored.has(p.path + '|' + t.path)) continue;
       if ((p.links || []).some((l) => l.to === t.path && l.region === 'content' && !l.related)) continue;
-      const names = [...new Set([...(records[t.path]?.aliases || []), ...(aliases[t.path] || []), t.title])].filter((n) => n && n.length >= 4).sort((a, b) => b.length - a.length);
+      const explicitNames = [...(records[t.path]?.aliases || []), ...(aliases[t.path] || [])];
+      const sameBook = /^\/library\/[^/]+\//.exec(t.path)?.[0];
+      const titleAllowed = t.entityType !== 'Chapter' || (sameBook && p.path.startsWith(sameBook));
+      const names = [...new Set([...explicitNames, ...(titleAllowed ? [t.title] : [])])].filter((n) => n && n.length >= 4).sort((a, b) => b.length - a.length);
       let found;
       for (const quote of paras) {
         for (const anchor of names) {
           const match = findPhrase(quote, anchor); if (!match) continue; const at = match.start;
           const context = quote.slice(Math.max(0, at - 50), at + anchor.length + 50);
           if (/^\/library\/[^/]+\/$/.test(t.path) && !/(?:ספר|פירוש|קונטרס|כרך|כרכי|בהקדמ)/.test(context)) continue;
+          if (t.entityType === 'Person' && !explicitNames.includes(anchor) && !/(?:הרב|רבי|רבינו|רבנו|רבנית|אדמו|מוהר)/.test(context)) continue;
           found = { from: p.path, to: t.path, anchor: match.anchor, start: match.start, quote, context, score: Math.round(score * 100) / 100, reason: /^\/library\//.test(t.path) ? 'אזכור ספר בהקשר מפורש' : 'ביטוי יעד בתוך הפסקה' }; break;
         }
         if (found) break;
