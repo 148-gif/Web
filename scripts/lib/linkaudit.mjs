@@ -73,8 +73,10 @@ export function extractPage(file, html, base = '') {
   }
   const text = textOf(content.replace(/<a\b[\s\S]*?<\/a>/gi, ' '));
   const description = (html.match(/<meta\s+name="description"\s+content="([^"]*)"/i) || [])[1] || '';
+  const searchTitle = textOf((html.match(/<title>([\s\S]*?)<\/title>/i) || ['', ''])[1]);
+  const headingCount = [...html.matchAll(/<h1\b/gi)].length;
   const canonical = (html.match(/<link\s+rel="canonical"\s+href="([^"]*)"/i) || [])[1] || '';
-  return { path, title, description: decode(description), canonical, noindex: /noindex/i.test(robots), links, problems, text, paragraphs: paragraphsOf(html).length ? paragraphsOf(html) : [text] };
+  return { path, title, searchTitle, headingCount, description: decode(description), canonical, noindex: /noindex/i.test(robots), links, problems, text, paragraphs: paragraphsOf(html).length ? paragraphsOf(html) : [text] };
 }
 
 // Index of `title` in `text` as a whole phrase (not inside a longer word or number, so "סעיף י" does not match "סעיף יב"); a one-letter Hebrew prefix (ה, ב, ל…) before it is allowed. -1 if absent.
@@ -133,7 +135,6 @@ const isGeneric = (a) => GENERIC.has(a.toLowerCase().replace(/[\s.,:;!?…«»"'
 export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle = 4, config = {}, suggestFor = (p) => !isMinor(p.path) } = {}) {
   // config (data/link-audit.json): ignore = [{ code, path }] silences one finding; ignorePairs = [[from, to]] silences a suggestion; aliases = { path: [phrases] } are other names of a page, matched like its title.
   const ignored = new Set((config.ignore || []).map((x) => `${x.code}|${x.path}`));
-  const ignoredPairs = new Set((config.ignorePairs || []).map((x) => x.join('|')));
   const aliases = config.aliases || {};
   const pages = new Map();
   for (const [file, html] of Object.entries(files)) {
@@ -228,6 +229,13 @@ export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle
   const recommendations = contentRecommendations(indexable, { records: seo.records, aliases, ignorePairs: config.ignorePairs || [] });
   const suggestions = recommendations.inline;
 
+  for (const p of indexable) {
+    if (!p.description) add('warn', 'missing-description', p.path, 'חסר תיאור לחיפוש');
+    if (p.headingCount !== 1) add('warn', 'heading-count', p.path, 'מספר כותרות H1: ' + p.headingCount);
+    const rendered = seo.rendered.get(p.path);
+    if (rendered?.stale) add('warn', 'stale-annotation', p.path, rendered.stale + ' קישורים לא הוחלו כי קטע המקור השתנה או אינו חד-משמעי');
+  }
+
   const kept = findings.filter((f) => !ignored.has(`${f.code}|${f.path}`));
   findings.length = 0;
   findings.push(...kept);
@@ -246,6 +254,7 @@ export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle
 }
 
 const LABEL = {
+  'missing-description': 'חסר תיאור לחיפוש', 'heading-count': 'מבנה כותרת ראשית', 'stale-annotation': 'סימון קישור שדורש עדכון',
   'broken-link': 'קישור פנימי שבור', orphan: 'עמוד יתום (אין קישור נכנס)', 'nav-only': 'מקושר רק מתפריט או תחתית', unreachable: 'לא מגיעים אליו מדף הבית',
   'too-deep': `עמוק מ-${MAX_DEPTH} לחיצות`, 'many-links': `מעל ${MAX_LINKS} קישורים`, 'generic-anchor': 'עוגן גנרי', 'empty-anchor': 'קישור בלי טקסט', 'not-crawlable': 'קישור שאינו a href',
   'ambiguous-anchor': 'אותו עוגן ליעדים שונים', 'no-title': 'עמוד בלי כותרת', 'sitemap-missing-page': 'ב-sitemap אך אין עמוד', 'single-inlink': 'קישור נכנס אחד בלבד', 'duplicate-title': 'שני עמודים באותה כותרת', 'one-anchor': 'עוגן אחד כמעט בכל הקישורים', 'not-in-sitemap': 'עמוד שאינו ב-sitemap',
