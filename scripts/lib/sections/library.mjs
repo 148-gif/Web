@@ -61,6 +61,12 @@ const readerPages = (bk, tx) => {
   });
   return chapters;
 };
+// What the reader really offers for a book: vocalised text only when most of it is, notes only when it has some
+const readNote = (tx) => {
+  const all = [tx.intro, ...tx.sections], paras = all.flatMap((c) => c.paras);
+  const vocal = paras.filter((p) => /[\u05B0-\u05C7]/.test(p)).length > paras.length / 2, noted = all.some((c) => (c.notes || []).length);
+  return `הספר המלא באתר${vocal ? ', מנוקד' : ''}${noted ? ', עם הערות' : ''}`;
+};
 const bookChapters = Object.fromEntries(bookTexts.map(([bk, tx]) => [bk.slug, readerPages(bk, tx)]));
 // Library: one page per book in data/library.json, and an index grouped by category
 for (const bk of lib.books) {
@@ -74,7 +80,7 @@ ${bk.parts.map(([t, , [from, to], cnt], i) => `<details class="tocpart"><summary
 ${bookTexts.find(([b]) => b === bk)?.[1].tikkun ? `<h3 class="tocpart"><span>${icon('sparkle', 'ico sm')}</span>נספח</h3><ol class="toc"><li><a href="/library/${bk.slug}/tikkun-haklali/"><b>תיקון הכללי</b><span>עשרת המזמורים של רבי נחמן מברסלב</span></a></li></ol>` : ''}</div></section>` : ''}
 ${bk.noCopyright ? `<section class="band quoteband"><div class="wrap"><p class="kicker2">על הדפסת ספריו</p><blockquote class="pq small"><p>${esc(bk.noCopyright)}</p><cite>${esc(bk.noCopyrightBy)}</cite></blockquote></div></section>` : ''}
 <section class="band" id="dedicate"><div class="wrap"><a class="feature" href="/print/"><span class="fic">${icon('heart', 'ico lg')}</span><span class="ftxt"><em>שותפות בהפצת ספרי הצדיק</em><b>הקדשה והשתתפות בהדפסה</b><span>לרפואה, לפרנסה, לזיווג או לעילוי נשמה, בהדפסת ספרי מוהרא״ש.</span></span><span class="btn">להשתתפות ←</span></a></div></section>
-<section class="band final" id="read"><div class="wrap narrow"><h2>לקריאה ולהורדה</h2><p>${chs ? `הספר המלא באתר, מנוקד, עם הערות${bk.pdf ? ', ולהורדה כ־PDF' : ''}.` : 'הספר המלא, כפי שיצא לאור, בחינם.'}</p>${chs ? `<div class="navbtns"><a class="btn" href="${bookUrl}hakdama/">${icon('book', 'ico sm')}קריאה באתר</a>${bk.pdf ? `<a class="btn ghost" href="${bk.pdf}" download>${icon('print', 'ico sm')}הורדה (PDF, ${bk.pdfSize})</a>` : ''}</div>` : pdfBtns}<p class="small"><a href="/library/">← לכל ספרי הספרייה</a></p></div></section>`,
+<section class="band final" id="read"><div class="wrap narrow"><h2>לקריאה ולהורדה</h2><p>${chs ? `${readNote(bookTexts.find(([b]) => b === bk)[1])}${bk.pdf ? ', ולהורדה כ־PDF' : ''}.` : 'הספר המלא, כפי שיצא לאור, בחינם.'}</p>${chs ? `<div class="navbtns"><a class="btn" href="${bookUrl}hakdama/">${icon('book', 'ico sm')}קריאה באתר</a>${bk.pdf ? `<a class="btn ghost" href="${bk.pdf}" download>${icon('print', 'ico sm')}הורדה (PDF, ${bk.pdfSize})</a>` : ''}</div>` : pdfBtns}<p class="small"><a href="/library/">← לכל ספרי הספרייה</a></p></div></section>`,
     { desc: `${bk.title}: ${bk.lead}`, path: '/library/', self: bookUrl, full: true,
       head: phead(`ספרייה · ${catName[bk.category]}`, esc(bk.title), esc(bk.lead), chs ? `<div class="navbtns hcta"><a class="btn" href="${bookUrl}hakdama/">${icon('book', 'ico sm')}קריאה באתר</a><a class="btn ghost" href="#toc">תוכן העניינים</a></div>` : `<div class="navbtns hcta"><a class="btn" href="${bk.pdf}" target="_blank" rel="noopener">${icon('book', 'ico sm')}קריאה בספר</a><a class="btn ghost" href="${bk.parts ? '#contents' : '#read'}">${bk.parts ? 'מה בספר' : 'הורדה'}</a></div>`),
       head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'Book', name: bk.title, author: person, inLanguage: 'he', description: bk.lead, genre: catName[bk.category], bookFormat: 'https://schema.org/EBook', ...(bk.pages ? { numberOfPages: bk.pages } : {}), isAccessibleForFree: true, ...(absu(bookUrl) ? { url: absu(bookUrl), ...(bk.pdf ? { workExample: { '@type': 'Book', bookFormat: 'https://schema.org/EBook', encodingFormat: 'application/pdf', url: absu(bk.pdf) } } : {}) } : {}) }, crumbs([['בית', '/'], ['ספרייה', '/library/'], [bk.title, bookUrl]])] }) }));
