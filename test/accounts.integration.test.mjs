@@ -19,7 +19,7 @@ test('direct users have server roles; recovery is one-use and revokes old sessio
   await initializeAccountsSchema(pool,{backupPath:join(temp,'backup')});
   const store=createMysqlAuthStore(pool);await store.ensureSchema();assert.equal(store.accountsAvailable,true);
   const owner={id:'1'.repeat(32),username:'owner',display_name:'מנהל',password_hash:await hashPassword('12345678'),owner_hash:digestToken('owner@example.test'),role:'owner',version:1,disabled:false};
-  const origin='https://accounts.example.test',env={OWNERS:owner.owner_hash,SESSION_SECRET:'x'.repeat(32),ALLOWED_ORIGIN:origin,RATE_LIMIT_STORE:async()=>true};
+  const origin='https://accounts.example.test',env={OWNERS:[owner.owner_hash,digestToken('correct-owner@example.test')].join(','),SESSION_SECRET:'x'.repeat(32),ALLOWED_ORIGIN:origin,RATE_LIMIT_STORE:async()=>true};
   const config={env,publicOrigin:origin,apiBasePath:'/cms-api',googleEnabled:false,localAuthEnabled:true,staging:true};
   const token=randomToken(),csrf=csrfToken(token,env.SESSION_SECRET),cookie='__Host-heichal_local='+token;
   await store.atomic(async tx=>{await tx.insertUser(owner);await tx.saveSettings({...await tx.getSettings(),local_enabled:true,local_verified:true,bootstrap_consumed:true});await tx.insertSession({token_hash:digestToken(token),csrf_hash:digestToken(csrf),user_id:owner.id,version:1,expires_at:Date.now()+3600000});});
@@ -44,7 +44,7 @@ test('direct users have server roles; recovery is one-use and revokes old sessio
   assert.equal(edited.status,200,await edited.clone().text());const afterEdit=await store.getUserById(user.id);
   assert.equal(afterEdit.display_name,'שם מתוקן');assert.equal(afterEdit.role,'editor');assert.equal(afterEdit.password_hash,beforeEdit.password_hash);
   assert.equal((await store.getAccountProfile(user.id)).email,'updated-reader@example.test');
-  const ownerBefore=await store.getUserById(owner.id);env.OWNERS+=','+digestToken('correct-owner@example.test');
+  const ownerBefore=await store.getUserById(owner.id);
   const ownEdit=await call('/auth/users',{action:'update',id:owner.id,username:owner.username,displayName:'הבעלים הנכון',email:'correct-owner@example.test',role:'owner',disabled:false,password:''});
   assert.equal(ownEdit.status,200,await ownEdit.clone().text());const rotated=await ownEdit.json();
   assert.equal(rotated.method,'local');assert.equal(rotated.user.name,'הבעלים הנכון');assert(ownEdit.headers.get('set-cookie'));
