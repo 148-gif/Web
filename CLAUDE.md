@@ -41,6 +41,6 @@ When the content arrives, remove the path from `hidden` and tick it off in `TODO
 
 Until the site moves to its own private domain, these issues are known and listed in `TODO.md` under
 "עד המעבר לדומיין הפרטי": the site not yet having its own domain, the accessibility coordinator's details, the contact details, and the missing
-anti-framing header (`frame-ancestors` / `X-Frame-Options`; `X-Content-Type-Options` is now sent by the release's `.htaccess`),
+anti-framing header (`frame-ancestors` / `X-Frame-Options`) and `X-Content-Type-Options` on the static files (the site is behind Cloudflare, so Transform Rules can add them),
 the long cache for versioned files (`_headers` is not read by Apache; it has to move into `.htaccess`), and the staging `noindex`.
 An audit may mention them, but must not count them against any score or the overall grade.

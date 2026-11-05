@@ -50,7 +50,7 @@
 - [ ] **הגנה מהטמעה באתר זר (clickjacking)**: Apache לא קורא את `_headers`, ולכן חסרות `frame-ancestors` ו־`X-Frame-Options`,
   ועמוד התרומה יכול להיות מוטמע באתר זר. הפתרון: להוסיף `Header always set X-Frame-Options "DENY"` ו־`Content-Security-Policy "frame-ancestors 'none'"`
   ל־`headerRules` ב־`scripts/package-cpanel.mjs` (שכותב את `.htaccess` של החבילה), ולוודא בדפדפן שהכותרות נשלחות.
-- [x] **הכותרת `X-Content-Type-Options: nosniff`**: נשלחת עכשיו מ־`.htaccess` של חבילת cPanel.
+- [ ] **הכותרת `X-Content-Type-Options: nosniff`**: חבילת cPanel כותבת אותה ל־`.htaccess`, אבל באתר החי (5.11) היא נשלחת רק בתשובות `/cms-api`, לא בעמודים ובקבצים. לבדוק אם ה־`.htaccess` החי כולל אותה ואם mod_headers פעיל; אפשר גם להוסיף אותה ב־Cloudflare (Transform Rules), שכבר יושב לפני האתר.
 - [ ] **זמן מטמון ארוך לקבצים עם גרסה**: הקוד מוכן (גופנים עם `?v=`, ו־`_headers` קובע מטמון של שנה לגופנים, ל־CSS, ל־JS ולאינדקס החיפוש),
   אבל Apache לא קורא את `_headers`. צריך להעביר את הכללים ל־`.htaccess` (mod_expires או `Header set Cache-Control`) ב־`scripts/package-cpanel.mjs`,
   ואחר כך לוודא בדפדפן שהכותרת `Cache-Control` של `/fonts/` היא `max-age=31536000`.
