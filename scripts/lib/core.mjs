@@ -10,7 +10,12 @@ const ORIGIN = (process.env.SITE_ORIGIN || '').replace(/\/$/, ''); // e.g. https
 // srcset holds several comma-separated paths, so each one that starts at the site root gets the base too.
 const rebase = (h) => (BASE ? h.replace(/(href|src|action)="\//g, `$1="${BASE}/`).replace(/srcset="([^"]*)"/g, (m, v) => `srcset="${v.replace(/(^|,\s*)\//g, `$1${BASE}/`)}"`) : h);
 const PER_PAGE = 40;
-const BUILD = Date.now().toString(36);
+// A content fingerprint keeps unchanged HTML byte-identical between builds.
+const assets = new URL('../../site/',import.meta.url);
+const assetParts = ['app.js','search.js','zmanim.js',...readdirSync(new URL('css/',assets)).filter(f=>f.endsWith('.css')).sort().map(f=>'css/'+f),...readdirSync(new URL('fonts/',assets)).filter(f=>f.endsWith('.woff2')).sort().map(f=>'fonts/'+f)];
+const assetHash = createHash('sha256');
+for (const name of assetParts) assetHash.update(name).update(readFileSync(new URL(name,assets)));
+const BUILD = assetHash.digest('hex').slice(0,16);
 // Fonts carry a hash of their content (fonts/x.woff2?v=…), so they can be cached for a year and a changed file still reaches everyone.
 // build.mjs adds it to the url()s in style.css; layout.mjs to the preloads, which must match those exactly.
 const FONT_DIR = new URL('../../site/fonts/', import.meta.url);

@@ -1,6 +1,8 @@
 // Optional Node-only auth persistence. Fixed SQL, explicit transactions, no DDL.
 // All credential/session/settings mutations lock settings before reading, then
 // the Google configuration singleton when that optional addon is enabled.
+import { accountMethods, verifyAccountsSchema } from './mysql-accounts-store.mjs';
+import { allRoles } from './account-roles.mjs';
 import { queryRows, safeInteger, withTransaction } from './mysql-core.mjs';
 import { getGoogleConfig, lockGoogleConfig, saveGoogleConfig, verifyGoogleAuthSchema } from './mysql-google-auth-store.mjs';
 import { getLocalInvitationByHash, saveLocalInvitation, verifyLocalInvitationsSchema } from './mysql-local-invitations-store.mjs';
@@ -8,7 +10,7 @@ import { getLocalInvitationByHash, saveLocalInvitation, verifyLocalInvitationsSc
 const HASH = /^[a-f0-9]{64}$/;
 const ID = /^[a-f0-9]{32}$/;
 const USERNAME = /^[a-z0-9][a-z0-9_.-]{2,63}$/;
-const ROLES = new Set(['owner', 'editor', 'publisher']);
+const ROLES = allRoles;
 const COLUMNS = {
   local_auth_settings: ['id', 'local_enabled', 'google_enabled', 'local_verified', 'google_verified_until', 'bootstrap_hash', 'bootstrap_expires', 'bootstrap_owner_hash', 'bootstrap_consumed'],
   local_auth_users: ['id', 'username', 'display_name', 'password_hash', 'owner_hash', 'role', 'version', 'disabled'],
@@ -92,9 +94,10 @@ export function createMysqlAuthStore(pool, { googleSetup = false, localInvitatio
   if (!pool || typeof pool.execute !== 'function' || typeof pool.getConnection !== 'function') throw new TypeError('A MySQL pool is required');
   if (typeof googleSetup !== 'boolean') throw new TypeError('Google setup option must be boolean');
   if (typeof localInvitations !== 'boolean') throw new TypeError('Local invitation option must be boolean');
-  let ready;
+  let ready, accounts = false;
   const first = async (connection, sql, values = []) => (await queryRows(connection, sql, values))[0] || null;
   const reads = (c, guard = () => {}) => ({
+    ...accountMethods(c, guard),
     async getSettings() { guard(); return settingsRow(await first(c, 'SELECT * FROM local_auth_settings WHERE id = 1')); },
     async getUserByUsername(value) { guard(); return userRow(await first(c, 'SELECT * FROM local_auth_users WHERE username = ?', [username(value)])); },
     async getUserById(value) { guard(); return userRow(await first(c, 'SELECT * FROM local_auth_users WHERE id = ?', [id(value)])); },
@@ -111,7 +114,9 @@ export function createMysqlAuthStore(pool, { googleSetup = false, localInvitatio
     } : {}),
   });
   return {
+    get accountsAvailable() { return accounts; },
     ensureSchema() { return ready ||= verifySchema(pool).then(async (base) => ({ ...base,
+      accounts: accounts = await verifyAccountsSchema(pool),
       ...(googleSetup ? await verifyGoogleAuthSchema(pool) : {}),
       ...(localInvitations ? await verifyLocalInvitationsSchema(pool) : {}),
     })).catch((error) => { ready = undefined; throw error; }); },
@@ -141,9 +146,9 @@ export function createMysqlAuthStore(pool, { googleSetup = false, localInvitatio
           async saveUser(value) {
             guard(); const u = userRow(value); if (!u) invalid();
             const before = await tx.getUserById(u.id);
-            if (!before || before.username !== u.username || before.owner_hash !== u.owner_hash || before.role !== u.role || u.version < before.version) invalid();
-            if ((before.password_hash !== u.password_hash || before.disabled !== u.disabled) && u.version <= before.version) invalid();
-            await c.execute('UPDATE local_auth_users SET display_name = ?, password_hash = ?, version = ?, disabled = ? WHERE id = ?', [u.display_name, u.password_hash, u.version, Number(u.disabled), u.id]);
+            if (!before || before.username !== u.username || before.owner_hash !== u.owner_hash || before.role === 'owner' && u.role !== 'owner' || u.version < before.version) invalid();
+            if ((before.password_hash !== u.password_hash || before.disabled !== u.disabled || before.role !== u.role) && u.version <= before.version) invalid();
+            await c.execute('UPDATE local_auth_users SET display_name = ?, password_hash = ?, role = ?, version = ?, disabled = ? WHERE id = ?', [u.display_name, u.password_hash, u.role, u.version, Number(u.disabled), u.id]);
           },
           async insertSession(value) {
             guard(); const s = sessionRow(value); if (!s) invalid();

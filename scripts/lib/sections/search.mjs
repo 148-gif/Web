@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { BUILD, nik, write, shut, letters, halacha, isHidden, lib } from '../core.mjs';
 import { icon, phead, layout, sr } from '../layout.mjs';
 import { chips } from '../parts.mjs';
@@ -15,11 +16,12 @@ const indexed = [...shut.map((x) => ['shut', x]), ...(isHidden('/letters/') ? []
 const shardSize = Math.ceil(indexed.length / SHARDS);
 const part = (k) => indexed.slice(k * shardSize, (k + 1) * shardSize);
 // The search page carries the split in data attributes; other pages read it from meta.json to warm the index (app.js).
-write('idx/meta.json', JSON.stringify({ n: SHARDS, size: shardSize }));
+const searchVersion = createHash('sha256').update(JSON.stringify(indexed)).digest('hex').slice(0,16);
+write('idx/meta.json', JSON.stringify({ n: SHARDS, size: shardSize, version: searchVersion }));
 for (let k = 0; k < SHARDS; k++) write(`idx/t${k}.json`, JSON.stringify(part(k).map(([b, x]) => [`${b}/${x.id}`, x.title])));
 for (let k = 0; k < SHARDS; k++) write(`idx/${k}.json`, JSON.stringify(part(k).map(([, x]) => words((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600), new Set(words(x.title).split(' '))))));
 // The index is not preloaded: it would compete with the styles and fonts that the first paint waits for.
 // search.js fetches the titles after the page loads (at once when there is a query, first part first) and the full text (about 1.2MB) once there is something to search for.
-write('search/index.html', layout('חיפוש', `${sr('תוצאות החיפוש')}<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid" data-parts="${SHARDS}" data-size="${shardSize}"></div><script src="/search.js?v=${BUILD}" defer></script>`, { path: '/search/', desc: 'חיפוש מהיר בכל אלפי השאלות והתשובות של שו״ת ברסלב ובספרי הצדיק שבספרייה.', head: phead(isHidden('/letters/') ? 'בכל אלפי השאלות' : 'בכל אלפי השאלות והמכתבים', 'חיפוש באתר', '', `<label class="slabel" for="q">מילה או ביטוי לחיפוש</label><div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" autofocus></div><div class="chips">${chips}</div>`) }));
+write('search/index.html', layout('חיפוש', `${sr('תוצאות החיפוש')}<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid" data-parts="${SHARDS}" data-size="${shardSize}" data-version="${searchVersion}"></div><script src="/search.js?v=${BUILD}" defer></script>`, { path: '/search/', desc: 'חיפוש מהיר בכל אלפי השאלות והתשובות של שו״ת ברסלב ובספרי הצדיק שבספרייה.', head: phead(isHidden('/letters/') ? 'בכל אלפי השאלות' : 'בכל אלפי השאלות והמכתבים', 'חיפוש באתר', '', `<label class="slabel" for="q">מילה או ביטוי לחיפוש</label><div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" autofocus></div><div class="chips">${chips}</div>`) }));
 
 export { indexed };

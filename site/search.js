@@ -2,7 +2,7 @@
 // Results are listed in index order, so the first part alone already gives the first results: they show as soon as it
 // arrives, and later parts only add results below. A part's full text is fetched once there is something to search for.
 {
-const me = new URL(document.currentScript.src), root = me.pathname.replace(/[^/]*$/, ''), v = me.search;
+const me = new URL(document.currentScript.src), root = me.pathname.replace(/[^/]*$/, ''), v = '?v='+encodeURIComponent(document.getElementById('results').dataset.version || me.search);
 const input = document.getElementById('q'), out = document.getElementById('results'), count = document.getElementById('count');
 const N = Number(out.dataset.parts), SIZE = Number(out.dataset.size);
 const strip = (s) => s.replace(/[֑-ׇ]/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ');

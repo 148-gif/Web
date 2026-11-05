@@ -129,7 +129,7 @@
   var KINDS = { page: ['דף יחיד', 'דף אחד, כמו ״אומן״. בתפריט של האתר הוא נפתח ישר'], collection: ['אוסף', 'הרבה פריטים מאותו סוג, כמו הספרייה. אפשר לחלק לנושאים'] };
   // "pages" is the old name of a collection without categories.
   var kindOf = function (t) { return t && t.kind === 'page' ? 'page' : 'collection'; };
-  var cfg, deploymentTools, deploymentConfig, token, owner = false, publisher = false, me = '', myName = '';
+  var cfg, deploymentTools, deploymentConfig, token, owner = false, publisher = false, userCaps = null, me = '', myName = '';
   // Cookie credentials never enter browser storage or an Authorization header.
   var cookieSession = false, csrfToken = '', authOptions = null, authDiscoveryFailed = false, authSetupCleanup = null, authInvitationCleanup = null;
   var draft = false; // saves go to drafts (editor server) instead of straight to the branch
@@ -430,6 +430,9 @@
     if (!token) return;
     var nav = $('#nav'); nav.textContent = '';
     var link = function (hash, ic, text) { return el('a', { href: hash, 'data-h': hash }, icon(ic), el('span', { text: text })); };
+    if (cookieSession) nav.append(link('#/account','users','החשבון שלי'));
+    if (owner && cookieSession && authOptions && authOptions.accountsAvailable) nav.append(link('#/users','users','משתמשים'));
+    if (userCaps && !userCaps.edit) { mark(location.hash || '#/account'); return; }
     var ts = (cache.topics && cache.topics.data) || [];
     nav.append(link('#/', 'home', 'לוח בקרה'), link('#/pages', 'page', 'נושאים ודפים'));
     groupTitles().forEach(function (title) {
@@ -2051,6 +2054,55 @@
     });
   }
 
+
+  var roleLabels = { owner:'בעלים ראשי', administrator:'מנהל', editor:'עורך', publisher:'מפרסם', author:'מחבר', contributor:'תורם', subscriber:'משתמש רגיל' };
+  function roleSelect(current) {
+    var select = el('select', { 'aria-label':'תפקיד' });
+    ['administrator','editor','author','contributor','subscriber'].forEach(function(role) { var option=el('option',{value:role,text:roleLabels[role]});select.append(option); });
+    select.value=current || 'subscriber';return select;
+  }
+  function usersScreen() {
+    var screen=main(), epoch=sessionEpoch;
+    screen.append(head('משתמשים','יצירת משתמשים, הרשאות ושליחת קישורים למייל.'));
+    var form=el('form',{}), inputs={}, createDialog=el('dialog',{class:'dlg','aria-label':'יצירת משתמש'});
+    form.append(el('h2',{text:'משתמש חדש'}));
+    [['username','שם משתמש באנגלית','text'],['displayName','שם לתצוגה','text'],['email','מייל','email'],['password','סיסמה (אפשר להשאיר ריק)','password']].forEach(function(f) {
+      var input=el('input',{type:f[2],name:f[0],dir:f[0]==='displayName'?'rtl':'ltr',required:f[0]!=='password',autocomplete:f[0]==='password'?'new-password':'off',maxlength:f[0]==='displayName'?'40':f[0]==='username'?'64':f[0]==='password'?'128':'254',...(f[0]==='password'?{minlength:'8'}:{})});
+      inputs[f[0]]=input;form.append(el('div',{class:'fld'},el('label',{text:f[1]},input)));
+    });
+    var role=roleSelect('subscriber'), submit=el('button',{type:'submit',class:'btn pri',text:'יצירת משתמש ושליחת מייל'}), error=el('p',{role:'alert',class:'err'});
+    form.append(el('div',{class:'fld'},el('label',{text:'תפקיד'},role)),el('p',{class:'help',text:'סיסמה: 8 תווים לפחות, ללא חובת שילוב תווים. כשמשאירים ריק, המשתמש מקבל קישור לקביעת סיסמה. מחבר מפרסם דפים שלו; תורם שומר טיוטות לבדיקה; משתמש רגיל מקבל חשבון אישי.'}),submit,error);
+    form.append(el('button',{type:'button',class:'btn ghost',text:'ביטול',onclick:function(){createDialog.close();}}));
+    createDialog.append(form);screen.append(el('button',{type:'button',class:'btn pri',text:'הוספת משתמש',onclick:function(){createDialog.showModal();inputs.username.focus();}}),createDialog);
+    createDialog.addEventListener('close',function(){inputs.password.value='';});
+    var list=el('section',{class:'card'});screen.append(list);
+    function active(){return epoch===sessionEpoch && screen.isConnected;}
+    function refresh(){list.textContent='טוען משתמשים…';return authCall('/users').then(function(data){
+      if(!active())return;list.textContent='';list.append(el('h2',{text:'המשתמשים באתר'}));
+      data.users.forEach(function(user){
+        var row=el('article',{class:'card'}), choices=roleSelect(user.role), disabled=el('input',{type:'checkbox','aria-label':'השבתת '+user.username});disabled.checked=!!Number(user.disabled);
+        row.append(el('h3',{text:user.display_name+' ('+user.username+')'}),el('p',{text:(user.email || 'ללא מייל משויך')+' · '+(Number(user.verified)?'מייל מאומת':'טרם אומת')+' · '+(roleLabels[user.role]||user.role)}));
+        function action(body,message){return authCall('/users','POST',body).then(function(){if(!active())return;say(message,'ok');return refresh();}).catch(function(e){if(active())say(e.message,'bad');});}
+        if(user.role!=='owner') row.append(choices,el('label',{class:'sw'},disabled,' חשבון מושבת'),el('button',{type:'button',class:'btn',text:'שמירת הרשאות',onclick:function(){action({action:'update',id:user.id,role:choices.value,disabled:disabled.checked},'ההרשאות נשמרו.');}}));
+        if(user.email && !Number(user.disabled))row.append(el('button',{type:'button',class:'btn ghost',text:'שליחת איפוס סיסמה',onclick:function(){action({action:'reset',id:user.id},'קישור לקביעת סיסמה נוסף לתור הדואר.');}}),!Number(user.verified)?el('button',{type:'button',class:'btn ghost',text:'שליחת אימות מייל',onclick:function(){action({action:'verify',id:user.id},'הודעת אימות נוספה לתור הדואר.');}}):null);
+        list.append(row);
+      });
+    }).catch(function(e){if(active())list.textContent=e.message;});}
+    form.addEventListener('submit',function(e){e.preventDefault();if(submit.disabled||!form.reportValidity())return;submit.disabled=true;error.textContent='';
+      var body={action:'create',role:role.value};Object.keys(inputs).forEach(function(k){body[k]=inputs[k].value;});
+      authCall('/users','POST',body).then(function(){inputs.password.value='';if(!active())return;form.reset();role.value='subscriber';createDialog.close();say('המשתמש נוצר והודעה נוספה לתור הדואר.','ok');return refresh();}).catch(function(e){if(active())error.textContent=e.message;}).finally(function(){inputs.password.value='';submit.disabled=false;});
+    });refresh();
+  }
+  function accountScreen() {
+    var screen=main(),epoch=sessionEpoch;
+    screen.append(head('החשבון שלי',myName || me));
+    var form=el('form',{class:'card'}),password=el('input',{type:'password',autocomplete:'new-password',minlength:'8',maxlength:'128',required:true,dir:'ltr'}),confirmation=el('input',{type:'password',autocomplete:'new-password',minlength:'8',maxlength:'128',required:true,dir:'ltr'}),button=el('button',{type:'submit',class:'btn pri',text:'שמירת סיסמה'}),message=el('p',{role:'alert'});
+    form.append(el('h2',{text:'שינוי סיסמה'}),el('label',{text:'סיסמה חדשה'},password),el('label',{text:'חזרה על הסיסמה'},confirmation),el('p',{class:'help',text:'8 תווים לפחות, ללא חובת שילוב סוגי תווים.'}),button,message);
+    form.addEventListener('submit',function(event){event.preventDefault();if(button.disabled||!form.reportValidity())return;if(password.value!==confirmation.value){message.textContent='הסיסמאות אינן תואמות';return;}button.disabled=true;
+      authCall('/password','POST',{newPassword:password.value,confirmation:confirmation.value}).then(function(result){sessionCheck(epoch);signout();acceptCookieSession(result);return enter(result.user.email).then(function(){say('הסיסמה נשמרה.','ok');});}).catch(function(e){if(epoch===sessionEpoch)message.textContent=e.message;}).finally(function(){password.value='';confirmation.value='';button.disabled=false;});
+    });screen.append(form);
+  }
+
   // ---- router ----
   var here = '';
   function route(force) {
@@ -2060,6 +2112,9 @@
     if (!force && here && !leave()) { history.replaceState(null, '', here); return; }
     if (!force) cur = null;
     here = h; mark(h);
+    if (userCaps && !userCaps.edit) { accountScreen(); return; }
+    if (h === '#/users' && owner && cookieSession && authOptions && authOptions.accountsAvailable) { usersScreen(); return; }
+    if (h === '#/account' && cookieSession) { accountScreen(); return; }
     var m;
     if ((m = /^#\/page\/([a-z0-9-]+)$/.exec(h))) pageScreen(m[1]);
     else if ((m = /^#\/file\/([\w.-]+\.json)$/.exec(h))) fileScreen(m[1]);
@@ -2123,6 +2178,7 @@
   }
   function showLoginMethods() {
     var local = !authDiscoveryFailed && !!(authOptions && authOptions.localEnabled), googleEnabled = !authDiscoveryFailed && (!authOptions || authOptions.googleEnabled);
+    var recovery = $('#password-recovery'); if(recovery) { recovery.hidden = !(local && authOptions && authOptions.accountsAvailable); if(!recovery.hidden) recovery.href=cfg.worker.replace(/\/$/,'')+'/auth/recover'; }
     if (local) $('#local-login').action = cfg.worker.replace(/\/$/, '') + '/auth/login';
     $('#local-login').hidden = !local; $('#gbox').hidden = !googleEnabled;
     $('#auth-divider').hidden = !(local && googleEnabled);
@@ -2463,7 +2519,8 @@
       content.append(methods);
       if (settings.googleSetup) googleSetupPanel(content, settings.googleSetup, epoch);
       if (settings.method !== 'local') return;
-      if (settings.invitationsAvailable === true && cookieSession && owner) invitationPanel(content, epoch);
+      if (authOptions && authOptions.accountsAvailable) content.append(el('a',{class:'btn',href:'#/users',text:'ניהול ויצירת משתמשים'}));
+      else if (settings.invitationsAvailable === true && cookieSession && owner) invitationPanel(content, epoch);
       var passwords = el('form', { class: 'card', id: 'auth-password-change', method: 'post', action: cfg.worker.replace(/\/$/, '') + '/auth/password' }, el('h2', { text: 'שינוי סיסמה' }),
         el('p', { text: 'בחרו סיסמה ארוכה וייחודית, עם 8 תווים לפחות. החלפת הסיסמה תוציא את החשבון משאר ההתחברויות.' }));
       var fields = {};
@@ -2501,7 +2558,7 @@
     me = who || ''; recentLoad();
     draft = !!cfg.worker;
     // Through the editor server: ask who this is now (role and name can change between visits).
-    var first = draft ? wapi('GET', '/me').then(function (j) { sessionCheck(epoch); owner = !!j.owner; publisher = !!j.publisher; myName = j.name || ''; }) : Promise.resolve();
+    var first = draft ? wapi('GET', '/me').then(function (j) { sessionCheck(epoch); owner = !!j.owner; publisher = !!j.publisher; userCaps = j.capabilities || null; myName = j.name || ''; }) : Promise.resolve();
     return first.then(function () { sessionCheck(epoch); return api(''); }).then(function (r) {
       sessionCheck(epoch);
       if (!r.permissions || !r.permissions.push) throw new Error(cfg.worker ? 'לשרת העריכה אין הרשאת כתיבה למאגר' : 'למפתח אין הרשאת כתיבה למאגר');
@@ -2511,6 +2568,7 @@
       preview.textContent = authOptions && authOptions.readOnly ? 'האתר בתצוגת בדיקה ובמצב קריאה בלבד. עריכת תוכן ופרסום עדיין אינם זמינים.' : authOptions && authOptions.publishEnabled === false ? 'אפשר לשמור תוכן בטיוטות. הפרסום לאתר עדיין אינו זמין.' : '';
       preview.hidden = !preview.textContent;
       if (draft && !pollTimer) { pollTimer = setInterval(function () { if (epoch === sessionEpoch && token) refreshPending(); }, 60000); }
+      if (userCaps && !userCaps.edit) { shell(); here = ''; accountScreen(); return; }
       return Promise.all([topics().catch(function () { return null; }), refreshPending(), loadPhotos().catch(function () { return null; })]).then(function () {
         sessionCheck(epoch);
         shell(); here = ''; route(true);
@@ -2543,7 +2601,7 @@
     $('#preview-state').hidden = true;
     $('#nav').textContent = ''; $('#who').textContent = ''; $('#msg').textContent = ''; $('#msg').hidden = true;
     $('#tok').value = ''; $('#local-password').value = ''; $('#pend').textContent = ''; $('#pend').title = '';
-    cur = null; owner = false; publisher = false; me = ''; myName = ''; draft = false; saving = false;
+    cur = null; owner = false; publisher = false; userCaps = null; me = ''; myName = ''; draft = false; saving = false;
     pending = { list: [], at: 0 }; cache = { topics: null, pages: null, shutIndex: null }; recent = { pages: {}, shut: {} };
     PHOTO_LIST = null; preselect = null; pub = { state: '', url: null }; mine = []; here = ''; reminded = false;
     navOpen(false);
