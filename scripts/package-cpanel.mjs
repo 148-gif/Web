@@ -149,8 +149,10 @@ export async function packageCpanel({ sourceRoot = REPO, commit, branch, output,
       // prevent them from reading both the header and the HTML fallback.
       await writeFile(join(dist, 'robots.txt'), 'User-agent: *\nAllow: /\n');
     }
+    await mkdir(join(dist, 'admin/seo'), { recursive: true });
     await writeFile(join(dist, 'admin/seo/environment.json'), JSON.stringify({ staging, origin: siteOrigin, sha: commit }));
-    const seoRedirects = await readFile(join(dist, 'seo-redirects.conf'), 'utf8');
+    let seoRedirects = '';
+    try { seoRedirects = await readFile(join(dist, 'seo-redirects.conf'), 'utf8'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
     await writeFile(join(dist, '.htaccess'), seoRedirects + baseline + (baseline.endsWith('\n') ? '' : '\n') + '\n' + headerRules(staging));
     publicFiles = await treeFiles(dist);
     const runtimeFiles = entries.filter((path) => /^server\/[^/]+\.(?:mjs|sql)$/.test(path) || /^cms-worker\/[^/]+\.mjs$/.test(path) || [
