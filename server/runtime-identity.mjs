@@ -17,7 +17,7 @@ const REQUIRED = ['package.json', 'package-lock.json', 'passenger.cjs', 'server/
 const HOST_ENTRIES = new Set(['node_modules', 'tmp', 'logs', 'stderr.log', '.npmrc']);
 const ROOT_FILES = new Set(['package.json', 'package-lock.json', 'passenger.cjs']);
 const SCRIPT_FILES = new Set(['check-cpanel-readiness.mjs', 'prepare-mysql-migration.mjs', 'import-mysql-migration.mjs',
-  'smoke-cpanel.mjs', 'publish-cpanel.mjs', 'setup-local-auth.mjs', 'arm-local-auth.mjs', 'setup-google-auth.mjs', 'setup-local-invitations.mjs']);
+  'smoke-cpanel.mjs', 'publish-cpanel.mjs', 'setup-local-auth.mjs', 'arm-local-auth.mjs', 'setup-google-auth.mjs', 'setup-local-invitations.mjs', 'setup-accounts.mjs', 'send-account-mail.mjs']);
 const sourcePath = (path) => typeof path === 'string' && (ROOT_FILES.has(path) ||
   /^server\/[A-Za-z0-9_-]+\.(?:mjs|sql)$/.test(path) || /^cms-worker\/[A-Za-z0-9_-]+\.mjs$/.test(path) ||
   path === 'site/admin/image-rules.mjs' || path.startsWith('scripts/') && SCRIPT_FILES.has(path.slice(8)));

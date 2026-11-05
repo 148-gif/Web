@@ -11,8 +11,10 @@ const deferred = () => {
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
 test('password policy counts Unicode codepoints and preserves spaces without normalization', () => {
-  assert.equal(passwordAcceptable('a'.repeat(14)), false);
-  assert.equal(passwordAcceptable('a'.repeat(15)), true);
+  assert.equal(passwordAcceptable('a'.repeat(7)), false);
+  assert.equal(passwordAcceptable('a'.repeat(8)), true);
+  assert.equal(passwordAcceptable('12345678'), true);
+  assert.equal(passwordAcceptable('abcdefgh'), true);
   assert.equal(passwordAcceptable('א'.repeat(128)), true);
   assert.equal(passwordAcceptable('😀'.repeat(128)), true);
   assert.equal(passwordAcceptable('😀'.repeat(129)), false);

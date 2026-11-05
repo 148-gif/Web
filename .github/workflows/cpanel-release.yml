@@ -5,8 +5,6 @@ on:
     branches: [claude/greeting-2i183o]
 permissions:
   contents: read
-# This builds an artifact only. A separately configured private host runner
-# verifies the current default-branch head and successful run before promotion.
 concurrency:
   group: cpanel-release
   cancel-in-progress: false
@@ -14,7 +12,7 @@ jobs:
   build:
     if: vars.CPANEL_RELEASE_ENABLED == 'true' && github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -30,6 +28,7 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
           SOURCE_BRANCH: ${{ github.event.repository.default_branch }}
           RELEASE_DIRECTORY: ${{ runner.temp }}/cpanel-release
+          FAST_DIRECTORY: ${{ runner.temp }}/cpanel-fast
           APACHE_BASELINE: ${{ runner.temp }}/empty-apache-baseline
         run: |
           git branch -- "$SOURCE_BRANCH" "$SOURCE_SHA"
@@ -40,12 +39,22 @@ jobs:
             --site-origin https://hichal.yoterberama.com \
             --api-url https://hichal.yoterberama.com/cms-api \
             --apache-baseline "$APACHE_BASELINE"
-      - name: Store verified release
+          node scripts/package-cpanel-fast.mjs "$RELEASE_DIRECTORY" "$FAST_DIRECTORY"
+      - name: Store compressed release
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cpanel-fast-${{ github.sha }}
+          path: ${{ runner.temp }}/cpanel-fast/fast.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - name: Store full manual recovery artifact
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cpanel-${{ github.sha }}
           path: ${{ runner.temp }}/cpanel-release/
           if-no-files-found: error
           include-hidden-files: true
-          compression-level: 0
-          retention-days: 14
+          compression-level: 6
+          retention-days: 7

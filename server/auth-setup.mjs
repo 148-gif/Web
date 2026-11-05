@@ -16,8 +16,8 @@ export function renderAuthSetup({ apiBasePath = '', nonce } = {}) {
 <label for="setup-code">קוד ההקמה הפרטי</label><input id="setup-code" name="code" type="password" autocomplete="off" spellcheck="false" dir="ltr" required maxlength="128" aria-describedby="code-help code-error"><p id="code-error" class="field-error"></p><p id="code-help" class="help">הזינו כאן את הקוד שנוצר בלוח האחסון. אין לשלוח קוד או סיסמה בצ׳אט.</p>
 <label for="setup-user">שם משתמש</label><input id="setup-user" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" required minlength="3" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_.\\-]{2,63}" aria-describedby="username-help username-error"><p id="username-error" class="field-error"></p><p id="username-help" class="help">3–64 תווים באנגלית: אותיות, ספרות, נקודה, קו תחתון או מקף. התחילו באות או בספרה. אין להזין כתובת דוא״ל או @. אותיות גדולות יישמרו כקטנות.</p>
 <label for="setup-name">שם תצוגה</label><input id="setup-name" name="displayName" type="text" autocomplete="name" required maxlength="80" aria-describedby="displayName-help displayName-error"><p id="displayName-error" class="field-error"></p><p id="displayName-help" class="help">1–40 תווים. השם יופיע בפעולות הניהול ובפרסומים. אין להזין כתובת דוא״ל במקום שם.</p>
-<label for="setup-password">סיסמה חדשה</label><input id="setup-password" name="password" type="password" autocomplete="new-password" dir="ltr" required minlength="15" maxlength="256" aria-describedby="password-help password-error"><p id="password-error" class="field-error"></p><p id="password-help" class="help">15–128 תווים, עד 512 בתים. השתמשו בסיסמה ייחודית ושמרו אותה במנהל סיסמאות.</p>
-<label for="setup-confirm">הסיסמה החדשה שוב</label><input id="setup-confirm" name="confirmation" type="password" autocomplete="new-password" dir="ltr" required minlength="15" maxlength="256" aria-describedby="confirmation-error"><p id="confirmation-error" class="field-error"></p>
+<label for="setup-password">סיסמה חדשה</label><input id="setup-password" name="password" type="password" autocomplete="new-password" dir="ltr" required minlength="8" maxlength="256" aria-describedby="password-help password-error"><p id="password-error" class="field-error"></p><p id="password-help" class="help">8–128 תווים, עד 512 בתים. השתמשו בסיסמה ייחודית ושמרו אותה במנהל סיסמאות.</p>
+<label for="setup-confirm">הסיסמה החדשה שוב</label><input id="setup-confirm" name="confirmation" type="password" autocomplete="new-password" dir="ltr" required minlength="8" maxlength="256" aria-describedby="confirmation-error"><p id="confirmation-error" class="field-error"></p>
 <p id="setup-error" class="message error" role="alert"></p><p id="setup-retry" class="help" role="status" hidden></p><button id="setup-submit" type="submit" disabled>יצירת חשבון המנהל</button>
 </form><p id="setup-success" class="message success" role="status" hidden></p><a id="setup-login" href="/admin/" hidden>מעבר למסך הכניסה</a><noscript><p class="message error">יש להפעיל JavaScript בדפדפן כדי להשלים את ההקמה.</p></noscript>
 </main><script nonce="${nonce}">
@@ -31,7 +31,7 @@ var messages = {
   code: 'יש להזין את קוד ההקמה הפרטי.',
   username: 'שם המשתמש צריך להכיל 3–64 תווים באנגלית ולהתחיל באות או בספרה. מותרות אותיות, ספרות, נקודה, קו תחתון ומקף; כתובת דוא״ל ו־@ אינם מותרים.',
   displayName: 'שם התצוגה צריך להכיל 1–40 תווים, ללא סימני < > או תווי בקרה.',
-  password: 'הסיסמה צריכה להכיל 15–128 תווים, עד 512 בתים.',
+  password: 'הסיסמה צריכה להכיל 8–128 תווים, עד 512 בתים.',
   confirmation: 'הסיסמאות אינן זהות. הזינו שוב את אותה סיסמה.'
 };
 function wellFormed(value) {
@@ -57,7 +57,7 @@ form.addEventListener('submit', async function (event) {
   if (!fields.code.value.trim()) errors.code = messages.code;
   if (!/^[a-z0-9][a-z0-9_.-]{2,63}$/.test(username)) errors.username = messages.username;
   if (!name || !wellFormed(name) || Array.from(name).length > 40 || /[\\p{Cc}<>]/u.test(name)) errors.displayName = messages.displayName;
-  if (!wellFormed(password) || Array.from(password).length < 15 || Array.from(password).length > 128 || password.length > 256 || new TextEncoder().encode(password).length > 512) errors.password = messages.password;
+  if (!wellFormed(password) || Array.from(password).length < 8 || Array.from(password).length > 128 || password.length > 256 || new TextEncoder().encode(password).length > 512) errors.password = messages.password;
   if (password !== fields.confirmation.value) errors.confirmation = messages.confirmation;
   if (Object.keys(errors).length) { markFields(errors); error.textContent = 'יש לתקן את השדות המסומנים. הפרטים נשמרו ולא נשלחו.'; return; }
   var submitted = false, succeeded = false;

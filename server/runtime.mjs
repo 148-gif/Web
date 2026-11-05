@@ -218,8 +218,9 @@ export async function createRuntime({ values = process.env, nodeVersion = proces
   const makeKv = dependencies.createKv || (await import('./mysql-kv.mjs')).createMysqlKv;
   const makeRate = dependencies.createRateLimitStore || (await import('./mysql-rate-limit.mjs')).createMysqlRateLimitStore;
   const pool = createInitializedMysqlPool(createPool(config.mysql));
-  let server, closing;
+  let server, closing, mailTimer;
   const close = () => closing ||= (async () => {
+    if (mailTimer) clearInterval(mailTimer);
     try {
       if (server?.listening) {
         const timeout = setTimeout(() => server.closeAllConnections(), 10000); timeout.unref();
@@ -237,7 +238,15 @@ export async function createRuntime({ values = process.env, nodeVersion = proces
       const makeAuth = dependencies.createAuthStore || (await import('./mysql-auth-store.mjs')).createMysqlAuthStore;
       const authStore = makeAuth(pool, { googleSetup: config.googleSetupEnabled, localInvitations: config.localInvitationsEnabled });
       await authStore.ensureSchema();
-      const auth = createLocalAuth({ store: authStore, config });
+      let dispatchMail;
+      if (authStore.accountsAvailable) {
+        const { createMailQueue } = await import('./mysql-accounts-store.mjs');
+        const { mailDispatcher } = await import('./account-mail.mjs');
+        dispatchMail = mailDispatcher(createMailQueue(pool), config.env.SESSION_SECRET);
+        mailTimer = setInterval(() => { void dispatchMail().catch(() => {}); },30000); mailTimer.unref();
+        void dispatchMail().catch(() => {});
+      }
+      const auth = createLocalAuth({ store: authStore, config, dispatchMail, accountsEnabled: Boolean(authStore.accountsAvailable) });
       const next = handler;
       handler = (request, requestEnv) => auth.handle(request, requestEnv, next);
     }

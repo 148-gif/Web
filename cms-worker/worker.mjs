@@ -518,7 +518,8 @@ const label = (row) => (row.deleted ? 'נמחק' : row.base_sha ? 'שונה' : '
 
 // ---- drafts: read ----
 async function readDraftOrPublished(env, path) {
-  const row = await draftRow(env, path);
+  let row = await draftRow(env, path);
+  if (row && env.LOCAL_AUTHORIZE_PATH) { try { await env.LOCAL_AUTHORIZE_PATH(path,{draftEmail:row.email}); } catch(e) { if(e.status!==403)throw e;row=null; } }
   if (row) {
     if (row.deleted) return { status: 404, json: { message: 'Not Found' } };
     return { status: 200, json: { type: 'file', path, name: path.split('/').pop(), sha: await blobSha(row.content), content: toB64(row.content), draft: true } };
@@ -532,6 +533,7 @@ async function listDir(env, dir) {
   const rows = (await getDataStore(env).listDraftChildren(dir)).filter((r) => !r.path.slice(dir.length + 1).includes('/'));
   const byName = new Map((Array.isArray(live) ? live : []).map((x) => [x.name, x]));
   for (const r of rows) {
+    if (env.LOCAL_AUTHORIZE_PATH) { try { await env.LOCAL_AUTHORIZE_PATH(r.path,{draftEmail:r.email}); } catch(e) { if(e.status===403)continue;throw e; } }
     const name = r.path.split('/').pop();
     if (r.deleted) byName.delete(name);
     else byName.set(name, { ...(byName.get(name) || { type: 'file', name, path: r.path }), sha: await blobSha(r.content), draft: true });
@@ -615,12 +617,14 @@ async function saveDraft(env, me, path, text, expected, { auto, restore, summary
   if (typeof text !== 'string' || text.length > MAX_FILE) throw fail('הקובץ גדול מדי', 413);
   try { JSON.parse(text); } catch { throw fail('הקובץ אינו JSON תקין', 400); }
   const row = await draftRow(env, path), pub = await publishedSha(env, path);
+  if (env.LOCAL_AUTHORIZE_PATH) await env.LOCAL_AUTHORIZE_PATH(path,{published:Boolean(pub),draftEmail:row?.email,claim:false});
   const current = row ? (row.deleted ? null : await blobSha(row.content)) : pub;
   if (!restore && (expected || null) !== (current || null)) throw draftConflict();
   await photoRulesOnSave(env, me, path, text, row && !row.deleted ? row.content : null);
   const sha = await blobSha(text);
   if (pub && sha === pub) await clearDraftSnapshot(env, path, row); // back to what is published
   else await writeDraftSnapshot(env, me, path, text, 0, pub, row);
+  if (env.LOCAL_AUTHORIZE_PATH) await env.LOCAL_AUTHORIZE_PATH(path,{published:Boolean(pub),draftEmail:me.email,claim:true});
   if (restore) await logEntry(env, me, 'restore', path, summary);
   else if (!auto) await logEntry(env, me, 'save', path, summary);
   return { content: { sha, path }, draft: true };
@@ -641,6 +645,7 @@ async function changes(env, check) {
   const rows = await getDataStore(env).listDrafts();
   const out = [];
   for (const r of rows) {
+    if (env.LOCAL_AUTHORIZE_PATH) { try { await env.LOCAL_AUTHORIZE_PATH(r.path,{draftEmail:r.email}); } catch (e) { if(e.status===403)continue;throw e; } }
     const sha = r.deleted ? null : await blobSha(r.content);
     const item = { path: r.path, status: r.deleted ? 'removed' : r.base_sha ? 'modified' : 'added', name: r.name, ts: r.updated_at, created: r.created_at, sha, base: r.base_sha };
     if (check) { item.published = await publishedSha(env, r.path); item.conflict = item.published !== (r.base_sha || null) && item.published !== sha; }
@@ -648,7 +653,7 @@ async function changes(env, check) {
   }
   // Media waiting in D1 to be committed (or to be removed) is a pending change too.
   const media = await getDataStore(env).listPendingMedia();
-  for (const r of media) out.push({ path: r.key, status: r.status === 'staged' ? 'added' : 'removed', name: r.by_name, ts: r.created_at, created: r.created_at, sha: null, base: null, media: true, size: r.size, title: r.name, kind: r.kind });
+  for (const r of media.filter(r=>!env.LOCAL_AUTHORIZE_PATH || r.by_email===env.LOCAL_ACTOR_EMAIL)) out.push({ path: r.key, status: r.status === 'staged' ? 'added' : 'removed', name: r.by_name, ts: r.created_at, created: r.created_at, sha: null, base: null, media: true, size: r.size, title: r.name, kind: r.kind });
   return out;
 }
 
@@ -674,6 +679,7 @@ async function publish(env, me, paths, force, note) {
     // Node request bindings are inherited. Pin only the branch for this attempt.
     const live = Object.create(env, { BRANCH: { value: head } });
     const pubs = new Map(await Promise.all(rows.map(async (r) => [r.path, await publishedSha(live, r.path)])));
+    if (env.LOCAL_AUTHORIZE_PATH) { for (const row of rows) await env.LOCAL_AUTHORIZE_PATH(row.path,{published:Boolean(pubs.get(row.path)),draftEmail:row.email}); if (media.length && !capabilitiesLocalAll(me)) throw fail('בקשו מעורך לפרסם קבצי מדיה',403); }
     const conflicts = rows.filter((r) => pubs.get(r.path) !== (r.base_sha || null) && pubs.get(r.path) !== shas.get(r.path) && !force.includes(r.path)).map((r) => r.path);
     if (conflicts.length) throw fail('חלק מהקבצים שונו גם באתר החי מאז שהתחלתם לערוך אותם', 409, { conflicts });
     // A page's referenced media must be in this commit or in the selected uploads.
@@ -751,6 +757,7 @@ async function restore(env, me, path, sha) {
   return saveDraft(env, me, path, fromB64(j.content), null, { restore: true, summary: `שחזור גרסה ${String(sha).slice(0, 7)}` });
 }
 
+const capabilitiesLocalAll = me => !me.capabilities || me.capabilities.editAll;
 async function main(req, env, url, cors) {
   // Only the Node composition root can provide this function. HTTP headers,
   // request JSON and Worker string bindings cannot supply a local principal.
@@ -781,9 +788,9 @@ async function main(req, env, url, cors) {
         return list.map((x) => (x.email === me.email ? { ...x, name } : x));
       });
       await logEntry(env, me, 'name', null, name);
-      return json({ email: me.email, name, owner: me.owner, publisher: me.publisher }, 200, cors);
+      return json({ email: me.email, name, owner: me.owner, publisher: me.publisher, ...(local ? {role:local.role,capabilities:local.capabilities} : {}) }, 200, cors);
     }
-    return json({ email: me.email, name: me.name, owner: me.owner, publisher: me.publisher }, 200, cors);
+    return json({ email: me.email, name: me.name, owner: me.owner, publisher: me.publisher, ...(local ? {role:local.role,capabilities:local.capabilities} : {}) }, 200, cors);
   }
 
   // The people who may edit: owners only. PUT { email, name, publisher } adds or updates, DELETE { email } removes.

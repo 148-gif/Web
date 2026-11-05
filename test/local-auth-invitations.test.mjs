@@ -128,11 +128,14 @@ integration('an aged local owner can invite and edit settings without a password
   const revoked = await req({ email }, { cookie, csrf }); assert.equal(revoked.status, 401); assert.equal((await revoked.json()).code, 'session_expired');
 });
 
-integration('a signed-in publisher cannot invite owners or change owner credentials', async (f) => {
+integration('a publisher cannot manage owner settings but can change their own password', async (f) => {
   await f.pool.execute("UPDATE local_auth_users SET role = 'publisher' WHERE id = ?", [f.user.id]);
-  for (const [path,method,body] of [['/auth/invitations','POST',{email:'second-owner@example.test'}], ['/auth/password','POST',{newPassword:NEW_PASSWORD,confirmation:NEW_PASSWORD}], ['/auth/settings','PUT',{localEnabled:true,googleEnabled:false}]]) {
+  for (const [path,method,body] of [['/auth/invitations','POST',{email:'second-owner@example.test'}], ['/auth/settings','PUT',{localEnabled:true,googleEnabled:false}]]) {
     assert.equal((await f.call(path,{method,cookie:f.cookie,csrf:f.csrf,body})).status,403);
   }
+  const changed=await f.call('/auth/password',{method:'POST',cookie:f.cookie,csrf:f.csrf,body:{newPassword:NEW_PASSWORD,confirmation:NEW_PASSWORD}});
+  assert.equal(changed.status,200);assert.equal((await f.store.getUserById(f.user.id)).role,'publisher');
+  assert.equal((await f.call('/auth/session',{cookie:f.cookie})).status,401,'password rotation revokes the previous session');
 });
 
 integration('legacy invitation password fields are ignored; Origin, CSRF and ownership remain mandatory', async (f) => {
@@ -165,7 +168,7 @@ integration('credential syntax errors disclose only fixed field guidance regardl
   const expected = { message: 'בדקו את השדות המסומנים ונסו שוב.', fieldErrors: {
     username: 'שם המשתמש צריך להכיל 3–64 תווים באנגלית: אותיות, ספרות, נקודה, קו תחתון או מקף. אין להשתמש בכתובת דוא״ל.',
     displayName: 'שם התצוגה צריך להכיל 1–40 תווים, ללא סימני < > או תווי בקרה.',
-    password: 'הסיסמה צריכה להכיל 15–128 תווים, עד 512 בתים.',
+    password: 'הסיסמה צריכה להכיל 8–128 תווים, עד 512 בתים.',
   } };
   for (const [path, code] of [['/auth/invitations/accept', invitation.code], ['/auth/invitations/accept', randomToken()], ['/auth/bootstrap', randomToken()]]) {
     const response = await f.call(path, { method: 'POST', body: { ...body, code } });

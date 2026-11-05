@@ -16,7 +16,7 @@ export function validateLocalCredentialInput(body) {
   const username = normalizeUsername(body.username), displayName = nameOf(body.displayName), errors = {};
   if (!username) errors.username = 'שם המשתמש צריך להכיל 3–64 תווים באנגלית: אותיות, ספרות, נקודה, קו תחתון או מקף. אין להשתמש בכתובת דוא״ל.';
   if (!displayName || !displayName.isWellFormed() || [...displayName].length > 40 || /[\p{Cc}<>]/u.test(displayName)) errors.displayName = 'שם התצוגה צריך להכיל 1–40 תווים, ללא סימני < > או תווי בקרה.';
-  if (!passwordAcceptable(body.password)) errors.password = 'הסיסמה צריכה להכיל 15–128 תווים, עד 512 בתים.';
+  if (!passwordAcceptable(body.password)) errors.password = 'הסיסמה צריכה להכיל 8–128 תווים, עד 512 בתים.';
   if (Object.keys(errors).length) {
     const error = fail('בדקו את השדות המסומנים ונסו שוב.', 400);
     inputErrors.set(error, Object.freeze(errors)); throw error;

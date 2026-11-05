@@ -1,5 +1,7 @@
 // Node-only authentication. No password, role or Google identity comes from a
 // browser claim. This module is never imported by the Cloudflare entry point.
+import { capabilities, allRoles } from './account-roles.mjs';
+import { createAccounts } from './accounts.mjs';
 import { randomBytes } from 'node:crypto';
 import { readJsonBody, RequestBodyError } from '../cms-worker/request-guards.mjs';
 import { loginLimit } from '../cms-worker/rate-limit.mjs';
@@ -23,11 +25,11 @@ const cookieValue = (request) => {
 };
 const setCookie = (token, clear = false) => `${COOKIE}=${clear ? '' : token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${clear ? 0 : SESSION_MS / 1000}`;
 const fail = (message, status) => Object.assign(new Error(message), { status });
-const actorOf = (user) => ({ email: `local:${user.id}`, name: user.display_name, shown: user.display_name, owner: user.role === 'owner', publisher: ['owner', 'publisher'].includes(user.role) });
+const actorOf = (user) => ({ email: `local:${user.id}`, name: user.display_name, shown: user.display_name, role: user.role, capabilities: capabilities(user.role), owner: ['owner','administrator'].includes(user.role), publisher: capabilities(user.role).publish });
 
-export function createLocalAuth({ store, config, clock = Date.now, googleProofVerifier, invitationPasswordHasher }) {
+export function createLocalAuth({ store, config, clock = Date.now, googleProofVerifier, invitationPasswordHasher, dispatchMail, accountsEnabled = false }) {
   const owners = new Set(config.env.OWNERS.split(',').map((s) => s.trim()));
-  const validUser = (user) => user && !user.disabled && owners.has(user.owner_hash) && ['owner', 'editor', 'publisher'].includes(user.role);
+  const validUser = (user) => user && !user.disabled && (user.role !== 'owner' || owners.has(user.owner_hash)) && allRoles.has(user.role);
   const headers = (request) => ({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', ...(config.staging ? { 'X-Robots-Tag': 'noindex, nofollow' } : {}), ...(request.headers.get('origin') === config.env.ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': config.env.ALLOWED_ORIGIN, Vary: 'Origin' } : {}) });
   const json = (request, body, status = 200, cookie) => Response.json(body, { status, headers: { ...headers(request), ...(cookie ? { 'Set-Cookie': cookie } : {}) } });
   const bodyOf = async (request) => {
@@ -82,7 +84,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
   async function currentLocalOwner(tx, authenticated, settings) {
     const user = await tx.getUserById(authenticated.user.id);
     const session = await tx.getSession(digestToken(authenticated.token));
-    if (!settings.local_enabled || !validUser(user) || user.role !== 'owner' || user.version !== authenticated.user.version ||
+    if (!settings.local_enabled || !validUser(user) || user.version !== authenticated.user.version ||
         user.password_hash !== authenticated.user.password_hash || !session || session.expires_at <= clock() ||
         session.user_id !== user.id || session.version !== user.version || session.csrf_hash !== authenticated.session.csrf_hash) throw fail(SESSION_ENDED, 401);
     return user;
@@ -91,6 +93,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
   const googleSetup = config.googleSetupEnabled ? createGoogleSetup({ store, config, clock, validUser, admission, verifyProof: googleProofVerifier }) : null;
   const invitations = config.localInvitationsEnabled ? createLocalInvitations({ store, config, clock, admission, passwords: invitationPasswordHasher }) : null;
 
+  const accounts = accountsEnabled ? createAccounts({ store, config, clock, admission, dispatch: dispatchMail }) : null;
   async function handle(request, env, next) {
     const path = new URL(request.url).pathname, method = request.method;
     try {
@@ -104,6 +107,11 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       const settings = await store.getSettings();
       const google = config.googleSetupEnabled ? await store.getGoogleConfig() : null;
       if (google?.active_client_id) env = googleSessionEnvironment(env, { clientId: google.active_client_id, activeVersion: google.active_version, origin: config.publicOrigin });
+      if (accounts && ['/auth/recover','/auth/account'].includes(path) && method === 'GET') {
+        const nonce = randomBytes(18).toString('base64url');
+        const { renderAccountPage } = await import('./account-page.mjs');
+        return new Response(renderAccountPage({ apiBasePath: config.apiBasePath, nonce, recovery: path === '/auth/recover' }), { headers: { ...headers(request), 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'` } });
+      }
       if (path === '/auth/setup' && method === 'GET') {
         if (settings.bootstrap_consumed || !settings.bootstrap_hash || settings.bootstrap_expires <= clock()) return json(request, { message: 'לא נמצא' }, 404);
         const nonce = randomBytes(18).toString('base64url');
@@ -115,7 +123,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       }
       if (request.headers.get('origin') !== config.env.ALLOWED_ORIGIN || config.publicOrigin !== config.env.ALLOWED_ORIGIN) return json(request, { message: 'origin not allowed' }, 403);
       if (path.startsWith('/auth/') && method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...headers(request), 'Access-Control-Allow-Methods': 'GET, POST, PUT', 'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, Authorization' } });
-      if (path === '/auth/options' && method === 'GET') return json(request, { ...enabled(settings, google), settingsAvailable: true, readOnly: config.readOnly, publishEnabled: config.publishEnabled, ...(config.googleSetupEnabled ? { googleManaged: true, googleClientId: enabled(settings, google).googleEnabled ? google.active_client_id : '', googleRevision: google.active_version } : {}) });
+      if (path === '/auth/options' && method === 'GET') return json(request, { ...enabled(settings, google), accountsAvailable: Boolean(accounts), settingsAvailable: true, readOnly: config.readOnly, publishEnabled: config.publishEnabled, ...(config.googleSetupEnabled ? { googleManaged: true, googleClientId: enabled(settings, google).googleEnabled ? google.active_client_id : '', googleRevision: google.active_version } : {}) });
       if (invitations && path === '/auth/invitations/accept' && method === 'POST') return json(request, await invitations.accept(request, env, await bodyOf(request)), 201);
       if (path === '/auth/bootstrap' && method === 'POST') {
         const body = await bodyOf(request);
@@ -146,12 +154,14 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
         });
         return json(request, sessionBody(user, token), 200, setCookie(token));
       }
+      if (accounts && method === 'POST' && ['/auth/recover','/auth/account'].includes(path)) return json(request, await accounts[path === '/auth/recover' ? 'forgot' : 'redeem'](request, env, await bodyOf(request)));
       const authenticated = await current(request, env, settings, google);
       if (path === '/auth/session' && method === 'GET') return authenticated?.method === 'local' ? json(request, sessionBody(authenticated.user, authenticated.token)) : json(request, { message: 'צריך להתחבר מחדש' }, 401);
       if (!authenticated && ['/auth/settings', '/auth/password', '/auth/invitations', '/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path)) {
         return json(request, { code: 'session_expired', message: SESSION_ENDED }, 401);
       }
       if (MUTATION(method)) requireCsrf(request, authenticated);
+      if (accounts && path === '/auth/users' && ['GET','POST'].includes(method)) return json(request, await accounts.admin(request, env, authenticated, method, method === 'POST' ? await bodyOf(request) : undefined));
       if (invitations && path === '/auth/invitations' && method === 'POST') return json(request, await invitations.create(request, env, authenticated, await bodyOf(request)), 201);
       if (googleSetup && method === 'POST' && ['/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path)) {
         return json(request, await googleSetup.handle(path, request, env, authenticated, await bodyOf(request)));
@@ -191,11 +201,11 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
         return json(request, { ...viewSettings(result.updated, authenticated, result.managed), ...(result.token ? sessionBody(authenticated.user, result.token) : {}) }, 200, result.token ? setCookie(result.token) : undefined);
       }
       if (path === '/auth/password' && method === 'POST') {
-        if (authenticated?.method !== 'local' || !authenticated.actor.owner) throw fail('נדרשת כניסה מקומית של בעל הרשאה', 403);
+        if (authenticated?.method !== 'local') throw fail('נדרשת כניסה לחשבון מקומי', 403);
         const body = await bodyOf(request);
         await admission(request, env, authenticated.user.username);
         if (body.confirmation !== undefined && body.confirmation !== body.newPassword) throw fail('הסיסמאות החדשות אינן תואמות', 400);
-        if (!passwordAcceptable(body.newPassword)) throw fail('הסיסמה צריכה להכיל 15–128 תווים', 400);
+        if (!passwordAcceptable(body.newPassword)) throw fail('הסיסמה צריכה להכיל 8–128 תווים', 400);
         const passwordHash = await hashPassword(body.newPassword);
         let changed;
         const token = await store.atomic(async (tx) => {
@@ -227,7 +237,11 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
       if (authenticated?.method === 'local') {
         // The HTTP bridge intentionally inherits server bindings and defines
         // CLIENT_IP non-enumerably. Preserve that chain instead of spreading it.
-        const localEnv = Object.assign(Object.create(env), { LOCAL_PRINCIPAL: async () => authenticated.actor, LOCAL_UPDATE_NAME: async (name) => store.atomic(async (tx) => {
+        const caps = capabilities(authenticated.user.role);
+        if (!caps.edit && path !== '/me' && !(method === 'GET' && /^\/gh\/?$/.test(path))) return json(request, {message:'לתפקיד זה אין הרשאה לעריכת תוכן'},403);
+        if (!caps.upload && path.startsWith('/media') && MUTATION(method)) return json(request, {message:'אין הרשאה להעלאת קבצים'},403);
+        if (!caps.editAll && ['/discard','/restore'].includes(path)) return json(request,{message:'בקשו מעורך לבצע מחיקה או שחזור'},403);
+        const localEnv = Object.assign(Object.create(env), { LOCAL_PRINCIPAL: async () => authenticated.actor, ...(accounts && !caps.editAll ? { LOCAL_ACTOR_EMAIL: authenticated.actor.email, LOCAL_AUTHORIZE_PATH: (path, details) => accounts.authorizePath(authenticated, path, details) } : {}), LOCAL_UPDATE_NAME: async (name) => store.atomic(async (tx) => {
           const s = await tx.getSettings(), user = await tx.getUserById(authenticated.user.id);
           if (!s.local_enabled || !validUser(user) || user.version !== authenticated.user.version) throw fail('יש להתחבר מחדש', 401);
           await tx.saveUser({ ...user, display_name: name });

@@ -15,8 +15,8 @@ let warm = 0;
 const warmSearch = (full) => {
   if (warm >= (full ? 2 : 1)) return; warm = full ? 2 : 1;
   const base = me.pathname.replace(/[^/]*$/, '');
-  const idx = (f) => fetch(`${base}idx/${f}.json${me.search}`);
-  idx('meta').then((r) => r.json()).then((d) => { for (let k = 0; k < d.n; k++) { idx(`t${k}`); if (full) idx(k); } }).catch(() => {});
+  const idx = (f,v) => fetch(`${base}idx/${f}.json${v ? '?v='+encodeURIComponent(v) : ''}`, {cache: v ? 'default' : 'no-cache'});
+  idx('meta').then((r) => r.json()).then((d) => { for (let k = 0; k < d.n; k++) { idx(`t${k}`,d.version); if (full) idx(k,d.version); } }).catch(() => {});
 };
 document.querySelectorAll('input[name=q]').forEach((el) => el.addEventListener('focus', () => warmSearch(true), { once: true }));
 document.querySelectorAll('a[href*="/search/"]').forEach((el) => ['pointerenter', 'touchstart', 'focus'].forEach((ev) => el.addEventListener(ev, () => warmSearch(false), { once: true, passive: true })));

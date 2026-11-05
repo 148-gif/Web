@@ -1,8 +1,14 @@
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
 // Yavniel and Malka mikveh pages, and the community institutions page.
 import { esc, url, tel, write, institutions, yv, mk, BUILD } from '../core.mjs';
 import { icon, orn, phead, layout, sr } from '../layout.mjs';
 import { zstrip, ul, ps, navBtns, anchors, ysect, sched, hours, statrow, telA } from '../parts.mjs';
 
+const zmanimDir = new URL('../../../site/zmanim/',import.meta.url);
+const zmanimHash = createHash('sha256');
+for (const f of readdirSync(zmanimDir).filter(f=>f.endsWith('.json')).sort()) zmanimHash.update(f).update(readFileSync(new URL(f,zmanimDir)));
+const ZMANIM_BUILD = BUILD+'-'+zmanimHash.digest('hex').slice(0,16);
 
 write('yavniel/index.html', layout('יבנאל', `${zstrip()}${statrow(yv.stats)}
 ${ysect('history', '', 'על היישוב', '', `<div class="about lead1">${ps(yv.intro)}</div>`)}
@@ -27,7 +33,7 @@ ${ysect('city', '', esc(yv.cityTitle), '', `<div class="about">${ps(yv.city)}</d
 <div class="card">${icon('heart', 'ico lg')}<h3>ערב שמחה לנשים</h3><p>${esc(yv.womenEvening)}</p></div>
 </div></div></section>
 <section class="band final" id="visit"><div class="wrap narrow"><h2>מגיעים ליבנאל</h2><p>${esc(yv.directions)}</p>${navBtns(yv.navQuery, yv.navLL)}</div></section>
-<script src="/zmanim.js?v=${BUILD}" defer></script>
+<script src="/zmanim.js?v=${ZMANIM_BUILD}" defer></script>
 <section class="band srcs"><div class="wrap narrow"><h2>מקורות</h2>${ul(yv.sources.map(([t, u]) => `<a href="${url(u)}" rel="noopener">${esc(t)}</a>`))}</div></section>`,
   { desc: 'יבנאל עיר ברסלב: תולדות המושבה, קהילת חסידי ברסלב, ציון מוהרא״ש, זמני תפילה, מקוואות ושיעורים', path: '/yavniel/', full: true, head: phead('הגליל התחתון · עיר ברסלב', 'יבנאל', esc(yv.lead), anchors([['history', 'היסטוריה'], ['community', 'הקהילה'], ['zion', 'הציון'], ['zmanim', 'זמני היום'], ['prayer', 'זמני תפילה'], ['services', 'מקוואות ושירותים'], ['visit', 'הגעה']])) }));
 
@@ -41,7 +47,7 @@ write('mikveh-malka/index.html', layout('מקווה מלכה', `<section class="
 <section class="band"><div class="wrap"><h2 class="sh">ישועות</h2><p class="shsub">${esc(mk.promiseAfter)}</p><div class="svc tst">${mk.testimonials.map((t) => `<figure class="card"><span class="qm" aria-hidden="true">״</span><blockquote>${esc(t)}</blockquote></figure>`).join('')}</div></div></section>
 ${ysect('story', 'soft', esc(mk.storyTitle), '', `<div class="about">${ps(mk.story)}</div>`)}
 <section class="band" id="answers"><div class="wrap narrow"><h2 class="sh">${esc(mk.fromShutTitle)}</h2><p class="shsub">${esc(mk.fromShutLead)}</p><div class="faqs">${mk.fromShut.map(([q, a, ids], n) => `<details class="faq"${n ? '' : ' open'}><summary>${esc(q)}</summary><p>${esc(a)}</p><p class="faqlinks">${ids.map((i, k) => `<a href="/shut/${i}/">${ids.length > 1 ? `תשובה ${'אבג'[k]}׳` : 'לתשובה המלאה'} ←</a>`).join('')}</p></details>`).join('')}</div></div></section>
-<section class="band soft" id="hours"><div class="wrap narrow"><h2 class="sh">${esc(mk.hoursTitle)}</h2><p class="shsub">${esc(mk.hoursNote)}</p><div class="card">${hours(mk.hours)}</div><p class="snote c zlnote" hidden>${esc(yv.liveNote)}</p></div><script src="/zmanim.js?v=${BUILD}" defer></script></section>
+<section class="band soft" id="hours"><div class="wrap narrow"><h2 class="sh">${esc(mk.hoursTitle)}</h2><p class="shsub">${esc(mk.hoursNote)}</p><div class="card">${hours(mk.hours)}</div><p class="snote c zlnote" hidden>${esc(yv.liveNote)}</p></div><script src="/zmanim.js?v=${ZMANIM_BUILD}" defer></script></section>
 <section class="band" id="contact"><div class="wrap narrow"><h2 class="sh">טלפונים</h2><p class="shsub">${esc(mk.phoneNote.replace(/:$/, ''))}</p><ul class="clist">
 <li>${icon('phone', 'ico')}<span><b>טלפון במקווה</b>${telA(mk.phone)}</span></li>
 ${mk.attendants.map(([n, ts]) => `<li>${icon('users', 'ico')}<span><b>בלנית: ${esc(n)}</b>${ts.map(telA).join('<br>')}</span></li>`).join('')}</ul></div></section>
