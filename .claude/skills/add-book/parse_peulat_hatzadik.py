@@ -155,10 +155,11 @@ sections = []
 prev_ref = 0
 for c in chs[1:-1]:
     printed = c['label']
-    lab = canon(c['n']) if num(printed) == c['n'] else printed
+    lab = printed   # kept as printed: 'רבי', 'ער', 'ערב', 'חצר' are deliberate (avoid the words ריב, רע, ערב-רצח)
     pv = num(printed)
     ref = pv if pv in (prev_ref, prev_ref + 1) else prev_ref + 1   # number used by the indexes
     prev_ref = ref
+    if pv not in (ref,): lab = canon(ref)   # a real typo in the print (e.g. תרכה for תרכח): corrected
     sections.append({'n': c['n'], 'label': lab, 'ref': ref, 'year': c['year'], 'paras': c['paras'], 'notes': c['notes'], '_printed': printed})
 
 def snippet(p, n=55):
