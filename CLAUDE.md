@@ -6,8 +6,9 @@ Shared code is in `scripts/lib/` (core, layout, parts) and each part of the site
 When you change a helper in `scripts/lib/core.mjs` or `parts.mjs` that guards links or escaping, add or update its test.
 Styles live in numbered parts in `site/css/`, joined in order into `dist/style.css`; put a rule in the part for its topic (order matters: later parts win).
 The CSP has no `'unsafe-inline'` for styles: never write a `style="…"` attribute (the link check fails on one); use a class.
+The tests need Node 24, the server's runtime (CI uses it). On an older Node about 24 server/runtime tests fail with "Node: version24 or newer is required"; that is the local environment, not a bug: run them with Node 24 (for example `npx -y node@24 --test test/*.test.mjs`).
 `npm run lint` runs ESLint; a pre-commit hook (`.githooks/`, enabled by `npm run setup`) runs the tests and lint.
-The live site is published from the `claude/greeting-2i183o` branch (GitHub Pages workflow).
+The live site is https://hichal.yoterberama.com/ (cPanel), published from the `claude/greeting-2i183o` branch; see "Publishing to cPanel" below. The old GitHub Pages site is retired.
 
 ## Working with another editor's branch (yaakov)
 
@@ -20,6 +21,19 @@ Yaakov, the other editor, publishes from the branch `yaakov`; the live site is b
 Editor publish never overwrites a live change silently: a draft is saved over the exact row it read (compare-and-swap in D1 and in MySQL), discard deletes only the rows it read (a newer save stays, reported as `kept`), the branch moves with `force: false`, and a file the live branch changed since the draft began is merged three ways (`cms-worker/json-merge.mjs`: base blob, live file, draft; fields and `id`-keyed list items; the same thing changed on both sides is a 409 conflict listed for a person, who can still `force`). Tests: `test/json-merge.test.mjs`, `test/worker.test.mjs`.
 
 Not visible in git: editor drafts saved in D1 until someone publishes them. A publish conflict there needs a look at the difference, never a blind `force`. Do not force-push to `yaakov` or the live branch.
+
+## Publishing to cPanel
+
+A merge into `claude/greeting-2i183o` runs "Build cPanel release" (`.github/workflows/cpanel-release.yml`), which only builds a package; the runner installed on the host (`scripts/fast-cpanel-deploy.py`, private copy on the server) then publishes it.
+
+- A green GitHub run is not proof of a deploy. After a merge, check that `/admin/build.json` shows the master commit and that `/admin/deployment.json` shows the same commit with `"state": "live"`.
+- Merge a pull request only after its "Check site" run has passed: merging first makes the sync step fail against the PR's own merge commit.
+- Package limits: at most 512MiB expanded, a package descriptor of at most 8MiB, and a download budget of at most 128MiB including the ZIP envelope. Use the checks in `scripts/package-cpanel-fast.mjs`; never remove them to make a build pass. A large addition (a book, many pages, PDFs) should be measured against them before merging.
+- Files above 90MB belong in R2, not in the repository.
+- If publishing is stuck: on the server, read `status.json` and `failure.json` in `/home/yoterber/heichal-cms/fast-deploy/` and diagnose by the actual error, without exposing secrets.
+- A new file that the Node server imports must be included in the server package and in the allowed file list in `server/runtime-identity.mjs`.
+- Changing the deploy runner in the repository does not update the private copy installed on the server; update that copy too, keeping a rollback copy.
+- Keep Hebrew, RTL and the design system. Indexing stays blocked until an explicit decision to open the site.
 
 ## Editor (`/admin/`)
 
