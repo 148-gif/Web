@@ -19,7 +19,7 @@ async function fixture(t, extra = {}) {
     'passenger.cjs': 'import("./server/start.mjs").then(({start}) => start());\n',
     'server/start.mjs': 'export {};\n', 'server/runtime.mjs': 'export {};\n', 'server/mysql-store.mjs': 'export {};\n',
     'server/mysql-kv.mjs': 'export {};\n', 'server/mysql-rate-limit.mjs': 'export {};\n',
-    'cms-worker/worker.mjs': 'export {};\n', 'site/admin/image-rules.mjs': 'export {};\n',
+    'cms-worker/worker.mjs': 'export {};\n', 'site/admin/image-rules.mjs': 'export {};\n', 'site/admin/seo-model.mjs': 'export const SEO_VERSION = 1;\n',
     'scripts/setup-google-auth.mjs': 'export {};\n', 'scripts/setup-local-invitations.mjs': 'export {};\n',
     'package.json': '{"type":"module","dependencies":{"mysql2":"3.24.6"}}\n', 'package-lock.json': '{"lockfileVersion":3}\n',
     '.env': 'SECRET_EXCLUDED_FROM_RELEASE=private-fixture-value\n',
