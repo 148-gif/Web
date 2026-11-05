@@ -24,7 +24,7 @@ export function validateSeo(record, file) {
   if (new Set((record.related || []).map((x) => x.path)).size !== (record.related || []).length) bad('תוכן קשור מופיע פעמיים');
   if (record.links !== undefined && (!Array.isArray(record.links) || record.links.length > 50)) bad('יותר מדי קישורים מוגדרים לעמוד');
   if (record.dismissed !== undefined && (!Array.isArray(record.dismissed) || record.dismissed.length > 100)) bad('רשימת הצעות שנדחו אינה תקינה');
-  for (const x of [...(record.links || []), ...(record.dismissed || [])]) if (!plainObject(x) || typeof x.quote !== 'string' || !x.quote.trim() || x.quote.length > 3000 || typeof x.anchor !== 'string' || !x.anchor.trim() || x.anchor.length > 180 || !x.quote.includes(x.anchor) || !cleanPath(x.to) || x.to === record.path) bad('הגדרת קישור אינה תקינה');
+  for (const x of [...(record.links || []), ...(record.dismissed || [])]) if (!plainObject(x) || typeof x.quote !== 'string' || !x.quote.trim() || x.quote.length > 3000 || typeof x.anchor !== 'string' || !x.anchor.trim() || x.anchor.length > 180 || !x.quote.includes(x.anchor) || (x.start !== undefined && (!Number.isInteger(x.start) || x.start < 0 || x.quote.slice(x.start, x.start + x.anchor.length) !== x.anchor)) || !cleanPath(x.to) || x.to === record.path) bad('הגדרת קישור אינה תקינה');
   return record;
 }
 export function validateSeoSettings(x) {
@@ -70,9 +70,11 @@ export function annotateHtml(html, annotations) {
   }
   const applied = [], stale = [];
   for (const link of annotations || []) {
-    const candidates = nodes.flatMap((n) => { const at = n.text.indexOf(link.quote); if (at < 0 || at !== n.text.lastIndexOf(link.quote)) return []; return [{ node: n, start: at + link.quote.indexOf(link.anchor) }]; });
+    if (!cleanPath(link.to)) { stale.push(link); continue; }
+    const candidates = nodes.flatMap((n) => { const at = n.text.indexOf(link.quote); if (at < 0 || at !== n.text.lastIndexOf(link.quote)) return []; return [{ node: n, start: at + (link.start === undefined ? link.quote.indexOf(link.anchor) : link.start) }]; });
     if (candidates.length !== 1) { stale.push(link); continue; }
     const c = candidates[0], end = c.start + link.anchor.length;
+    if (/[\p{L}\p{N}]/u.test(c.node.text[end] || '') || /[\p{L}\p{N}]{2}$/u.test(c.node.text.slice(Math.max(0, c.start - 2), c.start))) { stale.push(link); continue; }
     if (c.node.ranges.some((r) => c.start < r.end && end > r.start)) { stale.push(link); continue; }
     c.node.ranges.push({ start: c.start, end, to: link.to }); applied.push(link);
   }
@@ -83,11 +85,13 @@ export function annotateHtml(html, annotations) {
 export function findPhrase(text, phrase) {
   let value = ''; const offsets = [];
   for (let i = 0; i < text.length; i++) for (const c of normalize(text[i])) { const ch = /\s/.test(c) ? ' ' : c; if (ch === ' ' && value.endsWith(' ')) continue; value += ch; offsets.push(i); }
-  const wanted = normalize(phrase).replace(/\s+/g, ' '), at = value.indexOf(wanted);
-  if (!wanted || at < 0 || /[\p{L}\p{N}]/u.test(value[at + wanted.length] || '')) return null;
-  if (/[\p{L}\p{N}]{2}$/u.test(value.slice(Math.max(0, at - 2), at))) return null;
-  let end = offsets[at + wanted.length - 1] + 1; while (/[֑-ׇ]/.test(text[end] || '')) end++;
-  return { start: offsets[at], end, anchor: text.slice(offsets[at], end) };
+  const wanted = normalize(phrase).replace(/\s+/g, ' ').trim(); if (!wanted) return null;
+  for (let at = value.indexOf(wanted); at >= 0; at = value.indexOf(wanted, at + 1)) {
+    if (/[\p{L}\p{N}]/u.test(value[at + wanted.length] || '') || /[\p{L}\p{N}]{2}$/u.test(value.slice(Math.max(0, at - 2), at))) continue;
+    let end = offsets[at + wanted.length - 1] + 1; while (/[֑-ׇ]/.test(text[end] || '')) end++;
+    return { start: offsets[at], end, anchor: text.slice(offsets[at], end) };
+  }
+  return null;
 }
 export function shardFor(path) { let n = 0; for (const c of path) n = (n * 31 + c.charCodeAt(0)) >>> 0; return n % 16; }
 // BM25 over a local inverted index. Corpus statistics and explicit editorial metadata are the only inputs.
@@ -103,6 +107,7 @@ export function contentRecommendations(pages, { records = {}, aliases = {}, igno
   const average = total / Math.max(1, docs.length), ignored = new Set(ignorePairs.map((p) => p.join('|'))), inline = [], related = {};
   const entityTargets = docs.filter((x) => !/^\/(?:shut|letters|halacha)\/\d+\/$/.test(x.path) && !/\/page\/\d+\/$/.test(x.path));
   docs.forEach((p, i) => {
+    const normalizedText = normalize(p.text);
     const query = [...vectors[i]].filter(([t]) => post.get(t).length <= Math.max(2, docs.length * 0.15)).sort((a, b) => b[1] - a[1]).slice(0, 16);
     const scores = new Map(), shared = new Map();
     for (const [t, w] of query) { const rows = post.get(t), idf = Math.log(1 + (docs.length - rows.length + 0.5) / (rows.length + 0.5)); for (const [j, tf] of rows) { if (i === j) continue; const value = idf * tf * 2.2 / (tf + 1.2 * (0.25 + 0.75 * lengths[j] / average)); scores.set(j, (scores.get(j) || 0) + value * (1 + Math.log(w))); if (!shared.has(j)) shared.set(j, []); shared.get(j).push(t); } }
@@ -110,7 +115,7 @@ export function contentRecommendations(pages, { records = {}, aliases = {}, igno
     related[p.path] = ranked.filter(([j]) => !(p.links || []).some((l) => l.to === docs[j].path && l.region === 'content')).slice(0, 5).map(([j, score]) => ({ to: docs[j].path, title: docs[j].title, score: Math.round(score * 100) / 100, terms: shared.get(j).slice(0, 6), reason: 'מילים משמעותיות משותפות בתוכן' }));
     const candidates = new Map(ranked.map(([j, s]) => [docs[j].path, { page: docs[j], score: s }]));
     // Exact named entities remain eligible even when a short page has too few statistical terms.
-    for (const t of entityTargets) { const names = [t.title, ...(records[t.path]?.aliases || []), ...(aliases[t.path] || [])]; if (names.some((n) => n.length >= 4 && normalize(p.text).includes(normalize(n)))) if (!candidates.has(t.path)) candidates.set(t.path, { page: t, score: 0 }); }
+    for (const t of entityTargets) { const names = [t.title, ...(records[t.path]?.aliases || []), ...(aliases[t.path] || [])]; if (names.some((n) => n.length >= 4 && normalizedText.includes(normalize(n)))) if (!candidates.has(t.path)) candidates.set(t.path, { page: t, score: 0 }); }
     const paras = p.paragraphs || [];
     for (const { page: t, score } of candidates.values()) {
       if (t.path === p.path || t.path === '/' || ignored.has(p.path + '|' + t.path)) continue;
@@ -122,7 +127,7 @@ export function contentRecommendations(pages, { records = {}, aliases = {}, igno
           const match = findPhrase(quote, anchor); if (!match) continue; const at = match.start;
           const context = quote.slice(Math.max(0, at - 50), at + anchor.length + 50);
           if (/^\/library\/[^/]+\/$/.test(t.path) && !/(?:ספר|פירוש|קונטרס|כרך|כרכי|בהקדמ)/.test(context)) continue;
-          found = { from: p.path, to: t.path, anchor: match.anchor, quote, context, score: Math.round(score * 100) / 100, reason: /^\/library\//.test(t.path) ? 'אזכור ספר בהקשר מפורש' : 'ביטוי יעד בתוך הפסקה' }; break;
+          found = { from: p.path, to: t.path, anchor: match.anchor, start: match.start, quote, context, score: Math.round(score * 100) / 100, reason: /^\/library\//.test(t.path) ? 'אזכור ספר בהקשר מפורש' : 'ביטוי יעד בתוך הפסקה' }; break;
         }
         if (found) break;
       }
