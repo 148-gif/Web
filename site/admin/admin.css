@@ -469,3 +469,13 @@ ul.chg li b{unicode-bidi:plaintext}
 .focal{position:relative;display:inline-block;cursor:crosshair;max-width:min(100%,320px);line-height:0}
 .focal img{display:block;width:100%;max-height:320px;object-fit:contain;border-radius:8px;border:1px solid var(--line)}
 .fmark{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px var(--pri);pointer-events:none}
+
+/* User management follows the existing brand tokens and dialog components. */
+.users-list{margin-top:var(--space-4,16px)}
+.users-table-wrap{overflow-x:auto}
+.users-table{width:100%;min-width:720px;border-collapse:collapse;text-align:start}
+.users-table th{background:var(--sunk);color:var(--navy);font-weight:700}
+.users-table th,.users-table td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:start;vertical-align:middle}
+.users-table tbody tr:hover{background:var(--bg)}
+.users-table .help{display:block;margin:4px 0 0;font-size:.8rem}
+.users-table .btn{white-space:nowrap;padding:7px 14px}

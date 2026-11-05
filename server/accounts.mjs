@@ -4,7 +4,7 @@ import { hashPassword, passwordAcceptable, normalizeUsername, randomToken, diges
 import { sealMail } from './account-mail.mjs';
 const fail=(message,status)=>Object.assign(new Error(message),{status});
 const id=()=>randomBytes(16).toString('hex');
-export function createAccounts({store,config,admission,clock=Date.now,dispatch=()=>{}}) {
+export function createAccounts({store,config,admission,clock=Date.now,dispatch=()=>{},issueSession}) {
  async function enqueue(tx,user,profile,purpose) {
   if(!profile?.email)throw fail('לא הוגדרה כתובת מייל לחשבון',409);
   const token=randomToken(),now=clock(),expires=now+(purpose==='password'?3600000:86400000);
@@ -48,13 +48,29 @@ export function createAccounts({store,config,admission,clock=Date.now,dispatch=(
     await enqueue(tx,user,profile,body.action==='reset'?'password':'verify');
     return {mailQueued:true};
    }
-   if(body.action!=='update'||!USER_ROLES.includes(body.role)||typeof body.disabled!=='boolean')throw fail('פעולה לא תקינה',400);
-   if(user.role==='owner')throw fail('חשבון הבעלים הראשי מוגן משינוי תפקיד או השבתה',409);
-   if(user.id===auth.user.id&&(body.disabled||body.role!=='administrator'))throw fail('אין להשבית או להוריד הרשאה מהחשבון הפעיל שלכם',409);
+   if(body.action!=='update'||typeof body.disabled!=='boolean')throw fail('פעולה לא תקינה',400);
+   const role=body.role===undefined?user.role:body.role;
+   if(!USER_ROLES.includes(role)&&role!==user.role)throw fail('תפקיד לא תקין',400);
+   if(user.role==='owner'&&(role!=='owner'||body.disabled))throw fail('אפשר לערוך את פרטי הבעלים; התפקיד והגישה שלו נשארים מוגנים',409);
+   if(user.id===auth.user.id&&(body.disabled||!['owner','administrator'].includes(role)))throw fail('אין להשבית או להוריד הרשאה מהחשבון הפעיל שלכם',409);
    const admins=(await tx.listAccounts()).filter(x=>!Number(x.disabled)&&['owner','administrator'].includes(x.role));
-   if(user.role==='administrator'&&(body.disabled||body.role!=='administrator')&&admins.length<=1)throw fail('צריך להשאיר מנהל פעיל',409);
-   await tx.saveUser({...user,role:body.role,disabled:body.disabled,version:user.version+1});await tx.deleteUserSessions(user.id);
-   return {updated:true};
+   if(user.role==='administrator'&&(body.disabled||role!=='administrator')&&admins.length<=1)throw fail('צריך להשאיר מנהל פעיל',409);
+   if(body.username!==undefined&&normalizeUsername(body.username)!==user.username)throw fail('שם המשתמש קבוע. אפשר לערוך את השם לתצוגה ואת המייל',400);
+   const name=body.displayName===undefined?user.display_name:typeof body.displayName==='string'?body.displayName.trim():'';
+   const email=body.email===undefined?profile?.email:managedEmail(body.email);
+   if(!name||!name.isWellFormed()||[...name].length>40||/[\p{Cc}<>]/u.test(name)||!email)throw fail('בדקו את השם לתצוגה ואת כתובת המייל',400);
+   const taken=await tx.getAccountByEmail(email);
+   if(taken&&taken.user_id!==user.id)throw fail('כתובת המייל כבר משויכת למשתמש אחר',409);
+   const changedEmail=profile?.email!==email,ownerHash=changedEmail?digestToken(email):user.owner_hash;
+   if(user.role==='owner'&&changedEmail&&!config.env.OWNERS.split(',').map(x=>x.trim()).includes(ownerHash))throw fail('כתובת זו אינה מופיעה ברשימת הבעלים המאושרים',409);
+   const provided=typeof body.password==='string'&&body.password!=='';
+   if(body.password!==undefined&&body.password!==''&&!passwordAcceptable(body.password))throw fail('הסיסמה צריכה להכיל 8–128 תווים',400);
+   const updated={...user,display_name:name,owner_hash:ownerHash,role,disabled:body.disabled,version:user.version+1,...(provided?{password_hash:await hashPassword(body.password)}:{})};
+   await tx.saveUser(updated);await tx.deleteUserSessions(user.id);
+   await tx.saveAccountProfile(user.id,email,changedEmail?false:Boolean(Number(profile?.verified)));
+   if(changedEmail&&!updated.disabled)await enqueue(tx,updated,{email},'verify');
+   const rotation=user.id===auth.user.id&&issueSession?{user:updated,token:await issueSession(tx,updated,auth.token)}:null;
+   return {updated:true,mailQueued:changedEmail,...(rotation?{rotation}:{})};
   });kick();return result;
  }
  async function forgot(request,env,body) {

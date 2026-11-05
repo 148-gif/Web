@@ -93,7 +93,7 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
   const googleSetup = config.googleSetupEnabled ? createGoogleSetup({ store, config, clock, validUser, admission, verifyProof: googleProofVerifier }) : null;
   const invitations = config.localInvitationsEnabled ? createLocalInvitations({ store, config, clock, admission, passwords: invitationPasswordHasher }) : null;
 
-  const accounts = accountsEnabled ? createAccounts({ store, config, clock, admission, dispatch: dispatchMail }) : null;
+  const accounts = accountsEnabled ? createAccounts({ store, config, clock, admission, dispatch: dispatchMail, issueSession: issue }) : null;
   async function handle(request, env, next) {
     const path = new URL(request.url).pathname, method = request.method;
     try {
@@ -161,7 +161,10 @@ export function createLocalAuth({ store, config, clock = Date.now, googleProofVe
         return json(request, { code: 'session_expired', message: SESSION_ENDED }, 401);
       }
       if (MUTATION(method)) requireCsrf(request, authenticated);
-      if (accounts && path === '/auth/users' && ['GET','POST'].includes(method)) return json(request, await accounts.admin(request, env, authenticated, method, method === 'POST' ? await bodyOf(request) : undefined));
+      if (accounts && path === '/auth/users' && ['GET','POST'].includes(method)) {
+        const {rotation,...result}=await accounts.admin(request,env,authenticated,method,method==='POST'?await bodyOf(request):undefined);
+        return rotation?json(request,{...result,...sessionBody(rotation.user,rotation.token)},200,setCookie(rotation.token)):json(request,result);
+      }
       if (invitations && path === '/auth/invitations' && method === 'POST') return json(request, await invitations.create(request, env, authenticated, await bodyOf(request)), 201);
       if (googleSetup && method === 'POST' && ['/auth/google/prepare', '/auth/google/verify', '/auth/google/activate'].includes(path)) {
         return json(request, await googleSetup.handle(path, request, env, authenticated, await bodyOf(request)));

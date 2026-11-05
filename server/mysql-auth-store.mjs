@@ -146,9 +146,9 @@ export function createMysqlAuthStore(pool, { googleSetup = false, localInvitatio
           async saveUser(value) {
             guard(); const u = userRow(value); if (!u) invalid();
             const before = await tx.getUserById(u.id);
-            if (!before || before.username !== u.username || before.owner_hash !== u.owner_hash || before.role === 'owner' && u.role !== 'owner' || u.version < before.version) invalid();
-            if ((before.password_hash !== u.password_hash || before.disabled !== u.disabled || before.role !== u.role) && u.version <= before.version) invalid();
-            await c.execute('UPDATE local_auth_users SET display_name = ?, password_hash = ?, role = ?, version = ?, disabled = ? WHERE id = ?', [u.display_name, u.password_hash, u.role, u.version, Number(u.disabled), u.id]);
+            if (!before || before.username !== u.username || (before.owner_hash !== u.owner_hash && !accounts) || before.role === 'owner' && u.role !== 'owner' || u.version < before.version) invalid();
+            if ((before.password_hash !== u.password_hash || before.disabled !== u.disabled || before.role !== u.role || before.owner_hash !== u.owner_hash) && u.version <= before.version) invalid();
+            await c.execute('UPDATE local_auth_users SET display_name = ?, password_hash = ?, owner_hash = ?, role = ?, version = ?, disabled = ? WHERE id = ?', [u.display_name, u.password_hash, u.owner_hash, u.role, u.version, Number(u.disabled), u.id]);
           },
           async insertSession(value) {
             guard(); const s = sessionRow(value); if (!s) invalid();
