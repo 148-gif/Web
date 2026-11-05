@@ -228,7 +228,7 @@
   }
   function dirty() { return !!cur && JSON.stringify(cur.data) !== cur.orig; }
   window.addEventListener('beforeunload', function (e) { if (dirty()) { keepLocal(); e.preventDefault(); e.returnValue = ''; } });
-  function leave() { if (!dirty()) return true; if (!confirm('יש שינויים שלא נשמרו. לצאת בלי לשמור?')) return false; dropLocal(cur); return true; }
+  function leave() { if (seoToolsInstance && seoToolsInstance.hasUnsaved()) { if (!confirm('יש הגדרות SEO שלא נשמרו. לצאת בלי לשמור?')) return false; seoToolsInstance.discardView(); } if (!dirty()) return true; if (!confirm('יש שינויים שלא נשמרו. לצאת בלי לשמור?')) return false; dropLocal(cur); return true; }
   var stT, locT, autoT;
   var AUTO_MS = 30000; // idle time before a long session is saved to the server as a draft (config.json "autosaveSeconds")
   function touch() {
@@ -1938,19 +1938,21 @@
   }
 
   // Shared SEO workspace: public reports are separate from private, revision-checked editorial drafts.
-  var seoToolsPromise, seoToolsEpoch = -1;
+  var seoToolsPromise, seoToolsInstance, seoToolsEpoch = -1;
+  window.addEventListener('beforeunload', function (e) { if (seoToolsInstance && seoToolsInstance.hasUnsaved()) { e.preventDefault(); e.returnValue = ''; } });
   function seoToolsFor() {
     var epoch = sessionEpoch;
     if (!seoToolsPromise || seoToolsEpoch !== epoch) {
       seoToolsEpoch = epoch;
       seoToolsPromise = import('./seo-ui.mjs?v=20261105-1').then(function (module) {
         sessionCheck(epoch);
-        return module.createSeoTools({ el: el, head: head, say: say,
+        seoToolsInstance = module.createSeoTools({ el: el, head: head, say: say, label: function (code) { return (AUDIT[code] || [code])[0]; },
           assert: function () { sessionCheck(epoch); }, writable: function () { return !contentReadOnly(); },
           read: function (path) { sessionCheck(epoch); return getFile(path); },
           json: function (url) { sessionCheck(epoch); return sessionFetch(url, { cache: 'no-store' }, function (r) { if (!r.ok) throw new Error('נתוני SEO עוד לא זמינים; השלימו פרסום ונסו שוב.'); return r.json(); }); },
           save: function (path, data, sha, message, url) { sessionCheck(epoch); if (contentReadOnly()) return Promise.reject(new Error('העריכה אינה זמינה בחשבון זה')); return commit(path, data, 2, sha, message, url); }
         });
+        return seoToolsInstance;
       });
     }
     return seoToolsPromise;
@@ -1961,11 +1963,14 @@
   }
   function linksScreen() {
     var epoch = sessionEpoch, m = main(); loading(m);
-    seoToolsFor().then(function (tools) { sessionCheck(epoch); m.textContent = ''; return tools.manager(m, legacyLinksScreen); }).catch(function (x) { if (!x.editorSessionEnded) { m.textContent = ''; say(x.message, 'bad'); } });
+    seoToolsFor().then(function (tools) { sessionCheck(epoch); m.textContent = ''; return tools.manager(m, function () { if (leave()) legacyLinksScreen(); }); }).catch(function (x) { if (!x.editorSessionEnded) { m.textContent = ''; say(x.message, 'bad'); } });
   }
 
   // ---- links and SEO: the audit of the last build (admin/links.json) and the settings it reads (data/link-audit.json) ----
   var AUDIT = {
+    'missing-description': ['חסר תיאור לחיפוש', 'הוסיפו תיאור ברור לפריט.'],
+    'heading-count': ['מבנה כותרת ראשית', 'בדקו שקיימת כותרת H1 אחת ברורה.'],
+    'stale-annotation': ['סימון קישור שדורש עדכון', 'קטע המקור השתנה או אינו חד-משמעי. הקישור לא הוכנס.'],
     'broken-link': ['קישור פנימי שבור', 'הקישור מוביל לעמוד שלא קיים. תקנו את הכתובת או הסירו את הקישור.'],
     orphan: ['עמוד יתום', 'אף עמוד באתר לא מקשר אליו, ולכן גוגל ומנועי AI כמעט לא ימצאו אותו. הוסיפו אותו לרשימה או לדף של הנושא שלו.'],
     'empty-anchor': ['קישור בלי טקסט', 'קישור צריך טקסט (או תמונה עם תיאור) כדי שיהיה ברור לאן הוא מוביל.'],
@@ -2701,6 +2706,7 @@
     transfers.forEach(function (r) { r.abort(); }); transfers.clear();
     timers.forEach(clearTimeout); timers.clear(); clearInterval(pollTimer); pollTimer = null;
     document.querySelectorAll('dialog').forEach(function (dlg) { dlg.close(); dlg.remove(); });
+    seoToolsPromise = null; seoToolsInstance = null; seoToolsEpoch = -1;
     // Detach the old screen: callbacks which still hold its nodes cannot refill the signed-out page.
     var oldMain = $('#main'); oldMain.replaceWith(oldMain.cloneNode(false));
     $('#preview-state').hidden = true;
