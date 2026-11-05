@@ -1,6 +1,6 @@
 // Original build-time SEO pipeline; editorial records use the existing draft/publish flow.
 import { readdirSync, readFileSync } from 'node:fs';
-import { validateSeo, validateSeoSettings, resolveRedirect, escapeHtml, annotateHtml, paragraphsOf, textOf } from '../../site/admin/seo-model.mjs';
+import { validateSeo, validateSeoSettings, resolveRedirect, escapeHtml, annotateHtml, paragraphsOf, textOf, findPhrase } from '../../site/admin/seo-model.mjs';
 const root = new URL('../../data/', import.meta.url);
 export function loadSeo() {
   const records = {};
@@ -37,8 +37,8 @@ export function transformSeo(html, path, state = seo, origin = process.env.SITE_
   const links = [...(cfg.links || [])];
   const rules = (state.settings.rules || []).filter((r) => r.enabled && r.to !== path && (!r.include?.length || r.include.some((p) => path.startsWith(p))) && !(r.exclude || []).some((p) => path.startsWith(p))).slice(0, 5);
   for (const r of rules) {
-    const quote = paragraphsOf(html).find((p) => p.includes(r.anchor) && (!r.requireAny?.length || r.requireAny.some((s) => p.includes(s))));
-    if (quote && !links.some((l) => l.to === r.to)) links.push({ quote, anchor: r.anchor, to: r.to });
+    const quote = paragraphsOf(html).find((p) => findPhrase(p, r.anchor) && (!r.requireAny?.length || r.requireAny.some((s) => p.includes(s))));
+    if (quote && !links.some((l) => l.to === r.to)) links.push({ quote, anchor: findPhrase(quote, r.anchor).anchor, start: findPhrase(quote, r.anchor).start, to: r.to });
   }
   const applied = annotateHtml(html, links); html = applied.html;
   state.rendered.set(path, { applied: applied.applied.length, stale: applied.stale.length });
