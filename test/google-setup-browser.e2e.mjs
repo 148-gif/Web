@@ -188,9 +188,10 @@ if (!mysqlEnabled) {
     await authLink.click(); await page.locator('#auth-methods').waitFor();
     assert.equal(await page.locator('#auth-google-enabled').isChecked(), false); assert.equal(await page.locator('#auth-google-enabled').isDisabled(), true);
     assert.equal(await page.locator('#auth-local-enabled').isChecked(), true);
-    const googleLink = page.locator('#nav').getByRole('link', { name: 'הגדרות Google', exact: true });
-    await googleLink.click(); await page.waitForURL('**/#/auth/google');
-    await page.locator('#nav a[href="#/auth/google"][aria-current="page"]').waitFor();
+    assert.equal(await page.locator('#nav').getByRole('link', { name: 'הגדרות Google', exact: true }).count(), 0);
+    assert.equal(await page.locator('#nav').getByRole('link', { name: 'עורכים', exact: true }).count(), 0);
+    assert.equal(await page.locator('#nav').getByRole('link', { name: 'משתמשים', exact: true }).count(), 1);
+    await page.locator('#nav a[href="#/auth"][aria-current="page"]').waitFor();
     assert.equal(await page.locator('#nav a[aria-current="page"]').count(), 1);
     await page.locator('#auth-google-setup').waitFor();
     assert.equal(await page.locator('#google-setup-origin').inputValue(), origin);
