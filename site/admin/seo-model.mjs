@@ -11,7 +11,7 @@ export function validateSeo(record, file) {
   const bad = (s) => { throw new Error('SEO: ' + s); };
   if (!plainObject(record) || !cleanPath(record.path)) bad('כתובת העמוד אינה תקינה');
   if (file && file !== seoFile(record.path)) bad('כתובת העמוד אינה תואמת לקובץ');
-  const allowed = new Set(['version', 'path', 'title', 'description', 'canonical', 'indexing', 'image', 'aliases', 'keywords', 'links', 'related', 'relatedAuto', 'redirectTo']);
+  const allowed = new Set(['version', 'path', 'title', 'description', 'canonical', 'indexing', 'image', 'aliases', 'keywords', 'links', 'related', 'relatedAuto', 'redirectTo', 'dismissed']);
   if (Object.keys(record).some((k) => !allowed.has(k))) bad('שדה הגדרה לא מוכר');
   if (record.version !== undefined && record.version !== SEO_VERSION) bad('גרסת הגדרות לא נתמכת');
   for (const [k, max] of [['title', 180], ['description', 500], ['image', 500]]) if (record[k] !== undefined && (typeof record[k] !== 'string' || record[k].length > max || /[\u0000-\u001f]/.test(record[k]))) bad('ערך לא תקין: ' + k);
@@ -23,7 +23,8 @@ export function validateSeo(record, file) {
   if (record.related !== undefined && (!Array.isArray(record.related) || record.related.length > 8 || record.related.some((x) => !plainObject(x) || !cleanPath(x.path) || x.path === record.path || typeof x.title !== 'string' || !x.title.trim() || x.title.length > 180))) bad('רשימת התוכן הקשור אינה תקינה');
   if (new Set((record.related || []).map((x) => x.path)).size !== (record.related || []).length) bad('תוכן קשור מופיע פעמיים');
   if (record.links !== undefined && (!Array.isArray(record.links) || record.links.length > 50)) bad('יותר מדי קישורים מוגדרים לעמוד');
-  for (const x of record.links || []) if (!plainObject(x) || typeof x.quote !== 'string' || !x.quote.trim() || x.quote.length > 3000 || typeof x.anchor !== 'string' || !x.anchor.trim() || x.anchor.length > 180 || !x.quote.includes(x.anchor) || !cleanPath(x.to) || x.to === record.path) bad('הגדרת קישור אינה תקינה');
+  if (record.dismissed !== undefined && (!Array.isArray(record.dismissed) || record.dismissed.length > 100)) bad('רשימת הצעות שנדחו אינה תקינה');
+  for (const x of [...(record.links || []), ...(record.dismissed || [])]) if (!plainObject(x) || typeof x.quote !== 'string' || !x.quote.trim() || x.quote.length > 3000 || typeof x.anchor !== 'string' || !x.anchor.trim() || x.anchor.length > 180 || !x.quote.includes(x.anchor) || !cleanPath(x.to) || x.to === record.path) bad('הגדרת קישור אינה תקינה');
   return record;
 }
 export function validateSeoSettings(x) {
@@ -125,7 +126,7 @@ export function contentRecommendations(pages, { records = {}, aliases = {}, igno
         }
         if (found) break;
       }
-      if (found) inline.push(found);
+      if (found && !(records[p.path]?.dismissed || []).some((x) => x.to === found.to && x.quote === found.quote && x.anchor === found.anchor)) inline.push(found);
     }
   });
   inline.sort((a, b) => b.score - a.score || a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
