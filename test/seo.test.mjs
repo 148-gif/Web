@@ -19,6 +19,12 @@ test('Hebrew phrase matches preserve original niqqud, quotes and source offsets'
   assert.equal(match.anchor, 'זֹאת הַתּוֹרָה');
   assert.equal(text.slice(match.start, match.end), match.anchor);
   assert.equal(findPhrase('סעיף יב', 'סעיף י'), null);
+  const repeated = 'סעיף יב מופיע קודם, ואילו סעיף י הוא היעד הנכון.';
+  const selected = findPhrase(repeated, 'סעיף י');
+  assert.equal(selected.start, repeated.lastIndexOf('סעיף י'));
+  const linked = annotateHtml(shell('<p>' + repeated + '</p>'), [{ quote: repeated, anchor: selected.anchor, start: selected.start, to: '/target/' }]);
+  assert.match(linked.html, /סעיף יב מופיע קודם, ואילו <a href="\/target\/">סעיף י<\/a>/);
+  assert.equal(linked.applied.length, 1);
 });
 test('approved annotations create escaped real links without changing the source words', () => {
   const quote = 'בספר "זאת התורה" יש דברי חיזוק & עצות.';
@@ -72,4 +78,17 @@ test('automatic rules are opt-in and pinned related content remains controllable
   assert.doesNotMatch(transformSeo(html, '/other/', state({}, { rules: [{ ...rule, enabled: true }] })), /href="\/prayer\/"/);
   const custom = transformSeo(html, '/shut/1/', state({ '/shut/1/': { relatedAuto: false, related: [{ path: '/prayer/', title: 'תפילה' }] } }));
   assert.match(custom, /id="seo-related"/);
+});
+
+test('generic pages and unrelated chapter titles do not become exact entity recommendations', () => {
+  const page = (path, title, text, entityType = '') => ({ path, title, text, entityType, paragraphs: [text], links: [], noindex: false });
+  const source = page('/shut/3/', 'שאלה בענייני הלכה', 'היום יום טוב ושמח, ובספר אחר נזכר סעיף א ללימוד.');
+  const pages = [source, page('/friends/yom-tov/', 'יום טוב', 'כתובת איש קשר', 'Person'), page('/library/other/a/', 'סעיף א', 'הלכות ארוכות בענייני לימוד', 'Chapter')];
+  assert.equal(contentRecommendations(pages).inline.length, 0);
+});
+test('automatic rules skip partial words and select a later complete occurrence', () => {
+  const quote = 'למדנו סעיף יב תחילה ואחר כך סעיף י בצורה מסודרת.';
+  const rule = { anchor: 'סעיף י', to: '/target/', enabled: true };
+  const html = transformSeo(shell('<p>' + quote + '</p>'), '/source/', state({}, { rules: [rule] }));
+  assert.match(html, /סעיף יב תחילה ואחר כך <a href="\/target\/">סעיף י<\/a>/);
 });
