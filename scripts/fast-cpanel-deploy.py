@@ -118,6 +118,7 @@ def deploy(config,token,commit):
     matches=[a for a in artifacts if a['name']=='cpanel-fast-'+commit and not a['expired']]
     if len(matches)!=1: raise RuntimeError('Missing unique fast artifact')
     artifact=matches[0]
+    atomic_json(STATE/'status.json',{'outcome':'downloading','commit':commit,'checkedAt':int(time.time()*1000)})
     zipbytes=request('https://api.github.com/repos/'+REPO+'/actions/artifacts/'+str(artifact['id'])+'/zip',token)
     if artifact.get('digest')!='sha256:'+digest(zipbytes): raise RuntimeError('Artifact digest mismatch')
     with zipfile.ZipFile(io.BytesIO(zipbytes)) as z:
@@ -138,6 +139,11 @@ def deploy(config,token,commit):
         if 'release.json' not in members or members['release.json'].size>8*1024*1024: raise RuntimeError('Missing release description')
         release=json.load(tar.extractfile(members['release.json']))
         if release.get('format')!='heichal-fast-release' or release.get('version')!=1 or release['commit']!=commit or release['branch']!=BRANCH or release['siteOrigin']!=ORIGIN: raise RuntimeError('Release scope mismatch')
+        # Read members in archive order once. Repeated random seeks through gzip
+        # otherwise re-inflate the entire site thousands of times.
+        packed={}
+        for name,member in sorted(members.items(),key=lambda pair:pair[1].offset_data):
+            if name!='release.json': packed[name]=tar.extractfile(member).read()
         files=release['files'];manifest=release['manifest']
         catalog={f['path']:f for f in manifest['files']}
         if len(catalog)!=len(files) or len(catalog)!=len(manifest['files']): raise RuntimeError('Release catalog mismatch')
@@ -151,6 +157,7 @@ def deploy(config,token,commit):
             elif not SHA.fullmatch(f.get('blob','')) or not re.fullmatch(r'(site|data/img)/[^\\\x00]+',f.get('source','')): raise RuntimeError('Immutable asset source required')
         expected={'release.json'}|{f['path'] for f in files if f.get('packed')}
         if set(members)!=expected: raise RuntimeError('Uncatalogued members')
+        atomic_json(STATE/'status.json',{'outcome':'staging','commit':commit,'checkedAt':int(time.time()*1000)})
         old=read_json(STATE/'current.json')
         old_manifest=read_json(STATE/'manifest.json')
         oldfiles={f['path']:f for f in old_manifest['files']}
@@ -172,7 +179,7 @@ def deploy(config,token,commit):
             if is_public and prior and prior['sha256']==f['sha256'] and prior['bytes']==f['bytes']:
                 if not target.is_file() or target.stat().st_size!=f['bytes']: raise RuntimeError('Unchanged asset missing')
                 continue
-            raw=tar.extractfile(members[f['path']]).read() if f.get('packed') else __import__('base64').b64decode(json.loads(request('https://api.github.com/repos/'+REPO+'/git/blobs/'+f['blob'],token,140*1024*1024))['content'])
+            raw=packed[f['path']] if f.get('packed') else __import__('base64').b64decode(json.loads(request('https://api.github.com/repos/'+REPO+'/git/blobs/'+f['blob'],token,140*1024*1024))['content'])
             check_entry(raw,f)
             target.parent.mkdir(mode=0o755 if is_public else 0o700,parents=True,exist_ok=True)
             if target.exists():
@@ -195,7 +202,7 @@ def deploy(config,token,commit):
         shutil.copytree(source_modules,aps/'node_modules',symlinks=True)
         migration=aps/'scripts/setup-accounts.mjs'
         if migration.exists():
-            env=dict(os.environ);env.update({'CMS_ENV_FILE':config['envFile'],'CMS_APP_ROOT':str(app),'CMS_ACCOUNT_BACKUP':str(run/'account-backup'),'CMS_ACCOUNT_OWNER_EMAIL':config.get('legacyOwnerEmail','')})
+            env=dict(os.environ);env.update({'CMS_ENV_FILE':config['envFile'],'CMS_APP_ROOT':str(app),'CMS_ACCOUNT_BACKUP':str(STATE/'account-schema-backup'),'CMS_ACCOUNT_OWNER_EMAIL':config.get('legacyOwnerEmail','')})
             subprocess.run([NODE,str(migration)],env=env,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=60)
         if head(token)!=commit: remove_private(run);return {'outcome':'superseded','commit':commit}
         atomic_json(run/'before.json',{'manifest':old_manifest,'current':old})
@@ -214,6 +221,7 @@ def deploy(config,token,commit):
                     time.sleep(1)
             status={'version':1,'target':'cpanel','state':'live','commit':commit,'previousCommit':old['commit'],'updatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00','Z')}
             atomic_json(PUBLIC/'admin/deployment.json',status)
+            os.chmod(PUBLIC/'admin/deployment.json',0o644)
             atomic_json(STATE/'manifest.json',manifest)
             atomic_json(STATE/'current.json',{'commit':commit,'previousCommit':old['commit'],'run':str(run)})
             journal['phase']='complete';durable_journal(journal)
