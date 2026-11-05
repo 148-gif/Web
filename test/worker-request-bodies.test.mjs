@@ -71,7 +71,7 @@ test('empty bodies preserve endpoints that intentionally accept an empty object'
   for (const body of [undefined, '']) {
     const discarded = await w.send(w.request('/discard', body));
     assert.equal(discarded.status, 200);
-    assert.deepEqual(discarded.body, { discarded: [] });
+    assert.deepEqual(discarded.body, { discarded: [], kept: [] });
     const translated = await w.send(w.request('/translate', body));
     assert.equal(translated.status, 200);
     assert.deepEqual(translated.body, { slug: null });

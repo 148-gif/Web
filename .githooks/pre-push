@@ -1,0 +1,4 @@
+#!/bin/sh
+# Before every push: make sure the other editor's branch (yaakov) and the live branch are already merged into this one.
+# Skip in an emergency with: git push --no-verify
+exec node scripts/check-sync.mjs

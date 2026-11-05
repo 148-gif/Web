@@ -22,12 +22,21 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       # Authentication tests and lint need the pinned dependencies from package-lock.json.
       - run: npm ci --ignore-scripts
       - run: node --test test/*.test.mjs
+      # Fails when yaakov or the live branch has commits this PR does not contain (it would overwrite them).
+      - name: Check the PR contains the other editor's branch and the live branch
+        env:
+          SYNC_STRICT: "1"
+          SYNC_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git remote set-url origin "https://github.com/${{ github.repository }}.git"
+          node scripts/check-sync.mjs
       - name: Test owner authentication in Chrome with MySQL
         shell: bash
         env:

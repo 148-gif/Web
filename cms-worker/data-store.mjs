@@ -135,7 +135,6 @@ export function createD1DataStore(db) {
       if (row.status === 'staged') await run("UPDATE media SET status = 'published' WHERE id = ?", [row.id]);
       else await run('DELETE FROM media WHERE id = ?', [row.id]);
     },
-    discardDrafts: (paths) => paths.length ? run(`DELETE FROM drafts WHERE path IN (${marks(paths.length)})`, paths) : Promise.resolve(),
     restorePublishedMedia: (id) => run("UPDATE media SET status = 'published' WHERE id = ?", [id]),
     async getStagedChunk(id, n) {
       const row = await first("SELECT 1 AS x FROM media WHERE id = ? AND status = 'staged'", [id]);

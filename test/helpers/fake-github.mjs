@@ -57,6 +57,7 @@ export async function makeGithub({ repo = 'o/r', branch = 'live', files = {} } =
       }
       if (rest === `git/ref/heads/${branch}`) return res({ object: { sha: head } });
       if ((m = /^git\/commits\/(\w+)$/.exec(rest)) && method === 'GET') return res(commits.has(m[1]) ? { sha: m[1], tree: { sha: commits.get(m[1]).tree } } : null);
+      if ((m = /^git\/blobs\/(\w+)$/.exec(rest)) && method === 'GET') return res(blobs.has(m[1]) ? { sha: m[1], content: blobs.get(m[1]).toString('base64'), encoding: 'base64' } : null);
       if (rest === 'git/blobs') return res({ sha: await put(Buffer.from(body.content, 'base64')) }, 201);
       if (rest === 'git/trees') {
         const map = new Map(trees.get(body.base_tree));

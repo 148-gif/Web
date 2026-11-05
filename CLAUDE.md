@@ -9,6 +9,18 @@ The CSP has no `'unsafe-inline'` for styles: never write a `style="…"` attribu
 `npm run lint` runs ESLint; a pre-commit hook (`.githooks/`, enabled by `npm run setup`) runs the tests and lint.
 The live site is published from the `claude/greeting-2i183o` branch (GitHub Pages workflow).
 
+## Working with another editor's branch (yaakov)
+
+Yaakov, the other editor, publishes from the branch `yaakov`; the live site is built from `claude/greeting-2i183o`. Whatever either of them publishes is a commit, so it can be seen, but only after a fetch. Before ANY new write, upload or push, and again right before pushing:
+
+1. `git fetch origin yaakov claude/greeting-2i183o`, then look at what is new (`git log HEAD..origin/yaakov`, `git diff HEAD...origin/yaakov --stat`) and which files both sides touched.
+2. Merge both into your working branch (`git merge origin/yaakov`, `git merge origin/claude/greeting-2i183o`). Never overwrite, reset or force-push over their work: resolve so both sides' changes stay, and if both changed the same lines, stop and ask the user.
+3. Run `npm run check`; it includes `npm run sync` (`scripts/check-sync.mjs`), which fails if either branch has commits yours lacks. The same check runs in the `pre-push` hook (`npm run setup` enables it) and on every pull request.
+
+Editor publish never overwrites a live change silently: a draft is saved over the exact row it read (compare-and-swap in D1 and in MySQL), discard deletes only the rows it read (a newer save stays, reported as `kept`), the branch moves with `force: false`, and a file the live branch changed since the draft began is merged three ways (`cms-worker/json-merge.mjs`: base blob, live file, draft; fields and `id`-keyed list items; the same thing changed on both sides is a 409 conflict listed for a person, who can still `force`). Tests: `test/json-merge.test.mjs`, `test/worker.test.mjs`.
+
+Not visible in git: editor drafts saved in D1 until someone publishes them. A publish conflict there needs a look at the difference, never a blind `force`. Do not force-push to `yaakov` or the live branch.
+
 ## Editor (`/admin/`)
 
 `site/admin/` is a static editor over `data/*.json`. With the editor server (`worker` in `site/admin/config.json`) a save is only a draft: it goes to D1 (`drafts` table, binding `DB`), never to GitHub, and the site does not change. Owners and editors marked as publishers ("מפרסם") publish chosen drafts from `#/changes`: one commit to the branch in `config.json` (written through the git data API, commit message with display names only, since the repository is public; emails stay in the D1 `log` table), and the Pages workflow then tests and publishes. Others only save drafts. A save over a file someone else saved meanwhile gets 409 (the editor keeps the typed text and offers to reload or overwrite); a draft whose live file changed since is flagged as a conflict at publish and needs `force`. Discard returns a file to the published state (editors only their own drafts), `history`/`restore` list commits of a file and bring one back as a draft, `/log` is the activity log (publishers; emails to owners only). Autosave: a copy in the browser every ~2 s (`cms-draft:<path>`, offered back after a crash) and a silent server draft after `autosaveSeconds` (default 30) idle, only when the form is valid. Editors set a display name on first sign-in (`/me`); owners set names and the publisher role in `#/editors` (KV key `people`). Without `worker` the editor asks for a personal GitHub token and every save is a direct commit.
