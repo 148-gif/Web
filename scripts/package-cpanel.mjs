@@ -149,10 +149,14 @@ export async function packageCpanel({ sourceRoot = REPO, commit, branch, output,
       // prevent them from reading both the header and the HTML fallback.
       await writeFile(join(dist, 'robots.txt'), 'User-agent: *\nAllow: /\n');
     }
-    await writeFile(join(dist, '.htaccess'), baseline + (baseline.endsWith('\n') ? '' : '\n') + '\n' + headerRules(staging));
+    await mkdir(join(dist, 'admin/seo'), { recursive: true });
+    await writeFile(join(dist, 'admin/seo/environment.json'), JSON.stringify({ staging, origin: siteOrigin, sha: commit }));
+    let seoRedirects = '';
+    try { seoRedirects = await readFile(join(dist, 'seo-redirects.conf'), 'utf8'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+    await writeFile(join(dist, '.htaccess'), seoRedirects + baseline + (baseline.endsWith('\n') ? '' : '\n') + '\n' + headerRules(staging));
     publicFiles = await treeFiles(dist);
     const runtimeFiles = entries.filter((path) => /^server\/[^/]+\.(?:mjs|sql)$/.test(path) || /^cms-worker\/[^/]+\.mjs$/.test(path) || [
-      'site/admin/image-rules.mjs', 'package.json', 'package-lock.json', 'passenger.cjs',
+      'site/admin/image-rules.mjs', 'site/admin/seo-model.mjs', 'package.json', 'package-lock.json', 'passenger.cjs',
       'scripts/check-cpanel-readiness.mjs', 'scripts/prepare-mysql-migration.mjs', 'scripts/import-mysql-migration.mjs', 'scripts/smoke-cpanel.mjs', 'scripts/publish-cpanel.mjs',
       'scripts/setup-local-auth.mjs', 'scripts/arm-local-auth.mjs', 'scripts/setup-google-auth.mjs', 'scripts/setup-local-invitations.mjs', 'scripts/setup-accounts.mjs', 'scripts/send-account-mail.mjs',
     ].includes(path));

@@ -34,6 +34,7 @@ import { boundedStream, readJsonBody, RequestBodyError } from './request-guards.
 import { loginLimit, writeLimit } from './rate-limit.mjs';
 import { getDataStore } from './data-store.mjs';
 import { mergeJsonText } from './json-merge.mjs';
+import { validateSeo, validateSeoSettings } from '../site/admin/seo-model.mjs';
 
 const SESSION_HOURS = 12;
 const enc = new TextEncoder();
@@ -604,6 +605,10 @@ const registryNow = async (env, rows) => {
 };
 async function photoRulesOnSave(env, me, path, text, draftText) {
   const data = JSON.parse(text);
+  if (/^data\/seo-[A-Za-z0-9_-]+\.json$/.test(path)) {
+    try { if (path === 'data/seo-settings.json') validateSeoSettings(data); else validateSeo(data, path); } catch (e) { throw fail(e.message, 400); }
+    return;
+  }
   if (path === REGISTRY) {
     if (!Array.isArray(data)) throw fail('רשימת התמונות חייבת להיות רשימה', 400);
     const bad = data.flatMap((im) => imageProblems(im).map((m) => `תמונה ״${im.id}״: ${m}`));
@@ -624,6 +629,9 @@ async function photoRulesOnSave(env, me, path, text, draftText) {
 }
 // Before publishing: every photo a page shows is in the registry and approved, and every file of a new photo is live or goes out with it.
 async function photoPreflight(env, rows, together) {
+  for (const row of rows.filter((r) => !r.deleted && /^data\/seo-[A-Za-z0-9_-]+\.json$/.test(r.path))) {
+    try { const value = JSON.parse(row.content); if (row.path === 'data/seo-settings.json') validateSeoSettings(value); else validateSeo(value, row.path); } catch (e) { throw fail(e.message, 400); }
+  }
   const reg = await registryNow(env, rows), live = JSON.parse((await publishedText(env, REGISTRY)) || '[]');
   const has = async (key) => together.has(key) || !!(await publishedSha(env, key));
   const regRow = rows.find((r) => r.path === REGISTRY && !r.deleted);
@@ -729,7 +737,7 @@ async function publish(env, me, paths, force, note) {
   const lines = [...rows.map((r) => `- ${label(r)}: ${r.path}`), ...media.map((m) => `- ${m.status === 'staged' ? 'קובץ חדש' : 'קובץ נמחק'}: ${m.key}`)];
   const total = rows.length + media.length;
   const subject = `פרסום: ${cleanName(note) || `${total} שינויים`}`;
-  let sha = null, mergedPaths = [];
+  let sha = null, mergedPaths;
   for (let attempt = 0; ; attempt++) {
     const head = (await gh(env, `git/ref/heads/${env.BRANCH}`)).object.sha;
     // Every read in this attempt uses the same immutable commit, including
