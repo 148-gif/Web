@@ -1,3 +1,5 @@
+import { contentRecommendations, paragraphsOf } from '../../site/admin/seo-model.mjs';
+import { seo } from './seo-build.mjs';
 // Internal-link audit of the built site (see .claude/skills/internal-links/SKILL.md).
 // Pure functions over { path -> html }, so they are testable without a build; scripts/audit-links.mjs reads dist/ and prints the report.
 
@@ -23,9 +25,10 @@ export function pagePath(file) {
 // Which links of a page are navigation and which are in the content: nav, header and footer are chrome, everything else is content (the pager of a list counts as content).
 function regions(html) {
   const body = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, '');
-  const chrome = [];
-  const content = body.replace(/<(nav|header|footer|aside)\b(?![^>]*\bclass="pager")[\s\S]*?<\/\1>/gi, (m) => { chrome.push(m); return ' '; });
-  return { chrome: chrome.join(' '), content };
+  const related = [], chrome = [];
+  const withoutRelated = body.replace(/<aside\b(?=[^>]*class="related")[\s\S]*?<\/aside>/gi, (m) => { related.push(m); return ' '; });
+  const content = withoutRelated.replace(/<(nav|header|footer|aside)\b(?![^>]*\bclass="pager")[\s\S]*?<\/\1>/gi, (m) => { chrome.push(m); return ' '; });
+  return { chrome: chrome.join(' '), content, related: related.join(' ') };
 }
 
 // Resolves a raw href against the page path; null for external, mailto, tel, in-page and other schemes.
@@ -41,12 +44,17 @@ export function resolve(raw, from, base = '') {
 
 export function extractPage(file, html, base = '') {
   const path = pagePath(file);
+  const entityTypes = [];
+  for (const m of html.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try { const data = JSON.parse(m[1]); for (const node of (Array.isArray(data) ? data : [data])) for (const root of [node, ...(node['@graph'] || [])]) entityTypes.push(...[].concat(root['@type'] || [])); } catch { /* Malformed optional structured data is not an entity signal. */ }
+  }
+  const entityType = ['Chapter', 'Book', 'Person', 'Place', 'LocalBusiness', 'Organization', 'Article', 'CollectionPage'].find((t) => entityTypes.includes(t)) || '';
   const robots = (html.match(/<meta\s+name="robots"\s+content="([^"]*)"/i) || [])[1] || '';
   const title = textOf((html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i) || html.match(/<title>([\s\S]*?)<\/title>/i) || ['', ''])[1]);
-  const { chrome, content } = regions(html);
+  const { chrome, content, related } = regions(html);
   const links = [];
   const problems = [];
-  for (const [region, part] of [['chrome', chrome], ['content', content]]) {
+  for (const [region, part] of [['chrome', chrome], ['content', content], ['related', related]]) {
     for (const m of part.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
       const href = attr(m[1], 'href');
       const inner = m[2];
@@ -65,11 +73,15 @@ export function extractPage(file, html, base = '') {
         continue;
       }
       if (!name) problems.push({ code: 'empty-anchor', path, detail: href });
-      links.push({ to, anchor: name, region, href });
+      links.push({ to, anchor: name, region: region === 'related' ? 'content' : region, related: region === 'related', href });
     }
   }
   const text = textOf(content.replace(/<a\b[\s\S]*?<\/a>/gi, ' '));
-  return { path, title, noindex: /noindex/i.test(robots), links, problems, text };
+  const description = (html.match(/<meta\s+name="description"\s+content="([^"]*)"/i) || [])[1] || '';
+  const searchTitle = textOf((html.match(/<title>([\s\S]*?)<\/title>/i) || ['', ''])[1]);
+  const headingCount = [...html.matchAll(/<h1\b/gi)].length;
+  const canonical = (html.match(/<link\s+rel="canonical"\s+href="([^"]*)"/i) || [])[1] || '';
+  return { path, title, entityType, searchTitle, headingCount, description: decode(description), canonical, noindex: /noindex/i.test(robots), links, problems, text, paragraphs: paragraphsOf(html).length ? paragraphsOf(html) : [text] };
 }
 
 // Index of `title` in `text` as a whole phrase (not inside a longer word or number, so "סעיף י" does not match "סעיף יב"); a one-letter Hebrew prefix (ה, ב, ל…) before it is allowed. -1 if absent.
@@ -125,10 +137,9 @@ export function validateAuditConfig(c) {
 
 const isGeneric = (a) => GENERIC.has(a.toLowerCase().replace(/[\s.,:;!?…«»"'״׳()\-–—>←→»]+/g, ' ').trim());
 
-export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle = 4, minSuggest = 8, config = {}, suggestFor = (p) => !isMinor(p.path) } = {}) {
+export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle = 4, config = {}, seoChecks = false, suggestFor = (p) => !isMinor(p.path) } = {}) {
   // config (data/link-audit.json): ignore = [{ code, path }] silences one finding; ignorePairs = [[from, to]] silences a suggestion; aliases = { path: [phrases] } are other names of a page, matched like its title.
   const ignored = new Set((config.ignore || []).map((x) => `${x.code}|${x.path}`));
-  const ignoredPairs = new Set((config.ignorePairs || []).map((x) => x.join('|')));
   const aliases = config.aliases || {};
   const pages = new Map();
   for (const [file, html] of Object.entries(files)) {
@@ -220,25 +231,15 @@ export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle
     for (const p of indexable) if (!inMap.has(p.path) && !/^\/shut\/\d+\/?$/.test(p.path)) add('info', 'not-in-sitemap', p.path, p.title);
   }
 
-  // Suggestions: a page whose title (or alias) is written in another page's text without a link to it; the best phrase per pair, and a page that gets many suggestions is listed by its strongest sources first.
-  const targets = indexable.filter((p) => suggestFor(p) && p.path !== home && (p.title || '').length >= minSuggest && p.title.split(' ').length >= 2 && p.title.split(' ').length <= 6);
-  const names = (t) => [t.title, ...(aliases[t.path] || [])];
-  const titleCount = new Map();
-  for (const t of targets) titleCount.set(t.title, (titleCount.get(t.title) || 0) + 1);
-  const suggestions = [];
-  for (const p of indexable) {
-    const linked = out.get(p.path);
-    for (const t of targets) {
-      if (t.path === p.path || linked.has(t.path) || titleCount.get(t.title) > 1 || ignoredPairs.has(`${p.path}|${t.path}`)) continue;
-      for (const name of names(t)) {
-        const at = mention(p.text, name);
-        if (at < 0) continue;
-        suggestions.push({ from: p.path, to: t.path, anchor: name, context: p.text.slice(Math.max(0, at - 30), at + name.length + 30), score: score.get(p.path) });
-        break;
-      }
-    }
+  const recommendations = contentRecommendations(indexable, { records: seo.records, aliases, ignorePairs: config.ignorePairs || [] });
+  const suggestions = recommendations.inline;
+
+  if (seoChecks) for (const p of indexable) {
+    if (!p.description) add('warn', 'missing-description', p.path, 'חסר תיאור לחיפוש');
+    if (p.headingCount !== 1) add('warn', 'heading-count', p.path, 'מספר כותרות H1: ' + p.headingCount);
+    const rendered = seo.rendered.get(p.path);
+    if (rendered?.stale) add('warn', 'stale-annotation', p.path, rendered.stale + ' קישורים לא הוחלו כי קטע המקור השתנה או אינו חד-משמעי');
   }
-  suggestions.sort((a, b) => b.score - a.score);
 
   const kept = findings.filter((f) => !ignored.has(`${f.code}|${f.path}`));
   findings.length = 0;
@@ -252,10 +253,13 @@ export function auditSite(files, { base = '', sitemap = [], home = '/', minTitle
     weakest: [...score].filter(([x]) => suggestFor({ path: x }) && x !== home).sort((a, b) => a[1] - b[1]).slice(0, 10).map(([path, sc]) => ({ path, score: sc })),
     errors: count('error'), warnings: count('warn'), info: count('info'), suggestions: suggestions.length,
   };
-  return { stats, findings, suggestions };
+  const result = { stats, findings, suggestions };
+  Object.defineProperty(result, 'seo', { value: { pages: [...pages.values()], related: recommendations.related } });
+  return result;
 }
 
 const LABEL = {
+  'missing-description': 'חסר תיאור לחיפוש', 'heading-count': 'מבנה כותרת ראשית', 'stale-annotation': 'סימון קישור שדורש עדכון',
   'broken-link': 'קישור פנימי שבור', orphan: 'עמוד יתום (אין קישור נכנס)', 'nav-only': 'מקושר רק מתפריט או תחתית', unreachable: 'לא מגיעים אליו מדף הבית',
   'too-deep': `עמוק מ-${MAX_DEPTH} לחיצות`, 'many-links': `מעל ${MAX_LINKS} קישורים`, 'generic-anchor': 'עוגן גנרי', 'empty-anchor': 'קישור בלי טקסט', 'not-crawlable': 'קישור שאינו a href',
   'ambiguous-anchor': 'אותו עוגן ליעדים שונים', 'no-title': 'עמוד בלי כותרת', 'sitemap-missing-page': 'ב-sitemap אך אין עמוד', 'single-inlink': 'קישור נכנס אחד בלבד', 'duplicate-title': 'שני עמודים באותה כותרת', 'one-anchor': 'עוגן אחד כמעט בכל הקישורים', 'not-in-sitemap': 'עמוד שאינו ב-sitemap',
