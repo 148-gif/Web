@@ -8,7 +8,7 @@ const [releaseArg,outArg]=process.argv.slice(2);if(!releaseArg||!outArg)throw Er
 const root=resolve(releaseArg),out=resolve(outArg),manifest=JSON.parse(await readFile(join(root,'manifest.json'),'utf8'));
 await mkdir(out,{recursive:true});const stage=join(out,'payload');await mkdir(stage);
 const sha=b=>createHash('sha256').update(b).digest('hex');
-const sources=new Map(),rows=execFileSync('git',['ls-tree','-r','--format=%(objectname) %(path)',manifest.commit],{encoding:'utf8',maxBuffer:8*1024**2}).trim().split('\n');
+const sources=new Map(),rows=execFileSync('git',['ls-tree','-rz','--format=%(objectname) %(path)',manifest.commit],{encoding:'utf8',maxBuffer:8*1024**2}).split('\0').filter(Boolean);
 for(const row of rows){const split=row.indexOf(' '),id=row.slice(0,split),path=row.slice(split+1);if(!/^(site\/|data\/img\/)/.test(path))continue;const f=resolve(path);try{const info=await stat(f);if(info.isFile()&&info.size>65536)sources.set(sha(await readFile(f)),{blob:id,source:path});}catch{/* An unneeded source cannot qualify as a remote asset. */}}
 const files=[];
 for(const entry of manifest.files){

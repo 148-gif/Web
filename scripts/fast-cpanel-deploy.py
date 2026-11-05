@@ -61,7 +61,7 @@ def head(token):
     if value['type']!='commit' or not SHA.fullmatch(value['sha']): raise RuntimeError('Invalid source ref')
     return value['sha']
 def health(commit):
-    cmd=['/usr/bin/curl','--silent','--show-error','--fail','--noproxy','*','--max-time','15','--resolve','hichal.yoterberama.com:443:127.0.0.1',ORIGIN+'/cms-api/version','-H','Origin: '+ORIGIN,'-H','Cache-Control: no-cache']
+    cmd=['/usr/bin/curl','--silent','--show-error','--fail','--noproxy','*','--max-time','15','--resolve','hichal.yoterberama.com:443:64.204.250.80',ORIGIN+'/cms-api/version','-H','Origin: '+ORIGIN,'-H','Cache-Control: no-cache']
     value=json.loads(subprocess.check_output(cmd,stderr=subprocess.DEVNULL))
     if value.get('commit')!=commit or not value.get('verified') or not value.get('schemaVerified') or value.get('deploymentCandidate'): raise RuntimeError('Canonical runtime health mismatch')
 def restart(app):
@@ -193,6 +193,10 @@ def deploy(config,token,commit):
         source_modules=app/'node_modules'
         if not source_modules.exists(): raise RuntimeError('Production dependencies unavailable')
         shutil.copytree(source_modules,aps/'node_modules',symlinks=True)
+        migration=aps/'scripts/setup-accounts.mjs'
+        if migration.exists():
+            env=dict(os.environ);env.update({'CMS_ENV_FILE':config['envFile'],'CMS_APP_ROOT':str(app),'CMS_ACCOUNT_BACKUP':str(run/'account-backup'),'CMS_ACCOUNT_OWNER_EMAIL':config.get('legacyOwnerEmail','')})
+            subprocess.run([NODE,str(migration)],env=env,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=60)
         if head(token)!=commit: remove_private(run);return {'outcome':'superseded','commit':commit}
         atomic_json(run/'before.json',{'manifest':old_manifest,'current':old})
         journal={'version':1,'phase':'prepared','commit':commit,'previousCommit':old['commit'],'publicStage':str(ps),'appStage':str(aps)}
