@@ -354,7 +354,7 @@ async function mediaInit(env, me, b) {
   const kind = ext && kindOfExt(ext);
   if (!kind) throw fail('סוג הקובץ לא נתמך. אפשר: תמונות (jpg, png, webp, gif, avif), סרטונים (mp4, webm), שמע (mp3, m4a, wav, ogg) ומסמכים (pdf, docx, xlsx, pptx, txt, epub).', 400);
   if (!Number.isInteger(size) || size < 1) throw fail('הקובץ ריק', 400);
-  if (env.MEDIA?.hybrid && size > env.MEDIA.localMaxBytes && !env.MEDIA.remoteAvailable) throw fail('העלאת הקובץ אינה זמינה כרגע. נסו שוב מאוחר יותר.', 503);
+  if (env.MEDIA?.hybrid && size > env.MEDIA.localMaxBytes && !env.MEDIA.remoteAvailable) throw fail('העלאת הקובץ אינה זמינה כרגע. נסו שוב מאוחר יותר.', 400);
   await expireMediaReservations(env);
   const id = hex(crypto.getRandomValues(new Uint8Array(4))), file = `${id}-${mediaSlug(name)}.${ext}`, lim = limits(env);
   if (env.MEDIA?.hybrid) lim.ghFile = 0; // Ordinary Node uploads never enter Git; prepared photos retain their publish workflow.
