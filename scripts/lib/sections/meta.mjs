@@ -22,7 +22,7 @@ write('llms.txt', `# ${SITE}
 ## הצדיק מיבנאל
 - [מוהרא״ש – הצדיק מיבנאל](${ORIGIN + BASE}/moharash/): ${nik(mo.lead)}
 - [ציון מוהרא״ש – קבר הצדיק מיבנאל](${ORIGIN + BASE}/moharash/tziyun/): ${nik(mo.tziyun.lead)}
-${lib.books.map((b) => `- [${b.title}](${ORIGIN + BASE}/library/${b.slug}/): ${nik(b.lead)} PDF: ${ORIGIN + BASE}${b.pdf}`).join('\n')}
+${lib.books.map((b) => `- [${b.title}](${ORIGIN + BASE}/library/${b.slug}/): ${nik(b.lead)} ${b.pdf ? `PDF: ${ORIGIN + BASE}${b.pdf}` : ''}`.trimEnd()).join('\n')}
 
 ## יבנאל
 - [יבנאל](${ORIGIN + BASE}/yavniel/): ${nik(yv.lead)} תולדות, קהילה, זמני תפילה, שיעורים ומקוואות.
