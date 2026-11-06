@@ -239,10 +239,11 @@ const validateLibrary = (l) => {
     if (!/^[a-z0-9-]+$/.test(o.id || '') || oids.has(o.id)) bad(`bad or duplicate occasion id "${o.id}"`);
     oids.add(o.id);
     if (!o.title) bad(`occasion "${o.id}" has no title`);
-    if (!Array.isArray(o.books) || (!o.books.length && !o.hub) || !o.books.every((x) => slugs.has(x))) bad(`occasion "${o.id}": books must be a list of known books (it may be empty only with a hub)`);
+    if (!Array.isArray(o.books) || (!o.books.length && !o.hub && !(o.kuntresim || []).length) || !o.books.every((x) => slugs.has(x))) bad(`occasion "${o.id}": books must be a list of known books (it may be empty only with a hub)`);
     const dated = Number.isInteger(o.day) && o.day >= 1 && o.day <= 30 && (typeof o.month === 'string' || (Array.isArray(o.month) && o.month.length)) && Number.isInteger(o.length) && o.length >= 1;
     const byParasha = Array.isArray(o.parasha) && o.parasha.length === 2 && o.parasha.every((x) => typeof x === 'string' && x);
     if (o.terms !== undefined && !(Array.isArray(o.terms) && o.terms.length && o.terms.every((t) => typeof t === 'string' && t.trim()))) bad(`occasion "${o.id}": terms must be a list of words`);
+    if (o.kuntresim !== undefined && !(Array.isArray(o.kuntresim) && o.kuntresim.every((k) => typeof k === 'string' && k))) bad(`occasion "${o.id}": kuntresim must be a list of kuntres slugs`);
     if (o.accent !== undefined && !ACCENTS.includes(o.accent)) bad(`occasion "${o.id}": accent must be one of ${ACCENTS.join(', ')}`);
     if (o.image !== undefined && !images.some((im) => im.id === o.image)) bad(`occasion "${o.id}": unknown photo "${o.image}"`);
     if (dated === byParasha) bad(`occasion "${o.id}" needs either day, month and length, or two parashot`);

@@ -92,6 +92,13 @@ const qa = (o) => (pools.has(o.id) ? `<div data-qa hidden><h3 class="subh qh">${
 
 // From the holiday's hub (data/moadim.json, /moadim/<id>/, named by the occasion's `hub`): up to two of Moharash's talks on it and one
 // general letter of its month, as reading cards. The hub's sections are [book slug, from, to] by section number.
+// A kuntres of data/kuntresim.json named by the occasion (its PDF in site/books/kuntresim/), shown with the books
+const kt = read('kuntresim.json');
+const kuntresCard = (o, slug) => {
+  const k = kt.items.find((x) => x.slug === slug);
+  if (!k) throw new Error(`library.json: occasion "${o.id}" names an unknown kuntres "${slug}" (data/kuntresim.json)`);
+  return `<a class="card book feat" href="/books/kuntresim/${k.slug}.pdf">${icon('book', 'ico lg')}<h3>${esc(k.title)}</h3><p>קונטרס של מוהרא״ש</p><span class="btags"><span class="btag">PDF</span><span class="bpg">${k.pages} עמודים</span></span><span class="go">קריאה והורדה ←</span></a>`;
+};
 const hubOf = (o) => {
   if (!o.hub) return null;
   const m = moadim.items.find((x) => x.id === o.hub);
@@ -131,7 +138,7 @@ const seasonHtml = () => {
   if (!runs.length) return '';
   const items = lib.occasions.filter((o) => runs.some((r) => r[0] === o.id)).map((o) => {
     if (o.icon && !ICON[o.icon]) throw new Error(`library.json: occasion "${o.id}" has an unknown icon "${o.icon}"`);
-    return `<section class="band season ac-${o.accent || 'gold'}" data-oc="${o.id}" hidden><div class="wrap">${o.image ? figure(o.image, { size: 'full' }).replace('class="fig fig-full', 'class="fig season-fig') : ''}${o.icon ? `<span class="season-ico">${icon(o.icon, 'ico lg')}</span>` : ''}<h2 class="sh"><span data-b>לקראת ${esc(o.title)}</span><span data-d hidden>${esc(o.title)}</span></h2><p class="shsub"><b data-when></b> · ספרים, שיחות ושאלות ותשובות לקריאה</p>${o.books.length ? `<div class="grid featured">${o.books.map((slug) => bookCard(lib.books.find((b) => b.slug === slug), ' feat')).join('')}</div>` : ''}${readings(o)}${qa(o)}${more(o)}</div></section>`;
+    return `<section class="band season ac-${o.accent || 'gold'}" data-oc="${o.id}" hidden><div class="wrap">${o.image ? figure(o.image, { size: 'full' }).replace('class="fig fig-full', 'class="fig season-fig') : ''}${o.icon ? `<span class="season-ico">${icon(o.icon, 'ico lg')}</span>` : ''}<h2 class="sh"><span data-b>לקראת ${esc(o.title)}</span><span data-d hidden>${esc(o.title)}</span></h2><p class="shsub"><b data-when></b> · ספרים, שיחות ושאלות ותשובות לקריאה</p>${o.books.length || (o.kuntresim || []).length ? `<div class="grid featured">${o.books.map((slug) => bookCard(lib.books.find((b) => b.slug === slug), ' feat')).join('')}${(o.kuntresim || []).map((k) => kuntresCard(o, k)).join('')}</div>` : ''}${readings(o)}${qa(o)}${more(o)}</div></section>`;
   });
   return `<div id="season" data-season="${esc(JSON.stringify(runs))}" data-unfiltered hidden>${items.join('')}</div>`;
 };

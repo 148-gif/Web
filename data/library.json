@@ -170,26 +170,34 @@
       "books": [],
       "terms": [
         "חג השבועות",
-        "ליל שבועות"
+        "ליל שבועות",
+        "ושבועות",
+        "ובשבועות"
       ],
       "icon": "tablets",
       "accent": "green",
-      "hub": "shavuot"
+      "hub": "shavuot",
+      "image": "torah-scroll",
+      "kuntresim": [
+        "matan-tora"
+      ]
     },
     {
       "id": "tisha-beav",
-      "title": "תשעה באב",
+      "title": "בין המצרים ותשעה באב",
       "day": 9,
       "month": "אב",
       "length": 1,
       "books": [],
       "terms": [
         "תשעה באב",
-        "ט׳ באב"
+        "ט׳ באב",
+        "בין המצרים"
       ],
       "icon": "candle",
       "accent": "indigo",
-      "hub": "av"
+      "hub": "av",
+      "image": "arch-of-titus"
     }
   ],
   "series": [

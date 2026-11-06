@@ -104,6 +104,8 @@ test('validateLibrary() checks series, categories and featured books', () => {
   assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', books: ['a'] }]; }), /either day/);
   assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 6, month: 'סיוון', length: 2, books: [] }]; }), /only with a hub/);
   assert.doesNotThrow(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 6, month: 'סיוון', length: 2, books: [], hub: 'shavuot' }]; }));
+  assert.doesNotThrow(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 6, month: 'סיוון', length: 2, books: [], kuntresim: ['matan-tora'] }]; }));
+  assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 6, month: 'סיוון', length: 2, books: ['a'], kuntresim: 'matan-tora' }]; }), /kuntresim/);
   assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 1, month: 'ניסן', length: 1, accent: 'pink', books: ['a'] }]; }), /accent/);
   assert.doesNotThrow(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 1, month: 'ניסן', length: 1, accent: 'teal', icon: 'cup', terms: ['פסח'], books: ['a'] }]; }));
   assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 1, month: 'ניסן', length: 1, image: 'no-such-photo', books: ['a'] }]; }), /unknown photo/);

@@ -610,5 +610,45 @@
     "tags": [
       "holiday"
     ]
+  },
+  {
+    "id": "torah-scroll",
+    "w": 1280,
+    "h": 800,
+    "alt": "ספר תורה פתוח על קלף, מונח על בד סגול בתוך ויטרינה, ולידו יד לקריאה",
+    "caption": "ספר תורה ממזרח אירופה, סוף המאה ה־19, במוזיאון היהודי ומרכז הסובלנות",
+    "credit": "Лапоть, ויקישיתוף (CC0)",
+    "year": "",
+    "fx": 50,
+    "fy": 45,
+    "dh": "e3c5f0f0e8706174",
+    "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
+    "note": "מקור: https://commons.wikimedia.org/wiki/File:Torah_scroll_-_Jewish_Museum_and_Tolerance_Center.jpg · רישיון CC0 · נחתכה ל־16:10.",
+    "tags": [
+      "holiday"
+    ]
+  },
+  {
+    "id": "arch-of-titus",
+    "w": 1280,
+    "h": 855,
+    "alt": "תבליט חרס בדמות תבליט שער טיטוס: חיילים רומאים נושאים את מנורת המקדש ואת כלי המקדש",
+    "caption": "שלל המקדש, העתק בחרס של התבליט בשער טיטוס ברומא, צרפת, בערך 1791, מוזיאון לוס אנג׳לס לאמנות (LACMA)",
+    "credit": "LACMA, ויקישיתוף (נחלת הכלל)",
+    "year": "",
+    "fx": 35,
+    "fy": 45,
+    "dh": "fcb0b8d8ec68e8fd",
+    "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
+    "note": "מקור: https://commons.wikimedia.org/wiki/File:Spoils_of_the_Temple-_After_a_Relief_from_the_Arch_of_Titus,_Rome_LACMA_M.79.49.jpg · נחלת הכלל (LACMA) · בתמונה תבליט, לא אנשים · בלי חיתוך.",
+    "tags": [
+      "holiday"
+    ]
   }
 ]
