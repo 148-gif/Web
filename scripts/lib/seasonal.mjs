@@ -6,6 +6,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { esc, lib, shut, gist, read, nik } from './core.mjs';
 import { moadim } from './moadim.mjs';
+import { taggedFor } from './shut-tags.mjs';
 import { ICON, icon } from './layout.mjs';
 import { bookCard } from './parts.mjs';
 import { figure } from './images.mjs';
@@ -71,10 +72,11 @@ const seasonWindows = (occasions, days, lead = LEAD) => {
 // does not count. Answers long enough to be worth reading score higher, so the best come first. Deterministic: ties go to the lower id.
 const plain = (t) => String(t).replace(/[\u0591-\u05C7]/g, '').replace(/["'`׳״]/g, '');
 const termRe = (t) => new RegExp(`(?<![\\p{L}])[והבכלמש]{0,2}${plain(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'u');
-const pickShut = (items, terms, n = 60) => {
-  const res = terms.map(termRe);
+// `tagged`: question numbers chosen by hand (data/shut-tags.json) that count as naming the holiday although their title does not.
+const pickShut = (items, terms, n = 60, tagged = []) => {
+  const res = terms.map(termRe), hand = new Set(tagged.map(String));
   return items.map((x) => {
-    if (!res.some((r) => r.test(plain(x.title)))) return null;
+    if (!hand.has(String(x.id)) && !res.some((r) => r.test(plain(x.title)))) return null;
     const len = (x.a || []).join(' ').length, a = plain((x.a || []).join(' '));
     return { x, score: 3 + (res.some((r) => r.test(a)) ? 1 : 0) + (len >= 300 && len <= 3500 ? 2 : 0) };
   }).filter(Boolean).sort((a, b) => b.score - a.score || Number(a.x.id) - Number(b.x.id)).slice(0, n).map((r) => r.x);
@@ -83,11 +85,21 @@ const pickShut = (items, terms, n = 60) => {
 // The pool of an occasion, as rows [id, question, the opening of the answer, minutes to read]: written to season/<id>.json, and the page
 // fetches only the pool of the occasion it shows. site/app.js picks three at random, unread ones first (it remembers which were read).
 const POOL = 60;
-const seasonPools = () => Object.fromEntries((lib.occasions || []).map((o) => [o.id, pickShut(shut, o.terms || [], POOL).map((x) => {
+const seasonPools = () => Object.fromEntries((lib.occasions || []).map((o) => [o.id, pickShut(shut, o.terms || [], POOL, taggedFor(o.id)).map((x) => {
   const text = gist(x.a), cut = text.length > 190 ? `${text.slice(0, 190).replace(/\s+\S*$/, '')}…` : text;
   return [String(x.id), x.title, cut, Math.max(1, Math.round(x.a.join(' ').split(/\s+/).length / 180))];
 })]).filter(([, rows]) => rows.length >= 3));
 const pools = new Map(Object.entries(seasonPools()));
+// The holiday labels of a question (on its page and in the search): every occasion whose pool holds it, named by the occasion and leading
+// to its hub page (or to the search, with no hub). Map question number -> [[label, href]].
+const shutLabels = () => {
+  const out = new Map();
+  for (const o of lib.occasions || []) for (const [id] of pools.get(o.id) || []) {
+    if (!out.has(id)) out.set(id, []);
+    out.get(id).push([o.title, o.hub ? `/moadim/${o.hub}/` : `/search/?q=${encodeURIComponent(o.terms[0])}`]);
+  }
+  return out;
+};
 const qa = (o) => (pools.has(o.id) ? `<div data-qa hidden><h3 class="subh qh">${icon('chat', 'ico')}שאלות ותשובות לקריאה</h3><div class="grid qreads" data-pool="/season/${o.id}.json?v=${createHash('sha256').update(JSON.stringify(pools.get(o.id))).digest('hex').slice(0, 10)}"></div></div>` : '');
 
 // From the holiday's hub (data/moadim.json, /moadim/<id>/, named by the occasion's `hub`): up to two of Moharash's talks on it and one
@@ -143,4 +155,4 @@ const seasonHtml = () => {
   return `<div id="season" data-season="${esc(JSON.stringify(runs))}" data-unfiltered hidden>${items.join('')}</div>`;
 };
 
-export { pickShut, seasonPools, zmanimDays, instances, seasonWindows, seasonHtml, addDays, LEAD };
+export { pickShut, seasonPools, shutLabels, zmanimDays, instances, seasonWindows, seasonHtml, addDays, LEAD };

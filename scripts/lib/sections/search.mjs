@@ -3,6 +3,7 @@ import { BUILD, nik, write, shut, letters, halacha, isHidden, lib } from '../cor
 import { icon, phead, layout, sr } from '../layout.mjs';
 import { chips } from '../parts.mjs';
 import { bookChapters } from './library.mjs';
+import { shutLabels } from '../seasonal.mjs';
 
 // Search
 // Search index, in parts (same split for both): titles (idx/t0.json…) for instant results, and the full text (idx/0.json…).
@@ -16,9 +17,11 @@ const indexed = [...shut.map((x) => ['shut', x]), ...(isHidden('/letters/') ? []
 const shardSize = Math.ceil(indexed.length / SHARDS);
 const part = (k) => indexed.slice(k * shardSize, (k + 1) * shardSize);
 // The search page carries the split in data attributes; other pages read it from meta.json to warm the index (app.js).
-const searchVersion = createHash('sha256').update(JSON.stringify(indexed)).digest('hex').slice(0,16);
+// A question with a holiday label (seasonal.mjs) carries it as a third field: shown on the result, and searched as part of the title
+const labels = shutLabels(), lab = (b, x) => (b === 'shut' && labels.has(String(x.id)) ? [labels.get(String(x.id)).map(([t]) => t).join(' · ')] : []);
+const searchVersion = createHash('sha256').update(JSON.stringify([indexed, [...labels]])).digest('hex').slice(0,16);
 write('idx/meta.json', JSON.stringify({ n: SHARDS, size: shardSize, version: searchVersion }));
-for (let k = 0; k < SHARDS; k++) write(`idx/t${k}.json`, JSON.stringify(part(k).map(([b, x]) => [`${b}/${x.id}`, x.title])));
+for (let k = 0; k < SHARDS; k++) write(`idx/t${k}.json`, JSON.stringify(part(k).map(([b, x]) => [`${b}/${x.id}`, x.title, ...lab(b, x)])));
 for (let k = 0; k < SHARDS; k++) write(`idx/${k}.json`, JSON.stringify(part(k).map(([, x]) => words((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600), new Set(words(x.title).split(' '))))));
 // The index is not preloaded: it would compete with the styles and fonts that the first paint waits for.
 // search.js fetches the titles after the page loads (at once when there is a query, first part first) and the full text (about 1.2MB) once there is something to search for.

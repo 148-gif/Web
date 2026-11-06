@@ -3,6 +3,7 @@
 // A holiday names its book sections as [book slug, from, to] (the section numbers of data/books/<slug>.json), whole books by slug,
 // pages of the site, and the words that pick its questions from the Q&A by their titles.
 import { read, lib, shut } from './core.mjs';
+import { taggedForHub } from './shut-tags.mjs';
 
 // sizes: book slug -> number of sections it has on the site (books without a text file are not in it)
 const validateMoadim = (m, books, sizes) => {
@@ -38,7 +39,8 @@ const he = (w) => new RegExp(`(^|[^\\u05D0-\\u05EA])[והבלמש]{0,2}${w.repla
 const qaRe = new Map(moadim.items.map((x) => [x.id, (x.qa || []).map(he)]));
 const hits = (id, t) => qaRe.get(id).some((r) => r.test(t));
 const qaFor = (x) => {
-  const own = shut.filter((q) => hits(x.id, q.title));
+  // and the questions tagged by hand for this holiday (data/shut-tags.json), whose title does not name it
+  const hand = taggedForHub(x.id), own = shut.filter((q) => hits(x.id, q.title) || hand.has(String(q.id)));
   const others = (q) => moadim.items.filter((y) => y !== x && hits(y.id, q.title)).length;
   return own.map((q, i) => [others(q), i, q]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(([, , q]) => q);
 };
