@@ -530,5 +530,125 @@
     "tags": [
       "moharash"
     ]
+  },
+  {
+    "id": "megillah-scroll",
+    "w": 1280,
+    "h": 720,
+    "alt": "מגילת אסתר כתובה על קלף, פרושה בתוך ויטרינה במוזיאון",
+    "caption": "מגילת אסתר מבוכרה, תחילת המאה ה־20, במוזיאון היהודי ומרכז הסובלנות",
+    "credit": "Лапоть, ויקישיתוף (CC0)",
+    "year": "",
+    "fx": 50,
+    "fy": 50,
+    "dh": "62b8f0e0406361f0",
+    "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
+    "note": "מקור: https://commons.wikimedia.org/wiki/File:Megillat_Ester_scroll_-_Jewish_Museum_and_Tolerance_Center.jpg · רישיון CC0 · נחתכה ליחס 16:9.",
+    "tags": [
+      "holiday"
+    ]
+  },
+  {
+    "id": "shofar",
+    "w": 1280,
+    "h": 586,
+    "alt": "שופר מסולסל וחלק בתוך ויטרינה במוזיאון",
+    "caption": "שופר בתצוגה במוזיאון ג׳ימי קרטר",
+    "credit": "ArtemisiaGentileschiFan, ויקישיתוף (CC0)",
+    "year": "",
+    "fx": 50,
+    "fy": 50,
+    "dh": "3272b2a8d7667237",
+    "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
+    "note": "מקור: https://commons.wikimedia.org/wiki/File:Shofar,_Carter_Museum.jpg · רישיון CC0 · התמונה המקורית הוקטנה ל־1280 פיקסלים, בלי חיתוך.",
+    "tags": [
+      "holiday"
+    ]
+  },
+  {
+    "id": "seder-plate",
+    "w": 1280,
+    "h": 800,
+    "alt": "קערת ליל הסדר מקרמיקה עם שישה גומחות מסומנות: מרור, זרוע, ביצה, חרוסת, כרפס וחזרת",
+    "caption": "קערת ליל הסדר",
+    "credit": "Karen, ויקישיתוף (CC BY 2.0)",
+    "year": "",
+    "fx": 50,
+    "fy": 50,
+    "dh": "e773f3f2f2f2f2e1",
+    "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
+    "note": "מקור: https://commons.wikimedia.org/wiki/File:Seder_Plate_on_display.jpg (flickr.com/photos/56832361@N00/426087316) · רישיון CC BY 2.0, נדרש קרדיט · נחתכה ל־16:10.",
+    "tags": [
+      "holiday"
+    ]
+  },
+  {
+    "id": "hanukkah-candles",
+    "w": 1280,
+    "h": 720,
+    "alt": "יד מדליקה נר בחנוכייה בחשכה, ושני נרות דולקים",
+    "caption": "הדלקת נרות חנוכה",
+    "credit": "Lance Cpl. Michael Thorn, חיל הנחתים של ארצות הברית (נחלת הכלל)",
+    "year": "2013",
+    "fx": 50,
+    "fy": 55,
+    "dh": "f8f8f4acacacaef6",
+    "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
+    "note": "מקור: https://commons.wikimedia.org/wiki/File:Hanukkah_candles.jpg · צילום של חיל הנחתים האמריקאי (131202-M-EG514-021), נחלת הכלל · נראית רק יד, בלי פנים · נחתכה ליחס 16:9.",
+    "tags": [
+      "holiday"
+    ]
+  },
+  {
+    "id": "torah-scroll",
+    "w": 1280,
+    "h": 800,
+    "alt": "ספר תורה פתוח על קלף, מונח על בד סגול בתוך ויטרינה, ולידו יד לקריאה",
+    "caption": "ספר תורה ממזרח אירופה, סוף המאה ה־19, במוזיאון היהודי ומרכז הסובלנות",
+    "credit": "Лапоть, ויקישיתוף (CC0)",
+    "year": "",
+    "fx": 50,
+    "fy": 45,
+    "dh": "e3c5f0f0e8706174",
+    "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
+    "note": "מקור: https://commons.wikimedia.org/wiki/File:Torah_scroll_-_Jewish_Museum_and_Tolerance_Center.jpg · רישיון CC0 · נחתכה ל־16:10.",
+    "tags": [
+      "holiday"
+    ]
+  },
+  {
+    "id": "arch-of-titus",
+    "w": 1280,
+    "h": 855,
+    "alt": "תבליט חרס בדמות תבליט שער טיטוס: חיילים רומאים נושאים את מנורת המקדש ואת כלי המקדש",
+    "caption": "שלל המקדש, העתק בחרס של התבליט בשער טיטוס ברומא, צרפת, בערך 1791, מוזיאון לוס אנג׳לס לאמנות (LACMA)",
+    "credit": "LACMA, ויקישיתוף (נחלת הכלל)",
+    "year": "",
+    "fx": 35,
+    "fy": 45,
+    "dh": "fcb0b8d8ec68e8fd",
+    "rights": "approved",
+    "others": "none",
+    "consent": "",
+    "check": "",
+    "note": "מקור: https://commons.wikimedia.org/wiki/File:Spoils_of_the_Temple-_After_a_Relief_from_the_Arch_of_Titus,_Rome_LACMA_M.79.49.jpg · נחלת הכלל (LACMA) · בתמונה תבליט, לא אנשים · בלי חיתוך.",
+    "tags": [
+      "holiday"
+    ]
   }
 ]

@@ -4,6 +4,12 @@ import { icon, orn } from './layout.mjs';
 
 const chips = ['אמונה', 'התבודדות', 'שמחה', 'תפילה', 'אומן', 'פרנסה', 'שלום בית'].map((t) => `<a href="/search/?q=${encodeURIComponent(t)}">${t}</a>`).join('');
 const searchForm = `<label class="slabel" for="sq">חיפוש בשאלות ובתשובות</label><form action="/search/" class="hsearch" role="search"><input id="sq" name="q" type="search" placeholder="מה מעסיק אתכם?"><button>${icon('search', 'ico sm')}חיפוש</button></form>`;
+// Library cards (the library page, a series page, the seasonal suggestion). data-t is what the page's filter searches: the title, the
+// subtitle and the book's extra search words (library.json "keywords"); data-k is its kind ("web" read on the site, "pdf").
+const bookText = (b) => [b.title, b.sub, ...(b.keywords || [])].join(' ');
+const kinds = (bs) => [...new Set(bs.flatMap((b) => [b.text && 'web', b.pdf && 'pdf']).filter(Boolean))].join(' ');
+const btags = (b) => `<span class="btags">${b.text ? '<span class="btag web">קריאה באתר</span>' : ''}${b.pdf ? '<span class="btag">PDF</span>' : ''}${b.pages ? `<span class="bpg">${b.pages} עמודים</span>` : ''}</span>`;
+const bookCard = (b, cls = '') => `<a class="card book${cls}" href="/library/${b.slug}/" data-t="${esc(bookText(b))}" data-k="${kinds([b])}">${icon('book', 'ico lg')}<h3>${esc(b.title)}</h3><p>${esc(b.sub)}</p>${btags(b)}<span class="go">${b.text ? 'לקריאה באתר ←' : 'לספר · PDF ←'}</span></a>`;
 const ul = (xs) => `<ul>${xs.map((x) => `<li>${x}</li>`).join('')}</ul>`;
 const ps = (xs) => xs.map((p) => `<p>${esc(p)}</p>`).join('');
 // Navigation buttons. With exact coordinates (ll = "lat,lng") Waze opens its web map with the route and "send to phone"
@@ -66,4 +72,4 @@ const pageNumbers = (cur, total) => {
 // Pager of a paginated list: previous and next, plus the numbered links of pageNumbers(). hrefOf(n) gives the site path of page n.
 const pagerHtml = (cur, total, hrefOf) => `<nav class="pager" aria-label="עמודים"><div class="pager-step">${cur > 1 ? `<a class="btn ghost" href="${hrefOf(cur - 1)}">→ הקודם</a>` : '<span></span>'}<span>עמוד ${cur} מתוך ${total}</span>${cur < total ? `<a class="btn ghost" href="${hrefOf(cur + 1)}">הבא ←</a>` : '<span></span>'}</div>${total > 1 ? `<ol class="pager-nums">${pageNumbers(cur, total).map((n) => `<li>${n === cur ? `<span aria-current="page">${n}</span>` : `<a href="${hrefOf(n)}" aria-label="עמוד ${n}">${n}</a>`}</li>`).join('')}</ol>` : ''}</nav>`;
 
-export { pageNumbers, pagerHtml, zstrip, chips, searchForm, ul, ps, navBtns, anchors, ysect, span, sched, rows, hours, statrow, telA, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, person, tikkunUrl, rnPerson };
+export { bookText, kinds, btags, bookCard, pageNumbers, pagerHtml, zstrip, chips, searchForm, ul, ps, navBtns, anchors, ysect, span, sched, rows, hours, statrow, telA, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, person, tikkunUrl, rnPerson };

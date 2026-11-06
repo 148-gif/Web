@@ -1,5 +1,6 @@
 // Prepares one photo for the site (a tool you run by hand; the build itself needs no image library):
-//   node scripts/prepare-image.mjs <source file> <id> [--fx 50 --fy 40] [--crop left,top,width,height] [--force]
+//   node scripts/prepare-image.mjs <source file> <id> [--fx 50 --fy 40] [--crop left,top,width,height] [--quality 80] [--force]
+// --quality lowers the WebP quality (default 80, thumbnails 2 less) for a busy photo (stone, foliage) whose files are over the size budget.
 // Writes data/img/<id>/<width>.webp for each standard width up to the source's own, plus the face-centred 3:4 thumbnails
 // t360.webp and t720.webp, and adds an unfinished entry (rights "pending") to data/images.json for you to complete.
 // It refuses, unless --force: a photo that is too narrow, one that looks like a photo already on the site, and one with a bar
@@ -12,6 +13,7 @@ import { IMG_LIMITS, IMG_THUMBS, imgWidths, dhash, lookalike, flatBar } from '..
 const args = process.argv.slice(2), flag = (n) => { const i = args.indexOf(`--${n}`); return i < 0 ? null : args.splice(i, 2)[1]; };
 const take = (n) => { const i = args.indexOf(`--${n}`); if (i < 0) return false; args.splice(i, 1); return true; };
 const force = take('force'), signOnly = take('sign-only');
+const Q = Math.min(90, Math.max(40, Number(flag('quality') || 80)));
 const reg = JSON.parse(readFileSync('data/images.json', 'utf8'));
 const save = () => writeFileSync('data/images.json', JSON.stringify(reg, null, 2) + '\n');
 
@@ -47,12 +49,12 @@ if (bar) refuse(`the ${bar.side} edge has a flat bar (a screenshot's strip or a 
 const dir = `data/img/${id}`;
 rmSync(dir, { recursive: true, force: true });
 mkdirSync(dir, { recursive: true });
-for (const w of imgWidths({ w: W })) await base.clone().resize({ width: w }).webp({ quality: 80, effort: 6 }).toFile(`${dir}/${w}.webp`);
+for (const w of imgWidths({ w: W })) await base.clone().resize({ width: w }).webp({ quality: Q, effort: 6 }).toFile(`${dir}/${w}.webp`);
 // Thumbnails are cut around the face (fx, fy in percent), so a wide photo is not cropped to its middle.
 for (const tw of IMG_THUMBS.filter((t) => t <= W)) {
   const th = Math.round((tw * 4) / 3), scale = Math.max(tw / W, th / H), sw = Math.round(W * scale), sh = Math.round(H * scale);
   const left = Math.min(sw - tw, Math.max(0, Math.round((sw * fx) / 100 - tw / 2))), top = Math.min(sh - th, Math.max(0, Math.round((sh * fy) / 100 - th / 2)));
-  await base.clone().resize(sw, sh).extract({ left, top, width: tw, height: th }).webp({ quality: 78, effort: 6 }).toFile(`${dir}/t${tw}.webp`);
+  await base.clone().resize(sw, sh).extract({ left, top, width: tw, height: th }).webp({ quality: Q - 2, effort: 6 }).toFile(`${dir}/t${tw}.webp`);
 }
 // The entry is unfinished on purpose: the site refuses a photo shown with no description, credit or approval.
 const entry = { id, w: W, h: H, alt: '', caption: '', credit: '', year: '', fx, fy, dh: mine.dh, rights: 'pending', others: '', consent: '', check: '', note: '', tags: [] };

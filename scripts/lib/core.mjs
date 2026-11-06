@@ -209,6 +209,8 @@ const validateImages = (list, dir = IMG_DIR) => {
 validateImages(images);
 validateCms(topics, cmsPages);
 // data/library.json: a series groups books of one category on its own page (/library/<id>/), and "featured" names the books shown first.
+// The colours an occasion may take (the classes ac-<name> in site/css/13-seasons.css): a fixed set, tuned to the site's navy and gold
+const ACCENTS = ['gold', 'blue', 'indigo', 'green', 'plum', 'teal', 'ember'];
 const validateLibrary = (l) => {
   const bad = (m) => { throw new Error(`library.json: ${m}`); };
   const cats = new Set(l.categories.map(([c]) => c)), slugs = new Set(), ids = new Set();
@@ -230,6 +232,37 @@ const validateLibrary = (l) => {
   }
   for (const b of l.books) if (b.series !== undefined && !ids.has(b.series)) bad(`${b.slug}: unknown series "${b.series}"`);
   for (const f of l.featured || []) if (!slugs.has(f)) bad(`featured: unknown book "${f}"`);
+  // keywords are extra words the library search matches (not shown); an occasion is a holiday or season that gets a book suggestion a month before
+  for (const x of [...l.books, ...(l.series || [])]) if (x.keywords !== undefined && !(Array.isArray(x.keywords) && x.keywords.every((k) => typeof k === 'string' && k.trim()))) bad(`${x.slug || x.id}: keywords must be a list of words`);
+  const oids = new Set();
+  for (const o of l.occasions || []) {
+    if (!/^[a-z0-9-]+$/.test(o.id || '') || oids.has(o.id)) bad(`bad or duplicate occasion id "${o.id}"`);
+    oids.add(o.id);
+    if (!o.title) bad(`occasion "${o.id}" has no title`);
+    if (!Array.isArray(o.books) || (!o.books.length && !o.hub && !(o.kuntresim || []).length) || !o.books.every((x) => slugs.has(x))) bad(`occasion "${o.id}": books must be a list of known books (it may be empty only with a hub)`);
+    const dated = Number.isInteger(o.day) && o.day >= 1 && o.day <= 30 && (typeof o.month === 'string' || (Array.isArray(o.month) && o.month.length)) && Number.isInteger(o.length) && o.length >= 1;
+    const byParasha = Array.isArray(o.parasha) && o.parasha.length === 2 && o.parasha.every((x) => typeof x === 'string' && x);
+    if (o.terms !== undefined && !(Array.isArray(o.terms) && o.terms.length && o.terms.every((t) => typeof t === 'string' && t.trim()))) bad(`occasion "${o.id}": terms must be a list of words`);
+    if (o.kuntresim !== undefined && !(Array.isArray(o.kuntresim) && o.kuntresim.every((k) => typeof k === 'string' && k))) bad(`occasion "${o.id}": kuntresim must be a list of kuntres slugs`);
+    if (o.accent !== undefined && !ACCENTS.includes(o.accent)) bad(`occasion "${o.id}": accent must be one of ${ACCENTS.join(', ')}`);
+    if (o.image !== undefined && !images.some((im) => im.id === o.image)) bad(`occasion "${o.id}": unknown photo "${o.image}"`);
+    if (dated === byParasha) bad(`occasion "${o.id}" needs either day, month and length, or two parashot`);
+  }
+  for (const s of l.series || []) {
+    if (!s.groups) continue;
+    const seen = new Map(), gids = new Set();
+    for (const g of s.groups) {
+      if (!/^[a-z0-9-]+$/.test(g.id || '') || gids.has(g.id) || !g.title) bad(`series "${s.id}": bad group "${g.id}"`);
+      gids.add(g.id);
+      for (const slug of g.books || []) {
+        const b = l.books.find((x) => x.slug === slug);
+        if (!b || b.series !== s.id) bad(`series "${s.id}": group "${g.id}" names "${slug}", which is not in the series`);
+        if (seen.has(slug)) bad(`series "${s.id}": "${slug}" is in two groups`);
+        seen.set(slug, g.id);
+      }
+    }
+    for (const b of l.books.filter((x) => x.series === s.id)) if (!seen.has(b.slug)) bad(`series "${s.id}": "${b.slug}" is in no group`);
+  }
 };
 validateLibrary(lib);
 const regey = lib.books.find((b) => b.slug === 'regey-moharash');
@@ -237,4 +270,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, validateLibrary, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, validateLibrary, ACCENTS, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

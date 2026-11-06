@@ -231,12 +231,23 @@ if (totop) {
 }
 // Prayer schedules: open on wide screens, folded on phones.
 if (matchMedia('(min-width: 861px)').matches) document.querySelectorAll('details.scard').forEach((d) => { d.open = true; });
-// Book contents: open the part that holds the last section read.
+// Book contents: mark the last section read (and open its part when the parts are folded), and open a folded part that a link
+// points to (the reader's "contents" button goes to /library/<book>/#p<n>).
 document.querySelectorAll('[data-continue]').forEach((el) => {
   const v = lastRead(el.dataset.continue);
-  const a = v && v.u && document.querySelector(`details.tocpart a[href="${v.u}"]`);
-  if (a) { a.closest('details').open = true; a.classList.add('last'); }
+  const a = v && v.u && document.querySelector(`.toc a[href="${v.u}"]`);
+  if (!a) return;
+  a.classList.add('last');
+  const d = a.closest('details');
+  if (d) d.open = true;
 });
+const openTarget = () => {
+  const t = location.hash.length > 1 && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+  if (t && t.tagName === 'DETAILS' && !t.open) { t.open = true; t.scrollIntoView(); }
+};
+openTarget();
+addEventListener('hashchange', openTarget);
+
 
 // Offline reading: the service worker keeps the pages already read (dist/sw.js, built from scripts/lib/sw.js). The offline page's "try again" reloads.
 if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register(`${me.pathname.replace(/[^/]*$/, '')}sw.js`).catch(() => {}));
@@ -273,19 +284,70 @@ document.querySelectorAll('sup.fn a').forEach((a) => {
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFn(true); });
 document.addEventListener('click', (e) => { if (fnOpen && !e.target.closest('.fnpop, sup.fn')) closeFn(false); });
+
+// Seasonal suggestion (scripts/lib/seasonal.mjs): the page holds the windows [id, from, start, to] and, for every occasion, a hidden band with its
+// books; here the band whose window holds today's date is shown, with the days left to the holiday. Its questions are fetched (the pool of that
+// occasion only) and three are picked at random, the ones not yet read first.
+// "Read" is remembered in this browser only (localStorage, key read:shut: the ids, oldest first), not in a cookie and not on the server: a question
+// counts as read after a few seconds on its page. When fewer than three unread are left, the ones read longest ago fill the place.
+const READ = 'read:shut';
+const readList = () => { try { const v = JSON.parse(store.get(READ)); return Array.isArray(v) ? v.map(String) : []; } catch { return []; } };
+const qid = /\/shut\/(\d+)\/?$/.exec(location.pathname);
+if (qid) setTimeout(() => { const list = readList().filter((x) => x !== qid[1]); list.push(qid[1]); store.set(READ, JSON.stringify(list.slice(-300))); }, 6000);
+const pickUnread = (rows, n) => {
+  const seen = readList(), fresh = rows.filter((r) => !seen.includes(r[0]));
+  for (let i = fresh.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [fresh[i], fresh[j]] = [fresh[j], fresh[i]]; }
+  const old = rows.filter((r) => seen.includes(r[0])).sort((a, b) => seen.indexOf(a[0]) - seen.indexOf(b[0]));
+  return [...fresh, ...old].slice(0, n);
+};
+const qCard = ([id, title, text, mins]) => {
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
+  const a = el('a', 'card qread'), meta = el('span', 'qmeta');
+  a.href = `/shut/${id}/`;
+  meta.append(el('span', '', `קריאה של ${mins === 1 ? 'דקה' : `${mins} דקות`}`), el('span', 'go', 'לקריאת התשובה ←'));
+  a.append(el('h3', '', title), el('p', '', text), meta);
+  return a;
+};
+document.querySelectorAll('[data-season]').forEach((box) => {
+  let runs;
+  try { runs = JSON.parse(box.dataset.season); } catch { return; }
+  const now = new Date(), today = new Date(now.getTime() - now.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  const run = runs.find(([, from, , to]) => from <= today && today <= to), item = run && box.querySelector(`[data-oc="${run[0]}"]`);
+  if (!item) return;
+  const left = Math.round((Date.parse(run[2]) - Date.parse(today)) / 864e5);
+  item.querySelector('[data-b]').hidden = left < 0; item.querySelector('[data-d]').hidden = left >= 0;
+  item.querySelector('[data-when]').textContent = left > 1 ? `בעוד ${left} ימים` : left === 1 ? 'מחר' : left === 0 ? 'היום' : 'בימים אלה';
+  item.hidden = false; box.hidden = false;
+  document.querySelectorAll('[data-season-ribbon]').forEach((r) => { r.querySelector('[data-sr]').textContent = `${item.querySelector('h2 span:not([hidden])').textContent} · ${item.querySelector('[data-when]').textContent}`; r.hidden = false; });
+  const qa = item.querySelector('[data-qa]'), grid = qa && qa.querySelector('[data-pool]');
+  if (grid) fetch(grid.dataset.pool).then((r) => (r.ok ? r.json() : [])).then((rows) => {
+    if (rows.length < 3) return;
+    grid.replaceChildren(...pickUnread(rows, 3).map(qCard)); qa.hidden = false;
+  }).catch(() => {});
+});
 }
 
 // Filter on a listing page (a collection made in the editor, the library and its series): hides the cards (or list rows) that do not
 // match the words, or the chosen kind (data-k: "web" read on the site, "pdf"), and any section left empty. While a filter is on,
-// the parts marked data-unfiltered (the library's "start here") step aside so only matches show.
+// the parts marked data-unfiltered (the library's "start here") step aside so only matches show. Quotes, gershayim and vowels are
+// ignored on both sides, so "לג בעומר" finds "ל״ג בעומר".
+const normWords = (t) => t.toLowerCase().replace(/["'\u05F3\u05F4]/g, '').replace(/[\u0591-\u05C7]/g, '');
 document.querySelectorAll('[data-cfilter]').forEach((box) => {
-  const cards = [...document.querySelectorAll('.libcat [data-t]')], none = document.querySelector('.cnone'), kbtns = [...box.parentElement.querySelectorAll('[data-kf]')];
+  const cards = [...document.querySelectorAll('.libcat [data-t]:not(.svols li)')], vols = [...document.querySelectorAll('.card.series')], none = document.querySelector('.cnone'), kbtns = [...box.parentElement.querySelectorAll('[data-kf]')];
+  const hay = new Map([...cards, ...document.querySelectorAll('.svols li')].map((c) => [c, normWords(c.dataset.t)]));
   let kind = '';
   const run = () => {
-    const words = box.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    cards.forEach((c) => { c.hidden = !words.every((w) => c.dataset.t.toLowerCase().includes(w)) || (kind && !(c.dataset.k || '').split(' ').includes(kind)); });
-    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden])'); });
-    document.querySelectorAll('[data-unfiltered]').forEach((s) => { s.hidden = !!(words.length || kind); });
+    const words = normWords(box.value.trim()).split(/\s+/).filter(Boolean);
+    cards.forEach((c) => { c.hidden = !words.every((w) => hay.get(c).includes(w)) || (kind && !(c.dataset.k || '').split(' ').includes(kind)); });
+    // a series card that matches because of one of its volumes opens its list at those volumes
+    vols.forEach((card) => {
+      const lis = [...card.querySelectorAll('.svols li')], hit = lis.filter((li) => words.every((w) => hay.get(li).includes(w)));
+      const some = words.length && !card.hidden && hit.length > 0;
+      lis.forEach((li) => { li.hidden = some && !hit.includes(li); });
+      card.querySelector('.svols').open = !!some;
+    });
+    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden]):not(.svols li)'); if (words.length && s.tagName === 'DETAILS') s.open = true; });
+    document.querySelectorAll('[data-unfiltered]').forEach((s) => s.classList.toggle('stepaside', !!(words.length || kind)));
     if (none) none.hidden = cards.some((c) => !c.hidden);
   };
   box.addEventListener('input', run);

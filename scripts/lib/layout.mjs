@@ -44,7 +44,7 @@ const CSP = [
 
 // Site sections in four groups: drives the header dropdowns, the mobile menu, the home tiles and the footer.
 const baseGroups = [
-  ['לימוד', [['/shut/', 'שו״ת ברסלב', 'chat', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות`], ['/letters/', 'מכתבים', 'letter', `${letters.length} מכתבים כלליים`], ['/library/', 'ספרייה', 'books', 'ספרי הצדיק לקריאה ולהורדה'], ['/halacha/', 'שו״ת הלכתי', 'scale', 'שאלות בהלכה']]],
+  ['לימוד', [['/shut/', 'שו״ת ברסלב', 'chat', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות`], ['/letters/', 'מכתבים', 'letter', `${letters.length} מכתבים כלליים`], ['/library/', 'ספרייה', 'books', 'ספרי הצדיק לקריאה ולהורדה'], ['/moadim/', 'זמני השנה', 'calendar', 'חגים ומועדים לפי סדר השנה'], ['/halacha/', 'שו״ת הלכתי', 'scale', 'שאלות בהלכה']]],
   ['רבי נחמן מברסלב', [['/rabbi-nachman/', 'רבי נחמן', 'crown', 'רבינו, חייו, תורתו ודרכו'], ['/uman/', 'אומן', 'pin', 'ציון רבינו וקיבוץ ראש השנה'], ['/tikkun-haklali/', 'התיקון הכללי', 'lyre', 'עשרה מזמורי תהלים']]],
   ['הצדיק מיבנאל', [['/moharash/', 'הצדיק מיבנאל', 'flame', 'מוהרא״ש: חייו ודרכו'], ['/moharash/tziyun/', 'ציון הצדיק', 'candle', 'ההבטחות ודרכי הגעה'], ['/yeshiva/', 'ישיבת בית מנחם', 'school', 'ישיבה חסידית בנשיאותו'], ['/print/', 'הדפסת אשר בנחל', 'print', 'שותפות בהדפסת ספריו']]],
   ['יבנאל עיר ברסלב', [['/yavniel/', 'יבנאל', 'mountain', 'קהילה, תפילות ומידע'], ['/mikveh-malka/', 'מקווה מלכה', 'drop', 'מקווה טהרה לנשים'], ...(institutions.length ? [['/institutions/', 'מוסדות הקהילה', 'heart', 'תמיכה ותרומות']] : [])]],
@@ -75,6 +75,7 @@ const contactList = (c) => [
 ].filter(Boolean);
 const infoNav = [['/about/', 'אודות'], ['/contact/', 'צור קשר'], ['/accessibility/', 'הצהרת נגישות'], ['/privacy/', 'פרטיות ותנאי שימוש']];
 const ICON = {
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M12 13.2l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2-1.45-1.4 2-.3z"/>',
   flame: '<path d="M12 2c.6 3.2 4.8 5.3 4.8 10.1A4.8 4.8 0 0 1 12 17a4.8 4.8 0 0 1-4.8-4.9c0-2.2 1.2-3.7 2.3-4.6 0 1.7.8 2.9 1.9 3.3C11 8.3 10.9 5 12 2Z"/><path d="M12 22c-2.8 0-5-1.2-5-2.7 0-.8.6-1.5 1.6-2"/><path d="M15.4 17.3c1 .5 1.6 1.2 1.6 2 0 1.5-2.2 2.7-5 2.7"/>',
   book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 21.5A2.5 2.5 0 0 1 6.5 19H20v3H6.5"/><path d="M9 7h7M9 11h5"/>',
   scale: '<path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3.5 3.5 0 0 0 6 0zM19 7l-3 7a3.5 3.5 0 0 0 6 0z"/><circle cx="12" cy="4" r="1"/>',
@@ -106,6 +107,12 @@ const ICON = {
   sparkle: '<path d="M9.94 15.5a2 2 0 0 0-1.44-1.44l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0l1.58 6.13a2 2 0 0 0 1.44 1.44l6.13 1.58a.5.5 0 0 1 0 .96l-6.13 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/>',
   up: '<path d="M12 19V5M5 12l7-7 7 7"/>',
   star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  menorah: '<path d="M12 21v-6M8 21h8"/><path d="M4.5 8.5v2a4.5 4.5 0 0 0 4.5 4.5h6a4.5 4.5 0 0 0 4.5-4.5v-2"/><path d="M8.25 9v6M15.75 9v6M12 7v8M4.5 9v-1.5M19.5 9v-1.5M8.25 9V7.5M15.75 9V7.5"/><path d="M4.5 4.6v.01M8.25 4.6v.01M12 3.2v.01M15.75 4.6v.01M19.5 4.6v.01"/>',
+  shofar: '<path d="M3 17.5c0-7 4.7-11.5 10.5-11.5 2.9 0 5.2 1 7.5 3l-1.3 1.9c-1.7-1.4-3.4-2.1-5.2-2.1-4.2 0-7.5 3.5-7.5 8.7z"/><path d="M3 17.5c0 1.4.9 2.5 2.5 2.5S8 18.9 8 17.5"/><path d="M12.5 8.4c2 .1 3.5 1 4.6 2.4"/>',
+  tree: '<path d="M12 21v-8M8.5 21h7"/><path d="M12 13.5c-4 0-6.5-2.5-6.5-5.4S8 3 12 3s6.5 2.2 6.5 5.1-2.5 5.4-6.5 5.4Z"/><path d="m12 13.5-2.2-2.7M12 12l2-2.4"/>',
+  scroll: '<rect x="5" y="3" width="14" height="3.2" rx="1.6"/><rect x="5" y="17.8" width="14" height="3.2" rx="1.6"/><path d="M7.5 6.2v11.6M16.5 6.2v11.6M10 10h4M10 13h4"/>',
+  tablets: '<path d="M4 20V8a4 4 0 0 1 8 0v12zM12 20V8a4 4 0 0 1 8 0v12z"/><path d="M6.5 10h3M6.5 13h3M6.5 16h3M14.5 10h3M14.5 13h3M14.5 16h3"/>',
+  cup: '<path d="M7 3h10l-.8 7a4.2 4.2 0 0 1-8.4 0z"/><path d="M7.4 7h9.2M12 14.2v5.8M8 21h8"/>',
   mountain: '<path d="m2 20 7-12 4 6.5 3-4.5 6 10z"/><circle cx="17" cy="6" r="1.8"/>',
 };
 const icon = (n, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;

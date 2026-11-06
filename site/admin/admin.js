@@ -76,7 +76,7 @@
     slug: 'מזהה בכתובת', topic: 'נושא', blocks: 'תוכן הדף', icon: 'סמל', phone: 'טלפון', email: 'דוא״ל', address: 'כתובת', hours: 'שעות', intro: 'פתיח', summary: 'תקציר', faq: 'שאלות נפוצות',
     sources: 'מקורות', path: 'נתיב', why: 'סיבה', hidden: 'חלקים מוסתרים מהגולשים', contact: 'פרטי קשר', whatsapp: 'וואטסאפ', subtitle: 'כותרת משנה', about: 'אודות', sub: 'כותרת משנה',
     goal: 'יעד', link: 'קישור', groups: 'קבוצות', group: 'קבוצה', pages: 'עמודים', size: 'גודל', categories: 'קטגוריות', books: 'ספרים', noCopyright: 'הצהרת ״אין זכויות יוצרים״', noCopyrightBy: 'מקור ההצהרה',
-    parts: 'חלקים', facts: 'פרטים עיקריים', pdf: 'קובץ PDF', pdfSize: 'גודל הקובץ', category: 'קטגוריה', online: 'זמין באתר', soon: 'בקרוב', series: 'סדרה', featured: 'ספרים ב״להתחיל כאן״', unit: 'כינוי לחלקי הסדרה (כרכים / חלקים)', storyTitle: 'כותרת הסיפור', story: 'הסיפור',
+    parts: 'חלקים', facts: 'פרטים עיקריים', pdf: 'קובץ PDF', pdfSize: 'גודל הקובץ', category: 'קטגוריה', online: 'זמין באתר', soon: 'בקרוב', series: 'סדרה', hub: 'דף החג (מזהה ב־moadim.json)', accent: 'צבע החג',  terms: 'מילים לחיפוש שאלות ותשובות', keywords: 'מילות חיפוש נוספות (לא מוצגות)', occasions: 'מועדים (הצעת ספר חודש לפני)', day: 'יום בחודש העברי', month: 'חודש עברי', length: 'מספר ימי החג', parasha: 'פרשות (התחלה וסיום)', featured: 'ספרים ב״להתחיל כאן״', unit: 'כינוי לחלקי הסדרה (כרכים / חלקים)', storyTitle: 'כותרת הסיפור', story: 'הסיפור',
     promiseTitle: 'כותרת ההבטחה', promise: 'ההבטחה', hoursTitle: 'כותרת השעות', phoneNote: 'הערה לטלפון', attendants: 'בלניות', attendantsTitle: 'כותרת הבלניות', navQuery: 'יעד לניווט (Waze)',
     hoursNote: 'הערה לשעות', features: 'מאפיינים', testimonials: 'המלצות', promiseAfter: 'אחרי ההבטחה', fromShutTitle: 'כותרת ״מתוך השו״ת״', fromShutLead: 'פתיח ״מתוך השו״ת״', fromShut: 'שאלות מתוך השו״ת',
     navLL: 'קואורדינטות לניווט', acronym: 'ראשי תיבות', life: 'תולדות חייו', community: 'הקהילה', teachings: 'תורתו', sources15: 'מקורות', passing: 'הסתלקותו', legacyQuote: 'ציטוט מורשת',
@@ -94,6 +94,9 @@
   };
   Object.assign(LABELS, { alt: 'תיאור לקוראי מסך (alt)', caption: 'כיתוב', credit: 'צלם או בעלים (אם לא ידוע: ״לא ידוע״)', year: 'שנה', fx: 'מיקוד: מרחק מהצד (באחוזים)', fy: 'מיקוד: גובה (באחוזים)',
     rights: 'אישור פרסום', others: 'אנשים נוספים בתמונה', consent: 'מי אישר לפרסם (חובה כשיש ילדים או אנשים נוספים)', check: 'לבדוק לפני פרסום', note: 'הערה פנימית', tags: 'תגיות', decorative: 'קישוט בלבד (בלי תיאור)', w: 'רוחב', h: 'גובה', ids: 'תמונות בגלריה' });
+  // Times of the year (data/moadim.json)
+  Object.assign(LABELS, { chapters: 'פרקים מספרים (ספר, מסעיף, עד סעיף)',
+    links: 'קישורים לעמודים באתר', qa: 'מילים לבחירת שאלות ותשובות', search: 'מילת החיפוש ל״לכל השאלות״' });
   // Fields that are a choice from a fixed list, not free text: [value, name].
   var ENUMS = {
     rights: [['pending', 'ממתינה לאישור'], ['approved', 'מאושרת לפרסום']],
@@ -105,6 +108,7 @@
     mikvehMen: ['ימים', 'שעות'], mikvehWomen: ['ימים', 'שעות'], features: ['סמל', 'כותרת', 'טקסט'], chesed: ['סמל', 'כותרת', 'טקסט'], quick: ['סמל', 'כותרת', 'טקסט'],
     life: ['תאריך', 'אירוע'], history: ['תאריך', 'אירוע'], timeline: ['תאריך', 'אירוע'], teachings: ['נושא', 'תוכן', 'מקור'], books: ['שם הספר', 'תיאור'], works: ['שם הספר', 'תיאור'],
     faq: ['שאלה', 'תשובה'], items: ['כותרת', 'טקסט'], sources: ['שם המקור', 'קישור'], promises: ['ציטוט', 'מקור'], quotes: ['ציטוט', 'מקור'], routes: ['מאיפה', 'הוראות'], needs: ['נושא', 'תיאור'],
+    chapters: ['ספר', 'מסעיף', 'עד סעיף'], links: ['נתיב', 'כותרת', 'תיאור'],
     steps: ['שלב', 'הסבר'], stats: ['מספר', 'תיאור'], shut: ['מספר שאלה', 'כותרת'], stories: ['כותרת', 'סיפור'], rows: ['שעה', 'מקום'], institutions: ['שם', 'פרטים'], values: ['ערך', 'הסבר'],
   };
   var ICON_NAMES = { book: 'ספר', books: 'ספרים', crown: 'כתר', lyre: 'כינור', candle: 'נר', flame: 'להבה', heart: 'לב', star: 'כוכב', users: 'אנשים', letter: 'מכתב', sparkle: 'ניצוץ', home: 'בית', mountain: 'הר', drop: 'טיפה', school: 'בית מדרש', scale: 'מאזניים', pin: 'מיקום', clock: 'שעון', chat: 'שיחה', check: 'וי' };
