@@ -15,3 +15,5 @@
 .season .ctarow{text-align:center;margin:20px 0 0}
 /* a photo of the holiday at the top, as made (16:9 or 16:10), with its credit */
 .season-fig{margin:0 auto 24px;max-width:640px}.season-fig img{display:block;width:100%;height:auto;border-radius:var(--r-lg);box-shadow:var(--shadow)}.season-fig figcaption{margin-top:8px;font:.875rem var(--sans);color:var(--mute);text-align:center}
+/* the line in the home page's hero that leads to the band */
+.season-ribbon{display:inline-flex;align-items:center;flex-wrap:wrap;justify-content:center;gap:4px 10px;min-height:44px;margin-top:20px;padding:6px 18px;border-radius:999px;background:rgba(230,196,102,.16);border:1px solid rgba(230,196,102,.55);color:var(--on-navy);font:600 .9375rem var(--sans);text-decoration:none}.season-ribbon:hover{background:rgba(230,196,102,.26)}.season-ribbon b{color:var(--gold3)}.season-ribbon .ico{color:var(--gold2)}.season-ribbon[hidden]{display:none}

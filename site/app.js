@@ -307,6 +307,7 @@ document.querySelectorAll('[data-season]').forEach((box) => {
   item.querySelector('[data-b]').hidden = left < 0; item.querySelector('[data-d]').hidden = left >= 0;
   item.querySelector('[data-when]').textContent = left > 1 ? `בעוד ${left} ימים` : left === 1 ? 'מחר' : left === 0 ? 'היום' : 'בימים אלה';
   item.hidden = false; box.hidden = false;
+  document.querySelectorAll('[data-season-ribbon]').forEach((r) => { r.querySelector('[data-sr]').textContent = `${item.querySelector('h2 span:not([hidden])').textContent} · ${item.querySelector('[data-when]').textContent}`; r.hidden = false; });
   const qa = item.querySelector('[data-qa]'), grid = qa && qa.querySelector('[data-pool]');
   if (grid) fetch(grid.dataset.pool).then((r) => (r.ok ? r.json() : [])).then((rows) => {
     if (rows.length < 3) return;
