@@ -1,6 +1,7 @@
 // Q&A pages
 import { PER_PAGE, esc, gist, write, shut, letters, halacha, linkAudit } from '../core.mjs';
 import { relatedMap } from '../related.mjs';
+import { shutLabels } from '../seasonal.mjs';
 import { icon, orn, phead, layout, sr, card } from '../layout.mjs';
 import { searchForm, pagerHtml, ld, crumbs } from '../parts.mjs';
 
@@ -24,13 +25,16 @@ const relatedHtml = (x, base) => {
   const ids = base === '/shut/' ? related.get(x.id) || [] : [];
   return ids.length ? `<aside class="related" aria-labelledby="rel-h"><h2 id="rel-h">שאלות קשורות</h2><ul>${ids.map((id) => `<li><a href="${base}${id}/">${esc(byId.get(id).title)}</a></li>`).join('')}</ul></aside>` : '';
 };
+// Holiday labels of a question (seasonal.mjs: the holiday's name is in its title, or it was tagged by hand), under its title
+const labels = shutLabels();
+const labelHtml = (x, base) => (base === '/shut/' && labels.has(String(x.id)) ? `<p class="qtags">${labels.get(String(x.id)).map(([t, h]) => `<a class="qtag" href="${h}">${icon('star', 'ico sm')}${esc(t)}</a>`).join('')}</p>` : '');
 const readPages = (list, base, section, [prevL, nextL, navL]) => list.forEach((x, k) => {
   const prev = list[k - 1], next = list[k + 1];
   write(`${base.slice(1)}${x.id}/index.html`, layout(x.title, `<article class="qa"><div class="tools" role="group" aria-label="כלי קריאה"><span class="small">גודל טקסט</span><button type="button" class="tbtn" data-fs="-1" aria-label="הקטנת טקסט">א־</button><button type="button" class="tbtn big" data-fs="1" aria-label="הגדלת טקסט">א+</button><button type="button" class="tbtn share" data-share>${icon('share', 'ico sm')}שיתוף</button></div><div class="sheet">${x.q.length ? `<section class="q"><h2>השאלה</h2>${x.q.map((p) => `<p>${esc(p)}</p>`).join('')}</section>` : ''}
 <section class="a">${x.q.length ? '<h2>התשובה</h2>' : ''}${para(x.a)}</section>${orn}</div>
 ${relatedHtml(x, base)}
 <nav class="qnav" aria-label="${navL}">${prev ? `<a class="prev" href="${base}${prev.id}/"><small>→ ${prevL}</small>${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="next" href="${base}${next.id}/"><small>${nextL} ←</small>${esc(next.title)}</a>` : '<span></span>'}</nav></article>`,
-  { head_extra: ld({ '@context': 'https://schema.org', ...crumbs([['בית', '/'], [section, base], [x.title, base + x.id + '/']]) }), desc: pageDesc(x), path: base, self: `${base}${x.id}/`, reading: true, head: `<section class="phead qhead"><div class="wrap"><p class="crumb"><a href="${base}">${section}</a>${x.date ? ' · ' + esc(x.date) : ''}</p><h1>${esc(x.title)}</h1></div></section>` }));
+  { head_extra: ld({ '@context': 'https://schema.org', ...crumbs([['בית', '/'], [section, base], [x.title, base + x.id + '/']]) }), desc: pageDesc(x), path: base, self: `${base}${x.id}/`, reading: true, head: `<section class="phead qhead"><div class="wrap"><p class="crumb"><a href="${base}">${section}</a>${x.date ? ' · ' + esc(x.date) : ''}</p><h1>${esc(x.title)}</h1>${labelHtml(x, base)}</div></section>` }));
 });
 readPages(shut, '/shut/', 'שו״ת ברסלב', ['השאלה הקודמת', 'השאלה הבאה', 'שאלות סמוכות']);
 readPages(letters, '/letters/', 'מכתבים', ['המכתב הקודם', 'המכתב הבא', 'מכתבים סמוכים']);

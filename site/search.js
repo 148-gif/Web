@@ -22,7 +22,10 @@ const render = (list) => {
   const frag = document.createDocumentFragment();
   for (const r of list.slice(p)) {
     const a = document.createElement('a'); a.className = 'card qcard'; a.href = `${root}${r.id}/`; a.dataset.id = r.id;
-    const h = document.createElement('h3'); h.textContent = r.title; a.append(h); frag.append(a);
+    const h = document.createElement('h3'); h.textContent = r.title; a.append(h);
+    // a holiday label (seasonal.mjs): the holiday this question is about
+    if (r.lab) { const l = document.createElement('span'); l.className = 'qtag'; l.textContent = r.lab; a.append(l); }
+    frag.append(a);
   }
   out.append(frag);
 };
@@ -56,7 +59,7 @@ const wantFullText = () => { wantText = true; for (let k = 0; k < N; k++) if (ti
 // Titles load once the page is on screen and the browser is idle, so they never compete with the first paint.
 // A query in the address, or typing before then, fetches them at once. A part's full text follows its titles.
 const loadPart = (k, priority) => get(`t${k}`, priority)
-  .then((t) => { t.forEach(([id, title], i) => { const t = strip(title); items[k * SIZE + i] = { id, title, t, s: t }; }); })
+  .then((t) => { t.forEach(([id, title, lab], i) => { const t = strip(lab ? `${title} ${lab}` : title); items[k * SIZE + i] = { id, title, lab, t, s: t }; }); })
   .catch(() => { failed++; textAsked[k] = textDone[k] = true; }) // no titles, so nothing to add text to
   .finally(() => {
     titlesDone[k] = true;

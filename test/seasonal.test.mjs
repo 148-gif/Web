@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { instances, seasonWindows, pickShut, seasonPools, addDays, zmanimDays } from '../scripts/lib/seasonal.mjs';
 import { lib, shut } from '../scripts/lib/core.mjs';
+import { taggedFor } from '../scripts/lib/shut-tags.mjs';
 
 // A fake calendar: `marks` maps an ISO date to [Hebrew date, parasha]; every other day is plain.
 const calendar = (from, n, marks) => Array.from({ length: n }, (_, i) => { const k = addDays(from, i); return [k, ...(marks[k] || ['ו׳ בתמוז', ''])]; });
@@ -64,7 +65,9 @@ test('the pool of each occasion has at least three questions that name the holid
   for (const o of lib.occasions) {
     assert.ok(pools[o.id]?.length >= 3, `${o.id} has a pool of at least three`);
     for (const [id, title] of pools[o.id]) assert.equal(byId.get(id).title, title);
-    assert.deepEqual(pools[o.id].map((r) => r[0]), pickShut(shut, o.terms, 60).map((x) => String(x.id)).slice(0, pools[o.id].length));
+    const res = o.terms.map((t) => t.replace(/["'`׳״]/g, ''));
+    for (const [id, title] of pools[o.id]) assert.ok(taggedFor(o.id).includes(id) || res.some((t) => title.replace(/["'`׳״]/g, '').includes(t)), `${o.id}: ${id} names the holiday or was tagged`);
+    assert.deepEqual(pools[o.id].map((r) => r[0]), pickShut(shut, o.terms, 60, taggedFor(o.id)).map((x) => String(x.id)).slice(0, pools[o.id].length));
   }
   const days = zmanimDays();
   const pesach = instances(lib.occasions.filter((o) => o.id === 'pesach'), days)[0], purim = instances(lib.occasions.filter((o) => o.id === 'purim'), days)[0];
@@ -77,3 +80,25 @@ test('every occasion with a hub names a holiday of data/moadim.json, and the hom
   for (const o of lib.occasions) if (o.hub) assert.ok(moadim.items.some((m) => m.id === o.hub), `${o.id}: hub "${o.hub}" exists`);
 });
 
+
+test('questions tagged by hand join their holiday: in the pool, with its label, and on its hub page', async () => {
+  const { validateShutTags, shutTags } = await import('../scripts/lib/shut-tags.mjs');
+  const { shutLabels } = await import('../scripts/lib/seasonal.mjs');
+  const { qaFor, moadim } = await import('../scripts/lib/moadim.mjs');
+  const ids = new Set(['1', '2']), occ = new Set(['chanukah']);
+  assert.doesNotThrow(() => validateShutTags({ tags: { chanukah: ['1'] } }, ids, occ));
+  assert.throws(() => validateShutTags({ tags: { nope: ['1'] } }, ids, occ), /not an occasion/);
+  assert.throws(() => validateShutTags({ tags: { chanukah: ['9'] } }, ids, occ), /does not exist/);
+  assert.throws(() => validateShutTags({ tags: { chanukah: ['1', '1'] } }, ids, occ), /twice/);
+  assert.throws(() => validateShutTags({ tags: { chanukah: [1] } }, ids, occ), /as text/);
+  const pools = seasonPools(), labels = shutLabels();
+  for (const [o, list] of Object.entries(shutTags.tags)) {
+    const occasion = lib.occasions.find((x) => x.id === o);
+    for (const id of list) {
+      assert.ok(pools[o].some((r) => r[0] === id), `${o}: ${id} is in the pool`);
+      assert.ok(labels.get(id).some(([t]) => t === occasion.title), `${id} has the label ${occasion.title}`);
+      if (occasion.hub) assert.ok(qaFor(moadim.items.find((m) => m.id === occasion.hub)).some((q) => String(q.id) === id), `${id} is on /moadim/${occasion.hub}/`);
+    }
+  }
+  assert.equal(labels.get('4374').map(([t, h]) => `${t} ${h}`).join(), 'חנוכה /moadim/chanukah/');
+});
