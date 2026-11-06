@@ -1,0 +1,188 @@
+{
+  "intro": "כל מה שיש באתר על כל חג ומועד, במקום אחד: שיחות של מוהרא״ש, ספרי הצדיק, המכתבים הכלליים של החודש ושאלות ותשובות. המועדים מסודרים לפי סדר השנה, מאלול ועד חודש אב.",
+  "items": [
+    {
+      "id": "elul",
+      "title": "אלול והימים הנוראים",
+      "short": "אלול וראש השנה",
+      "lead": "חודש התשובה, ראש השנה אצל רבינו באומן, ויום הכיפורים.",
+      "chapters": [
+        ["sichot-moharash", 1, 3],
+        ["asher-banachal-michtavim-klaliim", 161, 174],
+        ["asher-banachal-michtavim-klaliim", 1, 16]
+      ],
+      "books": [
+        "otzar-rosh-hashana",
+        "hanhagot-rosh-hashana"
+      ],
+      "links": [
+        [
+          "/uman/",
+          "אומן",
+          "ציון רבינו וקיבוץ ראש השנה"
+        ]
+      ],
+      "qa": [
+        "ראש השנה",
+        "יום הכיפורים",
+        "יום כיפור",
+        "עשרת ימי תשובה",
+        "אלול",
+        "הימים הנוראים",
+        "ימים נוראים"
+      ],
+      "search": "ראש השנה"
+    },
+    {
+      "id": "chanukah",
+      "title": "כסליו וחנוכה",
+      "short": "חנוכה",
+      "lead": "ימי כסליו וימי חנוכה הקדושים: אור הנרות, הודאה ושמחה.",
+      "chapters": [
+        ["sichot-moharash", 4, 5],
+        ["asher-banachal-michtavim-klaliim", 32, 46]
+      ],
+      "books": [
+        "otzar-chanukah"
+      ],
+      "qa": [
+        "חנוכה"
+      ],
+      "search": "חנוכה"
+    },
+    {
+      "id": "shovavim",
+      "title": "ימי השובבים",
+      "short": "שובבים",
+      "lead": "ימי תיקון ותשובה בשבועות של פרשיות שמות עד משפטים.",
+      "chapters": [
+        ["asher-banachal-michtavim-klaliim", 47, 62]
+      ],
+      "books": [
+        "otzar-shovavim"
+      ],
+      "qa": [
+        "שובבים",
+        "שובבי״ם"
+      ],
+      "search": "שובבים"
+    },
+    {
+      "id": "tu-bishvat",
+      "title": "ט״ו בשבט",
+      "short": "ט״ו בשבט",
+      "lead": "ראש השנה לאילנות, יום של ברכות על פירות האילן.",
+      "chapters": [
+        ["asher-banachal-michtavim-klaliim", 63, 77]
+      ],
+      "books": [
+        "tu-bishvat"
+      ],
+      "qa": [
+        "ט״ו בשבט",
+        "ט\"ו בשבט",
+        "טו בשבט"
+      ],
+      "search": "בשבט"
+    },
+    {
+      "id": "purim",
+      "title": "אדר ופורים",
+      "short": "פורים",
+      "lead": "משנכנס אדר מרבים בשמחה: ארבע הפרשיות, ימי פורים וקריאת המגילה.",
+      "chapters": [
+        ["sichot-moharash", 6, 10],
+        ["asher-banachal-michtavim-klaliim", 78, 93]
+      ],
+      "books": [
+        "otzar-purim"
+      ],
+      "qa": [
+        "פורים",
+        "מגילת אסתר",
+        "קריאת המגילה",
+        "משנכנס אדר"
+      ],
+      "search": "פורים"
+    },
+    {
+      "id": "pesach",
+      "title": "ניסן ופסח",
+      "short": "פסח",
+      "lead": "חודש הגאולה: פרשת החודש, י״ב הימים הראשונים של ניסן וחג הפסח.",
+      "chapters": [
+        ["sichot-moharash", 11, 13],
+        ["asher-banachal-michtavim-klaliim", 94, 108]
+      ],
+      "books": [
+        "otzar-hapesach"
+      ],
+      "qa": [
+        "פסח",
+        "ליל הסדר",
+        "חמץ",
+        "ניסן"
+      ],
+      "search": "פסח"
+    },
+    {
+      "id": "omer",
+      "title": "ספירת העומר ול״ג בעומר",
+      "short": "ל״ג בעומר",
+      "lead": "ימי הספירה, לימוד הזוהר והילולא רבה של רבי שמעון בר יוחאי.",
+      "chapters": [
+        ["sichot-moharash", 14, 18],
+        ["asher-banachal-michtavim-klaliim", 109, 120]
+      ],
+      "books": [
+        "otzar-lag-baomer"
+      ],
+      "qa": [
+        "ספירת העומר",
+        "ל״ג בעומר",
+        "ל\"ג בעומר",
+        "מירון",
+        "רבי שמעון",
+        "רשב״י",
+        "רשב\"י"
+      ],
+      "search": "בעומר"
+    },
+    {
+      "id": "shavuot",
+      "title": "סיון ושבועות",
+      "short": "שבועות",
+      "lead": "ההכנה לקבלת התורה, וחג השבועות, אחד מזמני הקיבוץ אצל רבינו.",
+      "chapters": [
+        ["asher-banachal-michtavim-klaliim", 121, 133]
+      ],
+      "qa": [
+        "חג השבועות",
+        "ליל שבועות",
+        "מתן תורה",
+        "קבלת התורה",
+        "ובשבועות"
+      ],
+      "search": "שבועות"
+    },
+    {
+      "id": "av",
+      "title": "בין המצרים וחודש אב",
+      "short": "חודש אב",
+      "lead": "ימי בין המצרים, תשעה באב, וראש חודש מנחם אב.",
+      "chapters": [
+        ["sichot-moharash", 19, 20],
+        ["asher-banachal-michtavim-klaliim", 134, 150],
+        ["asher-banachal-michtavim-klaliim", 151, 160]
+      ],
+      "qa": [
+        "תשעה באב",
+        "ט׳ באב",
+        "בין המצרים",
+        "שלושת השבועות",
+        "חורבן"
+      ],
+      "search": "בין המצרים"
+    }
+  ]
+}

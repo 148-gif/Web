@@ -1,0 +1,26 @@
+/* Book contents by parts, the reader's way around a book, and the times of the year (/moadim/). */
+/* ===== Book contents ===== */
+.tocsec{margin:0 0 8px;scroll-margin-top:96px}details.tocpart{scroll-margin-top:96px}
+h3.tocpart small{margin-inline-start:auto;font:600 .875rem var(--sans);color:var(--mute);white-space:nowrap}
+.tocdesc{margin:-4px 0 8px;padding-inline-start:42px;font-size:.9375rem;color:var(--mute);line-height:1.6}
+.moedlinks{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:24px 0 0;padding:12px 16px;background:var(--sunk);border-radius:var(--r-md);font:600 .9375rem/1.6 var(--sans);color:var(--mute)}
+.moedlinks .ico{color:var(--gold)}.moedlinks a{color:var(--brand);text-underline-offset:3px}
+/* ===== Reader: previous / next above the text, the other sections of the part below it ===== */
+.qtop{display:flex;justify-content:space-between;gap:12px;margin:0 0 12px}
+.qtop a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;font:600 .9375rem var(--sans);color:var(--brand);text-decoration:none;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+.qtop a:hover{background:var(--sunk)}.qtop .next{margin-inline-start:auto}
+.inpart{margin-top:24px;padding:16px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.inpart h2{display:flex;align-items:baseline;gap:12px;font:900 1.125rem var(--serif);color:var(--brand);margin:0 0 8px}
+.inpart h2 small{font:600 .875rem var(--sans);color:var(--mute)}
+.inpart .toc{margin:0}.inpart .toc li:last-child a{border-bottom:0}
+.inpart a[aria-current]{background:var(--sunk);box-shadow:inset -3px 0 0 var(--gold2)}.inpart a[aria-current] span{font-weight:700}
+.moedbox{display:flex;align-items:center;gap:16px;margin-top:24px;padding:16px;border-radius:var(--r);text-decoration:none;color:var(--ink);background:var(--sunk);border:1px solid var(--line)}
+.moedbox:hover{border-color:var(--gold2)}.moedbox>.ico{flex:none;color:var(--gold)}
+.moedbox span{display:flex;flex-direction:column;gap:2px;flex:1}.moedbox b{font-size:1.0625rem;color:var(--brand)}.moedbox small{font:.875rem/1.5 var(--sans);color:var(--mute)}
+.moedbox .arr{flex:none;color:var(--gold)}
+/* ===== Times of the year ===== */
+.moedsec{margin:0 0 40px;scroll-margin-top:96px}.moedsec .subh small{font:600 .875rem var(--sans);color:var(--mute);margin-inline-start:8px}
+.moedsec>.toc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px}
+.moedchips{margin-top:24px}
+.moedcard>.ico{color:var(--gold)}.moedcard .mcount{display:block;margin-top:8px;font:600 .875rem var(--sans);color:var(--mute)}
+@media (max-width:640px){.tocdesc{padding-inline-start:0}.qtop a{padding:0 10px;font-size:.875rem}.moedbox{gap:12px;padding:12px}}

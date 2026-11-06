@@ -231,12 +231,23 @@ if (totop) {
 }
 // Prayer schedules: open on wide screens, folded on phones.
 if (matchMedia('(min-width: 861px)').matches) document.querySelectorAll('details.scard').forEach((d) => { d.open = true; });
-// Book contents: open the part that holds the last section read.
+// Book contents: mark the last section read (and open its part when the parts are folded), and open a folded part that a link
+// points to (the reader's "contents" button goes to /library/<book>/#p<n>).
 document.querySelectorAll('[data-continue]').forEach((el) => {
   const v = lastRead(el.dataset.continue);
-  const a = v && v.u && document.querySelector(`details.tocpart a[href="${v.u}"]`);
-  if (a) { a.closest('details').open = true; a.classList.add('last'); }
+  const a = v && v.u && document.querySelector(`.toc a[href="${v.u}"]`);
+  if (!a) return;
+  a.classList.add('last');
+  const d = a.closest('details');
+  if (d) d.open = true;
 });
+const openTarget = () => {
+  const t = location.hash.length > 1 && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+  if (t && t.tagName === 'DETAILS' && !t.open) { t.open = true; t.scrollIntoView(); }
+};
+openTarget();
+addEventListener('hashchange', openTarget);
+
 
 // Offline reading: the service worker keeps the pages already read (dist/sw.js, built from scripts/lib/sw.js). The offline page's "try again" reloads.
 if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register(`${me.pathname.replace(/[^/]*$/, '')}sw.js`).catch(() => {}));
@@ -335,7 +346,7 @@ document.querySelectorAll('[data-cfilter]').forEach((box) => {
       lis.forEach((li) => { li.hidden = some && !hit.includes(li); });
       card.querySelector('.svols').open = !!some;
     });
-    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden]):not(.svols li)'); });
+    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden]):not(.svols li)'); if (words.length && s.tagName === 'DETAILS') s.open = true; });
     document.querySelectorAll('[data-unfiltered]').forEach((s) => s.classList.toggle('stepaside', !!(words.length || kind)));
     if (none) none.hidden = cards.some((c) => !c.hidden);
   };
