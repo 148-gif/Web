@@ -1,12 +1,8 @@
 // Times of the year (data/moadim.json): what the site has on each holiday, gathered for its hub page (/moadim/<id>/), for the
-// "more on this holiday" links in the book reader, and for the home page, which shows the one whose dates are near (site/app.js).
+// "more on this holiday" links in the book reader.
 // A holiday names its book sections as [book slug, from, to] (the section numbers of data/books/<slug>.json), whole books by slug,
 // pages of the site, and the words that pick its questions from the Q&A by their titles.
 import { read, lib, shut } from './core.mjs';
-
-// Hebrew months in the order of the year (Adar I only in a leap year); app.js maps the browser's Hebrew calendar to these names.
-const MONTHS = ['tishrei', 'cheshvan', 'kislev', 'tevet', 'shevat', 'adar1', 'adar', 'nisan', 'iyar', 'sivan', 'tammuz', 'av', 'elul'];
-const isDate = (d) => Array.isArray(d) && d.length === 2 && MONTHS.includes(d[0]) && Number.isInteger(d[1]) && d[1] >= 1 && d[1] <= 30;
 
 // sizes: book slug -> number of sections it has on the site (books without a text file are not in it)
 const validateMoadim = (m, books, sizes) => {
@@ -17,8 +13,6 @@ const validateMoadim = (m, books, sizes) => {
     if (ids.has(x.id)) bad(`duplicate id "${x.id}"`);
     ids.add(x.id);
     if (!x.title || !x.short || !x.lead) bad(`${x.id}: title, short and lead are required`);
-    if (!isDate(x.from) || !isDate(x.to)) bad(`${x.id}: from and to must be [month, day] with a month of ${MONTHS.join('/')}`);
-    if (x.day !== undefined && (!isDate(x.day) || !x.dayName)) bad(`${x.id}: day must be [month, day], with a dayName`);
     for (const c of x.chapters || []) {
       const [slug, from, to] = c;
       if (!sizes.has(slug)) bad(`${x.id}: "${slug}" is not a book read on the site`);
@@ -49,4 +43,4 @@ const qaFor = (x) => {
   return own.map((q, i) => [others(q), i, q]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(([, , q]) => q);
 };
 
-export { MONTHS, moadim, validateMoadim, moedOfChapter, moedOfBook, qaFor };
+export { moadim, validateMoadim, moedOfChapter, moedOfBook, qaFor };

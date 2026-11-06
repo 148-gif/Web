@@ -7,16 +7,13 @@ import { validateMoadim, moadim, qaFor } from '../scripts/lib/moadim.mjs';
 const read = (f) => JSON.parse(readFileSync(new URL(`../data/${f}`, import.meta.url), 'utf8'));
 const lib = read('library.json');
 
-test('validateMoadim() checks ids, Hebrew dates, book ranges and books', () => {
+test('validateMoadim() checks ids, book ranges, books and links', () => {
   const books = [{ slug: 'a', text: 'x' }, { slug: 'b' }], sizes = new Map([['a', 10]]);
-  const ok = { items: [{ id: 'purim', title: 'פורים', short: 'פורים', lead: 'x', from: ['adar', 1], to: ['adar', 15], day: ['adar', 14], dayName: 'פורים', chapters: [['a', 1, 10]], books: ['b'], links: [['/uman/', 'אומן']] }] };
+  const ok = { items: [{ id: 'purim', title: 'פורים', short: 'פורים', lead: 'x', chapters: [['a', 1, 10]], books: ['b'], links: [['/uman/', 'אומן']] }] };
   const w = (f) => { const c = structuredClone(ok); f(c.items[0], c); return () => validateMoadim(c, books, sizes); };
   assert.doesNotThrow(() => validateMoadim(ok, books, sizes));
   assert.throws(w((x) => { x.id = '../x'; }), /bad id/);
   assert.throws(w((x, c) => { c.items.push({ ...x }); }), /duplicate/);
-  assert.throws(w((x) => { x.from = ['adar', 31]; }), /from and to/);
-  assert.throws(w((x) => { x.to = ['march', 1]; }), /from and to/);
-  assert.throws(w((x) => { delete x.dayName; }), /dayName/);
   assert.throws(w((x) => { x.chapters = [['b', 1, 2]]; }), /not a book read on the site/);
   assert.throws(w((x) => { x.chapters = [['a', 5, 11]]; }), /outside the book/);
   assert.throws(w((x) => { x.chapters = [['a', 5, 4]]; }), /outside the book/);

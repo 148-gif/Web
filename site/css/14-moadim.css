@@ -1,4 +1,4 @@
-/* Book contents by parts, the reader's way around a book, and the times of the year (/moadim/, the home page band). */
+/* Book contents by parts, the reader's way around a book, and the times of the year (/moadim/). */
 /* ===== Book contents ===== */
 .tocsec{margin:0 0 8px;scroll-margin-top:96px}details.tocpart{scroll-margin-top:96px}
 h3.tocpart small{margin-inline-start:auto;font:600 .875rem var(--sans);color:var(--mute);white-space:nowrap}
@@ -23,8 +23,4 @@ h3.tocpart small{margin-inline-start:auto;font:600 .875rem var(--sans);color:var
 .moedsec>.toc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px}
 .moedchips{margin-top:24px}
 .moedcard>.ico{color:var(--gold)}.moedcard .mcount{display:block;margin-top:8px;font:600 .875rem var(--sans);color:var(--mute)}
-.moedband{border-bottom:1px solid var(--line)}
-.moedband .moedwhen{display:flex;justify-content:center;align-items:center;gap:8px;color:var(--gold);font-weight:700}
-.moedband .sh{margin-top:4px}
-.mkind{display:block;font:700 .8125rem var(--sans);color:var(--gold);letter-spacing:.02em;margin-bottom:4px}
 @media (max-width:640px){.tocdesc{padding-inline-start:0}.qtop a{padding:0 10px;font-size:.875rem}.moedbox{gap:12px;padding:12px}}

@@ -1,6 +1,7 @@
 // Times of the year: /moadim/ lists the holidays in the order of the year, and /moadim/<id>/ gathers what the site has on one of them
 // (data/moadim.json, scripts/lib/moadim.mjs): Moharash's talks and other book sections, whole books, pages of the site and Q&A.
-import { esc, nik, write, lib, read } from '../core.mjs';
+// The home page's holiday band is the seasonal suggestion (scripts/lib/seasonal.mjs on its branch), not built here.
+import { esc, write, lib, read } from '../core.mjs';
 import { icon, layout, phead, card } from '../layout.mjs';
 import { ld, absu, crumbs } from '../parts.mjs';
 import { moadim, qaFor } from '../moadim.mjs';
@@ -17,7 +18,7 @@ const rangeName = ([slug, from, to]) => {
 const chList = ([slug, from, to]) => `<ol class="toc">${bookChapters[slug].slice(from, to + 1).map((c) => `<li><a href="/library/${slug}/${c.id}/"><b>${esc(c.label)}</b><span>${esc(c.title)}</span></a></li>`).join('')}</ol>`;
 const bookCard = (b) => `<a class="card book" href="/library/${b.slug}/">${icon('book', 'ico lg')}<h3>${esc(b.title)}</h3><p>${esc(b.sub)}</p><span class="go">${b.text ? 'לקריאה באתר ←' : 'לספר ←'}</span></a>`;
 
-// What each holiday shows, worked out once: the hub page and the home page teaser both use it.
+// What each holiday shows
 const content = moadim.items.map((m) => {
   const ranges = m.chapters || [], books = (m.books || []).map(book), qa = qaFor(m);
   return { m, ranges, books, qa, links: m.links || [] };
@@ -53,24 +54,3 @@ write('moadim/index.html', layout('זמני השנה', `<section class="band"><d
   { desc: `זמני השנה בדרך ברסלב: ${all.map((m) => m.short).join(', ')}. שיחות של מוהרא״ש, ספרים, מכתבים ושאלות ותשובות לכל מועד.`.slice(0, 155), path: '/moadim/', full: true,
     head: phead('מוהרא״ש · חסידות ברסלב', 'זמני השנה', esc(moadim.intro)),
     head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: 'זמני השנה', description: moadim.intro, inLanguage: 'he', hasPart: all.map((m) => ({ '@type': 'CollectionPage', name: m.title, ...(absu(`/moadim/${m.id}/`) ? { url: absu(`/moadim/${m.id}/`) } : {}) })) }, crumbs([['בית', '/'], ['זמני השנה', '/moadim/']])] }) }));
-
-// Home page teaser: one hidden band per holiday; site/app.js shows the one whose dates (data-from..data-to, Hebrew calendar) hold today,
-// with a count of the days left to data-day. Three items at most, of different kinds, and one way on to the hub page.
-const teaserItems = ({ ranges, books, qa }) => {
-  const sec = ([slug, from]) => { const c = bookChapters[slug][from], b = book(slug); return [`/library/${slug}/${c.id}/`, b.title, nik(c.title), 'לקריאה ←']; };
-  // a talk of Moharash first, then a book, a question, and only then the letters of the month (their titles are dates)
-  const talks = ranges.filter(([s]) => s === 'sichot-moharash'), rest = ranges.filter(([s]) => s !== 'sichot-moharash');
-  return [
-    ...talks.slice(0, 1).map(sec),
-    ...books.slice(0, 1).map((b) => [`/library/${b.slug}/`, 'ספר', b.title, 'לספר ←']),
-    ...qa.slice(0, 1).map((q) => [`/shut/${q.id}/`, 'שאלה ותשובה', q.title, 'לתשובה ←']),
-    ...rest.slice(0, 1).map(sec),
-    ...qa.slice(1, 3).map((q) => [`/shut/${q.id}/`, 'שאלה ותשובה', q.title, 'לתשובה ←']),
-  ].slice(0, 3);
-};
-const moedTeasers = content.map((c) => {
-  const { m } = c, d = (x) => x.join(' ');
-  return `<section class="band moedband" data-moed="${m.id}" data-from="${d(m.from)}" data-to="${d(m.to)}"${m.day ? ` data-day="${d(m.day)}" data-dayname="${esc(m.dayName)}"` : ''} hidden><div class="wrap"><p class="kicker2 moedwhen">${icon('calendar', 'ico sm')}<span>זמני השנה</span></p><h2 class="sh">${esc(m.title)}</h2><p class="shsub">${esc(m.lead)}</p><div class="grid moedtease">${teaserItems(c).map(([h, k, t, go]) => `<a class="card" href="${h}"><span class="mkind">${esc(k)}</span><h3>${esc(t)}</h3><span class="go">${go}</span></a>`).join('')}</div><p class="ctarow"><a class="btn" href="/moadim/${m.id}/">כל התכנים על ${esc(m.short)} ←</a></p></div></section>`;
-}).join('');
-
-export { moedTeasers };

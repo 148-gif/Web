@@ -58,7 +58,7 @@ The site has no connection with the Breslov City site (breslevcity.co.il) and ne
 
 ## Times of the year
 
-`data/moadim.json` (`scripts/lib/moadim.mjs`, validated at build) lists the holidays in the order of the year: their book sections (`[slug, from, to]`), books, site links and the words that pick their Q&A. The build makes `/moadim/` and `/moadim/<id>/`, links a section of a holiday to its hub from the reader, and puts one hidden band per holiday on the home page; `site/app.js` shows the one whose Hebrew dates (`from`..`to`) hold today, with the days left to `day`. A book's `parts` in `data/library.json` are its table of contents (shown first on the book page; up to 80 sections open, more folded with a filter).
+`data/moadim.json` (`scripts/lib/moadim.mjs`, validated at build) lists the holidays in the order of the year: their book sections (`[slug, from, to]`), books, site links and the words that pick their Q&A. The build makes `/moadim/` and `/moadim/<id>/`, and links a section of a holiday to its hub from the reader. The home page's holiday band is not built from it (another branch, `ccr-d151216d-srvtyw`, builds a seasonal suggestion from `occasions` in `library.json`); once both are merged the two lists of holidays should become one. A book's `parts` in `data/library.json` are its table of contents (shown first on the book page; up to 80 sections open, more folded with a filter).
 
 ## Content that is missing or not ready
 
