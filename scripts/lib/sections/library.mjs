@@ -161,6 +161,17 @@ ${nav}${fold ? cfilter(`חיפוש ב${esc(unitPl)}`, false, 'מילה מהכו�
 ${groups.length ? groups.map(groupHtml).join('') : parts.length ? parts.map(partHtml).join('') : flat}${fold ? '<p class="cnone" hidden>לא נמצא. נסו מילה אחרת.</p>' : ''}
 ${tx.tikkun ? `<h3 class="tocpart"><span>${icon('sparkle', 'ico sm')}</span>נספח</h3><ol class="toc"><li><a href="${base}tikkun-haklali/"><b>תיקון הכללי</b><span>עשרת המזמורים של רבי נחמן מברסלב</span></a></li></ol>` : ''}${moedLinks(bk.slug)}</div></section>`;
 };
+// The printed booklets of a book (data/books/<slug>.json "booklets": title, pdf, pages, size, part), for download, by topic:
+// in the order of "bookletTopics" (else of the book's parts, then any other topic), each topic one folded row.
+const bookletsHtml = (bk, tx) => {
+  const bs = tx.booklets || [];
+  if (!bs.length) return '';
+  const order = [...(tx.bookletTopics || (bk.parts || []).map(([t]) => t))];
+  for (const b of bs) if (!order.includes(b.part)) order.push(b.part);
+  const rows = order.map((t) => [t, bs.filter((b) => b.part === t)]).filter(([, xs]) => xs.length);
+  return `<section class="band soft" id="booklets"><div class="wrap narrow"><h2 class="sh">החוברות המודפסות</h2><p class="shsub">${bs.length} חוברות להורדה, לפי הנושאים</p>
+${rows.map(([t, xs]) => `<details class="tocpart"><summary><b>${esc(t)}</b><small>${xs.length} ${xs.length === 1 ? 'חוברת' : 'חוברות'}</small><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><ul class="toc blist">${xs.map((b) => `<li><a href="${b.pdf}" download>${icon('print', 'ico sm')}<span>${esc(b.title)}</span><small>PDF · ${b.pages} עמ׳ · ${esc(b.size)}</small></a></li>`).join('')}</ul></details>`).join('')}</div></section>`;
+};
 for (const bk of lib.books) {
   const bookUrl = `/library/${bk.slug}/`, chs = bookChapters[bk.slug], sr = seriesOf(bk);
   // a book in a series links to its series and to the volumes before and after it
@@ -168,7 +179,7 @@ for (const bk of lib.books) {
   const sNav = sr ? `<nav class="qnav snav" aria-label="${esc(sr.title)}: ${esc(sr.unit || 'ספרים')} נוספים">${[[sbs[si - 1], 'prev', '→ הקודם'], [sbs[si + 1], 'next', 'הבא ←']].map(([x, cls, arrow]) => (x ? `<a class="${cls}" href="/library/${x.slug}/"><small>${arrow}</small>${esc(x.title)}</a>` : '<span></span>')).join('')}</nav>` : '';
   const sCrumb = sr ? [[sr.title, `/library/${sr.id}/`]] : [];
   const pdfBtns = `<div class="navbtns"><a class="btn" href="${bk.pdf}" target="_blank" rel="noopener">${icon('book', 'ico sm')}קריאה בספר</a><a class="btn ghost" href="${bk.pdf}" download>${icon('print', 'ico sm')}הורדה (PDF, ${bk.pdfSize})</a></div>`;
-  write(`library/${bk.slug}/index.html`, layout(bk.title, `${chs ? tocHtml(bk, chs, bookTexts.find(([b]) => b === bk)[1]) : ''}
+  write(`library/${bk.slug}/index.html`, layout(bk.title, `${chs ? tocHtml(bk, chs, bookTexts.find(([b]) => b === bk)[1]) + bookletsHtml(bk, bookTexts.find(([b]) => b === bk)[1]) : ''}
 <section class="band${chs ? ' soft' : ''}"><div class="wrap"><div class="bio-top"><div class="about lead1">${ps(bk.about)}</div><aside class="factbox" aria-label="פרטי הספר"><h2>${esc(bk.title)}</h2>${facts([['סוג', catName[bk.category]], ...bk.facts])}<div class="fbtns">${chs ? `<div class="navbtns"><a class="btn" href="${bookUrl}hakdama/">${icon('book', 'ico sm')}קריאה באתר</a>${bk.pdf ? `<a class="btn ghost" href="${bk.pdf}" download>${icon('print', 'ico sm')}PDF (${bk.pdfSize})</a>` : ''}</div>` : pdfBtns}</div></aside></div></div></section>
 ${bk.parts && !chs ? `<section class="band soft" id="contents"><div class="wrap"><h2 class="sh">מה בספר</h2><p class="shsub">${bk.parts.length} חלקים</p><div class="steps3 six">${bk.parts.map(([t, x], i) => `<div class="card"><span class="num">${i + 1}</span><h3>${esc(t)}</h3><p>${esc(x)}</p></div>`).join('')}</div></div></section>` : ''}
 ${bk.noCopyright ? `<section class="band quoteband"><div class="wrap"><p class="kicker2">על הדפסת ספריו</p><blockquote class="pq small"><p>${esc(bk.noCopyright)}</p><cite>${esc(bk.noCopyrightBy)}</cite></blockquote></div></section>` : ''}

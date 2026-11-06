@@ -1,7 +1,7 @@
 // Times of the year (data/moadim.json, scripts/lib/moadim.mjs) and the parts of שיחות מוהרא״ש that the holidays point to.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { validateMoadim, moadim, qaFor } from '../scripts/lib/moadim.mjs';
 
 const read = (f) => JSON.parse(readFileSync(new URL(`../data/${f}`, import.meta.url), 'utf8'));
@@ -32,7 +32,14 @@ test('שיחות מוהרא״ש: the parts cover every talk once, in order, and 
   let next = 1;
   for (const [, , [from, to]] of bk.parts) { assert.equal(from, next); next = to + 1; }
   assert.equal(next - 1, tx.sections.length);
-  for (const m of moadim.items) for (const [s, f, t] of m.chapters || []) if (s === bk.slug) assert.ok(bk.parts.some(([, , [a, b]]) => a === f && b === t), `${m.id}: ${f}–${t}`);
+  for (const m of moadim.items) for (const [s, f, t] of m.chapters || []) if (s === bk.slug) assert.ok(bk.parts.some(([, , [a]]) => a === f) && bk.parts.some(([, , [, b]]) => b === t), `${m.id}: ${f}–${t} should begin and end with a part`);
+  // every talk has its own address, and every printed booklet is a file on the site under a topic that is listed
+  const ids = tx.sections.map((x) => String(x.id ?? x.n));
+  assert.equal(new Set(ids).size, ids.length);
+  for (const b of tx.booklets || []) {
+    assert.ok(existsSync(new URL(`../site${b.pdf}`, import.meta.url)), b.pdf);
+    assert.ok((tx.bookletTopics || []).includes(b.part), b.part);
+  }
   // no leftovers of the source site in the text
   assert.doesNotMatch(JSON.stringify(tx), /ברסלב סיטי|breslevcity|» כל המידע/);
 });

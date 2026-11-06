@@ -32,3 +32,6 @@ h3.tocpart small{margin-inline-start:auto;font:600 .875rem var(--sans);color:var
 details.tocpart>.tocdesc{margin:12px 16px 4px;padding:0}
 .tocnav{margin-bottom:12px}
 @media (max-width:640px){.tocgh{font-size:1.25rem}details.tocpart>summary{padding:12px;min-height:56px;gap:10px}details.tocpart>summary b{font-size:1.0625rem}}
+/* the printed booklets of a book, for download */
+.blist li a{align-items:center}.blist .ico{flex:none;color:var(--gold)}.blist span{flex:1}.blist small{flex:none;font:600 .8125rem var(--sans);color:var(--mute);white-space:nowrap}
+@media (max-width:640px){.blist li a{flex-direction:row;flex-wrap:wrap;gap:4px 10px}.blist small{flex-basis:100%;padding-inline-start:26px}}
