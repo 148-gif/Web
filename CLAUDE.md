@@ -58,7 +58,14 @@ The site has no connection with the Breslov City site (breslevcity.co.il) and ne
 
 ## Times of the year
 
-`data/moadim.json` (`scripts/lib/moadim.mjs`, validated at build) lists the holidays in the order of the year: their book sections (`[slug, from, to]`), books, site links and the words that pick their Q&A. The build makes `/moadim/` and `/moadim/<id>/`, and links a section of a holiday to its hub from the reader. The home page's holiday band is not built from it (another branch, `ccr-d151216d-srvtyw`, builds a seasonal suggestion from `occasions` in `library.json`); once both are merged the two lists of holidays should become one. A book's `parts` in `data/library.json` are its table of contents (shown first on the book page; up to 80 sections open, more folded with a filter).
+`data/moadim.json` (`scripts/lib/moadim.mjs`, validated at build) lists the holidays in the order of the year: their book sections (`[slug, from, to]`), books, site links and the words that pick their Q&A. The build makes `/moadim/` and `/moadim/<id>/`, and links a section of a holiday to its hub from the reader. The dates are not in it: the seasonal band on the home page and the library page (`occasions` in `library.json`, `scripts/lib/seasonal.mjs`) names each holiday's hub in `hub`, shows up to two of its sichot sections and one letter of the month, and links to `/moadim/<id>/`; renaming a hub id breaks that on purpose (the build fails). One list of holidays for both is still to do.
+
+## PDF files with another site's mark
+
+A PDF that carries the logo or watermark of another site (for example breslevcity.co.il, "ברסלב סיטי") is never published with it. First try to remove the mark (for a watermark: the `/Artifact … /Watermark … BDC … EMC` block in each page's content, removed without touching a scan; for a logo drawn in the page: cut or cover it only if the text under it is not harmed). Check sample pages as images before and after.
+
+- If the mark was removed cleanly: upload the clean file and do not report the rule to the user. A line in the final summary ("הוסר לוגו …") is enough.
+- If it cannot be removed: do not upload the file, and tell the user what is left and why.
 
 ## Content that is missing or not ready
 
