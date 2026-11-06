@@ -50,3 +50,4 @@ header.top.hide{transition-timing-function:var(--ease-in)}
 .selshare>.btn{min-height:40px;padding:8px 16px;border-radius:999px;font-size:.875rem;box-shadow:0 8px 24px rgba(11,29,80,.28)}
 .selshare .sharemenu{inset-inline-end:auto;inset-inline-start:0}
 @media (pointer:coarse){.selshare>.btn{min-height:44px}}
+.cfilter .slabel{color:var(--mute);margin:0 0 6px;padding:0;max-width:none}
