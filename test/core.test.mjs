@@ -1,7 +1,7 @@
 // Unit tests for the build's text and safety helpers. Run with: npm test (also part of npm run check and CI).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { url, tel, esc, escAttr, gist, isHidden, unlinkHidden, HIDDEN, site, validateCms, validateShutEdit, mergeShut } from '../scripts/lib/core.mjs';
+import { url, tel, esc, escAttr, gist, isHidden, unlinkHidden, HIDDEN, site, validateCms, validateLibrary, validateShutEdit, mergeShut } from '../scripts/lib/core.mjs';
 import { ld, pageNumbers, pagerHtml } from '../scripts/lib/parts.mjs';
 
 test('url() keeps https links and site paths', () => {
@@ -80,6 +80,23 @@ test('validateCms() accepts good topics and pages and rejects bad ones', () => {
   assert.throws(() => validateCms(t, [{ ...p, title: '' }]), /no title/);
   assert.throws(() => validateCms(t, [{ ...p, blocks: [{ type: 'script' }] }]), /block type/);
   assert.throws(() => validateCms(t, [{ ...p, slug: '../x' }]), /file name/);
+});
+
+test('validateLibrary() checks series, categories and featured books', () => {
+  const l = { categories: [['shut', 'שו״ת'], ['chizuk', 'חיזוק']], featured: ['a'], series: [{ id: 'ab', title: 'אשר בנחל', category: 'shut' }],
+    books: [{ slug: 'a', category: 'chizuk' }, { slug: 'b1', category: 'shut', series: 'ab' }, { slug: 'b2', category: 'shut', series: 'ab' }, { slug: 'b3', category: 'shut', series: 'ab' }] };
+  const w = (f) => { const c = structuredClone(l); f(c); return () => validateLibrary(c); };
+  assert.doesNotThrow(() => validateLibrary(l));
+  assert.doesNotThrow(w((c) => { delete c.series; delete c.featured; c.books.forEach((b) => delete b.series); }));
+  assert.throws(w((c) => { c.books[2].series = 'nope'; }), /unknown series/);
+  assert.throws(w((c) => { c.books[2].category = 'chizuk'; }), /differs from its series/);
+  assert.throws(w((c) => { delete c.books[2].series; delete c.books[3].series; }), /at least two/);
+  assert.throws(w((c) => { c.series[0].id = 'a'; }), /already used/); // would share a URL with a book
+  assert.throws(w((c) => { c.series[0].id = 'kuntresim'; }), /already used/);
+  assert.throws(w((c) => { c.series[0].category = 'x'; }), /unknown category/);
+  assert.throws(w((c) => { c.featured = ['zz']; }), /featured/);
+  assert.throws(w((c) => { c.books[1].slug = 'a'; }), /duplicate/);
+  assert.throws(w((c) => { c.books[0].slug = '../x'; }), /bad book slug/);
 });
 
 test('mergeShut() applies editor edits: replace, add, delete', () => {

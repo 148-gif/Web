@@ -14,6 +14,10 @@
       "שאלות ותשובות"
     ],
     [
+      "michtavim",
+      "מכתבים"
+    ],
+    [
       "chizuk",
       "ספרי חיזוק"
     ],
@@ -25,6 +29,38 @@
       "kuntres",
       "קונטרסים"
     ]
+  ],
+  "featured": [
+    "regey-moharash",
+    "peulat-hatzadik",
+    "ilan-hachaim",
+    "sichot-moharash"
+  ],
+  "series": [
+    {
+      "id": "asher-banachal",
+      "title": "אשר בנחל",
+      "category": "shut",
+      "sub": "שאלות ותשובות והדרכות של מוהרא״ש, לפי סדר הנושאים",
+      "unit": "כרכים",
+      "lead": "חיבורו המרכזי של מוהרא״ש: מכתבי חיזוק, שאלות ותשובות והדרכות, לפי סדר הנושאים. כאן הכרכים שכבר נכנסו לספרייה, לקריאה ולהורדה כ־PDF."
+    },
+    {
+      "id": "otzarot",
+      "title": "אוצרות",
+      "category": "chizuk",
+      "sub": "קונטרסי חיזוק מקובצים לפי נושא ולפי מועד",
+      "unit": "ספרים",
+      "lead": "קונטרסים של מוהרא״ש מקובצים לספר אחד לכל נושא, כמו שלום בית, חינוך ילדים וסבלנות, ולכל מועד בשנה. כולם לקריאה באתר."
+    },
+    {
+      "id": "sfat-hanachal",
+      "title": "שפת הנחל",
+      "category": "perush",
+      "sub": "ליקוטי מוהר״ן עם פירוש שפת הנחל",
+      "unit": "חלקים",
+      "lead": "ליקוטי מוהר״ן עם הפירוש ״שפת הנחל״ של מוהרא״ש. החלקים שכבר נכנסו לספרייה, לקריאה ולהורדה כ־PDF."
+    }
   ],
   "books": [
     {
@@ -157,7 +193,7 @@
       "slug": "asher-banachal-maagal-hashana",
       "title": "אשר בנחל במעגל השנה",
       "sub": "מכתבים כלליים לאנשי שלומנו ביבנאל, לפי חודשי השנה",
-      "category": "chizuk",
+      "category": "michtavim",
       "lead": "קובץ מכתבים כלליים של מוהרא״ש לאנשי שלומנו, שנשלחו בין תשע״א לתשע״ה ומסודרים לפי חודשי השנה, מתשרי עד אלול.",
       "about": [
         "לפי השער, הספר הוא קובץ מכתבים כלליים לאנ״ש ביבנאל מהשנים תשע״א–תשע״ה, בהם הנהגות, עצות וחיזוקים, מתוך ״אשר בנחל״.",
@@ -210,7 +246,8 @@
       ],
       "pdf": "/books/asher-banachal-45.pdf",
       "pdfSize": "4.5MB",
-      "pages": 362
+      "pages": 362,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-75",
@@ -237,7 +274,8 @@
       ],
       "pdf": "/books/asher-banachal-75.pdf",
       "pdfSize": "10.1MB",
-      "pages": 357
+      "pages": 357,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-88",
@@ -264,7 +302,8 @@
       ],
       "pdf": "/books/asher-banachal-88.pdf",
       "pdfSize": "4.5MB",
-      "pages": 375
+      "pages": 375,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-92",
@@ -291,7 +330,8 @@
       ],
       "pdf": "/books/asher-banachal-92.pdf",
       "pdfSize": "4.0MB",
-      "pages": 373
+      "pages": 373,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-93",
@@ -318,7 +358,8 @@
       ],
       "pdf": "/books/asher-banachal-93.pdf",
       "pdfSize": "14.2MB",
-      "pages": 383
+      "pages": 383,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-96",
@@ -345,7 +386,8 @@
       ],
       "pdf": "/books/asher-banachal-96.pdf",
       "pdfSize": "14.0MB",
-      "pages": 383
+      "pages": 383,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-97",
@@ -372,7 +414,8 @@
       ],
       "pdf": "/books/asher-banachal-97.pdf",
       "pdfSize": "4.2MB",
-      "pages": 366
+      "pages": 366,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-100",
@@ -399,7 +442,8 @@
       ],
       "pdf": "/books/asher-banachal-100.pdf",
       "pdfSize": "4.2MB",
-      "pages": 367
+      "pages": 367,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-101",
@@ -426,7 +470,8 @@
       ],
       "pdf": "/books/asher-banachal-101.pdf",
       "pdfSize": "4.2MB",
-      "pages": 369
+      "pages": 369,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-104",
@@ -453,7 +498,8 @@
       ],
       "pdf": "/books/asher-banachal-104.pdf",
       "pdfSize": "4.4MB",
-      "pages": 364
+      "pages": 364,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-105",
@@ -480,7 +526,8 @@
       ],
       "pdf": "/books/asher-banachal-105.pdf",
       "pdfSize": "4.2MB",
-      "pages": 365
+      "pages": 365,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-106",
@@ -507,7 +554,8 @@
       ],
       "pdf": "/books/asher-banachal-106.pdf",
       "pdfSize": "14.0MB",
-      "pages": 363
+      "pages": 363,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-107",
@@ -534,7 +582,8 @@
       ],
       "pdf": "/books/asher-banachal-107.pdf",
       "pdfSize": "15.8MB",
-      "pages": 375
+      "pages": 375,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-109",
@@ -561,7 +610,8 @@
       ],
       "pdf": "/books/asher-banachal-109.pdf",
       "pdfSize": "4.4MB",
-      "pages": 365
+      "pages": 365,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-110",
@@ -588,7 +638,8 @@
       ],
       "pdf": "/books/asher-banachal-110.pdf",
       "pdfSize": "4.1MB",
-      "pages": 365
+      "pages": 365,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-112",
@@ -615,7 +666,8 @@
       ],
       "pdf": "/books/asher-banachal-112.pdf",
       "pdfSize": "4.8MB",
-      "pages": 365
+      "pages": 365,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-113",
@@ -642,7 +694,8 @@
       ],
       "pdf": "/books/asher-banachal-113.pdf",
       "pdfSize": "4.3MB",
-      "pages": 366
+      "pages": 366,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-114",
@@ -669,7 +722,8 @@
       ],
       "pdf": "/books/asher-banachal-114.pdf",
       "pdfSize": "4.4MB",
-      "pages": 363
+      "pages": 363,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-115",
@@ -696,7 +750,8 @@
       ],
       "pdf": "/books/asher-banachal-115.pdf",
       "pdfSize": "4.3MB",
-      "pages": 367
+      "pages": 367,
+      "series": "asher-banachal"
     },
     {
       "slug": "asher-banachal-116",
@@ -723,7 +778,8 @@
       ],
       "pdf": "/books/asher-banachal-116.pdf",
       "pdfSize": "4.3MB",
-      "pages": 364
+      "pages": 364,
+      "series": "asher-banachal"
     },
     {
       "slug": "peulat-hatzadik",
@@ -1163,7 +1219,8 @@
             14
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-hachaim",
@@ -1206,7 +1263,8 @@
             22
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-hakedusha",
@@ -1241,7 +1299,8 @@
             11
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-hapesach",
@@ -1284,7 +1343,8 @@
             16
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-harefuot",
@@ -1327,7 +1387,8 @@
             14
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-hasavlanut",
@@ -1362,7 +1423,8 @@
             8
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-hashabbat",
@@ -1397,7 +1459,8 @@
             6
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-lag-baomer",
@@ -1432,7 +1495,8 @@
             9
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-lenashim",
@@ -1475,7 +1539,8 @@
             18
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-purim",
@@ -1518,7 +1583,8 @@
             18
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-rosh-hashana",
@@ -1553,7 +1619,8 @@
             9
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-shalom-bayit",
@@ -1596,7 +1663,8 @@
             18
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "otzar-shovavim",
@@ -1631,7 +1699,8 @@
             8
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "tu-bishvat",
@@ -1666,7 +1735,8 @@
             4
           ]
         ]
-      ]
+      ],
+      "series": "otzarot"
     },
     {
       "slug": "ash-kodesh",
@@ -1711,7 +1781,7 @@
       "about": [
         "אוסף של 175 מכתבים כלליים, מסודרים לפי החודשים העבריים החל מתשרי. כל מכתב נקרא בעמוד נפרד, וכותרתו היא תאריך המכתב."
       ],
-      "category": "shut",
+      "category": "michtavim",
       "facts": [
         [
           "היקף",
@@ -1965,7 +2035,8 @@
       ],
       "pdf": "/books/otzar-chanukah.pdf",
       "pdfSize": "9.6MB",
-      "pages": 233
+      "pages": 233,
+      "series": "otzarot"
     },
     {
       "slug": "sipurei-asher-banachal",
@@ -2178,7 +2249,8 @@
       ],
       "pdf": "/books/sfat-hanachal-1.pdf",
       "pdfSize": "10.9MB",
-      "pages": 613
+      "pages": 613,
+      "series": "sfat-hanachal"
     },
     {
       "slug": "sfat-hanachal-2",
@@ -2209,7 +2281,8 @@
       ],
       "pdf": "/books/sfat-hanachal-2.pdf",
       "pdfSize": "8.1MB",
-      "pages": 517
+      "pages": 517,
+      "series": "sfat-hanachal"
     },
     {
       "slug": "sfat-hanachal-3",
@@ -2240,7 +2313,8 @@
       ],
       "pdf": "/books/sfat-hanachal-3.pdf",
       "pdfSize": "9.7MB",
-      "pages": 566
+      "pages": 566,
+      "series": "sfat-hanachal"
     },
     {
       "slug": "nahari-afarsemon",
@@ -2338,7 +2412,7 @@
       "שאלות ותשובות שכתב מוהרא״ש, לקריאה באתר"
     ],
     [
-      "shut",
+      "michtavim",
       "מכתבים",
       "/letters/",
       "מכתבים כלליים לאנשי שלומנו"

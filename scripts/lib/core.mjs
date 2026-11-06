@@ -208,9 +208,33 @@ const validateImages = (list, dir = IMG_DIR) => {
 };
 validateImages(images);
 validateCms(topics, cmsPages);
+// data/library.json: a series groups books of one category on its own page (/library/<id>/), and "featured" names the books shown first.
+const validateLibrary = (l) => {
+  const bad = (m) => { throw new Error(`library.json: ${m}`); };
+  const cats = new Set(l.categories.map(([c]) => c)), slugs = new Set(), ids = new Set();
+  for (const b of l.books) {
+    if (!/^[a-z0-9-]+$/.test(b.slug || '')) bad(`bad book slug "${b.slug}"`);
+    if (slugs.has(b.slug)) bad(`duplicate book slug "${b.slug}"`);
+    if (!cats.has(b.category)) bad(`${b.slug}: unknown category "${b.category}"`);
+    slugs.add(b.slug);
+  }
+  for (const s of l.series || []) {
+    if (!/^[a-z0-9-]+$/.test(s.id || '')) bad(`bad series id "${s.id}"`);
+    if (ids.has(s.id) || slugs.has(s.id) || s.id === 'kuntresim') bad(`series id "${s.id}" is already used`);
+    if (!s.title) bad(`series "${s.id}" has no title`);
+    if (!cats.has(s.category)) bad(`series "${s.id}": unknown category "${s.category}"`);
+    ids.add(s.id);
+    const books = l.books.filter((b) => b.series === s.id);
+    if (books.length < 2) bad(`series "${s.id}" needs at least two books`);
+    for (const b of books) if (b.category !== s.category) bad(`${b.slug}: category "${b.category}" differs from its series "${s.id}" (${s.category})`);
+  }
+  for (const b of l.books) if (b.series !== undefined && !ids.has(b.series)) bad(`${b.slug}: unknown series "${b.series}"`);
+  for (const f of l.featured || []) if (!slugs.has(f)) bad(`featured: unknown book "${f}"`);
+};
+validateLibrary(lib);
 const regey = lib.books.find((b) => b.slug === 'regey-moharash');
 const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, validateLibrary, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

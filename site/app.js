@@ -275,15 +275,24 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFn(tr
 document.addEventListener('click', (e) => { if (fnOpen && !e.target.closest('.fnpop, sup.fn')) closeFn(false); });
 }
 
-// Filter on a topic's listing page (a collection made in the editor): hides the cards that do not match, and any section left empty.
+// Filter on a listing page (a collection made in the editor, the library and its series): hides the cards (or list rows) that do not
+// match the words, or the chosen kind (data-k: "web" read on the site, "pdf"), and any section left empty. While a filter is on,
+// the parts marked data-unfiltered (the library's "start here") step aside so only matches show.
 document.querySelectorAll('[data-cfilter]').forEach((box) => {
-  const cards = [...document.querySelectorAll('.libcat .card[data-t]')], none = document.querySelector('.cnone');
-  box.addEventListener('input', () => {
+  const cards = [...document.querySelectorAll('.libcat [data-t]')], none = document.querySelector('.cnone'), kbtns = [...box.parentElement.querySelectorAll('[data-kf]')];
+  let kind = '';
+  const run = () => {
     const words = box.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    cards.forEach((c) => { c.hidden = !words.every((w) => c.dataset.t.toLowerCase().includes(w)); });
-    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('.card:not([hidden])'); });
+    cards.forEach((c) => { c.hidden = !words.every((w) => c.dataset.t.toLowerCase().includes(w)) || (kind && !(c.dataset.k || '').split(' ').includes(kind)); });
+    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden])'); });
+    document.querySelectorAll('[data-unfiltered]').forEach((s) => { s.hidden = !!(words.length || kind); });
     if (none) none.hidden = cards.some((c) => !c.hidden);
-  });
+  };
+  box.addEventListener('input', run);
+  if (kbtns.length) {
+    kbtns[0].parentElement.hidden = false;
+    kbtns.forEach((b) => b.addEventListener('click', () => { kind = b.dataset.kf; kbtns.forEach((x) => x.setAttribute('aria-pressed', String(x === b))); run(); }));
+  }
 });
 
 // Photo galleries (scripts/lib/images.mjs): each thumbnail is a link to the big photo, which still works without this script.
