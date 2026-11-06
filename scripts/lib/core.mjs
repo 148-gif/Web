@@ -232,6 +232,15 @@ const validateLibrary = (l) => {
   }
   for (const b of l.books) if (b.series !== undefined && !ids.has(b.series)) bad(`${b.slug}: unknown series "${b.series}"`);
   for (const f of l.featured || []) if (!slugs.has(f)) bad(`featured: unknown book "${f}"`);
+  // a book's groups cover its parts in order, each part once
+  for (const b of l.books.filter((x) => x.groups)) {
+    let next = 0;
+    for (const [t, , r] of b.groups) {
+      if (!t || !Array.isArray(r) || r[0] !== next || r[1] < r[0]) bad(`${b.slug}: groups must cover the parts in order, from part ${next}`);
+      next = r[1] + 1;
+    }
+    if (next !== (b.parts || []).length) bad(`${b.slug}: groups cover ${next} of ${(b.parts || []).length} parts`);
+  }
   // keywords are extra words the library search matches (not shown); an occasion is a holiday or season that gets a book suggestion a month before
   for (const x of [...l.books, ...(l.series || [])]) if (x.keywords !== undefined && !(Array.isArray(x.keywords) && x.keywords.every((k) => typeof k === 'string' && k.trim()))) bad(`${x.slug || x.id}: keywords must be a list of words`);
   const oids = new Set();

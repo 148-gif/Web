@@ -97,6 +97,11 @@ test('validateLibrary() checks series, categories and featured books', () => {
   assert.throws(w((c) => { c.featured = ['zz']; }), /featured/);
   assert.throws(w((c) => { c.books[1].slug = 'a'; }), /duplicate/);
   assert.throws(w((c) => { c.books[0].slug = '../x'; }), /bad book slug/);
+  // groups of a book's parts: in order, covering every part once
+  const g = (groups) => w((c) => { c.books[0].parts = [['a', '', [1, 1]], ['b', '', [2, 2]], ['c', '', [3, 3]]]; c.books[0].groups = groups; });
+  assert.doesNotThrow(g([['x', '', [0, 1]], ['y', '', [2, 2]]]));
+  assert.throws(g([['x', '', [0, 0]], ['y', '', [2, 2]]]), /in order/);
+  assert.throws(g([['x', '', [0, 1]]]), /cover 2 of 3/);
   // keywords, occasions and groups
   assert.doesNotThrow(w((c) => { c.books[0].keywords = ['ילדים']; c.occasions = [{ id: 'h', title: 'ח', day: 25, month: 'כסלו', length: 8, books: ['a'] }, { id: 's', title: 'ס', parasha: ['שמות', 'משפטים'], books: ['a'] }]; c.series[0].groups = [{ id: 'g1', title: 'א', books: ['b1'] }, { id: 'g2', title: 'ב', books: ['b2', 'b3'] }]; }));
   assert.throws(w((c) => { c.books[0].keywords = 'ילדים'; }), /keywords/);
