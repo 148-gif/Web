@@ -44,7 +44,7 @@ const CSP = [
 
 // Site sections in four groups: drives the header dropdowns, the mobile menu, the home tiles and the footer.
 const baseGroups = [
-  ['לימוד', [['/shut/', 'שו״ת ברסלב', 'chat', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות`], ['/letters/', 'מכתבים', 'letter', `${letters.length} מכתבים כלליים`], ['/library/', 'ספרייה', 'books', 'ספרי הצדיק לקריאה ולהורדה'], ['/halacha/', 'שו״ת הלכתי', 'scale', 'שאלות בהלכה']]],
+  ['לימוד', [['/shut/', 'שו״ת ברסלב', 'chat', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות`], ['/letters/', 'מכתבים', 'letter', `${letters.length} מכתבים כלליים`], ['/library/', 'ספרייה', 'books', 'ספרי הצדיק לקריאה ולהורדה'], ['/moadim/', 'זמני השנה', 'calendar', 'חגים ומועדים לפי סדר השנה'], ['/halacha/', 'שו״ת הלכתי', 'scale', 'שאלות בהלכה']]],
   ['רבי נחמן מברסלב', [['/rabbi-nachman/', 'רבי נחמן', 'crown', 'רבינו, חייו, תורתו ודרכו'], ['/uman/', 'אומן', 'pin', 'ציון רבינו וקיבוץ ראש השנה'], ['/tikkun-haklali/', 'התיקון הכללי', 'lyre', 'עשרה מזמורי תהלים']]],
   ['הצדיק מיבנאל', [['/moharash/', 'הצדיק מיבנאל', 'flame', 'מוהרא״ש: חייו ודרכו'], ['/moharash/tziyun/', 'ציון הצדיק', 'candle', 'ההבטחות ודרכי הגעה'], ['/yeshiva/', 'ישיבת בית מנחם', 'school', 'ישיבה חסידית בנשיאותו'], ['/print/', 'הדפסת אשר בנחל', 'print', 'שותפות בהדפסת ספריו']]],
   ['יבנאל עיר ברסלב', [['/yavniel/', 'יבנאל', 'mountain', 'קהילה, תפילות ומידע'], ['/mikveh-malka/', 'מקווה מלכה', 'drop', 'מקווה טהרה לנשים'], ...(institutions.length ? [['/institutions/', 'מוסדות הקהילה', 'heart', 'תמיכה ותרומות']] : [])]],
@@ -75,6 +75,7 @@ const contactList = (c) => [
 ].filter(Boolean);
 const infoNav = [['/about/', 'אודות'], ['/contact/', 'צור קשר'], ['/accessibility/', 'הצהרת נגישות'], ['/privacy/', 'פרטיות ותנאי שימוש']];
 const ICON = {
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M12 13.2l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2-1.45-1.4 2-.3z"/>',
   flame: '<path d="M12 2c.6 3.2 4.8 5.3 4.8 10.1A4.8 4.8 0 0 1 12 17a4.8 4.8 0 0 1-4.8-4.9c0-2.2 1.2-3.7 2.3-4.6 0 1.7.8 2.9 1.9 3.3C11 8.3 10.9 5 12 2Z"/><path d="M12 22c-2.8 0-5-1.2-5-2.7 0-.8.6-1.5 1.6-2"/><path d="M15.4 17.3c1 .5 1.6 1.2 1.6 2 0 1.5-2.2 2.7-5 2.7"/>',
   book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 21.5A2.5 2.5 0 0 1 6.5 19H20v3H6.5"/><path d="M9 7h7M9 11h5"/>',
   scale: '<path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3.5 3.5 0 0 0 6 0zM19 7l-3 7a3.5 3.5 0 0 0 6 0z"/><circle cx="12" cy="4" r="1"/>',

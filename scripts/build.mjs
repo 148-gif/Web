@@ -18,6 +18,7 @@ await import('./lib/sections/yeshiva.mjs');
 await import('./lib/sections/yavniel.mjs');
 await import('./lib/sections/moharash.mjs');
 await import('./lib/sections/library.mjs');
+await import('./lib/sections/moadim.mjs');
 await import('./lib/sections/rabbi-nachman.mjs');
 await import('./lib/sections/print.mjs');
 await import('./lib/sections/pages.mjs');

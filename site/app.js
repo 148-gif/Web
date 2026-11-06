@@ -231,12 +231,52 @@ if (totop) {
 }
 // Prayer schedules: open on wide screens, folded on phones.
 if (matchMedia('(min-width: 861px)').matches) document.querySelectorAll('details.scard').forEach((d) => { d.open = true; });
-// Book contents: open the part that holds the last section read.
+// Book contents: mark the last section read (and open its part when the parts are folded), and open a folded part that a link
+// points to (the reader's "contents" button goes to /library/<book>/#p<n>).
 document.querySelectorAll('[data-continue]').forEach((el) => {
   const v = lastRead(el.dataset.continue);
-  const a = v && v.u && document.querySelector(`details.tocpart a[href="${v.u}"]`);
-  if (a) { a.closest('details').open = true; a.classList.add('last'); }
+  const a = v && v.u && document.querySelector(`.toc a[href="${v.u}"]`);
+  if (!a) return;
+  a.classList.add('last');
+  const d = a.closest('details');
+  if (d) d.open = true;
 });
+const openTarget = () => {
+  const t = location.hash.length > 1 && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+  if (t && t.tagName === 'DETAILS' && !t.open) { t.open = true; t.scrollIntoView(); }
+};
+openTarget();
+addEventListener('hashchange', openTarget);
+
+// Home page: the band of the holiday whose dates hold today (data-from..data-to, "month day" in the Hebrew calendar, built from
+// data/moadim.json), with the days left to the holiday itself. Without the Hebrew calendar in the browser nothing shows.
+const moedBands = [...document.querySelectorAll('[data-moed]')];
+if (moedBands.length) {
+  try {
+    const MONTHS = ['tishrei', 'cheshvan', 'kislev', 'tevet', 'shevat', 'adar1', 'adar', 'nisan', 'iyar', 'sivan', 'tammuz', 'av', 'elul'];
+    const NAMES = { Tishri: 'tishrei', Heshvan: 'cheshvan', Kislev: 'kislev', Tevet: 'tevet', Shevat: 'shevat', 'Adar I': 'adar1', 'Adar II': 'adar', Adar: 'adar', Nisan: 'nisan', Iyar: 'iyar', Sivan: 'sivan', Tamuz: 'tammuz', Av: 'av', Elul: 'elul' };
+    const fmt = new Intl.DateTimeFormat('en-u-ca-hebrew', { day: 'numeric', month: 'long', timeZone: 'Asia/Jerusalem' });
+    const heb = (d) => { const p = fmt.formatToParts(d), m = NAMES[p.find((x) => x.type === 'month').value]; return m && [MONTHS.indexOf(m), Number(p.find((x) => x.type === 'day').value)]; };
+    const pos = (s) => { const [m, d] = s.split(' '); return [MONTHS.indexOf(m), Number(d)]; };
+    const cmp = (a, b) => a[0] - b[0] || a[1] - b[1];
+    // a range may cross the new year (from Av to Tishrei)
+    const within = (x, f, t) => (cmp(f, t) <= 0 ? cmp(x, f) >= 0 && cmp(x, t) <= 0 : cmp(x, f) >= 0 || cmp(x, t) <= 0);
+    const now = new Date(), today = heb(now);
+    const band = today && moedBands.find((b) => within(today, pos(b.dataset.from), pos(b.dataset.to)));
+    if (band) {
+      let when = 'בימים אלה';
+      if (band.dataset.day) {
+        const day = pos(band.dataset.day);
+        for (let i = 0; i <= 60; i++) {
+          const h = heb(new Date(now.getTime() + i * 864e5));
+          if (h && cmp(h, day) === 0) { when = i === 0 ? `היום ${band.dataset.dayname}` : i === 1 ? `מחר ${band.dataset.dayname}` : `${band.dataset.dayname} בעוד ${i} ימים`; break; }
+        }
+      }
+      band.querySelector('.moedwhen span').textContent = when;
+      band.hidden = false;
+    }
+  } catch { /* an old browser: the home page stays as it is */ }
+}
 
 // Offline reading: the service worker keeps the pages already read (dist/sw.js, built from scripts/lib/sw.js). The offline page's "try again" reloads.
 if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register(`${me.pathname.replace(/[^/]*$/, '')}sw.js`).catch(() => {}));
@@ -284,7 +324,7 @@ document.querySelectorAll('[data-cfilter]').forEach((box) => {
   const run = () => {
     const words = box.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
     cards.forEach((c) => { c.hidden = !words.every((w) => c.dataset.t.toLowerCase().includes(w)) || (kind && !(c.dataset.k || '').split(' ').includes(kind)); });
-    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden])'); });
+    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden])'); if (words.length && s.tagName === 'DETAILS') s.open = true; });
     document.querySelectorAll('[data-unfiltered]').forEach((s) => { s.hidden = !!(words.length || kind); });
     if (none) none.hidden = cards.some((c) => !c.hidden);
   };
