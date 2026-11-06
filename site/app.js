@@ -275,17 +275,41 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFn(tr
 document.addEventListener('click', (e) => { if (fnOpen && !e.target.closest('.fnpop, sup.fn')) closeFn(false); });
 }
 
+// Seasonal suggestion (scripts/lib/seasonal.mjs): the page holds the windows [id, from, start, to] and the books of every occasion, all
+// hidden; here the one whose window holds today's date is shown, with the days left to the holiday.
+document.querySelectorAll('[data-season]').forEach((box) => {
+  let runs;
+  try { runs = JSON.parse(box.dataset.season); } catch { return; }
+  const now = new Date(), today = new Date(now.getTime() - now.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  const run = runs.find(([, from, , to]) => from <= today && today <= to), item = run && box.querySelector(`[data-oc="${run[0]}"]`);
+  if (!item) return;
+  const left = Math.round((Date.parse(run[2]) - Date.parse(today)) / 864e5);
+  item.querySelector('[data-b]').hidden = left < 0; item.querySelector('[data-d]').hidden = left >= 0;
+  item.querySelector('[data-when]').textContent = left > 1 ? `בעוד ${left} ימים` : left === 1 ? 'מחר' : left === 0 ? 'היום' : 'בימים אלה';
+  item.hidden = false; box.hidden = false;
+});
+
 // Filter on a listing page (a collection made in the editor, the library and its series): hides the cards (or list rows) that do not
 // match the words, or the chosen kind (data-k: "web" read on the site, "pdf"), and any section left empty. While a filter is on,
-// the parts marked data-unfiltered (the library's "start here") step aside so only matches show.
+// the parts marked data-unfiltered (the library's "start here") step aside so only matches show. Quotes, gershayim and vowels are
+// ignored on both sides, so "לג בעומר" finds "ל״ג בעומר".
+const normWords = (t) => t.toLowerCase().replace(/["'\u05F3\u05F4]/g, '').replace(/[\u0591-\u05C7]/g, '');
 document.querySelectorAll('[data-cfilter]').forEach((box) => {
-  const cards = [...document.querySelectorAll('.libcat [data-t]')], none = document.querySelector('.cnone'), kbtns = [...box.parentElement.querySelectorAll('[data-kf]')];
+  const cards = [...document.querySelectorAll('.libcat [data-t]:not(.svols li)')], vols = [...document.querySelectorAll('.card.series')], none = document.querySelector('.cnone'), kbtns = [...box.parentElement.querySelectorAll('[data-kf]')];
+  const hay = new Map([...cards, ...document.querySelectorAll('.svols li')].map((c) => [c, normWords(c.dataset.t)]));
   let kind = '';
   const run = () => {
-    const words = box.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    cards.forEach((c) => { c.hidden = !words.every((w) => c.dataset.t.toLowerCase().includes(w)) || (kind && !(c.dataset.k || '').split(' ').includes(kind)); });
-    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden])'); });
-    document.querySelectorAll('[data-unfiltered]').forEach((s) => { s.hidden = !!(words.length || kind); });
+    const words = normWords(box.value.trim()).split(/\s+/).filter(Boolean);
+    cards.forEach((c) => { c.hidden = !words.every((w) => hay.get(c).includes(w)) || (kind && !(c.dataset.k || '').split(' ').includes(kind)); });
+    // a series card that matches because of one of its volumes opens its list at those volumes
+    vols.forEach((card) => {
+      const lis = [...card.querySelectorAll('.svols li')], hit = lis.filter((li) => words.every((w) => hay.get(li).includes(w)));
+      const some = words.length && !card.hidden && hit.length > 0;
+      lis.forEach((li) => { li.hidden = some && !hit.includes(li); });
+      card.querySelector('.svols').open = !!some;
+    });
+    document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden]):not(.svols li)'); });
+    document.querySelectorAll('[data-unfiltered]').forEach((s) => s.classList.toggle('stepaside', !!(words.length || kind)));
     if (none) none.hidden = cards.some((c) => !c.hidden);
   };
   box.addEventListener('input', run);

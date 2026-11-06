@@ -97,6 +97,15 @@ test('validateLibrary() checks series, categories and featured books', () => {
   assert.throws(w((c) => { c.featured = ['zz']; }), /featured/);
   assert.throws(w((c) => { c.books[1].slug = 'a'; }), /duplicate/);
   assert.throws(w((c) => { c.books[0].slug = '../x'; }), /bad book slug/);
+  // keywords, occasions and groups
+  assert.doesNotThrow(w((c) => { c.books[0].keywords = ['ילדים']; c.occasions = [{ id: 'h', title: 'ח', day: 25, month: 'כסלו', length: 8, books: ['a'] }, { id: 's', title: 'ס', parasha: ['שמות', 'משפטים'], books: ['a'] }]; c.series[0].groups = [{ id: 'g1', title: 'א', books: ['b1'] }, { id: 'g2', title: 'ב', books: ['b2', 'b3'] }]; }));
+  assert.throws(w((c) => { c.books[0].keywords = 'ילדים'; }), /keywords/);
+  assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 25, month: 'כסלו', length: 8, books: ['zz'] }]; }), /known books/);
+  assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', books: ['a'] }]; }), /either day/);
+  assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 1, month: 'ניסן', length: 1, parasha: ['א', 'ב'], books: ['a'] }]; }), /either day/);
+  assert.throws(w((c) => { c.series[0].groups = [{ id: 'g1', title: 'א', books: ['b1'] }]; }), /in no group/);
+  assert.throws(w((c) => { c.series[0].groups = [{ id: 'g1', title: 'א', books: ['b1', 'b2', 'b3', 'b1'] }]; }), /two groups/);
+  assert.throws(w((c) => { c.series[0].groups = [{ id: 'g1', title: 'א', books: ['b1', 'b2', 'b3', 'a'] }]; }), /not in the series/);
 });
 
 test('mergeShut() applies editor edits: replace, add, delete', () => {

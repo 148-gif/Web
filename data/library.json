@@ -36,6 +36,84 @@
     "ilan-hachaim",
     "sichot-moharash"
   ],
+  "occasions": [
+    {
+      "id": "rosh-hashana",
+      "title": "ראש השנה",
+      "day": 1,
+      "month": "תשרי",
+      "length": 2,
+      "books": [
+        "otzar-rosh-hashana",
+        "hanhagot-rosh-hashana"
+      ]
+    },
+    {
+      "id": "chanukah",
+      "title": "חנוכה",
+      "day": 25,
+      "month": "כסלו",
+      "length": 8,
+      "books": [
+        "otzar-chanukah",
+        "ner-lehatzadik"
+      ]
+    },
+    {
+      "id": "shovavim",
+      "title": "ימי שובבים",
+      "parasha": [
+        "שמות",
+        "משפטים"
+      ],
+      "books": [
+        "otzar-shovavim"
+      ]
+    },
+    {
+      "id": "tu-bishvat",
+      "title": "ט״ו בשבט",
+      "day": 15,
+      "month": "שבט",
+      "length": 1,
+      "books": [
+        "tu-bishvat"
+      ]
+    },
+    {
+      "id": "purim",
+      "title": "פורים",
+      "day": 14,
+      "month": [
+        "אדר",
+        "אדר ב׳"
+      ],
+      "length": 1,
+      "books": [
+        "otzar-purim"
+      ]
+    },
+    {
+      "id": "pesach",
+      "title": "פסח",
+      "day": 15,
+      "month": "ניסן",
+      "length": 7,
+      "books": [
+        "otzar-hapesach"
+      ]
+    },
+    {
+      "id": "lag-baomer",
+      "title": "ל״ג בעומר",
+      "day": 18,
+      "month": "אייר",
+      "length": 1,
+      "books": [
+        "otzar-lag-baomer"
+      ]
+    }
+  ],
   "series": [
     {
       "id": "asher-banachal",
@@ -43,7 +121,15 @@
       "category": "shut",
       "sub": "שאלות ותשובות והדרכות של מוהרא״ש, לפי סדר הנושאים",
       "unit": "כרכים",
-      "lead": "חיבורו המרכזי של מוהרא״ש: מכתבי חיזוק, שאלות ותשובות והדרכות, לפי סדר הנושאים. כאן הכרכים שכבר נכנסו לספרייה, לקריאה ולהורדה כ־PDF."
+      "lead": "חיבורו המרכזי של מוהרא״ש: מכתבי חיזוק, שאלות ותשובות והדרכות, לפי סדר הנושאים. כאן הכרכים שכבר נכנסו לספרייה, לקריאה ולהורדה כ־PDF.",
+      "keywords": [
+        "שו״ת",
+        "שאלות",
+        "תשובות",
+        "מכתבים",
+        "הדרכה",
+        "עצות"
+      ]
     },
     {
       "id": "otzarot",
@@ -51,7 +137,42 @@
       "category": "chizuk",
       "sub": "קונטרסי חיזוק מקובצים לפי נושא ולפי מועד",
       "unit": "ספרים",
-      "lead": "קונטרסים של מוהרא״ש מקובצים לספר אחד לכל נושא, כמו שלום בית, חינוך ילדים וסבלנות, ולכל מועד בשנה. כולם לקריאה באתר."
+      "lead": "קונטרסים של מוהרא״ש מקובצים לספר אחד לכל נושא, כמו שלום בית, חינוך ילדים וסבלנות, ולכל מועד בשנה. כולם לקריאה באתר.",
+      "keywords": [
+        "קונטרסים",
+        "חגים",
+        "מועדים",
+        "נושאים"
+      ],
+      "groups": [
+        {
+          "id": "moadim",
+          "title": "לפי מועדי השנה",
+          "books": [
+            "otzar-rosh-hashana",
+            "otzar-chanukah",
+            "otzar-shovavim",
+            "tu-bishvat",
+            "otzar-purim",
+            "otzar-hapesach",
+            "otzar-lag-baomer"
+          ]
+        },
+        {
+          "id": "nosim",
+          "title": "לפי נושאים",
+          "books": [
+            "otzar-chinuch-yeladim",
+            "otzar-hachaim",
+            "otzar-hakedusha",
+            "otzar-harefuot",
+            "otzar-hasavlanut",
+            "otzar-hashabbat",
+            "otzar-lenashim",
+            "otzar-shalom-bayit"
+          ]
+        }
+      ]
     },
     {
       "id": "sfat-hanachal",
@@ -59,7 +180,12 @@
       "category": "perush",
       "sub": "ליקוטי מוהר״ן עם פירוש שפת הנחל",
       "unit": "חלקים",
-      "lead": "ליקוטי מוהר״ן עם הפירוש ״שפת הנחל״ של מוהרא״ש. החלקים שכבר נכנסו לספרייה, לקריאה ולהורדה כ־PDF."
+      "lead": "ליקוטי מוהר״ן עם הפירוש ״שפת הנחל״ של מוהרא״ש. החלקים שכבר נכנסו לספרייה, לקריאה ולהורדה כ־PDF.",
+      "keywords": [
+        "ליקוטי מוהר״ן",
+        "תורות",
+        "רבי נחמן"
+      ]
     }
   ],
   "books": [
@@ -151,7 +277,16 @@
       "category": "toldot",
       "pages": 117,
       "text": "books/regey-moharash.json",
-      "introDesc": "החלום שבעקבותיו החל לכתוב, ולמה נקרא הספר ״רגעי מוהרא״ש״"
+      "introDesc": "החלום שבעקבותיו החל לכתוב, ולמה נקרא הספר ״רגעי מוהרא״ש״",
+      "keywords": [
+        "תולדות",
+        "ביוגרפיה",
+        "חיי מוהרא״ש",
+        "ילדות",
+        "ארצות הברית",
+        "אומן",
+        "זיכרונות"
+      ]
     },
     {
       "slug": "zot-hatorah",
@@ -187,7 +322,16 @@
       ],
       "pdf": "/books/zot-hatorah.pdf",
       "pdfSize": "16.4MB",
-      "pages": 457
+      "pages": 457,
+      "keywords": [
+        "פרשת השבוע",
+        "פרשיות",
+        "דרשות",
+        "שבת",
+        "תורה",
+        "חומש",
+        "דרושים"
+      ]
     },
     {
       "slug": "asher-banachal-maagal-hashana",
@@ -1097,7 +1241,14 @@
       "text": "books/peulat-hatzadik.json",
       "pdf": "/books/peulat-hatzadik.pdf",
       "pdfSize": "7.9MB",
-      "pages": 758
+      "pages": 758,
+      "keywords": [
+        "רבי נחמן",
+        "תולדות",
+        "סיפורי",
+        "חיים",
+        "חיי מוהר״ן"
+      ]
     },
     {
       "slug": "sichot-moharash",
@@ -1133,7 +1284,21 @@
           ]
         ]
       ],
-      "text": "books/sichot-moharash.json"
+      "text": "books/sichot-moharash.json",
+      "keywords": [
+        "שיחות",
+        "חנוכה",
+        "פורים",
+        "ספירת העומר",
+        "ל״ג בעומר",
+        "יום כיפור",
+        "אלול",
+        "ניסן",
+        "כסלו",
+        "אדר",
+        "מידות",
+        "אחדות"
+      ]
     },
     {
       "slug": "kuntresim-nivharim",
@@ -1220,7 +1385,21 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "ילדים",
+        "בנים",
+        "בנות",
+        "תינוקות",
+        "נוער",
+        "חינוך",
+        "הורים",
+        "אבא",
+        "אמא",
+        "גן",
+        "בית ספר",
+        "תלמוד תורה"
+      ]
     },
     {
       "slug": "otzar-hachaim",
@@ -1264,7 +1443,16 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "שמחה",
+        "עצבות",
+        "דיכאון",
+        "מצב רוח",
+        "אושר",
+        "חיים טובים",
+        "התחזקות"
+      ]
     },
     {
       "slug": "otzar-hakedusha",
@@ -1300,7 +1488,17 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "שמירת עיניים",
+        "שמירת הברית",
+        "עיניים",
+        "מחשבות",
+        "פגם הברית",
+        "טהרה",
+        "יצר הרע",
+        "קדושה"
+      ]
     },
     {
       "slug": "otzar-hapesach",
@@ -1344,7 +1542,17 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "פסח",
+        "חג הפסח",
+        "הגדה",
+        "ליל הסדר",
+        "מצה",
+        "חמץ",
+        "יציאת מצרים",
+        "חירות"
+      ]
     },
     {
       "slug": "otzar-harefuot",
@@ -1388,7 +1596,16 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "חולים",
+        "רפואה",
+        "מחלה",
+        "ביקור חולים",
+        "בית חולים",
+        "בריאות",
+        "רפואה שלמה"
+      ]
     },
     {
       "slug": "otzar-hasavlanut",
@@ -1424,7 +1641,15 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "סבלנות",
+        "כעס",
+        "עצבים",
+        "אורך רוח",
+        "מידות",
+        "לשלוט בכעס"
+      ]
     },
     {
       "slug": "otzar-hashabbat",
@@ -1460,7 +1685,16 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "שבת",
+        "שבת קודש",
+        "קבלת שבת",
+        "שמירת שבת",
+        "מנוחה",
+        "ערב שבת",
+        "סעודות"
+      ]
     },
     {
       "slug": "otzar-lag-baomer",
@@ -1496,7 +1730,16 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "ל״ג בעומר",
+        "לג בעומר",
+        "ספירת העומר",
+        "עומר",
+        "רשב״י",
+        "רבי שמעון בר יוחאי",
+        "מירון"
+      ]
     },
     {
       "slug": "otzar-lenashim",
@@ -1540,7 +1783,17 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "נשים",
+        "אישה",
+        "אשה",
+        "אמהות",
+        "בנות",
+        "צניעות",
+        "משפחה",
+        "בעלת הבית"
+      ]
     },
     {
       "slug": "otzar-purim",
@@ -1584,7 +1837,17 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "פורים",
+        "אדר",
+        "מגילה",
+        "מגילת אסתר",
+        "משלוח מנות",
+        "משתה",
+        "שמחה",
+        "משנכנס אדר"
+      ]
     },
     {
       "slug": "otzar-rosh-hashana",
@@ -1620,7 +1883,18 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "ראש השנה",
+        "ימים נוראים",
+        "תשרי",
+        "תקיעת שופר",
+        "שופר",
+        "אלול",
+        "תשובה",
+        "סליחות",
+        "יום הדין"
+      ]
     },
     {
       "slug": "otzar-shalom-bayit",
@@ -1664,7 +1938,20 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "שלום בית",
+        "זוג",
+        "בעל ואישה",
+        "בעל",
+        "נישואין",
+        "חתונה",
+        "זוגיות",
+        "ריב",
+        "מריבה",
+        "קטטה",
+        "גירושין"
+      ]
     },
     {
       "slug": "otzar-shovavim",
@@ -1700,7 +1987,16 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "שובבים",
+        "שובבי״ם",
+        "ימי שובבים",
+        "טבת",
+        "תיקון",
+        "תשובה",
+        "פגם הברית"
+      ]
     },
     {
       "slug": "tu-bishvat",
@@ -1736,7 +2032,16 @@
           ]
         ]
       ],
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "ט״ו בשבט",
+        "טו בשבט",
+        "אילנות",
+        "פירות",
+        "עצים",
+        "שבט",
+        "ראש השנה לאילנות"
+      ]
     },
     {
       "slug": "ash-kodesh",
@@ -1771,6 +2076,12 @@
             12
           ]
         ]
+      ],
+      "keywords": [
+        "סיפורים",
+        "מעשיות",
+        "סיפור",
+        "מעשה"
       ]
     },
     {
@@ -1949,6 +2260,16 @@
             20
           ]
         ]
+      ],
+      "keywords": [
+        "ראש השנה",
+        "ימים נוראים",
+        "תשרי",
+        "הנהגות",
+        "סדר ראש השנה",
+        "תקיעת שופר",
+        "אלול",
+        "אומן"
       ]
     },
     {
@@ -1988,7 +2309,15 @@
       ],
       "pdf": "/books/ner-lehatzadik.pdf",
       "pages": 284,
-      "pdfSize": "11.2MB"
+      "pdfSize": "11.2MB",
+      "keywords": [
+        "חנוכה",
+        "נרות חנוכה",
+        "הדלקת נרות",
+        "דינים",
+        "כוונות",
+        "כסלו"
+      ]
     },
     {
       "slug": "otzar-chanukah",
@@ -2036,7 +2365,14 @@
       "pdf": "/books/otzar-chanukah.pdf",
       "pdfSize": "9.6MB",
       "pages": 233,
-      "series": "otzarot"
+      "series": "otzarot",
+      "keywords": [
+        "חנוכה",
+        "נרות חנוכה",
+        "הדלקת נרות",
+        "כסלו",
+        "נר חנוכה"
+      ]
     },
     {
       "slug": "sipurei-asher-banachal",
@@ -2151,6 +2487,10 @@
             271
           ]
         ]
+      ],
+      "keywords": [
+        "סיפורים",
+        "מעשיות"
       ]
     },
     {
@@ -2218,7 +2558,13 @@
       ],
       "pdf": "/books/ilan-hachaim.pdf",
       "pdfSize": "3.5MB",
-      "pages": 347
+      "pages": 347,
+      "keywords": [
+        "ראשי אנשי שלומנו",
+        "מנהיגים",
+        "סימנים",
+        "צדיקים"
+      ]
     },
     {
       "slug": "sfat-hanachal-1",
@@ -2370,7 +2716,12 @@
       ],
       "pdf": "/books/erech-apaim.pdf",
       "pdfSize": "9.9MB",
-      "pages": 435
+      "pages": 435,
+      "keywords": [
+        "סבלנות",
+        "כעס",
+        "אורך רוח"
+      ]
     },
     {
       "slug": "shut-breslev-33",
