@@ -20,8 +20,8 @@ const onlineCard = ([, t, h, x]) => `<a class="card book" href="${url(h)}" data-
 const catItems = (c) => lib.books.filter((b) => b.category === c && (!b.series || seriesBooks(seriesOf(b))[0] === b)).map((b) => (b.series ? seriesCard(seriesOf(b)) : bookCard(b)));
 const libCats = lib.categories.filter(([c]) => lib.books.some((b) => b.category === c) || lib.online.some(([oc]) => oc === c));
 const featured = (lib.featured || []).map((f) => lib.books.find((b) => b.slug === f));
-// "By holiday": a chip per occasion of library.json, each to its main book (in the order of the year)
-const occasionNav = (lib.occasions || []).length ? `<nav class="chips lchips moadim" aria-label="לפי מועדי השנה"><span class="chiplabel">לפי חג:</span>${lib.occasions.map((o) => `<a href="/library/${o.books[0]}/">${esc(o.title)}</a>`).join('')}</nav>` : '';
+// "By holiday": a chip per occasion of library.json, each to its hub page (/moadim/<id>/), or to its main book when it has none (in the order of the year)
+const occasionNav = (lib.occasions || []).length ? `<nav class="chips lchips moadim" aria-label="לפי מועדי השנה"><span class="chiplabel">לפי חג:</span>${lib.occasions.filter((o) => o.hub || o.books.length).map((o) => `<a href="${o.hub ? `/moadim/${o.hub}/` : `/library/${o.books[0]}/`}">${esc(o.title)}</a>`).join('')}</nav>` : '';
 const kfilter = `<div class="kfilter" role="group" aria-label="סוג" hidden><button type="button" data-kf="" aria-pressed="true">הכול</button><button type="button" data-kf="web" aria-pressed="false">לקריאה באתר</button><button type="button" data-kf="pdf" aria-pressed="false">PDF להורדה</button></div>`;
 const cfilter = (label, withKinds) => `<div class="cfilter"><label class="slabel" for="cf">${label}</label><input id="cf" type="search" data-cfilter placeholder="שם הספר או נושא…" autocomplete="off">${withKinds ? kfilter : ''}</div>`;
 for (const [id, rows] of Object.entries(seasonPools())) write(`season/${id}.json`, JSON.stringify(rows));

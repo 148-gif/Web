@@ -239,7 +239,7 @@ const validateLibrary = (l) => {
     if (!/^[a-z0-9-]+$/.test(o.id || '') || oids.has(o.id)) bad(`bad or duplicate occasion id "${o.id}"`);
     oids.add(o.id);
     if (!o.title) bad(`occasion "${o.id}" has no title`);
-    if (!Array.isArray(o.books) || !o.books.length || !o.books.every((x) => slugs.has(x))) bad(`occasion "${o.id}": books must be a list of known books`);
+    if (!Array.isArray(o.books) || (!o.books.length && !o.hub) || !o.books.every((x) => slugs.has(x))) bad(`occasion "${o.id}": books must be a list of known books (it may be empty only with a hub)`);
     const dated = Number.isInteger(o.day) && o.day >= 1 && o.day <= 30 && (typeof o.month === 'string' || (Array.isArray(o.month) && o.month.length)) && Number.isInteger(o.length) && o.length >= 1;
     const byParasha = Array.isArray(o.parasha) && o.parasha.length === 2 && o.parasha.every((x) => typeof x === 'string' && x);
     if (o.terms !== undefined && !(Array.isArray(o.terms) && o.terms.length && o.terms.every((t) => typeof t === 'string' && t.trim()))) bad(`occasion "${o.id}": terms must be a list of words`);

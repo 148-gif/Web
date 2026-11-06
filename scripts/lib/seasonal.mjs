@@ -4,7 +4,8 @@
 // site/app.js shows the one that holds today's date (a static page cannot know the day). Past the last day of site/zmanim/ nothing is shown.
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { esc, lib, shut, gist } from './core.mjs';
+import { esc, lib, shut, gist, read, nik } from './core.mjs';
+import { moadim } from './moadim.mjs';
 import { ICON, icon } from './layout.mjs';
 import { bookCard } from './parts.mjs';
 import { figure } from './images.mjs';
@@ -87,7 +88,41 @@ const seasonPools = () => Object.fromEntries((lib.occasions || []).map((o) => [o
   return [String(x.id), x.title, cut, Math.max(1, Math.round(x.a.join(' ').split(/\s+/).length / 180))];
 })]).filter(([, rows]) => rows.length >= 3));
 const pools = new Map(Object.entries(seasonPools()));
-const qa = (o) => (pools.has(o.id) ? `<div data-qa hidden><h3 class="subh qh">שאלות ותשובות לקריאה</h3><div class="grid qreads" data-pool="/season/${o.id}.json?v=${createHash('sha256').update(JSON.stringify(pools.get(o.id))).digest('hex').slice(0, 10)}"></div><p class="ctarow"><a class="btn ghost" href="/search/?q=${encodeURIComponent(o.terms[0])}">עוד שאלות ותשובות על ${esc(o.title)} ←</a></p></div>` : '');
+const qa = (o) => (pools.has(o.id) ? `<div data-qa hidden><h3 class="subh qh">${icon('chat', 'ico')}שאלות ותשובות לקריאה</h3><div class="grid qreads" data-pool="/season/${o.id}.json?v=${createHash('sha256').update(JSON.stringify(pools.get(o.id))).digest('hex').slice(0, 10)}"></div></div>` : '');
+
+// From the holiday's hub (data/moadim.json, /moadim/<id>/, named by the occasion's `hub`): up to two of Moharash's talks on it and one
+// general letter of its month, as reading cards. The hub's sections are [book slug, from, to] by section number.
+const hubOf = (o) => {
+  if (!o.hub) return null;
+  const m = moadim.items.find((x) => x.id === o.hub);
+  if (!m) throw new Error(`library.json: occasion "${o.id}" names an unknown hub "${o.hub}" (data/moadim.json)`);
+  return m;
+};
+const texts = new Map();
+const sectionsOf = (m, slug) => (m.chapters || []).filter(([x]) => x === slug).flatMap(([x, f, t]) => {
+  const b = lib.books.find((y) => y.slug === x);
+  if (!texts.has(x)) texts.set(x, read(b.text));
+  return texts.get(x).sections.slice(f - 1, t);
+});
+const opening = (paras, n = 170) => {
+  const p = nik(paras.find((x) => x.length > 60 && !/^שלום וברכה/.test(x)) || paras[0] || '');
+  return p.length > n ? `${p.slice(0, n).replace(/\s+\S*$/, '')}…` : p;
+};
+const minutes = (paras) => Math.max(1, Math.round(paras.join(' ').split(/\s+/).length / 180));
+const readCard = (href, kick, title, text, meta) => `<a class="card qread lread" href="${href}"><span class="qkick">${esc(kick)}</span><h3>${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ''}<span class="qmeta"><span>${esc(meta)}</span><span class="go">לקריאה ←</span></span></a>`;
+const readings = (o) => {
+  const m = hubOf(o);
+  if (!m) return '';
+  const talks = sectionsOf(m, 'sichot-moharash').slice(0, 2).map((x) => readCard(`/library/sichot-moharash/${x.n}/`, 'משיחות מוהרא״ש', nik(x.title), opening(x.paras), `קריאה של ${minutes(x.paras) === 1 ? 'דקה' : `${minutes(x.paras)} דקות`}`));
+  const letters = sectionsOf(m, 'asher-banachal-michtavim-klaliim').slice(0, 3 - talks.length).map((x) => readCard(`/library/asher-banachal-michtavim-klaliim/${x.n}/`, 'מכתב כללי של מוהרא״ש', opening(x.paras, 80), '', nik(x.title)));
+  const cards = [...talks, ...letters];
+  return cards.length ? `<h3 class="subh qh">${icon('book', 'ico')}מתוך הספרים</h3><div class="grid qreads">${cards.join('')}</div>` : '';
+};
+// The way on: the hub with everything the site has on the holiday, and the search for more questions
+const more = (o) => {
+  const m = hubOf(o);
+  return `<p class="ctarow season-more">${m ? `<a class="btn" href="/moadim/${m.id}/">כל מה שיש באתר על ${esc(m.short)} ←</a>` : ''}${pools.has(o.id) ? `<a class="btn ghost" href="/search/?q=${encodeURIComponent(o.terms[0])}">עוד שאלות ותשובות על ${esc(o.title)}</a>` : ''}</p>`;
+};
 
 // The hidden block of the page: for every occasion that has a window, its colour, picture, books and questions; and the windows.
 // site/app.js unhides the one whose window holds today's date.
@@ -96,7 +131,7 @@ const seasonHtml = () => {
   if (!runs.length) return '';
   const items = lib.occasions.filter((o) => runs.some((r) => r[0] === o.id)).map((o) => {
     if (o.icon && !ICON[o.icon]) throw new Error(`library.json: occasion "${o.id}" has an unknown icon "${o.icon}"`);
-    return `<section class="band season ac-${o.accent || 'gold'}" data-oc="${o.id}" hidden><div class="wrap">${o.image ? figure(o.image, { size: 'full' }).replace('class="fig fig-full', 'class="fig season-fig') : ''}${o.icon ? `<span class="season-ico">${icon(o.icon, 'ico lg')}</span>` : ''}<h2 class="sh"><span data-b>לקראת ${esc(o.title)}</span><span data-d hidden>${esc(o.title)}</span></h2><p class="shsub"><b data-when></b> · ספרים לקריאה ולהורדה</p><div class="grid featured">${o.books.map((slug) => bookCard(lib.books.find((b) => b.slug === slug), ' feat')).join('')}</div>${qa(o)}</div></section>`;
+    return `<section class="band season ac-${o.accent || 'gold'}" data-oc="${o.id}" hidden><div class="wrap">${o.image ? figure(o.image, { size: 'full' }).replace('class="fig fig-full', 'class="fig season-fig') : ''}${o.icon ? `<span class="season-ico">${icon(o.icon, 'ico lg')}</span>` : ''}<h2 class="sh"><span data-b>לקראת ${esc(o.title)}</span><span data-d hidden>${esc(o.title)}</span></h2><p class="shsub"><b data-when></b> · ספרים, שיחות ושאלות ותשובות לקריאה</p>${o.books.length ? `<div class="grid featured">${o.books.map((slug) => bookCard(lib.books.find((b) => b.slug === slug), ' feat')).join('')}</div>` : ''}${readings(o)}${qa(o)}${more(o)}</div></section>`;
   });
   return `<div id="season" data-season="${esc(JSON.stringify(runs))}" data-unfiltered hidden>${items.join('')}</div>`;
 };

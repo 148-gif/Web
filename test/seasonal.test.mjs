@@ -71,3 +71,9 @@ test('the pool of each occasion has at least three questions that name the holid
   assert.equal(addDays(pesach.start, 7), pesach.to); // 15 to 22 of Nisan
   assert.equal(addDays(purim.start, 1), purim.to); // Purim and Shushan Purim
 });
+
+test('every occasion with a hub names a holiday of data/moadim.json, and the home page shows the band first', async () => {
+  const { moadim } = await import('../scripts/lib/moadim.mjs');
+  for (const o of lib.occasions) if (o.hub) assert.ok(moadim.items.some((m) => m.id === o.hub), `${o.id}: hub "${o.hub}" exists`);
+});
+

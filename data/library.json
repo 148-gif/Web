@@ -52,7 +52,8 @@
       ],
       "icon": "shofar",
       "accent": "gold",
-      "image": "shofar"
+      "image": "shofar",
+      "hub": "elul"
     },
     {
       "id": "chanukah",
@@ -69,7 +70,8 @@
       ],
       "icon": "menorah",
       "accent": "blue",
-      "image": "hanukkah-candles"
+      "image": "hanukkah-candles",
+      "hub": "chanukah"
     },
     {
       "id": "shovavim",
@@ -86,7 +88,8 @@
         "שובבי״ם"
       ],
       "icon": "drop",
-      "accent": "indigo"
+      "accent": "indigo",
+      "hub": "shovavim"
     },
     {
       "id": "tu-bishvat",
@@ -101,7 +104,8 @@
         "ט״ו בשבט"
       ],
       "icon": "tree",
-      "accent": "green"
+      "accent": "green",
+      "hub": "tu-bishvat"
     },
     {
       "id": "purim",
@@ -120,7 +124,8 @@
       ],
       "icon": "scroll",
       "accent": "plum",
-      "image": "megillah-scroll"
+      "image": "megillah-scroll",
+      "hub": "purim"
     },
     {
       "id": "pesach",
@@ -137,7 +142,8 @@
       ],
       "icon": "cup",
       "accent": "teal",
-      "image": "seder-plate"
+      "image": "seder-plate",
+      "hub": "pesach"
     },
     {
       "id": "lag-baomer",
@@ -152,7 +158,38 @@
         "ל״ג בעומר"
       ],
       "icon": "flame",
-      "accent": "ember"
+      "accent": "ember",
+      "hub": "omer"
+    },
+    {
+      "id": "shavuot",
+      "title": "שבועות",
+      "day": 6,
+      "month": "סיוון",
+      "length": 2,
+      "books": [],
+      "terms": [
+        "חג השבועות",
+        "ליל שבועות"
+      ],
+      "icon": "tablets",
+      "accent": "green",
+      "hub": "shavuot"
+    },
+    {
+      "id": "tisha-beav",
+      "title": "תשעה באב",
+      "day": 9,
+      "month": "אב",
+      "length": 1,
+      "books": [],
+      "terms": [
+        "תשעה באב",
+        "ט׳ באב"
+      ],
+      "icon": "candle",
+      "accent": "indigo",
+      "hub": "av"
     }
   ],
   "series": [
