@@ -41,3 +41,8 @@
 .season{background:linear-gradient(180deg,var(--sunk),var(--bg));border-bottom:1px solid var(--line)}.season .sh{font-size:1.625rem}.season .shsub{margin-bottom:20px}.season .grid.featured{max-width:620px;margin-inline:auto;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
 .lchips.moadim{align-items:center}.chiplabel{font:700 .875rem var(--sans);color:var(--mute);align-self:center}
 .sgh{margin:10px 0 2px;font:700 .8125rem var(--sans);color:var(--mute)}.svols .sgh+ul{margin-top:2px}
+/* Seasonal suggestion: Q&A reading cards */
+.season .subh.qh{justify-content:center;margin:36px 0 16px}.season .grid.qreads{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));max-width:920px;margin-inline:auto}
+.card.qread{border-inline-start:4px solid var(--gold2);gap:8px;padding:20px 22px}.card.qread h3{font:700 1.1875rem/1.5 var(--serif);color:var(--brand);margin:0}.card.qread p{margin:0;color:var(--ink);font-size:1rem;line-height:1.75;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.card.qread .qmeta{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font:600 .875rem var(--sans);color:var(--mute)}.card.qread .qmeta .go{margin:0;padding:0}
+.season .ctarow{text-align:center;margin:20px 0 0}

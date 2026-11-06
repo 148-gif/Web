@@ -1,8 +1,8 @@
 // The seasonal reading suggestion: windows are found from Hebrew dates, a holiday in progress wins, then the nearest one coming.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { instances, seasonWindows, addDays, zmanimDays } from '../scripts/lib/seasonal.mjs';
-import { lib } from '../scripts/lib/core.mjs';
+import { instances, seasonWindows, pickShut, addDays, zmanimDays } from '../scripts/lib/seasonal.mjs';
+import { lib, shut } from '../scripts/lib/core.mjs';
 
 // A fake calendar: `marks` maps an ISO date to [Hebrew date, parasha]; every other day is plain.
 const calendar = (from, n, marks) => Array.from({ length: n }, (_, i) => { const k = addDays(from, i); return [k, ...(marks[k] || ['ו׳ בתמוז', ''])]; });
@@ -48,4 +48,22 @@ test('the real calendar gives every occasion of library.json a window, and no da
   for (let i = 1; i < runs.length; i++) assert.ok(runs[i][1] > runs[i - 1][3], 'windows do not overlap');
   const chanukah = runs.find((r) => r[0] === 'chanukah');
   assert.equal(chanukah[2], '2026-12-05'); // 25 Kislev 5787
+});
+
+test('pickShut() needs the occasion as a word of the title or question, with a one-letter prefix allowed', () => {
+  const item = (id, title, q = '', a = 'תשובה '.repeat(80)) => ({ id: String(id), title, q: [q], a: [a] });
+  const items = [item(1, 'איך אפשר לחגוג בפורים?'), item(2, 'ימיו ספורים, מה עושים?'), item(3, 'שאלה אחרת', 'מה עם מגילת אסתר?'), item(4, 'על ״פורים״ ו"מפורים"')];
+  assert.deepEqual(pickShut(items, ['פורים', 'מגילה']).map((x) => x.id), ['1', '4']); // "ספורים" is not a prefix + פורים; "מגילת" is not "מגילה"
+  assert.deepEqual(pickShut(items, ['מגילת אסתר']).map((x) => x.id), ['3']);
+  assert.deepEqual(pickShut(items, ['פורים'], 1).map((x) => x.id), ['1']); // ties go to the lower id
+  assert.deepEqual(pickShut(items, ['ל״ג בעומר']), []);
+});
+
+test('the questions chosen for each occasion exist, and Pesach and Purim cover the days kept anywhere in the world', () => {
+  const ids = new Set(shut.map((x) => String(x.id)));
+  for (const o of lib.occasions) for (const id of o.shut || []) assert.ok(ids.has(id), `${o.id}: question ${id} exists`);
+  const days = zmanimDays();
+  const pesach = instances(lib.occasions.filter((o) => o.id === 'pesach'), days)[0], purim = instances(lib.occasions.filter((o) => o.id === 'purim'), days)[0];
+  assert.equal(addDays(pesach.start, 7), pesach.to); // 15 to 22 of Nisan
+  assert.equal(addDays(purim.start, 1), purim.to); // Purim and Shushan Purim
 });

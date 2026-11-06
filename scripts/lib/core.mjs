@@ -240,6 +240,8 @@ const validateLibrary = (l) => {
     if (!Array.isArray(o.books) || !o.books.length || !o.books.every((x) => slugs.has(x))) bad(`occasion "${o.id}": books must be a list of known books`);
     const dated = Number.isInteger(o.day) && o.day >= 1 && o.day <= 30 && (typeof o.month === 'string' || (Array.isArray(o.month) && o.month.length)) && Number.isInteger(o.length) && o.length >= 1;
     const byParasha = Array.isArray(o.parasha) && o.parasha.length === 2 && o.parasha.every((x) => typeof x === 'string' && x);
+    if (o.terms !== undefined && !(Array.isArray(o.terms) && o.terms.length && o.terms.every((t) => typeof t === 'string' && t.trim()))) bad(`occasion "${o.id}": terms must be a list of words`);
+    if (o.shut !== undefined && !(Array.isArray(o.shut) && o.shut.every((x) => typeof x === 'string' && x))) bad(`occasion "${o.id}": shut must be a list of question numbers`);
     if (dated === byParasha) bad(`occasion "${o.id}" needs either day, month and length, or two parashot`);
   }
   for (const s of l.series || []) {

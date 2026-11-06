@@ -3,7 +3,7 @@
 // calendar), so a holiday's day is found by its Hebrew date ("כ״ה בכסלו"). The build writes the windows into the page, and
 // site/app.js shows the one that holds today's date (a static page cannot know the day). Past the last day of site/zmanim/ nothing is shown.
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
-import { esc, lib } from './core.mjs';
+import { esc, lib, shut, gist } from './core.mjs';
 import { bookCard } from './parts.mjs';
 
 const ZDIR = new URL('../../site/zmanim/', import.meta.url);
@@ -61,12 +61,40 @@ const seasonWindows = (occasions, days, lead = LEAD) => {
   return runs;
 };
 
+
+// Questions and answers of the Q&A (data/shut.json) that are about an occasion: it needs one of the occasion's `terms` (library.json) as a
+// word of the title or the question, with a one-letter prefix allowed ("בפורים" but not "ספורים"). Title and question count most; an
+// answer long enough to be worth reading comes first. Deterministic: ties go to the lower id.
+const plain = (t) => String(t).replace(/[\u0591-\u05C7]/g, '').replace(/["'`׳״]/g, '');
+const termRe = (t) => new RegExp(`(?<![\\p{L}])[והבכלמש]?${plain(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'u');
+const pickShut = (items, terms, n = 3) => {
+  const res = terms.map(termRe);
+  return items.map((x) => {
+    const title = plain(x.title), q = plain((x.q || []).join(' ')), a = plain((x.a || []).join(' '));
+    const t = res.some((r) => r.test(title)), qh = res.some((r) => r.test(q));
+    if (!t && !qh) return null;
+    const len = (x.a || []).join(' ').length;
+    return { x, score: (t ? 3 : 0) + (qh ? 2 : 0) + (res.some((r) => r.test(a)) ? 1 : 0) + (len >= 300 && len <= 3500 ? 2 : 0) };
+  }).filter(Boolean).sort((a, b) => b.score - a.score || Number(a.x.id) - Number(b.x.id)).slice(0, n).map((r) => r.x);
+};
+// A reading card: the question, the opening of the answer, and about how long it takes to read.
+const readCard = (x) => {
+  const text = gist(x.a), cut = text.length > 190 ? text.slice(0, 190).replace(/\s+\S*$/, '') : text, mins = Math.max(1, Math.round(x.a.join(' ').split(/\s+/).length / 180));
+  return `<a class="card qread" href="/shut/${x.id}/"><h3>${esc(x.title)}</h3><p>${esc(cut)}${cut.length < text.length ? '…' : ''}</p><span class="qmeta"><span>קריאה של ${mins === 1 ? 'דקה' : `${mins} דקות`}</span><span class="go">לקריאת התשובה ←</span></span></a>`;
+};
+
 // The hidden block of the page: the books of every occasion that has a window, and the windows. site/app.js unhides the right one.
+const qa = (o) => {
+  // the questions named in the occasion's `shut` come first (a person chose them); the rest, if any, is found by the terms
+  const byId = new Map(shut.map((x) => [String(x.id), x])), pinned = (o.shut || []).map((id) => byId.get(String(id))).filter(Boolean);
+  const xs = [...pinned, ...(o.terms ? pickShut(shut, o.terms, 3 + pinned.length).filter((x) => !pinned.includes(x)) : [])].slice(0, Math.max(3, pinned.length));
+  return xs.length ? `<h3 class="subh qh">שאלות ותשובות לקריאה</h3><div class="grid qreads">${xs.map(readCard).join('')}</div><p class="ctarow"><a class="btn ghost" href="/search/?q=${encodeURIComponent(o.terms[0])}">עוד שאלות ותשובות על ${esc(o.title)} ←</a></p>` : '';
+};
 const seasonHtml = () => {
   const runs = seasonWindows(lib.occasions || [], zmanimDays());
   if (!runs.length) return '';
-  const items = lib.occasions.filter((o) => runs.some((r) => r[0] === o.id)).map((o) => `<div data-oc="${o.id}" hidden><h2 class="sh"><span data-b>לקראת ${esc(o.title)}</span><span data-d hidden>${esc(o.title)}</span></h2><p class="shsub"><b data-when></b> · ספרים לקריאה ולהורדה</p><div class="grid featured">${o.books.map((slug) => bookCard(lib.books.find((b) => b.slug === slug), ' feat')).join('')}</div></div>`);
+  const items = lib.occasions.filter((o) => runs.some((r) => r[0] === o.id)).map((o) => `<div data-oc="${o.id}" hidden><h2 class="sh"><span data-b>לקראת ${esc(o.title)}</span><span data-d hidden>${esc(o.title)}</span></h2><p class="shsub"><b data-when></b> · ספרים לקריאה ולהורדה</p><div class="grid featured">${o.books.map((slug) => bookCard(lib.books.find((b) => b.slug === slug), ' feat')).join('')}</div>${qa(o)}</div>`);
   return `<section class="band season" data-season="${esc(JSON.stringify(runs))}" data-unfiltered hidden><div class="wrap">${items.join('')}</div></section>`;
 };
 
-export { zmanimDays, instances, seasonWindows, seasonHtml, addDays, LEAD };
+export { pickShut, zmanimDays, instances, seasonWindows, seasonHtml, addDays, LEAD };
