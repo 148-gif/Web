@@ -23,7 +23,7 @@ const featured = (lib.featured || []).map((f) => lib.books.find((b) => b.slug ==
 // "By holiday": a chip per occasion of library.json, each to its hub page (/moadim/<id>/), or to its main book when it has none (in the order of the year)
 const occasionNav = (lib.occasions || []).length ? `<nav class="chips lchips moadim" aria-label="לפי מועדי השנה"><span class="chiplabel">לפי חג:</span>${lib.occasions.filter((o) => o.hub || o.books.length).map((o) => `<a href="${o.hub ? `/moadim/${o.hub}/` : `/library/${o.books[0]}/`}">${esc(o.title)}</a>`).join('')}</nav>` : '';
 const kfilter = `<div class="kfilter" role="group" aria-label="סוג" hidden><button type="button" data-kf="" aria-pressed="true">הכול</button><button type="button" data-kf="web" aria-pressed="false">לקריאה באתר</button><button type="button" data-kf="pdf" aria-pressed="false">PDF להורדה</button></div>`;
-const cfilter = (label, withKinds) => `<div class="cfilter"><label class="slabel" for="cf">${label}</label><input id="cf" type="search" data-cfilter placeholder="שם הספר או נושא…" autocomplete="off">${withKinds ? kfilter : ''}</div>`;
+const cfilter = (label, withKinds, hint = 'שם הספר או נושא…') => `<div class="cfilter"><label class="slabel" for="cf">${label}</label><input id="cf" type="search" data-cfilter placeholder="${hint}" autocomplete="off">${withKinds ? kfilter : ''}</div>`;
 for (const [id, rows] of Object.entries(seasonPools())) write(`season/${id}.json`, JSON.stringify(rows));
 write('library/index.html', layout('ספרייה', `${seasonHtml()}${featured.length ? `<section class="band" id="start" data-unfiltered><div class="wrap"><h2 class="sh">להתחיל כאן</h2><p class="shsub">ספרים מרכזיים, לקריאה מלאה באתר</p><div class="grid featured">${featured.map((b) => bookCard(b, ' feat')).join('')}</div></div></section>` : ''}
 <section class="band${featured.length ? ' soft' : ''}" id="all"><div class="wrap"><h2 class="sh">כל הספרים</h2>${cfilter('חיפוש בספרייה', true)}${occasionNav}${libCats.length > 1 ? `<nav class="chips lchips anchors" aria-label="קטגוריות">${libCats.map(([c, n]) => `<a href="#${c}">${esc(n)}</a>`).join('')}</nav>` : ''}
@@ -104,7 +104,7 @@ const readerPages = (bk, tx) => {
   tx.sections.forEach((x) => { if (x.ref && !refs.has(x.ref)) refs.set(x.ref, x.n); });
   const chapters = [
     { id: 'hakdama', label: tx.intro.label || 'הקדמה', title: tx.intro.title, paras: tx.intro.paras, notes: tx.intro.notes, heading2: tx.intro.heading2 },
-    ...tx.sections.map((x) => ({ id: String(x.n), label: x.unit === '' ? x.label : `${x.unit ?? tx.unit ?? 'סעיף'} ${x.label}`, title: x.title.replace(/[.\s]+$/, ''), paras: x.paras, notes: x.notes, index: x.index, subs: new Set(x.subs || []) })),
+    ...tx.sections.map((x) => ({ id: String(x.id ?? x.n), label: x.unit === '' ? x.label : `${x.unit ?? tx.unit ?? 'סעיף'} ${x.label}`, title: x.title.replace(/[.\s]+$/, ''), paras: x.paras, notes: x.notes, index: x.index, subs: new Set(x.subs || []) })),
     ...(tx.tikkun ? [{ id: 'tikkun-haklali', label: 'נספח', title: tx.tikkun.title, paras: tx.tikkun.paras, notes: [], tikkun: true }] : []),
   ];
   chapters.forEach((c, k) => {
@@ -144,15 +144,21 @@ const tocHtml = (bk, chs, tx) => {
   const base = `/library/${bk.slug}/`, parts = bookParts(bk, tx), unitPl = tx.unitPlural || 'סעיפים', big = tx.sections.length > TOC_OPEN;
   const li = (c) => `<li data-t="${esc(`${c.label} ${nik(c.title)}`)}"><a href="${base}${c.id}/"><b>${esc(c.label)}</b><span>${esc(c.title)}</span></a></li>`;
   const count = (from, to, cnt) => `${to - from + 1} ${esc(cnt || unitPl)}`;
-  const partHtml = ([t, d, [from, to], cnt], i) => (big
-    ? `<details class="tocpart libcat" id="p${i + 1}"><summary><span class="tn">${i + 1}</span><b>${esc(t)}</b><small>${count(from, to, cnt)}</small><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><ol class="toc">${chs.slice(from, to + 1).map(li).join('')}</ol></details>`
+  // a book with groups of parts (data/library.json "groups": [title, description, [first part, last part]]) shows each group
+  // with its parts folded, so a long book reads as a short list of topics; a part opens to its sections
+  const groups = parts.length ? bk.groups || [] : [], fold = big || groups.length > 0;
+  const partHtml = ([t, d, [from, to], cnt], i) => (fold
+    ? `<details class="tocpart libcat" id="p${i + 1}"><summary><span class="tn">${i + 1}</span><b>${esc(t)}</b><small>${count(from, to, cnt)}</small><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>${d && groups.length ? `<p class="tocdesc">${esc(d)}</p>` : ''}<ol class="toc">${chs.slice(from, to + 1).map(li).join('')}</ol></details>`
     : `<section class="tocsec libcat" id="p${i + 1}"><h3 class="tocpart"><span>${i + 1}</span>${esc(t)}<small>${count(from, to, cnt)}</small></h3>${d ? `<p class="tocdesc">${esc(d)}</p>` : ''}<ol class="toc">${chs.slice(from, to + 1).map(li).join('')}</ol></section>`);
   const flat = `<section class="libcat"><ol class="toc">${chs.slice(1, tx.sections.length + 1).map(li).join('')}</ol></section>`;
-  const sub = parts.length > 1 ? `${tx.sections.length} ${esc(unitPl)} ב־${parts.length} חלקים${big ? '. לחצו על חלק כדי לפתוח אותו' : ''}` : `${tx.sections.length} ${esc(unitPl)}`;
+  const sub = groups.length ? `${tx.sections.length} ${esc(unitPl)} ב־${groups.length} חלקים ו־${parts.length} נושאים. לחצו על נושא כדי לפתוח אותו` : parts.length > 1 ? `${tx.sections.length} ${esc(unitPl)} ב־${parts.length} חלקים${big ? '. לחצו על חלק כדי לפתוח אותו' : ''}` : `${tx.sections.length} ${esc(unitPl)}`;
+  const groupHtml = ([t, d, [a, z]], gi) => `<section class="tocgroup" id="g${gi + 1}"><h3 class="tocgh">${esc(t)}<small>${parts.slice(a, z + 1).reduce((n, [, , [f, l]]) => n + l - f + 1, 0)} ${esc(unitPl)}</small></h3>${d ? `<p class="tocdesc">${esc(d)}</p>` : ''}${parts.slice(a, z + 1).map((pt, k) => partHtml(pt, a + k)).join('')}</section>`;
+  const nav = groups.length > 1 ? `<nav class="chips lchips anchors tocnav" aria-label="חלקי הספר">${groups.map(([t], i) => `<a href="#g${i + 1}">${esc(t)}</a>`).join('')}</nav>`
+    : parts.length > 1 && parts.length <= 14 ? `<nav class="chips lchips anchors" aria-label="חלקי הספר">${parts.map(([t], i) => `<a href="#p${i + 1}">${esc(t)}</a>`).join('')}</nav>` : '';
   return `<section class="band" id="toc"><div class="wrap narrow"><h2 class="sh">תוכן העניינים</h2><p class="shsub">${sub}</p><p class="continue" data-continue="${bk.slug}" hidden></p>
-${parts.length > 1 && parts.length <= 14 ? `<nav class="chips lchips anchors" aria-label="חלקי הספר">${parts.map(([t], i) => `<a href="#p${i + 1}">${esc(t)}</a>`).join('')}</nav>` : ''}${big ? cfilter(`חיפוש ב${esc(unitPl)}`, false) : ''}
+${nav}${fold ? cfilter(`חיפוש ב${esc(unitPl)}`, false, 'מילה מהכותרת…') : ''}
 <ol class="toc"><li><a href="${base}hakdama/"><b>${esc(chs[0].label)}</b><span>${esc(bk.introDesc || chs[0].title)}</span></a></li></ol>
-${parts.length ? parts.map(partHtml).join('') : flat}${big ? '<p class="cnone" hidden>לא נמצא. נסו מילה אחרת.</p>' : ''}
+${groups.length ? groups.map(groupHtml).join('') : parts.length ? parts.map(partHtml).join('') : flat}${fold ? '<p class="cnone" hidden>לא נמצא. נסו מילה אחרת.</p>' : ''}
 ${tx.tikkun ? `<h3 class="tocpart"><span>${icon('sparkle', 'ico sm')}</span>נספח</h3><ol class="toc"><li><a href="${base}tikkun-haklali/"><b>תיקון הכללי</b><span>עשרת המזמורים של רבי נחמן מברסלב</span></a></li></ol>` : ''}${moedLinks(bk.slug)}</div></section>`;
 };
 for (const bk of lib.books) {
