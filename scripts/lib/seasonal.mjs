@@ -3,6 +3,7 @@
 // calendar), so a holiday's day is found by its Hebrew date ("כ״ה בכסלו"). The build writes the windows into the page, and
 // site/app.js shows the one that holds today's date (a static page cannot know the day). Past the last day of site/zmanim/ nothing is shown.
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { esc, lib, shut, gist } from './core.mjs';
 import { ICON, icon } from './layout.mjs';
 import { bookCard } from './parts.mjs';
@@ -64,34 +65,29 @@ const seasonWindows = (occasions, days, lead = LEAD) => {
 };
 
 
-// Questions and answers of the Q&A (data/shut.json) that are about an occasion: it needs one of the occasion's `terms` (library.json) as a
-// word of the title or the question, with a one-letter prefix allowed ("בפורים" but not "ספורים"). Title and question count most; an
-// answer long enough to be worth reading comes first. Deterministic: ties go to the lower id.
+// Questions and answers of the Q&A (data/shut.json) that are about an occasion: the occasion's name (one of its `terms` in library.json) must be
+// a word of the question itself, its title, with up to two prefix letters allowed ("בפורים", "שבט״ו" but not "ספורים"); a letter that only mentions the holiday
+// does not count. Answers long enough to be worth reading score higher, so the best come first. Deterministic: ties go to the lower id.
 const plain = (t) => String(t).replace(/[\u0591-\u05C7]/g, '').replace(/["'`׳״]/g, '');
-const termRe = (t) => new RegExp(`(?<![\\p{L}])[והבכלמש]?${plain(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'u');
-const pickShut = (items, terms, n = 3) => {
+const termRe = (t) => new RegExp(`(?<![\\p{L}])[והבכלמש]{0,2}${plain(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'u');
+const pickShut = (items, terms, n = 60) => {
   const res = terms.map(termRe);
   return items.map((x) => {
-    const title = plain(x.title), q = plain((x.q || []).join(' ')), a = plain((x.a || []).join(' '));
-    const t = res.some((r) => r.test(title)), qh = res.some((r) => r.test(q));
-    if (!t && !qh) return null;
-    const len = (x.a || []).join(' ').length;
-    return { x, score: (t ? 3 : 0) + (qh ? 2 : 0) + (res.some((r) => r.test(a)) ? 1 : 0) + (len >= 300 && len <= 3500 ? 2 : 0) };
+    if (!res.some((r) => r.test(plain(x.title)))) return null;
+    const len = (x.a || []).join(' ').length, a = plain((x.a || []).join(' '));
+    return { x, score: 3 + (res.some((r) => r.test(a)) ? 1 : 0) + (len >= 300 && len <= 3500 ? 2 : 0) };
   }).filter(Boolean).sort((a, b) => b.score - a.score || Number(a.x.id) - Number(b.x.id)).slice(0, n).map((r) => r.x);
 };
-// A reading card: the question, the opening of the answer, and about how long it takes to read. `i` is its place in the occasion's pool (see below).
-const readCard = (x, i) => {
-  const text = gist(x.a), cut = text.length > 190 ? text.slice(0, 190).replace(/\s+\S*$/, '') : text, mins = Math.max(1, Math.round(x.a.join(' ').split(/\s+/).length / 180));
-  return `<a class="card qread" data-i="${i}" href="/shut/${x.id}/"><h3>${esc(x.title)}</h3><p>${esc(cut)}${cut.length < text.length ? '…' : ''}</p><span class="qmeta"><span>קריאה של ${mins === 1 ? 'דקה' : `${mins} דקות`}</span><span class="go">לקריאת התשובה ←</span></span></a>`;
-};
 
-// The occasion's pool of questions: the ones named in its `shut` (a person chose them, in that order), then, only if fewer than three, others found by its terms.
-// The page shows three at a time and site/app.js turns the pool: a different three each week of the window and each year (data-rot).
-const qa = (o) => {
-  const byId = new Map(shut.map((x) => [String(x.id), x])), pinned = (o.shut || []).map((id) => byId.get(String(id))).filter(Boolean);
-  const pool = pinned.length >= 3 ? pinned : [...pinned, ...(o.terms ? pickShut(shut, o.terms, 3).filter((x) => !pinned.includes(x)) : [])].slice(0, 3);
-  return pool.length ? `<h3 class="subh qh">שאלות ותשובות לקריאה</h3><div class="grid qreads"${pool.length > 3 ? ' data-rot' : ''}>${pool.map(readCard).join('')}</div><p class="ctarow"><a class="btn ghost" href="/search/?q=${encodeURIComponent(o.terms?.[0] || o.title)}">עוד שאלות ותשובות על ${esc(o.title)} ←</a></p>` : '';
-};
+// The pool of an occasion, as rows [id, question, the opening of the answer, minutes to read]: written to season/<id>.json, and the page
+// fetches only the pool of the occasion it shows. site/app.js picks three at random, unread ones first (it remembers which were read).
+const POOL = 60;
+const seasonPools = () => Object.fromEntries((lib.occasions || []).map((o) => [o.id, pickShut(shut, o.terms || [], POOL).map((x) => {
+  const text = gist(x.a), cut = text.length > 190 ? `${text.slice(0, 190).replace(/\s+\S*$/, '')}…` : text;
+  return [String(x.id), x.title, cut, Math.max(1, Math.round(x.a.join(' ').split(/\s+/).length / 180))];
+})]).filter(([, rows]) => rows.length >= 3));
+const pools = new Map(Object.entries(seasonPools()));
+const qa = (o) => (pools.has(o.id) ? `<div data-qa hidden><h3 class="subh qh">שאלות ותשובות לקריאה</h3><div class="grid qreads" data-pool="/season/${o.id}.json?v=${createHash('sha256').update(JSON.stringify(pools.get(o.id))).digest('hex').slice(0, 10)}"></div><p class="ctarow"><a class="btn ghost" href="/search/?q=${encodeURIComponent(o.terms[0])}">עוד שאלות ותשובות על ${esc(o.title)} ←</a></p></div>` : '');
 
 // The hidden block of the page: for every occasion that has a window, its colour, picture, books and questions; and the windows.
 // site/app.js unhides the one whose window holds today's date.
@@ -105,4 +101,4 @@ const seasonHtml = () => {
   return `<div data-season="${esc(JSON.stringify(runs))}" data-unfiltered hidden>${items.join('')}</div>`;
 };
 
-export { pickShut, zmanimDays, instances, seasonWindows, seasonHtml, addDays, LEAD };
+export { pickShut, seasonPools, zmanimDays, instances, seasonWindows, seasonHtml, addDays, LEAD };

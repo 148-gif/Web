@@ -1,7 +1,7 @@
 // Library index, kuntresim, book pages and the book reader.
 import { esc, url, nik, read, write, lib, catName } from '../core.mjs';
 import { icon, orn, phead, layout } from '../layout.mjs';
-import { seasonHtml } from '../seasonal.mjs';
+import { seasonHtml, seasonPools } from '../seasonal.mjs';
 import { ps, ld, absu, crumbs, facts, person, pagerHtml, bookText, kinds, btags, bookCard } from '../parts.mjs';
 
 // Library index: books first by "featured", then one section per category; the books of a series are one card there, leading to the
@@ -23,6 +23,7 @@ const featured = (lib.featured || []).map((f) => lib.books.find((b) => b.slug ==
 const occasionNav = (lib.occasions || []).length ? `<nav class="chips lchips moadim" aria-label="לפי מועדי השנה"><span class="chiplabel">לפי חג:</span>${lib.occasions.map((o) => `<a href="/library/${o.books[0]}/">${esc(o.title)}</a>`).join('')}</nav>` : '';
 const kfilter = `<div class="kfilter" role="group" aria-label="סוג" hidden><button type="button" data-kf="" aria-pressed="true">הכול</button><button type="button" data-kf="web" aria-pressed="false">לקריאה באתר</button><button type="button" data-kf="pdf" aria-pressed="false">PDF להורדה</button></div>`;
 const cfilter = (label, withKinds) => `<div class="cfilter"><label class="slabel" for="cf">${label}</label><input id="cf" type="search" data-cfilter placeholder="שם הספר או נושא…" autocomplete="off">${withKinds ? kfilter : ''}</div>`;
+for (const [id, rows] of Object.entries(seasonPools())) write(`season/${id}.json`, JSON.stringify(rows));
 write('library/index.html', layout('ספרייה', `${seasonHtml()}${featured.length ? `<section class="band" id="start" data-unfiltered><div class="wrap"><h2 class="sh">להתחיל כאן</h2><p class="shsub">ספרים מרכזיים, לקריאה מלאה באתר</p><div class="grid featured">${featured.map((b) => bookCard(b, ' feat')).join('')}</div></div></section>` : ''}
 <section class="band${featured.length ? ' soft' : ''}" id="all"><div class="wrap"><h2 class="sh">כל הספרים</h2>${cfilter('חיפוש בספרייה', true)}${occasionNav}${libCats.length > 1 ? `<nav class="chips lchips anchors" aria-label="קטגוריות">${libCats.map(([c, n]) => `<a href="#${c}">${esc(n)}</a>`).join('')}</nav>` : ''}
 ${libCats.map(([c, n]) => `<section class="libcat" id="${c}"><h2 class="subh">${icon('book', 'ico')}${esc(n)}</h2><div class="grid">${catItems(c).join('')}${lib.online.filter(([oc]) => oc === c).map(onlineCard).join('')}</div></section>`).join('')}<p class="cnone" hidden>לא נמצא ספר שמתאים. נסו מילה אחרת.</p></div></section>

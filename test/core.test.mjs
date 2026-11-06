@@ -103,7 +103,7 @@ test('validateLibrary() checks series, categories and featured books', () => {
   assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 25, month: 'כסלו', length: 8, books: ['zz'] }]; }), /known books/);
   assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', books: ['a'] }]; }), /either day/);
   assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 1, month: 'ניסן', length: 1, accent: 'pink', books: ['a'] }]; }), /accent/);
-  assert.doesNotThrow(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 1, month: 'ניסן', length: 1, accent: 'teal', icon: 'cup', terms: ['פסח'], shut: ['1'], books: ['a'] }]; }));
+  assert.doesNotThrow(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 1, month: 'ניסן', length: 1, accent: 'teal', icon: 'cup', terms: ['פסח'], books: ['a'] }]; }));
   assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 1, month: 'ניסן', length: 1, image: 'no-such-photo', books: ['a'] }]; }), /unknown photo/);
   assert.throws(w((c) => { c.occasions = [{ id: 'h', title: 'ח', day: 1, month: 'ניסן', length: 1, parasha: ['א', 'ב'], books: ['a'] }]; }), /either day/);
   assert.throws(w((c) => { c.series[0].groups = [{ id: 'g1', title: 'א', books: ['b1'] }]; }), /in no group/);

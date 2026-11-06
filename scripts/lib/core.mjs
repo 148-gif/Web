@@ -245,7 +245,6 @@ const validateLibrary = (l) => {
     if (o.terms !== undefined && !(Array.isArray(o.terms) && o.terms.length && o.terms.every((t) => typeof t === 'string' && t.trim()))) bad(`occasion "${o.id}": terms must be a list of words`);
     if (o.accent !== undefined && !ACCENTS.includes(o.accent)) bad(`occasion "${o.id}": accent must be one of ${ACCENTS.join(', ')}`);
     if (o.image !== undefined && !images.some((im) => im.id === o.image)) bad(`occasion "${o.id}": unknown photo "${o.image}"`);
-    if (o.shut !== undefined && !(Array.isArray(o.shut) && o.shut.every((x) => typeof x === 'string' && x))) bad(`occasion "${o.id}": shut must be a list of question numbers`);
     if (dated === byParasha) bad(`occasion "${o.id}" needs either day, month and length, or two parashot`);
   }
   for (const s of l.series || []) {

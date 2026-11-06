@@ -1,7 +1,7 @@
 // The seasonal reading suggestion: windows are found from Hebrew dates, a holiday in progress wins, then the nearest one coming.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { instances, seasonWindows, pickShut, addDays, zmanimDays } from '../scripts/lib/seasonal.mjs';
+import { instances, seasonWindows, pickShut, seasonPools, addDays, zmanimDays } from '../scripts/lib/seasonal.mjs';
 import { lib, shut } from '../scripts/lib/core.mjs';
 
 // A fake calendar: `marks` maps an ISO date to [Hebrew date, parasha]; every other day is plain.
@@ -50,18 +50,22 @@ test('the real calendar gives every occasion of library.json a window, and no da
   assert.equal(chanukah[2], '2026-12-05'); // 25 Kislev 5787
 });
 
-test('pickShut() needs the occasion as a word of the title or question, with a one-letter prefix allowed', () => {
+test('pickShut() needs the occasion as a word of the question itself, with up to two prefix letters allowed', () => {
   const item = (id, title, q = '', a = 'תשובה '.repeat(80)) => ({ id: String(id), title, q: [q], a: [a] });
-  const items = [item(1, 'איך אפשר לחגוג בפורים?'), item(2, 'ימיו ספורים, מה עושים?'), item(3, 'שאלה אחרת', 'מה עם מגילת אסתר?'), item(4, 'על ״פורים״ ו"מפורים"')];
-  assert.deepEqual(pickShut(items, ['פורים', 'מגילה']).map((x) => x.id), ['1', '4']); // "ספורים" is not a prefix + פורים; "מגילת" is not "מגילה"
-  assert.deepEqual(pickShut(items, ['מגילת אסתר']).map((x) => x.id), ['3']);
+  const items = [item(1, 'איך אפשר לחגוג בפורים?'), item(2, 'ימיו ספורים, מה עושים?'), item(3, 'שאלה אחרת', 'מה עם פורים?'), item(4, 'על ״פורים״ ו"מפורים"'), item(5, 'האם זה נכון שבט"ו בשבט אפשר לקבל תיקון?')];
+  assert.deepEqual(pickShut(items, ['פורים']).map((x) => x.id), ['1', '4']); // not "ספורים", and not a letter that only mentions the holiday
+  assert.deepEqual(pickShut(items, ['ט״ו בשבט']).map((x) => x.id), ['5']); // "שבט״ו": two prefix letters
   assert.deepEqual(pickShut(items, ['פורים'], 1).map((x) => x.id), ['1']); // ties go to the lower id
   assert.deepEqual(pickShut(items, ['ל״ג בעומר']), []);
 });
 
-test('the questions chosen for each occasion exist, and Pesach and Purim cover the days kept anywhere in the world', () => {
-  const ids = new Set(shut.map((x) => String(x.id)));
-  for (const o of lib.occasions) for (const id of o.shut || []) assert.ok(ids.has(id), `${o.id}: question ${id} exists`);
+test('the pool of each occasion has at least three questions that name the holiday, and Pesach and Purim cover the days kept anywhere in the world', () => {
+  const pools = seasonPools(), byId = new Map(shut.map((x) => [String(x.id), x]));
+  for (const o of lib.occasions) {
+    assert.ok(pools[o.id]?.length >= 3, `${o.id} has a pool of at least three`);
+    for (const [id, title] of pools[o.id]) assert.equal(byId.get(id).title, title);
+    assert.deepEqual(pools[o.id].map((r) => r[0]), pickShut(shut, o.terms, 60).map((x) => String(x.id)).slice(0, pools[o.id].length));
+  }
   const days = zmanimDays();
   const pesach = instances(lib.occasions.filter((o) => o.id === 'pesach'), days)[0], purim = instances(lib.occasions.filter((o) => o.id === 'purim'), days)[0];
   assert.equal(addDays(pesach.start, 7), pesach.to); // 15 to 22 of Nisan

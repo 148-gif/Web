@@ -273,27 +273,47 @@ document.querySelectorAll('sup.fn a').forEach((a) => {
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFn(true); });
 document.addEventListener('click', (e) => { if (fnOpen && !e.target.closest('.fnpop, sup.fn')) closeFn(false); });
-}
 
 // Seasonal suggestion (scripts/lib/seasonal.mjs): the page holds the windows [id, from, start, to] and, for every occasion, a hidden band with its
-// books and questions; here the band whose window holds today's date is shown, with the days left to the holiday. A pool of more than three
-// questions (data-rot) is turned: a different three each week of the window and each year.
+// books; here the band whose window holds today's date is shown, with the days left to the holiday. Its questions are fetched (the pool of that
+// occasion only) and three are picked at random, the ones not yet read first.
+// "Read" is remembered in this browser only (localStorage, key read:shut: the ids, oldest first), not in a cookie and not on the server: a question
+// counts as read after a few seconds on its page. When fewer than three unread are left, the ones read longest ago fill the place.
+const READ = 'read:shut';
+const readList = () => { try { const v = JSON.parse(store.get(READ)); return Array.isArray(v) ? v.map(String) : []; } catch { return []; } };
+const qid = /\/shut\/(\d+)\/?$/.exec(location.pathname);
+if (qid) setTimeout(() => { const list = readList().filter((x) => x !== qid[1]); list.push(qid[1]); store.set(READ, JSON.stringify(list.slice(-300))); }, 6000);
+const pickUnread = (rows, n) => {
+  const seen = readList(), fresh = rows.filter((r) => !seen.includes(r[0]));
+  for (let i = fresh.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [fresh[i], fresh[j]] = [fresh[j], fresh[i]]; }
+  const old = rows.filter((r) => seen.includes(r[0])).sort((a, b) => seen.indexOf(a[0]) - seen.indexOf(b[0]));
+  return [...fresh, ...old].slice(0, n);
+};
+const qCard = ([id, title, text, mins]) => {
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
+  const a = el('a', 'card qread'), meta = el('span', 'qmeta');
+  a.href = `/shut/${id}/`;
+  meta.append(el('span', '', `קריאה של ${mins === 1 ? 'דקה' : `${mins} דקות`}`), el('span', 'go', 'לקריאת התשובה ←'));
+  a.append(el('h3', '', title), el('p', '', text), meta);
+  return a;
+};
 document.querySelectorAll('[data-season]').forEach((box) => {
   let runs;
   try { runs = JSON.parse(box.dataset.season); } catch { return; }
-  const now = new Date(), today = new Date(now.getTime() - now.getTimezoneOffset() * 6e4).toISOString().slice(0, 10), day = 864e5;
+  const now = new Date(), today = new Date(now.getTime() - now.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   const run = runs.find(([, from, , to]) => from <= today && today <= to), item = run && box.querySelector(`[data-oc="${run[0]}"]`);
   if (!item) return;
-  const left = Math.round((Date.parse(run[2]) - Date.parse(today)) / day);
+  const left = Math.round((Date.parse(run[2]) - Date.parse(today)) / 864e5);
   item.querySelector('[data-b]').hidden = left < 0; item.querySelector('[data-d]').hidden = left >= 0;
   item.querySelector('[data-when]').textContent = left > 1 ? `בעוד ${left} ימים` : left === 1 ? 'מחר' : left === 0 ? 'היום' : 'בימים אלה';
-  const rot = item.querySelector('[data-rot]');
-  if (rot) {
-    const cards = [...rot.children], week = Math.floor((Date.parse(today) - Date.parse(run[1])) / (7 * day)), from = (Number(run[2].slice(0, 4)) * 3 + week * 3) % cards.length;
-    cards.forEach((c, i) => { c.hidden = (i - from + cards.length) % cards.length >= 3; });
-  }
   item.hidden = false; box.hidden = false;
+  const qa = item.querySelector('[data-qa]'), grid = qa && qa.querySelector('[data-pool]');
+  if (grid) fetch(grid.dataset.pool).then((r) => (r.ok ? r.json() : [])).then((rows) => {
+    if (rows.length < 3) return;
+    grid.replaceChildren(...pickUnread(rows, 3).map(qCard)); qa.hidden = false;
+  }).catch(() => {});
 });
+}
 
 // Filter on a listing page (a collection made in the editor, the library and its series): hides the cards (or list rows) that do not
 // match the words, or the chosen kind (data-k: "web" read on the site, "pdf"), and any section left empty. While a filter is on,
