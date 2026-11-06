@@ -1,0 +1,17 @@
+/* Seasonal suggestion (scripts/lib/seasonal.mjs): a band a month before a holiday, in the holiday's colour.
+   --acc is one of a fixed set tuned to the site's navy and gold (ACCENTS in core.mjs), a lighter one in dark mode; the band, its top line,
+   the featured cards and the reading cards take it. No style attribute: the colour is a class, ac-<name>. */
+.season{--acc:#a67a1f;background:var(--sunk);background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 12%,var(--bg)),var(--bg) 85%);border-top:3px solid var(--acc);border-bottom:1px solid var(--line)}
+.season.ac-gold{--acc:#a67a1f}.season.ac-blue{--acc:#2f5fb3}.season.ac-indigo{--acc:#5a52a8}.season.ac-green{--acc:#4f7f3a}.season.ac-plum{--acc:#8a3f86}.season.ac-teal{--acc:#2c7f7a}.season.ac-ember{--acc:#bf5619}
+@media (prefers-color-scheme:dark){.season.ac-gold{--acc:#e0b552}.season.ac-blue{--acc:#7fa3ea}.season.ac-indigo{--acc:#a49df0}.season.ac-green{--acc:#8fc27a}.season.ac-plum{--acc:#d093cc}.season.ac-teal{--acc:#6fc7c0}.season.ac-ember{--acc:#f0925a}}
+.season[hidden],.season [hidden]{display:none}
+.season .wrap{text-align:center}.season .sh{font-size:1.75rem}.season .shsub{margin-bottom:20px}
+.season-ico{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;margin-bottom:10px;border-radius:50%;color:var(--acc);background:var(--surface);border:1.5px solid color-mix(in srgb,var(--acc) 55%,transparent);box-shadow:var(--shadow)}.season-ico .ico{width:34px;height:34px}
+.season .grid.featured{max-width:620px;margin-inline:auto;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));text-align:start}.season .grid.featured .card.feat{border-top-color:var(--acc)}
+.season .subh.qh{justify-content:center;margin:36px 0 16px;color:var(--brand)}
+.season .grid.qreads{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));max-width:920px;margin-inline:auto;text-align:start}
+.card.qread{border-inline-start:4px solid var(--acc);gap:8px;padding:20px 22px}.card.qread h3{font:700 1.1875rem/1.5 var(--serif);color:var(--brand);margin:0}.card.qread p{margin:0;color:var(--ink);font-size:1rem;line-height:1.75;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.card.qread .qmeta{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font:600 .875rem var(--sans);color:var(--mute)}.card.qread .qmeta .go{margin:0;padding:0}
+.season .ctarow{text-align:center;margin:20px 0 0}
+/* a photo of the holiday at the top, as made (16:9 or 16:10), with its credit */
+.season-fig{margin:0 auto 24px;max-width:640px}.season-fig img{display:block;width:100%;height:auto;border-radius:var(--r-lg);box-shadow:var(--shadow)}.season-fig figcaption{margin-top:8px;font:.875rem var(--sans);color:var(--mute);text-align:center}

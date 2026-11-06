@@ -4,7 +4,9 @@
 // site/app.js shows the one that holds today's date (a static page cannot know the day). Past the last day of site/zmanim/ nothing is shown.
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { esc, lib, shut, gist } from './core.mjs';
+import { ICON, icon } from './layout.mjs';
 import { bookCard } from './parts.mjs';
+import { figure } from './images.mjs';
 
 const ZDIR = new URL('../../site/zmanim/', import.meta.url);
 const LEAD = 30; // days before the holiday that its books are offered
@@ -77,24 +79,30 @@ const pickShut = (items, terms, n = 3) => {
     return { x, score: (t ? 3 : 0) + (qh ? 2 : 0) + (res.some((r) => r.test(a)) ? 1 : 0) + (len >= 300 && len <= 3500 ? 2 : 0) };
   }).filter(Boolean).sort((a, b) => b.score - a.score || Number(a.x.id) - Number(b.x.id)).slice(0, n).map((r) => r.x);
 };
-// A reading card: the question, the opening of the answer, and about how long it takes to read.
-const readCard = (x) => {
+// A reading card: the question, the opening of the answer, and about how long it takes to read. `i` is its place in the occasion's pool (see below).
+const readCard = (x, i) => {
   const text = gist(x.a), cut = text.length > 190 ? text.slice(0, 190).replace(/\s+\S*$/, '') : text, mins = Math.max(1, Math.round(x.a.join(' ').split(/\s+/).length / 180));
-  return `<a class="card qread" href="/shut/${x.id}/"><h3>${esc(x.title)}</h3><p>${esc(cut)}${cut.length < text.length ? '…' : ''}</p><span class="qmeta"><span>קריאה של ${mins === 1 ? 'דקה' : `${mins} דקות`}</span><span class="go">לקריאת התשובה ←</span></span></a>`;
+  return `<a class="card qread" data-i="${i}" href="/shut/${x.id}/"><h3>${esc(x.title)}</h3><p>${esc(cut)}${cut.length < text.length ? '…' : ''}</p><span class="qmeta"><span>קריאה של ${mins === 1 ? 'דקה' : `${mins} דקות`}</span><span class="go">לקריאת התשובה ←</span></span></a>`;
 };
 
-// The hidden block of the page: the books of every occasion that has a window, and the windows. site/app.js unhides the right one.
+// The occasion's pool of questions: the ones named in its `shut` (a person chose them, in that order), then, only if fewer than three, others found by its terms.
+// The page shows three at a time and site/app.js turns the pool: a different three each week of the window and each year (data-rot).
 const qa = (o) => {
-  // the questions named in the occasion's `shut` come first (a person chose them); the rest, if any, is found by the terms
   const byId = new Map(shut.map((x) => [String(x.id), x])), pinned = (o.shut || []).map((id) => byId.get(String(id))).filter(Boolean);
-  const xs = [...pinned, ...(o.terms ? pickShut(shut, o.terms, 3 + pinned.length).filter((x) => !pinned.includes(x)) : [])].slice(0, Math.max(3, pinned.length));
-  return xs.length ? `<h3 class="subh qh">שאלות ותשובות לקריאה</h3><div class="grid qreads">${xs.map(readCard).join('')}</div><p class="ctarow"><a class="btn ghost" href="/search/?q=${encodeURIComponent(o.terms[0])}">עוד שאלות ותשובות על ${esc(o.title)} ←</a></p>` : '';
+  const pool = pinned.length >= 3 ? pinned : [...pinned, ...(o.terms ? pickShut(shut, o.terms, 3).filter((x) => !pinned.includes(x)) : [])].slice(0, 3);
+  return pool.length ? `<h3 class="subh qh">שאלות ותשובות לקריאה</h3><div class="grid qreads"${pool.length > 3 ? ' data-rot' : ''}>${pool.map(readCard).join('')}</div><p class="ctarow"><a class="btn ghost" href="/search/?q=${encodeURIComponent(o.terms?.[0] || o.title)}">עוד שאלות ותשובות על ${esc(o.title)} ←</a></p>` : '';
 };
+
+// The hidden block of the page: for every occasion that has a window, its colour, picture, books and questions; and the windows.
+// site/app.js unhides the one whose window holds today's date.
 const seasonHtml = () => {
   const runs = seasonWindows(lib.occasions || [], zmanimDays());
   if (!runs.length) return '';
-  const items = lib.occasions.filter((o) => runs.some((r) => r[0] === o.id)).map((o) => `<div data-oc="${o.id}" hidden><h2 class="sh"><span data-b>לקראת ${esc(o.title)}</span><span data-d hidden>${esc(o.title)}</span></h2><p class="shsub"><b data-when></b> · ספרים לקריאה ולהורדה</p><div class="grid featured">${o.books.map((slug) => bookCard(lib.books.find((b) => b.slug === slug), ' feat')).join('')}</div>${qa(o)}</div>`);
-  return `<section class="band season" data-season="${esc(JSON.stringify(runs))}" data-unfiltered hidden><div class="wrap">${items.join('')}</div></section>`;
+  const items = lib.occasions.filter((o) => runs.some((r) => r[0] === o.id)).map((o) => {
+    if (o.icon && !ICON[o.icon]) throw new Error(`library.json: occasion "${o.id}" has an unknown icon "${o.icon}"`);
+    return `<section class="band season ac-${o.accent || 'gold'}" data-oc="${o.id}" hidden><div class="wrap">${o.image ? figure(o.image, { size: 'full' }).replace('class="fig fig-full', 'class="fig season-fig') : ''}${o.icon ? `<span class="season-ico">${icon(o.icon, 'ico lg')}</span>` : ''}<h2 class="sh"><span data-b>לקראת ${esc(o.title)}</span><span data-d hidden>${esc(o.title)}</span></h2><p class="shsub"><b data-when></b> · ספרים לקריאה ולהורדה</p><div class="grid featured">${o.books.map((slug) => bookCard(lib.books.find((b) => b.slug === slug), ' feat')).join('')}</div>${qa(o)}</div></section>`;
+  });
+  return `<div data-season="${esc(JSON.stringify(runs))}" data-unfiltered hidden>${items.join('')}</div>`;
 };
 
 export { pickShut, zmanimDays, instances, seasonWindows, seasonHtml, addDays, LEAD };

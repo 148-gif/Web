@@ -209,6 +209,8 @@ const validateImages = (list, dir = IMG_DIR) => {
 validateImages(images);
 validateCms(topics, cmsPages);
 // data/library.json: a series groups books of one category on its own page (/library/<id>/), and "featured" names the books shown first.
+// The colours an occasion may take (the classes ac-<name> in site/css/13-seasons.css): a fixed set, tuned to the site's navy and gold
+const ACCENTS = ['gold', 'blue', 'indigo', 'green', 'plum', 'teal', 'ember'];
 const validateLibrary = (l) => {
   const bad = (m) => { throw new Error(`library.json: ${m}`); };
   const cats = new Set(l.categories.map(([c]) => c)), slugs = new Set(), ids = new Set();
@@ -241,6 +243,8 @@ const validateLibrary = (l) => {
     const dated = Number.isInteger(o.day) && o.day >= 1 && o.day <= 30 && (typeof o.month === 'string' || (Array.isArray(o.month) && o.month.length)) && Number.isInteger(o.length) && o.length >= 1;
     const byParasha = Array.isArray(o.parasha) && o.parasha.length === 2 && o.parasha.every((x) => typeof x === 'string' && x);
     if (o.terms !== undefined && !(Array.isArray(o.terms) && o.terms.length && o.terms.every((t) => typeof t === 'string' && t.trim()))) bad(`occasion "${o.id}": terms must be a list of words`);
+    if (o.accent !== undefined && !ACCENTS.includes(o.accent)) bad(`occasion "${o.id}": accent must be one of ${ACCENTS.join(', ')}`);
+    if (o.image !== undefined && !images.some((im) => im.id === o.image)) bad(`occasion "${o.id}": unknown photo "${o.image}"`);
     if (o.shut !== undefined && !(Array.isArray(o.shut) && o.shut.every((x) => typeof x === 'string' && x))) bad(`occasion "${o.id}": shut must be a list of question numbers`);
     if (dated === byParasha) bad(`occasion "${o.id}" needs either day, month and length, or two parashot`);
   }
@@ -266,4 +270,4 @@ const catName = Object.fromEntries(lib.categories);
 // Ids become directory names and URLs, so only plain slugs are allowed.
 for (const [f, xs] of [['shut.json', all], ['halacha.json', halacha]]) for (const x of xs) if (!/^[\w-]+$/.test(x.id)) throw new Error(`Invalid id in ${f}: ${x.id}`);
 
-export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, validateLibrary, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };
+export { linkAudit, images, validateImages, webpSize, imgWidths, IMG_THUMBS, IMG_DIR, IMG_LIMITS, TOPIC_KINDS, isSingle, validateShutEdit, mergeShut, topics, cmsPages, validateCms, validateLibrary, ACCENTS, BLOCK_TYPES, RESERVED, SITE, BASE, ORIGIN, rebase, PER_PAGE, BUILD, font, escAttr, esc, url, tel, nik, gist, read, write, all, shut, letters, halacha, institutions, pr, yeshiva, site, HIDDEN, isHidden, unlinkHidden, yv, mk, mo, lib, rn, um, tk, tkText, regey, catName };

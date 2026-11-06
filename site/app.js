@@ -275,17 +275,23 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFn(tr
 document.addEventListener('click', (e) => { if (fnOpen && !e.target.closest('.fnpop, sup.fn')) closeFn(false); });
 }
 
-// Seasonal suggestion (scripts/lib/seasonal.mjs): the page holds the windows [id, from, start, to] and the books of every occasion, all
-// hidden; here the one whose window holds today's date is shown, with the days left to the holiday.
+// Seasonal suggestion (scripts/lib/seasonal.mjs): the page holds the windows [id, from, start, to] and, for every occasion, a hidden band with its
+// books and questions; here the band whose window holds today's date is shown, with the days left to the holiday. A pool of more than three
+// questions (data-rot) is turned: a different three each week of the window and each year.
 document.querySelectorAll('[data-season]').forEach((box) => {
   let runs;
   try { runs = JSON.parse(box.dataset.season); } catch { return; }
-  const now = new Date(), today = new Date(now.getTime() - now.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  const now = new Date(), today = new Date(now.getTime() - now.getTimezoneOffset() * 6e4).toISOString().slice(0, 10), day = 864e5;
   const run = runs.find(([, from, , to]) => from <= today && today <= to), item = run && box.querySelector(`[data-oc="${run[0]}"]`);
   if (!item) return;
-  const left = Math.round((Date.parse(run[2]) - Date.parse(today)) / 864e5);
+  const left = Math.round((Date.parse(run[2]) - Date.parse(today)) / day);
   item.querySelector('[data-b]').hidden = left < 0; item.querySelector('[data-d]').hidden = left >= 0;
   item.querySelector('[data-when]').textContent = left > 1 ? `בעוד ${left} ימים` : left === 1 ? 'מחר' : left === 0 ? 'היום' : 'בימים אלה';
+  const rot = item.querySelector('[data-rot]');
+  if (rot) {
+    const cards = [...rot.children], week = Math.floor((Date.parse(today) - Date.parse(run[1])) / (7 * day)), from = (Number(run[2].slice(0, 4)) * 3 + week * 3) % cards.length;
+    cards.forEach((c, i) => { c.hidden = (i - from + cards.length) % cards.length >= 3; });
+  }
   item.hidden = false; box.hidden = false;
 });
 
