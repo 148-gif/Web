@@ -13,8 +13,12 @@ sup.fn{line-height:0;font-size:.7em;margin:0 1px}sup.fn a{text-decoration:none;f
 .fnotes{margin-top:2em;padding-top:1em;border-top:2px solid var(--line)}.fnotes h2{font:700 1rem var(--sans)!important;color:var(--mute)}
 .fnotes ol{list-style:none;padding:0;margin:0}.fnotes li{display:flex;gap:12px;margin:0 0 .9em;font-size:.889em;line-height:1.85}.fnotes li:target{background:var(--sunk);border-radius:var(--r-sm)}
 .fnotes li>b{flex:none;min-width:1.6em;color:var(--mute);font-family:var(--sans)}.fnotes li a{text-decoration:none}
-.toc{list-style:none;padding:0;margin:0 0 8px}.toc li a{display:flex;gap:16px;align-items:baseline;padding:12px 16px;border-bottom:1px dashed var(--line);text-decoration:none;color:var(--ink);border-radius:var(--r-sm)}
-.toc li a:hover{background:var(--sunk)}.toc b{flex:none;min-width:64px;font:700 .875rem var(--sans);color:var(--mute)}.toc span{font-size:1rem;line-height:1.6}
+/* A book's contents: every row has the same two columns, the section's number on the start side in a column of fixed width and its
+   title beside it, so the titles start on one line down the whole list (on a phone too: the number is never stacked above the title,
+   where a short title and a long one would leave it at different places). Rows are at least 48px high for a finger. */
+.toc{list-style:none;padding:0;margin:0 0 8px}.toc li+li{border-top:1px solid var(--line)}
+.toc li a{display:grid;grid-template-columns:5.6em minmax(0,1fr);column-gap:12px;align-items:baseline;min-height:48px;padding:12px 12px;text-decoration:none;color:var(--ink);border-radius:var(--r-sm);text-align:start}
+.toc li a:hover{background:var(--sunk)}.toc li a:hover span{color:var(--brand)}.toc b{font:700 .875rem/1.5 var(--sans);color:var(--gold);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.toc span{font-size:1.0625rem;line-height:1.55;text-align:start}
 h3.tocpart{display:flex;align-items:center;gap:12px;font-size:1.125rem;color:var(--brand);margin:24px 0 8px}h3.tocpart span{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font:900 1rem var(--sans);color:var(--on-gold);background:linear-gradient(180deg,var(--gold3),var(--gold2))}
 .continue{text-align:center;margin:0 0 16px}
-@media (max-width:640px){.toc li a{flex-direction:column;gap:2px;padding:12px 8px}.toc b{min-width:0}.book-sheet p{text-align:start}.tools{flex-wrap:wrap}}
+@media (max-width:640px){.toc li a{grid-template-columns:4.7em minmax(0,1fr);column-gap:8px;padding:12px 6px}.toc span{font-size:1rem}.book-sheet p{text-align:start}.tools{flex-wrap:wrap}}
