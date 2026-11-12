@@ -22,6 +22,10 @@
       "ספרי חיזוק"
     ],
     [
+      "moadim",
+      "ספרים למועדים"
+    ],
+    [
       "perush",
       "פירושים על ספרי רבינו"
     ],
@@ -53,7 +57,11 @@
       "icon": "shofar",
       "accent": "gold",
       "image": "shofar",
-      "hub": "elul"
+      "hub": "elul",
+      "kuntresim": [
+        "kibutz-rosh-hashana",
+        "nesia-latzadikim-rosh-hashana"
+      ]
     },
     {
       "id": "chanukah",
@@ -71,7 +79,10 @@
       "icon": "menorah",
       "accent": "blue",
       "image": "hanukkah-candles",
-      "hub": "chanukah"
+      "hub": "chanukah",
+      "kuntresim": [
+        "chanuka-sameach"
+      ]
     },
     {
       "id": "shovavim",
@@ -89,7 +100,12 @@
       ],
       "icon": "drop",
       "accent": "indigo",
-      "hub": "shovavim"
+      "hub": "shovavim",
+      "kuntresim": [
+        "kedushat-hashovavim",
+        "tikun-shovavim",
+        "yemei-shovavim"
+      ]
     },
     {
       "id": "tu-bishvat",
@@ -117,7 +133,8 @@
       ],
       "length": 2,
       "books": [
-        "otzar-purim"
+        "otzar-purim",
+        "megilat-esther-ginzei-hamelech"
       ],
       "terms": [
         "פורים"
@@ -125,7 +142,10 @@
       "icon": "scroll",
       "accent": "plum",
       "image": "megillah-scroll",
-      "hub": "purim"
+      "hub": "purim",
+      "kuntresim": [
+        "purim-sameach"
+      ]
     },
     {
       "id": "pesach",
@@ -134,7 +154,8 @@
       "month": "ניסן",
       "length": 8,
       "books": [
-        "otzar-hapesach"
+        "otzar-hapesach",
+        "haggadah-or-zarua"
       ],
       "terms": [
         "פסח",
@@ -143,7 +164,10 @@
       "icon": "cup",
       "accent": "teal",
       "image": "seder-plate",
-      "hub": "pesach"
+      "hub": "pesach",
+      "kuntresim": [
+        "nesiat-habaal-shem-tov"
+      ]
     },
     {
       "id": "lag-baomer",
@@ -159,7 +183,11 @@
       ],
       "icon": "flame",
       "accent": "ember",
-      "hub": "omer"
+      "hub": "omer",
+      "kuntresim": [
+        "gdulat-lag-baomer",
+        "lag-baomer"
+      ]
     },
     {
       "id": "shavuot",
@@ -2894,6 +2922,74 @@
       ]
     },
     {
+      "slug": "otzar-haemuna",
+      "title": "אוצר האמונה",
+      "sub": "קונטרסים על מעלת האמונה הפשוטה",
+      "category": "chizuk",
+      "lead": "ספר שמקבץ קונטרסים של מוהרא״ש שכבר נדפסו והתפרסמו, על מעלת האמונה הפשוטה בה׳ יתברך.",
+      "about": [
+        "לפי השער, הספר הוא לקט של קונטרסים שנדפסו ונתפשטו בעולם, המגלים את מעלת האמונה הפשוטה, ובהם עצות והנהגות ישרות איך לזכות לה.",
+        "הדברים בנויים על דברי רבי נחמן מברסלב ותלמידו רבי נתן."
+      ],
+      "facts": [
+        [
+          "מחבר",
+          "מוהרא״ש, רבי אליעזר שלמה שיק"
+        ],
+        [
+          "היקף",
+          "622 עמודים"
+        ],
+        [
+          "פורמט",
+          "PDF (סרוק)"
+        ]
+      ],
+      "pdf": "/books/otzar-haemuna.pdf",
+      "pdfSize": "16.0MB",
+      "pages": 622,
+      "keywords": [
+        "אמונה",
+        "קונטרסים",
+        "השגחה",
+        "ביטחון"
+      ]
+    },
+    {
+      "slug": "kedushat-yisrael",
+      "title": "קדושת ישראל",
+      "sub": "קדושת הברית: עצות, הנהגות ותיקונים",
+      "category": "chizuk",
+      "lead": "ספר של מוהרא״ש על קדושת הברית: עצות טובות, הנהגות ישרות ותיקונים לכל מי שנכשל, איך לצאת ולהתחזק.",
+      "about": [
+        "לפי השער, הספר נקרא גם ״קדושת הברית״, ובא לעזור לכל מי שנפל בפגמי הברית לצאת מהם, בעצות ובהנהגות מתוך דברי רבי נחמן מברסלב ורבי נתן."
+      ],
+      "facts": [
+        [
+          "מחבר",
+          "מוהרא״ש, רבי אליעזר שלמה שיק"
+        ],
+        [
+          "היקף",
+          "645 עמודים"
+        ],
+        [
+          "פורמט",
+          "PDF (סרוק)"
+        ]
+      ],
+      "pdf": "/books/kedushat-yisrael.pdf",
+      "pdfSize": "10.2MB",
+      "pages": 645,
+      "keywords": [
+        "קדושה",
+        "שמירת הברית",
+        "תיקון",
+        "תשובה",
+        "שובבים"
+      ]
+    },
+    {
       "slug": "ash-kodesh",
       "title": "אש קודש",
       "sub": "קובץ סיפורים",
@@ -3511,6 +3607,72 @@
       "pdfSize": "9.7MB",
       "pages": 566,
       "series": "sfat-hanachal"
+    },
+    {
+      "slug": "megilat-esther-ginzei-hamelech",
+      "title": "מגילת אסתר עם פירוש ״גנזי המלך״",
+      "sub": "דרושים על סיפור המגילה",
+      "category": "moadim",
+      "lead": "מגילת אסתר עם פירושו של מוהרא״ש, ״גנזי המלך״: דרושים שמבארים את סיפור המגילה בגילוי אלוקות, ועצות להתחזק בכל מצב.",
+      "about": [
+        "לפי השער, הפירוש מבאר את כל סיפור המגילה כגילוי אלוקות, ונותן עצות לכל נפש איך להתחזק ולהחזיק מעמד בכל מה שעובר עליה, ולזכות לדבקות בה׳ יתברך."
+      ],
+      "facts": [
+        [
+          "מחבר",
+          "מוהרא״ש, רבי אליעזר שלמה שיק"
+        ],
+        [
+          "היקף",
+          "413 עמודים"
+        ],
+        [
+          "פורמט",
+          "PDF (סרוק)"
+        ]
+      ],
+      "pdf": "/books/megilat-esther-ginzei-hamelech.pdf",
+      "pdfSize": "18.6MB",
+      "pages": 413,
+      "keywords": [
+        "פורים",
+        "מגילה",
+        "אסתר",
+        "פירוש"
+      ]
+    },
+    {
+      "slug": "haggadah-or-zarua",
+      "title": "הגדה של פסח עם פירוש ״אור זרוע״",
+      "sub": "דרושים וביאורים על ההגדה",
+      "category": "moadim",
+      "lead": "הגדה של פסח עם פירושו של מוהרא״ש, ״אור זרוע״: דרושים, ביאורים וליקוטים על ההגדה, להחדיר אמונה פשוטה.",
+      "about": [
+        "לפי השער, הפירוש כולל דרושים וביאורים, חידושים וליקוטים על ההגדה, בגילוי אלוקות, כדי להחדיר אמונה פשוטה בנשמות ישראל."
+      ],
+      "facts": [
+        [
+          "מחבר",
+          "מוהרא״ש, רבי אליעזר שלמה שיק"
+        ],
+        [
+          "היקף",
+          "321 עמודים"
+        ],
+        [
+          "פורמט",
+          "PDF (סרוק)"
+        ]
+      ],
+      "pdf": "/books/haggadah-or-zarua.pdf",
+      "pdfSize": "12.0MB",
+      "pages": 321,
+      "keywords": [
+        "פסח",
+        "הגדה",
+        "ליל הסדר",
+        "פירוש"
+      ]
     },
     {
       "slug": "nahari-afarsemon",
@@ -4775,7 +4937,7 @@
       "kuntres",
       "קונטרסים ועלונים",
       "/library/kuntresim/",
-      "678 קונטרסים ועלונים: שלום בית, התחזקות, חגים, שאלות ותשובות לפי נושאים, ו״תוך הנחל״ על התורה והמועדים"
+      "729 קונטרסים ועלונים: שלום בית, התחזקות, חגים, שאלות ותשובות לפי נושאים, ו״תוך הנחל״ על התורה והמועדים"
     ]
   ],
   "soon": [

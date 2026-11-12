@@ -47,7 +47,7 @@ for (const s of series) {
 const kt = read('kuntresim.json');
 const kuntresCard = (k) => `<a class="card book" href="/books/kuntresim/${k.slug}.pdf">${icon('book', 'ico lg')}<h3>${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">קריאה והורדה · PDF ←</span></a>`;
 // A topic with many items gets its own numbered pages (/library/kuntresim/<topic>/, .../page/<n>/); the small ones stay on the main page.
-const KPER = 60, KBIG = 30;
+const KPER = 60, KBIG = 18;
 const kItems = (g) => kt.items.filter((k) => k.group === g);
 const kBig = new Set(kt.groups.filter(([g]) => kItems(g).length > KBIG).map(([g]) => g));
 const kHref = (g) => (kBig.has(g) ? `/library/kuntresim/${g}/` : `/library/kuntresim/#${g}`);

@@ -111,6 +111,62 @@
       "size": "197KB"
     },
     {
+      "slug": "shalom-babayit",
+      "title": "שלום בבית",
+      "group": "shalom",
+      "pages": 50,
+      "size": "1.5MB"
+    },
+    {
+      "slug": "yom-hanisuin",
+      "title": "יום הנישואין – כבוד חמיו",
+      "group": "shalom",
+      "pages": 119,
+      "size": "2.4MB"
+    },
+    {
+      "slug": "tafsiku-lariv",
+      "title": "תפסיקו לריב",
+      "group": "shalom",
+      "pages": 34,
+      "size": "1.3MB"
+    },
+    {
+      "slug": "eshet-chayil",
+      "title": "אשת חיל",
+      "group": "shalom",
+      "pages": 33,
+      "size": "1.6MB"
+    },
+    {
+      "slug": "lev-avot-al-banim",
+      "title": "לב אבות על בנים",
+      "group": "shalom",
+      "pages": 31,
+      "size": "2.1MB"
+    },
+    {
+      "slug": "kibud-av-vaem",
+      "title": "כיבוד אב ואם",
+      "group": "shalom",
+      "pages": 35,
+      "size": "2.4MB"
+    },
+    {
+      "slug": "hatzlacha-letalmid-tzair",
+      "title": "הצלחה לתלמיד צעיר",
+      "group": "shalom",
+      "pages": 27,
+      "size": "848KB"
+    },
+    {
+      "slug": "metziat-hazivug",
+      "title": "מציאת הזיווג",
+      "group": "shalom",
+      "pages": 77,
+      "size": "826KB"
+    },
+    {
       "slug": "matzav-ruach-tov",
       "title": "מצב רוח טוב",
       "group": "hitchazkut",
@@ -186,6 +242,97 @@
       "group": "teshuva",
       "pages": 30,
       "size": "295KB"
+    },
+    {
+      "slug": "tzavaat-moharash",
+      "title": "צוואת מוהרא״ש",
+      "group": "teshuva",
+      "pages": 42,
+      "size": "520KB"
+    },
+    {
+      "slug": "hishtatchut-kivrei-tzadikim",
+      "title": "השתטחות על קברי צדיקים",
+      "group": "teshuva",
+      "pages": 51,
+      "size": "1.2MB"
+    },
+    {
+      "slug": "chizuk-labachur",
+      "title": "חיזוק לבחור",
+      "group": "teshuva",
+      "pages": 22,
+      "size": "974KB"
+    },
+    {
+      "slug": "seder-hayeshiva",
+      "title": "סדר הישיבה",
+      "group": "teshuva",
+      "pages": 63,
+      "size": "1.9MB"
+    },
+    {
+      "slug": "etza-labachur",
+      "title": "עצה לבחור",
+      "group": "teshuva",
+      "pages": 19,
+      "size": "634KB"
+    },
+    {
+      "slug": "etzot-lebachur-yeshiva",
+      "title": "עצות לבחור ישיבה",
+      "group": "teshuva",
+      "pages": 30,
+      "size": "950KB"
+    },
+    {
+      "slug": "yefe-einayim",
+      "title": "יפה עיניים",
+      "group": "teshuva",
+      "pages": 22,
+      "size": "926KB"
+    },
+    {
+      "slug": "einayim-yafot",
+      "title": "עיניים יפות",
+      "group": "teshuva",
+      "pages": 27,
+      "size": "1.1MB"
+    },
+    {
+      "slug": "shomer-habrit",
+      "title": "שומר הברית",
+      "group": "teshuva",
+      "pages": 23,
+      "size": "668KB"
+    },
+    {
+      "slug": "shmor-einecha",
+      "title": "שמור עיניך",
+      "group": "teshuva",
+      "pages": 19,
+      "size": "656KB"
+    },
+    {
+      "slug": "tehor-einayim",
+      "title": "טהור עיניים",
+      "group": "teshuva",
+      "pages": 19,
+      "size": "786KB"
+    },
+    {
+      "slug": "yesh-bemi-livchor",
+      "title": "יש במי לבחור",
+      "group": "teshuva",
+      "pages": 23,
+      "size": "657KB"
+    },
+    {
+      "slug": "kedai-livchor",
+      "title": "כדאי לבחור",
+      "group": "teshuva",
+      "pages": 23,
+      "size": "730KB"
     },
     {
       "slug": "ki-tavo-leuman",
@@ -272,11 +419,214 @@
       "size": "18.7MB"
     },
     {
+      "slug": "berega-haacharon",
+      "title": "ברגע האחרון",
+      "group": "hitchazkut",
+      "pages": 23,
+      "size": "176KB"
+    },
+    {
+      "slug": "dai-latzarot",
+      "title": "די לצרות",
+      "group": "hitchazkut",
+      "pages": 17,
+      "size": "549KB"
+    },
+    {
+      "slug": "dimat-haashukim",
+      "title": "דמעת העשוקים",
+      "group": "hitchazkut",
+      "pages": 27,
+      "size": "1.1MB"
+    },
+    {
+      "slug": "hachi-meusher",
+      "title": "הכי מאושר",
+      "group": "hitchazkut",
+      "pages": 30,
+      "size": "499KB"
+    },
+    {
+      "slug": "haratzon-kovea",
+      "title": "הרצון קובע",
+      "group": "hitchazkut",
+      "pages": 30,
+      "size": "494KB"
+    },
+    {
+      "slug": "chaim-tovim",
+      "title": "חיים טובים",
+      "group": "hitchazkut",
+      "pages": 27,
+      "size": "1.5MB"
+    },
+    {
+      "slug": "yesod-emuna",
+      "title": "יסוד אמונה",
+      "group": "hitchazkut",
+      "pages": 23,
+      "size": "729KB"
+    },
+    {
+      "slug": "yesh-atid",
+      "title": "יש עתיד",
+      "group": "hitchazkut",
+      "pages": 22,
+      "size": "1.8MB"
+    },
+    {
+      "slug": "yesh-tikva",
+      "title": "יש תקווה",
+      "group": "hitchazkut",
+      "pages": 29,
+      "size": "1.0MB"
+    },
+    {
+      "slug": "kol-emuna",
+      "title": "קול אמונה",
+      "group": "hitchazkut",
+      "pages": 17,
+      "size": "787KB"
+    },
+    {
+      "slug": "ktzat-savlanut",
+      "title": "קצת סבלנות",
+      "group": "hitchazkut",
+      "pages": 22,
+      "size": "674KB"
+    },
+    {
+      "slug": "rak-rega",
+      "title": "רק רגע",
+      "group": "hitchazkut",
+      "pages": 19,
+      "size": "596KB"
+    },
+    {
+      "slug": "ten-chiyuch",
+      "title": "תן חיוך",
+      "group": "hitchazkut",
+      "pages": 27,
+      "size": "690KB"
+    },
+    {
+      "slug": "gam-ze-yaavor",
+      "title": "גם זה יעבור",
+      "group": "hitchazkut",
+      "pages": 23,
+      "size": "755KB"
+    },
+    {
+      "slug": "hashgacha-pratit",
+      "title": "השגחה פרטית",
+      "group": "hitchazkut",
+      "pages": 24,
+      "size": "636KB"
+    },
+    {
+      "slug": "birkat-haparnasa",
+      "title": "ברכת הפרנסה",
+      "group": "hitchazkut",
+      "pages": 25,
+      "size": "855KB"
+    },
+    {
+      "slug": "tafsiku-lidog",
+      "title": "תפסיקו לדאוג",
+      "group": "hitchazkut",
+      "pages": 21,
+      "size": "726KB"
+    },
+    {
+      "slug": "al-tachtoch-oti",
+      "title": "אל תחתוך אותי",
+      "group": "hitchazkut",
+      "pages": 57,
+      "size": "1.0MB"
+    },
+    {
       "slug": "matan-tora",
       "title": "מתן תורה",
       "group": "moadim",
       "pages": 27,
       "size": "1.5MB"
+    },
+    {
+      "slug": "gdulat-lag-baomer",
+      "title": "גדולת ל״ג בעומר",
+      "group": "moadim",
+      "pages": 22,
+      "size": "659KB"
+    },
+    {
+      "slug": "lag-baomer",
+      "title": "ל״ג בעומר",
+      "group": "moadim",
+      "pages": 19,
+      "size": "524KB"
+    },
+    {
+      "slug": "kedushat-hashovavim",
+      "title": "קדושת השובבים",
+      "group": "moadim",
+      "pages": 22,
+      "size": "757KB"
+    },
+    {
+      "slug": "tikun-shovavim",
+      "title": "תיקון שובבים",
+      "group": "moadim",
+      "pages": 55,
+      "size": "1.8MB"
+    },
+    {
+      "slug": "yemei-shovavim",
+      "title": "ימי שובבי״ם",
+      "group": "moadim",
+      "pages": 31,
+      "size": "1.0MB"
+    },
+    {
+      "slug": "chanuka-sameach",
+      "title": "חנוכה שמח",
+      "group": "moadim",
+      "pages": 22,
+      "size": "779KB"
+    },
+    {
+      "slug": "purim-sameach",
+      "title": "פורים שמח",
+      "group": "moadim",
+      "pages": 18,
+      "size": "688KB"
+    },
+    {
+      "slug": "nesiat-habaal-shem-tov",
+      "title": "נסיעת הבעל שם טוב",
+      "group": "moadim",
+      "pages": 44,
+      "size": "1.5MB"
+    },
+    {
+      "slug": "kibutz-rosh-hashana",
+      "title": "קיבוץ ראש השנה",
+      "group": "moadim",
+      "pages": 33,
+      "size": "739KB"
+    },
+    {
+      "slug": "nesia-latzadikim-rosh-hashana",
+      "title": "מעלת הנסיעה לצדיקים לראש השנה",
+      "group": "moadim",
+      "pages": 33,
+      "size": "797KB"
+    },
+    {
+      "slug": "maalat-hazoche-letziyun",
+      "title": "מעלת הזוכה לבוא אל ציון רבנו",
+      "group": "moadim",
+      "pages": 24,
+      "size": "2.0MB"
     },
     {
       "slug": "shut-tefila-hitbodedut",
@@ -354,6 +704,13 @@
       "group": "shut-nosim",
       "pages": 25,
       "size": "338KB"
+    },
+    {
+      "slug": "shut-uman-rosh-hashana",
+      "title": "שאלות ותשובות: אומן בראש השנה",
+      "group": "shut-nosim",
+      "pages": 31,
+      "size": "389KB"
     },
     {
       "slug": "toch-bereshit-5774",
