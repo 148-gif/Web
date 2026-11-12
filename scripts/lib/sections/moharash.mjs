@@ -10,10 +10,12 @@ const bookHref = (n) => {
   const b = lib.books.find((x) => x.title === n), s = (lib.series || []).find((x) => x.title === n);
   return b ? `/library/${b.slug}/` : s ? `/library/${s.id}/` : '';
 };
+// the collected stories of his life, a book about him (not by him), follows the timeline
+const chayei = lib.books.find((b) => b.slug === 'chayei-moharash');
 const mine = images.filter((x) => x.tags.includes('moharash') && x.id !== 'portrait');
 
 write('moharash/index.html', layout(mo.title, `<section class="band"><div class="wrap"><div class="bio-top"><div class="about lead1">${figure('portrait', { lead: true })}${ps(mo.summary)}<p class="small">${esc(mo.acronym)}</p></div><aside class="factbox" aria-label="פרטים עיקריים"><h2>${esc(mo.name)}</h2>${facts(mo.facts)}</aside></div></div></section>
-<section class="band soft" id="life"><div class="wrap narrow"><h2 class="sh">תולדות חייו</h2><p class="shsub">מתל אביב וירושלים, דרך ניו יורק, ועד יבנאל</p><p class="snote c">${esc(mo.lifeLead)} <a href="/library/${regey.slug}/">לספר ←</a></p><ol class="tline">${mo.life.map(([t, d]) => `<li><b>${esc(t)}</b><p>${esc(d)}</p></li>`).join('')}</ol><p class="tnote">${esc(mo.community)}</p></div></section>
+<section class="band soft" id="life"><div class="wrap narrow"><h2 class="sh">תולדות חייו</h2><p class="shsub">מתל אביב וירושלים, דרך ניו יורק, ועד יבנאל</p><p class="snote c">${esc(mo.lifeLead)} <a href="/library/${regey.slug}/">לספר ←</a></p><ol class="tline">${mo.life.map(([t, d]) => `<li><b>${esc(t)}</b><p>${esc(d)}</p></li>`).join('')}</ol>${chayei ? `<p class="snote c">סיפורים ועדויות נוספים מחייו, לפי השנים, ששמעו תלמידיו מפיו או ראו בעיניהם: <a href="/library/${chayei.slug}/">${esc(chayei.title)} ←</a></p>` : ''}<p class="tnote">${esc(mo.community)}</p></div></section>
 <section class="band" id="teachings"><div class="wrap"><h2 class="sh">דרכו והדרכותיו</h2><p class="shsub">הנקודות שעליהן העמיד את תלמידיו, בדרכו של רבי נחמן מברסלב</p><div class="grid notes tch">${mo.teachings.map(([t, d, src]) => `<div class="card"><h3>${esc(t)}</h3><p>${esc(d)}</p>${src ? `<span class="go">${esc(src)}</span>` : ''}</div>`).join('')}</div>
 <div class="card wide"><h3>סדר הלימוד היומי: חמישה־עשר מקורות</h3><ul class="chips2">${mo.sources15.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div></section>
 <section class="band quoteband"><div class="wrap"><blockquote class="pq small"><p>${esc(mo.legacyQuote)}</p><cite>${esc(mo.legacyBy)}</cite></blockquote></div></section>
