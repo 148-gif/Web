@@ -1,17 +1,6 @@
 {
  "slug": "tzavaat-moharash",
  "title": "צוואת מוהרא״ש",
- "bookletHeading": "הקונטרס המודפס",
- "bookletLead": "הצוואה בדפוס, מסודרת להדפסה ולחלוקה",
- "booklets": [
-  {
-   "title": "צוואת מוהרא״ש – קונטרס",
-   "pdf": "/books/kuntresim/tzavaat-moharash.pdf",
-   "pages": 42,
-   "size": "520KB",
-   "part": "הקונטרס המודפס"
-  }
- ],
  "intro": {
   "label": "פתיחה",
   "title": "שער הצוואה ופתיחתה",

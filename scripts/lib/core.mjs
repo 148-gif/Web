@@ -218,6 +218,15 @@ const validateLibrary = (l) => {
     if (!/^[a-z0-9-]+$/.test(b.slug || '')) bad(`bad book slug "${b.slug}"`);
     if (slugs.has(b.slug)) bad(`duplicate book slug "${b.slug}"`);
     if (!cats.has(b.category)) bad(`${b.slug}: unknown category "${b.category}"`);
+    // ways to read a book: each a page on the site (read) or a PDF of ours, with a title and a line about it
+    if (b.ways !== undefined) {
+      if (!Array.isArray(b.ways) || !b.ways.length) bad(`${b.slug}: ways must be a non-empty list`);
+      for (const w of b.ways) {
+        if (!w || !w.title || !w.desc || !!w.read === !!w.pdf) bad(`${b.slug}: each way needs a title, a desc and either read or pdf`);
+        if (w.read && !/^\/[a-z0-9/-]*$/.test(w.read)) bad(`${b.slug}: way "${w.title}": read must be a site path`);
+        if (w.pdf && (!/^\/books\/[a-z0-9/-]+\.pdf$/.test(w.pdf) || !w.pages || !w.size)) bad(`${b.slug}: way "${w.title}": pdf must be /books/….pdf, with pages and size`);
+      }
+    }
     slugs.add(b.slug);
   }
   for (const s of l.series || []) {
