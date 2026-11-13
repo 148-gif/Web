@@ -45,7 +45,11 @@ for (const s of series) {
 // Book reader: one page per section of every book with a text file (introduction, sections, closing prayer)
 // Short kuntresim (data/kuntresim.json): one page grouped by topic, each item a PDF in site/books/kuntresim/
 const kt = read('kuntresim.json');
-const kuntresCard = (k) => `<a class="card book" href="/books/kuntresim/${k.slug}.pdf">${icon('book', 'ico lg')}<h3>${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">קריאה והורדה · PDF ←</span></a>`;
+// A kuntres that is also a book of the library ("book": its slug) leads to the book's page, which offers the kuntres too.
+const kuntresCard = (k) => (k.book
+  ? `<a class="card book" href="/library/${k.book}/">${icon('book', 'ico lg')}<h3>${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">לקריאה באתר ולהורדה ←</span></a>`
+  : `<a class="card book" href="/books/kuntresim/${k.slug}.pdf">${icon('book', 'ico lg')}<h3>${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">קריאה והורדה · PDF ←</span></a>`);
+for (const k of kt.items) if (k.book && !lib.books.some((b) => b.slug === k.book)) throw new Error(`kuntresim.json: "${k.slug}" names an unknown book "${k.book}"`);
 // A topic with many items gets its own numbered pages (/library/kuntresim/<topic>/, .../page/<n>/); the small ones stay on the main page.
 const KPER = 60, KBIG = 18;
 const kItems = (g) => kt.items.filter((k) => k.group === g);
@@ -166,6 +170,8 @@ ${tx.tikkun ? `<h3 class="tocpart"><span>${icon('sparkle', 'ico sm')}</span>נס
 const bookletsHtml = (bk, tx) => {
   const bs = tx.booklets || [];
   if (!bs.length) return '';
+  // a single booklet: one download row, no topics to fold
+  if (bs.length === 1) return `<section class="band soft" id="booklets"><div class="wrap narrow"><h2 class="sh">${esc(tx.bookletHeading || 'החוברת המודפסת')}</h2>${tx.bookletLead ? `<p class="shsub">${esc(tx.bookletLead)}</p>` : ''}<ul class="toc blist">${bs.map((b) => `<li><a href="${b.pdf}" download>${icon('print', 'ico sm')}<span>${esc(b.title)}</span><small>PDF · ${b.pages} עמ׳ · ${esc(b.size)}</small></a></li>`).join('')}</ul></div></section>`;
   const order = [...(tx.bookletTopics || (bk.parts || []).map(([t]) => t))];
   for (const b of bs) if (!order.includes(b.part)) order.push(b.part);
   const rows = order.map((t) => [t, bs.filter((b) => b.part === t)]).filter(([, xs]) => xs.length);
