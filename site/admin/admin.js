@@ -80,7 +80,7 @@
     promiseTitle: 'כותרת ההבטחה', promise: 'ההבטחה', hoursTitle: 'כותרת השעות', phoneNote: 'הערה לטלפון', attendants: 'בלניות', attendantsTitle: 'כותרת הבלניות', navQuery: 'יעד לניווט (Waze)',
     hoursNote: 'הערה לשעות', features: 'מאפיינים', testimonials: 'המלצות', promiseAfter: 'אחרי ההבטחה', fromShutTitle: 'כותרת ״מתוך השו״ת״', fromShutLead: 'פתיח ״מתוך השו״ת״', fromShut: 'שאלות מתוך השו״ת',
     navLL: 'קואורדינטות לניווט', acronym: 'ראשי תיבות', life: 'תולדות חייו', community: 'הקהילה', teachings: 'תורתו', sources15: 'מקורות', passing: 'הסתלקותו', legacyQuote: 'ציטוט מורשת',
-    legacyBy: 'מקור הציטוט', tziyun: 'הציון', quick: 'פרטים מהירים', vow: 'ההבטחה', vowNote: 'הערה להבטחה', promisesLead: 'פתיח להבטחות', promises: 'הבטחות', uman: 'אומן', hillula: 'ההילולא', nav: 'ניווט',
+    legacyBy: 'מקור הציטוט', tziyun: 'הציון', quick: 'פרטים מהירים', vow: 'ההבטחה', vowNote: 'הערה להבטחה', vowHref: 'קישור למקור ההבטחה', promisesLead: 'פתיח להבטחות', promises: 'הבטחות', uman: 'אומן', hillula: 'ההילולא', nav: 'ניווט',
     routes: 'דרכי הגעה', transit: 'תחבורה ציבורית', lifeLead: 'פתיח לתולדות', donate: 'תרומה', iframeUrl: 'כתובת טופס התרומה', fallbackUrl: 'כתובת חלופית', hero: 'ראש העמוד', kicker: 'שורה עליונה',
     headline: 'כותרת ראשית', promiseText: 'נוסח ההבטחה', needs: 'בקשות', steps: 'שלבים', tiers: 'דרגות תרומה', amount: 'סכום', tag: 'תגית', tiersNote: 'הערה לדרגות', quote: 'ציטוט', quoteBy: 'מקור הציטוט',
     stats: 'מספרים', trust: 'אמון', finalCta: 'קריאה לפעולה בסוף', head: 'כותרת', raised: 'נאסף', target: 'יעד', label: 'תווית', works: 'ספריו', natan: 'רבי נתן', tikkun: 'התיקון הכללי', psalms: 'המזמורים',
@@ -107,7 +107,7 @@
     groups: ['מזהה', 'שם'], categories: ['מזהה', 'שם'], facts: ['פרט', 'ערך'], online: ['מזהה', 'שם', 'קישור', 'תיאור'], soon: ['מזהה', 'תיאור'], hours: ['ימים', 'שעות'],
     mikvehMen: ['ימים', 'שעות'], mikvehWomen: ['ימים', 'שעות'], features: ['סמל', 'כותרת', 'טקסט'], chesed: ['סמל', 'כותרת', 'טקסט'], quick: ['סמל', 'כותרת', 'טקסט'],
     life: ['תאריך', 'אירוע'], history: ['תאריך', 'אירוע'], timeline: ['תאריך', 'אירוע'], teachings: ['נושא', 'תוכן', 'מקור'], books: ['שם הספר', 'תיאור'], works: ['שם הספר', 'תיאור'],
-    faq: ['שאלה', 'תשובה'], items: ['כותרת', 'טקסט'], sources: ['שם המקור', 'קישור'], promises: ['ציטוט', 'מקור'], quotes: ['ציטוט', 'מקור'], routes: ['מאיפה', 'הוראות'], needs: ['נושא', 'תיאור'],
+    faq: ['שאלה', 'תשובה'], items: ['כותרת', 'טקסט'], sources: ['שם המקור', 'קישור'], promises: ['ציטוט', 'מקור', 'קישור למקור'], quotes: ['ציטוט', 'מקור'], routes: ['מאיפה', 'הוראות'], needs: ['נושא', 'תיאור'],
     chapters: ['ספר', 'מסעיף', 'עד סעיף'], links: ['נתיב', 'כותרת', 'תיאור'],
     steps: ['שלב', 'הסבר'], stats: ['מספר', 'תיאור'], shut: ['מספר שאלה', 'כותרת'], stories: ['כותרת', 'סיפור'], rows: ['שעה', 'מקום'], institutions: ['שם', 'פרטים'], values: ['ערך', 'הסבר'],
   };
