@@ -80,7 +80,7 @@
     promiseTitle: 'כותרת ההבטחה', promise: 'ההבטחה', hoursTitle: 'כותרת השעות', phoneNote: 'הערה לטלפון', attendants: 'בלניות', attendantsTitle: 'כותרת הבלניות', navQuery: 'יעד לניווט (Waze)',
     hoursNote: 'הערה לשעות', features: 'מאפיינים', testimonials: 'המלצות', promiseAfter: 'אחרי ההבטחה', fromShutTitle: 'כותרת ״מתוך השו״ת״', fromShutLead: 'פתיח ״מתוך השו״ת״', fromShut: 'שאלות מתוך השו״ת',
     navLL: 'קואורדינטות לניווט', acronym: 'ראשי תיבות', life: 'תולדות חייו', community: 'הקהילה', teachings: 'תורתו', sources15: 'מקורות', passing: 'הסתלקותו', legacyQuote: 'ציטוט מורשת',
-    legacyBy: 'מקור הציטוט', tziyun: 'הציון', quick: 'פרטים מהירים', vow: 'ההבטחה', vowNote: 'הערה להבטחה', vowHref: 'קישור למקור ההבטחה', promisesLead: 'פתיח להבטחות', promises: 'הבטחות', uman: 'אומן', hillula: 'ההילולא', nav: 'ניווט',
+    legacyBy: 'מקור הציטוט', tziyun: 'הציון', quick: 'פרטים מהירים', vow: 'ההבטחה', vowNote: 'הערה להבטחה', vowHref: 'קישור למקור ההבטחה', ways: 'דרכים לקרוא', waysTitle: 'כותרת הדרכים לקרוא', read: 'קישור לקריאה באתר', promisesLead: 'פתיח להבטחות', promises: 'הבטחות', uman: 'אומן', hillula: 'ההילולא', nav: 'ניווט',
     routes: 'דרכי הגעה', transit: 'תחבורה ציבורית', lifeLead: 'פתיח לתולדות', donate: 'תרומה', iframeUrl: 'כתובת טופס התרומה', fallbackUrl: 'כתובת חלופית', hero: 'ראש העמוד', kicker: 'שורה עליונה',
     headline: 'כותרת ראשית', promiseText: 'נוסח ההבטחה', needs: 'בקשות', steps: 'שלבים', tiers: 'דרגות תרומה', amount: 'סכום', tag: 'תגית', tiersNote: 'הערה לדרגות', quote: 'ציטוט', quoteBy: 'מקור הציטוט',
     stats: 'מספרים', trust: 'אמון', finalCta: 'קריאה לפעולה בסוף', head: 'כותרת', raised: 'נאסף', target: 'יעד', label: 'תווית', works: 'ספריו', natan: 'רבי נתן', tikkun: 'התיקון הכללי', psalms: 'המזמורים',

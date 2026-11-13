@@ -22,3 +22,9 @@ sup.fn{line-height:0;font-size:.7em;margin:0 1px}sup.fn a{text-decoration:none;f
 h3.tocpart{display:flex;align-items:center;gap:12px;font-size:1.125rem;color:var(--brand);margin:24px 0 8px}h3.tocpart span{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font:900 1rem var(--sans);color:var(--on-gold);background:linear-gradient(180deg,var(--gold3),var(--gold2))}
 .continue{text-align:center;margin:0 0 16px}
 @media (max-width:640px){.toc li a{grid-template-columns:4.7em minmax(0,1fr);column-gap:8px;padding:12px 6px}.toc span{font-size:1rem}.book-sheet p{text-align:start}.tools{flex-wrap:wrap}}
+/* the ways to read a book (on the site, in a scan, in print), side by side under its title */
+.ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.card.way{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:22px}
+.card.way .wic{color:var(--gold)}.card.way h3{margin:4px 0 0}.card.way p{display:block;-webkit-line-clamp:unset;overflow:visible;margin:0}
+.card.way .wmeta{opacity:.85}.card.way .navbtns{margin-top:auto;padding-top:10px;width:100%;justify-content:flex-start;flex-wrap:nowrap}.card.way .navbtns .btn{flex:0 1 auto}
+@media (max-width:640px){.card.way .navbtns .btn{flex:1 1 0}}

@@ -97,6 +97,15 @@ test('validateLibrary() checks series, categories and featured books', () => {
   assert.throws(w((c) => { c.featured = ['zz']; }), /featured/);
   assert.throws(w((c) => { c.books[1].slug = 'a'; }), /duplicate/);
   assert.throws(w((c) => { c.books[0].slug = '../x'; }), /bad book slug/);
+  // ways to read a book: a site page or one of our PDFs
+  const way = (ways) => w((c) => { c.books[0].ways = ways; });
+  assert.doesNotThrow(way([{ title: 'א', desc: 'ב', read: '/library/a/hakdama/' }, { title: 'ג', desc: 'ד', pdf: '/books/a.pdf', pages: 4, size: '1MB' }]));
+  assert.throws(way([]), /non-empty/);
+  assert.throws(way([{ title: 'א', desc: 'ב' }]), /either read or pdf/);
+  assert.throws(way([{ title: 'א', desc: 'ב', read: '/x/', pdf: '/books/a.pdf', pages: 1, size: '1KB' }]), /either read or pdf/);
+  assert.throws(way([{ title: 'א', desc: 'ב', read: 'javascript:alert(1)' }]), /site path/);
+  assert.throws(way([{ title: 'א', desc: 'ב', pdf: 'https://evil.example/a.pdf', pages: 1, size: '1KB' }]), /pdf must be/);
+  assert.throws(way([{ title: 'א', desc: 'ב', pdf: '/books/a.pdf' }]), /pages and size/);
   // groups of a book's parts: in order, covering every part once
   const g = (groups) => w((c) => { c.books[0].parts = [['a', '', [1, 1]], ['b', '', [2, 2]], ['c', '', [3, 3]]]; c.books[0].groups = groups; });
   assert.doesNotThrow(g([['x', '', [0, 1]], ['y', '', [2, 2]]]));
