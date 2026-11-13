@@ -60,6 +60,16 @@ The site has no connection with the Breslov City site (breslevcity.co.il) and ne
 
 `data/moadim.json` (`scripts/lib/moadim.mjs`, validated at build) lists the holidays in the order of the year: their book sections (`[slug, from, to]`), books, site links and the words that pick their Q&A. The build makes `/moadim/` and `/moadim/<id>/`, and links a section of a holiday to its hub from the reader. The dates are not in it: the seasonal band on the home page and the library page (`occasions` in `library.json`, `scripts/lib/seasonal.mjs`) names each holiday's hub in `hub`, shows up to two of its sichot sections and one letter of the month, and links to `/moadim/<id>/`; renaming a hub id breaks that on purpose (the build fails). One list of holidays for both is still to do. Q&A whose title does not name the holiday but whose question is about it are tagged by hand in `data/shut-tags.json` (occasion id -> question numbers, `scripts/lib/shut-tags.mjs`, validated at build): they join the holiday's pool, its hub page, and get the holiday label on their page and in the search (`shutLabels` in `seasonal.mjs`).
 
+## Wording: say it as it is, not "לדברי…"
+
+The site states things directly, as fact, or in the name of whoever said them; it never reports a source from the outside. Do not write "לפי השער", "לפי ההקדמה", "לדברי המחבר", "בהקדמה כתבו המלקטים", "כך כתבו", "לדבריו", "לפי מוהרא״ש", "לפי תשובות…", "מסופר ש…", "לטענת…" and the like: they distance the reader and read as doubt.
+
+- ✗ "לפי השער, הספר מספר את ימי חייו…" → ✓ "הספר מספר את ימי חייו…"
+- ✗ "בהקדמה כתבו המלקטים שרוב הסיפורים שמעו ממנו" → ✓ "רוב הסיפורים נשמעו ממוהרא״ש עצמו, מפיו או מכתבו"
+- ✗ "לדברי מוהרא״ש אין לכך מקור" → ✓ "מוהרא״ש השיב שאין לכך מקור"
+
+Saying a thing in its speaker's name is right ("מוהרא״ש כתב", "מוהרא״ש השיב", "מתוך צוואתו, סעיף ה"); only the phrasing that presents it as someone's claim is out. This does not lift care: what is not known is not written at all, and what the title page or introduction says is written as fact, without saying it came from there. Quotations of the texts themselves (books, Q&A) are left as written.
+
 ## PDF files with another site's mark
 
 A PDF that carries the logo or watermark of another site (for example breslevcity.co.il, "ברסלב סיטי") is never published with it. First try to remove the mark (for a watermark: the `/Artifact … /Watermark … BDC … EMC` block in each page's content, removed without touching a scan; for a logo drawn in the page: cut or cover it only if the text under it is not harmed). Check sample pages as images before and after.
