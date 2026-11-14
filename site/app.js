@@ -34,12 +34,14 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && hdr.clas
 document.addEventListener('click', (e) => { if (hdr.classList.contains('open') && !hdr.contains(e.target)) setMenu(false); });
 
 let lastY = scrollY, tick = false;
-const bar = document.querySelector('.readbar i'), sheet = document.querySelector('.sheet');
+const bar = document.querySelector('.readbar i'), sheet = document.querySelector('.sheet'), bnav = document.querySelector('.bnav');
 const onScroll = () => {
   tick = false;
   const y = scrollY;
   if (!hdr.classList.contains('open')) hdr.classList.toggle('hide', y > 160 && y > lastY + 4 ? true : y < lastY - 4 ? false : hdr.classList.contains('hide'));
   lastY = y;
+  // the phone's bottom bar steps aside with the header while reading down, and comes back on the way up or at the end of the page
+  if (bnav) bnav.classList.toggle('hide', hdr.classList.contains('hide') && innerHeight + y < document.documentElement.scrollHeight - 8);
   if (bar && sheet) { const r = sheet.getBoundingClientRect(); bar.style.transform = `scaleX(${Math.min(1, Math.max(0, -r.top / (r.height - innerHeight * 0.6)))})`; }
 };
 addEventListener('scroll', () => { if (!tick) { tick = true; requestAnimationFrame(onScroll); } }, { passive: true });
@@ -51,6 +53,24 @@ document.querySelectorAll('[data-fs]').forEach((b) => b.addEventListener('click'
   root.style.setProperty('--rs', v);
   store.set('rs', v);
 }));
+// Reading background (רגיל / קלף / לילה): html[data-rt], remembered in this browser only (localStorage 'rt'; HEAD_JS applies it before the page shows).
+const rtBtn = document.querySelector('[data-rt-toggle]');
+const rtp = document.getElementById('rtp');
+if (rtBtn && rtp) {
+  const sync = () => rtp.querySelectorAll('[data-rt]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rt === (root.dataset.rt || ''))));
+  const openRt = (o) => { rtp.hidden = !o; rtBtn.setAttribute('aria-expanded', String(o)); };
+  rtBtn.addEventListener('click', () => openRt(rtp.hidden));
+  rtp.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-rt]');
+    if (!b) return;
+    if (b.dataset.rt) root.dataset.rt = b.dataset.rt; else delete root.dataset.rt;
+    store.set('rt', b.dataset.rt);
+    sync();
+  });
+  document.addEventListener('click', (e) => { if (!rtp.hidden && !e.target.closest('.rtp, [data-rt-toggle]')) openRt(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !rtp.hidden) { openRt(false); rtBtn.focus(); } });
+  sync();
+}
 // Share: the whole text, ready to paste. Phones get the system share sheet (WhatsApp, mail, SMS, Telegram...);
 // elsewhere a small menu offers WhatsApp, email, copying the text, or copying the link.
 const shareText = () => {

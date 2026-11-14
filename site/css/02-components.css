@@ -100,7 +100,7 @@ a.card:hover{transform:translateY(-3px);border-color:var(--gold2)}a.card:hover:b
 /* Footer */
 .foot{border-top:3px solid var(--gold2);padding:40px 0 max(32px,env(safe-area-inset-bottom));text-align:center;font-family:var(--sans)}
 .fbrand{display:inline-flex;align-items:center;gap:12px;text-align:start}.fbrand b{display:block;font:900 1.25rem var(--serif);color:var(--gold2)}.fbrand span{font-size:.875rem;color:var(--on-navy3)}
-.foot nav{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 24px;margin:24px 0 16px}.foot nav a{color:var(--on-navy);text-decoration:none;font-weight:600}.foot nav a:hover{color:var(--gold2)}
+.foot nav{display:flex;flex-wrap:wrap;justify-content:center;gap:0 24px;margin:24px 0 16px}.foot nav a{display:inline-flex;align-items:center;min-height:44px;color:var(--on-navy);text-decoration:none;font-weight:600}.foot nav a:hover{color:var(--gold2)}
 .foot p{margin:0;color:#9fabcb;font-size:.875rem}.foot p+p{margin-top:8px}
 .foot .finfo{margin:-8px 0 16px;gap:0 16px}.foot .finfo a{color:var(--on-navy3);font-weight:400;font-size:.875rem;display:inline-flex;align-items:center;min-height:44px}.foot .finfo a[aria-current]{color:var(--gold2)}
 

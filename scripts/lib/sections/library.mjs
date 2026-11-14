@@ -1,6 +1,6 @@
 // Library index, kuntresim, book pages and the book reader.
 import { esc, url, nik, read, write, lib, catName } from '../core.mjs';
-import { icon, orn, phead, layout } from '../layout.mjs';
+import { icon, rtTool, orn, phead, layout } from '../layout.mjs';
 import { seasonHtml, seasonPools } from '../seasonal.mjs';
 import { ps, ld, absu, crumbs, facts, person, pagerHtml, bookText, kinds, btags, bookCard } from '../parts.mjs';
 import { moedOfChapter, moedOfBook } from '../moadim.mjs';
@@ -124,7 +124,7 @@ const readerPages = (bk, tx) => {
     const moed = moedBox(bk.slug, k);
     const topNav = (x, cls, arrow) => (x ? `<a class="${cls}" href="${base}${x.id}/" title="${esc(nik(x.title))}">${arrow}</a>` : '');
     const navLink = (x, cls, arrow) => (x ? `<a class="${cls}" href="${base}${x.id}/"><small>${arrow}</small>${esc(x.label)}: ${esc(nik(x.title)).slice(0, 70)}</a>` : '<span></span>');
-    write(`library/${bk.slug}/${c.id}/index.html`, layout(`${nik(c.title)} | ${bk.title}`, `<article class="qa" data-book="${bk.slug}" data-ch="${esc(c.label)}"><div class="tools" role="group" aria-label="כלי קריאה"><a class="tbtn toc" href="${pHref}">${icon('menu', 'ico sm')}תוכן</a><button type="button" class="tbtn" data-fs="-1" aria-label="הקטנת טקסט">א־</button><button type="button" class="tbtn big" data-fs="1" aria-label="הגדלת טקסט">א+</button><button type="button" class="tbtn" data-nikud aria-pressed="false">ניקוד</button><button type="button" class="tbtn share" data-share>${icon('share', 'ico sm')}שיתוף</button></div>
+    write(`library/${bk.slug}/${c.id}/index.html`, layout(`${nik(c.title)} | ${bk.title}`, `<article class="qa" data-book="${bk.slug}" data-ch="${esc(c.label)}"><div class="tools" role="group" aria-label="כלי קריאה"><a class="tbtn toc" href="${pHref}">${icon('menu', 'ico sm')}תוכן</a><button type="button" class="tbtn" data-fs="-1" aria-label="הקטנת טקסט">א־</button><button type="button" class="tbtn big" data-fs="1" aria-label="הגדלת טקסט">א+</button><button type="button" class="tbtn" data-nikud aria-pressed="false">ניקוד</button>${rtTool()}<button type="button" class="tbtn share" data-share>${icon('share', 'ico sm')}<span class="tl">שיתוף</span></button></div>
 <nav class="qtop" aria-label="מעבר בין ה${esc(unitPl)}">${topNav(prev, 'prev', `→ ${prev ? esc(prev.label) : ''}`)}${topNav(next, 'next', `${next ? esc(next.label) : ''} ←`)}</nav>
 <div class="sheet book-sheet">${body}${notes}${orn}</div>${moed}${inPart}
 <nav class="qnav" aria-label="ניווט בספר">${navLink(prev, 'prev', '→ הקודם')}${navLink(next, 'next', 'הבא ←')}</nav></article>`,

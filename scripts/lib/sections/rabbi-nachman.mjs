@@ -1,6 +1,6 @@
 // Rabbi Nachman of Breslov and Uman: two pages with structured data for search and AI engines
 import { esc, url, write, rn, um, tk, tkText } from '../core.mjs';
-import { icon, orn, phead, layout } from '../layout.mjs';
+import { icon, rtTool, orn, phead, layout } from '../layout.mjs';
 import { ps, navBtns, anchors, ysect, ld, absu, crumbs, faqLd, faqHtml, facts, srcList, tikkunUrl, rnPerson } from '../parts.mjs';
 
 write('rabbi-nachman/index.html', layout(rn.title, `<section class="band"><div class="wrap"><div class="bio-top"><div class="about lead1">${ps(rn.summary)}</div><aside class="factbox" aria-label="פרטים עיקריים"><h2>${esc(rn.name)}</h2>${facts(rn.facts)}</aside></div></div></section>
@@ -38,7 +38,7 @@ ${srcList(um.sources)}`,
 
 // Tikkun HaKlali: full text and guide
 const verses = (vs) => vs.map(([n, t]) => `<sup class="vn">${esc(n)}</sup>${esc(t).replace(/\[([^\]]+)\]/g, '<span class="hint">($1)</span>')}`).join(' ');
-const textBlock = `<div class="tools" role="group" aria-label="כלי קריאה"><button type="button" class="tbtn" data-fs="-1" aria-label="הקטנת טקסט">א־</button><button type="button" class="tbtn big" data-fs="1" aria-label="הגדלת טקסט">א+</button><button type="button" class="tbtn" data-nikud aria-pressed="false">ניקוד</button><button type="button" class="tbtn share" data-share>${icon('share', 'ico sm')}שיתוף</button><a class="tbtn" href="/books/tikkun-haklali.pdf" download>${icon('print', 'ico sm')}PDF להורדה</a></div>
+const textBlock = `<div class="tools" role="group" aria-label="כלי קריאה"><button type="button" class="tbtn" data-fs="-1" aria-label="הקטנת טקסט">א־</button><button type="button" class="tbtn big" data-fs="1" aria-label="הגדלת טקסט">א+</button><button type="button" class="tbtn" data-nikud aria-pressed="false">ניקוד</button>${rtTool()}<button type="button" class="tbtn share" data-share>${icon('share', 'ico sm')}<span class="tl">שיתוף</span></button><a class="tbtn" href="/books/tikkun-haklali.pdf" download>${icon('print', 'ico sm')}PDF להורדה</a></div>
 <div class="sheet book-sheet tikkun-text"><div class="thead">${tkText.head.map((x) => `<p>${esc(x)}</p>`).join('')}</div>
 <h2 class="subt" id="t-before">תפילה קצרה לפני התיקון הכללי</h2>${tkText.pre.slice(1).map((x) => `<p>${esc(x)}</p>`).join('')}<p class="inst">${esc(tkText.pre[0].replace(/\s*$/, ''))}</p>
 <h2 class="subt" id="t-hitkashrut">התקשרות ויחוד</h2>${tkText.hitkashrut.map((x) => `<p>${esc(x)}</p>`).join('')}

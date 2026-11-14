@@ -20,7 +20,7 @@
 .secbar{position:fixed;top:var(--hh,60px);inset-inline-start:0;inset-inline-end:0;z-index:25;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);box-shadow:0 4px 14px rgba(11,29,80,.08);transform:translateY(-120%);visibility:hidden;transition:transform .25s var(--ease),top .25s var(--ease),visibility .25s var(--ease)}
 .secbar.show{transform:none;visibility:visible}
 .sbin{max-width:var(--container);margin:0 auto;display:flex;gap:8px;overflow-x:auto;padding:8px 16px;scrollbar-width:none}.sbin::-webkit-scrollbar{display:none}
-.secbar a{flex:none;display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;font:600 .875rem var(--sans);color:var(--brand);text-decoration:none;white-space:nowrap}
+.secbar a{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;font:600 .875rem var(--sans);color:var(--brand);text-decoration:none;white-space:nowrap}
 .secbar a:hover{background:var(--sunk)}.secbar a.on{background:linear-gradient(180deg,var(--gold3),var(--gold2));color:var(--on-gold)}
 @media (max-width:860px){.top.hide~.secbar{top:0}}
 [id]{scroll-margin-top:calc(var(--hh,64px) + 64px)}

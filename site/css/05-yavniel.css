@@ -24,7 +24,7 @@
 .svc .card p+p{margin-top:8px}
 .card.wide{margin-top:0}.svc.two{grid-template-columns:repeat(2,1fr)}
 .card.hl{border:1.5px solid var(--gold2);box-shadow:0 10px 30px rgba(168,122,28,.18)}
-.notes .card p{color:var(--ink);font-size:1rem;line-height:1.7}.notes .go{display:flex;flex-wrap:wrap;gap:8px}.notes .go a{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:999px;color:var(--gold);text-decoration:none;font-size:.875rem}.notes .go a:hover{border-color:var(--gold2);background:var(--sunk)}.notes .go a:hover{text-decoration:underline}
+.notes .card p{color:var(--ink);font-size:1rem;line-height:1.7}.notes .go{display:flex;flex-wrap:wrap;gap:8px}.notes .go a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:999px;color:var(--gold);text-decoration:none;font-size:.875rem}.notes .go a:hover{border-color:var(--gold2);background:var(--sunk)}.notes .go a:hover{text-decoration:underline}
 /* quotes */
 .letterq{margin:24px 0 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px 24px 16px;box-shadow:var(--shadow);position:relative}
 .letterq:before{content:"״";position:absolute;top:-6px;inset-inline-start:16px;font:900 3.75rem/1 var(--serif);color:var(--gold2)}
@@ -66,4 +66,4 @@
 .stickcta.duo{display:flex}.stickcta.duo .btn{flex:1;box-shadow:0 6px 20px rgba(0,0,0,.25)}.stickcta.duo .btn.ghost{background:var(--surface)}
 }
 
-.faq .faqlinks{display:flex;flex-wrap:wrap;gap:8px;padding-top:0}.faqlinks a{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:999px;color:var(--gold);text-decoration:none;font:600 .875rem var(--sans)}.faqlinks a:hover{border-color:var(--gold2);background:var(--sunk)}.faq summary{min-height:44px;align-items:center}
+.faq .faqlinks{display:flex;flex-wrap:wrap;gap:8px;padding-top:0}.faqlinks a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:999px;color:var(--gold);text-decoration:none;font:600 .875rem var(--sans)}.faqlinks a:hover{border-color:var(--gold2);background:var(--sunk)}.faq summary{min-height:44px;align-items:center}
