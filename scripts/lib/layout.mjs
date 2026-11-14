@@ -130,6 +130,13 @@ const PRELOAD_FONTS = ['assistant-hebrew', 'assistant-latin', 'frank-ruhl-libre-
 const DESC = 'היכל הקודש, חסידות ברסלב: שו״ת ברסלב של מוהרא״ש, ספרי הצדיק לקריאה, רבי נחמן ואומן, התיקון הכללי, יבנאל והדפסת ״אשר בנחל״.';
 // Share previews (WhatsApp, Facebook) need absolute URLs, so canonical/og:url/og:image appear only when SITE_ORIGIN is set.
 const abs = (p) => esc(ORIGIN + BASE + p);
+// Phones only: a bar of the five main places fixed at the bottom, in reach of the thumb (04-responsive.css shows it under 641px).
+// A place hidden in site.json is left out; the current section is marked.
+const BNAV = [['/', 'home', 'בית'], ['/shut/', 'chat', 'שו״ת'], ['/library/', 'books', 'ספרייה'], ['/moadim/', 'calendar', 'זמני השנה'], ['/search/', 'search', 'חיפוש']];
+const bnav = (path, self) => `<nav class="bnav" aria-label="ניווט מהיר">${BNAV.filter(([h]) => h === '/' || !isHidden(h)).map(([h, ic, t]) => {
+  const on = h === '/' ? self === '/' : self.startsWith(h) || path.startsWith(h);
+  return `<a href="${h}"${on ? ` aria-current="${self === h ? 'page' : 'true'}"` : ''}>${icon(ic)}<span>${t}</span></a>`;
+}).join('')}</nav>`;
 const layout = (title, body, { desc = '', path = '/', self = path, head = '', full = false, reading = false, head_extra = '', index = true } = {}) => `<!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="strict-origin-when-cross-origin"><script>${HEAD_JS}</script>
 <title>${escAttr(nik(title))}${title === SITE ? '' : ' | ' + SITE}</title><meta name="description" content="${escAttr(nik(desc || DESC))}">${index ? '' : '<meta name="robots" content="noindex">'}
@@ -144,7 +151,7 @@ ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 <footer class="foot"><div class="wrap"><div class="fbrand"><span class="mark">${icon('flame')}</span><div><b>${SITE}</b><span>אור הצדיק לכל נפש</span></div></div>
 <nav aria-label="ניווט תחתון">${nav.slice(1, -1).map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>
 <nav class="finfo" aria-label="מידע על האתר">${infoNav.map(([h, t]) => `<a href="${h}"${h === self ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</nav>
-<p>שו״ת ברסלב נכתב על ידי <a href="/moharash/">הצדיק מיבניאל זצ״ל</a>, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer><button type="button" class="totop" aria-label="חזרה לראש העמוד" hidden><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">${SPEC}</script></body></html>`;
+<p>שו״ת ברסלב נכתב על ידי <a href="/moharash/">הצדיק מיבניאל זצ״ל</a>, ופורסם ברשות להעתקה והפצה.</p>${orgLine ? `<p>${orgLine}</p>` : ''}</div></footer>${bnav(path, self)}<button type="button" class="totop" aria-label="חזרה לראש העמוד" hidden><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button><script src="/app.js?v=${BUILD}" defer></script><script type="speculationrules">${SPEC}</script></body></html>`;
 
 const sr = (t) => `<h2 class="sr">${t}</h2>`;
 const card = (x, base = '/shut/') => `<a class="card qcard" href="${base}${x.id}/"><h3>${esc(x.title)}</h3><p>${esc(gist(x.a).slice(0, 150))}…</p><span class="go">לקריאת התשובה ←</span></a>`;

@@ -34,12 +34,14 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && hdr.clas
 document.addEventListener('click', (e) => { if (hdr.classList.contains('open') && !hdr.contains(e.target)) setMenu(false); });
 
 let lastY = scrollY, tick = false;
-const bar = document.querySelector('.readbar i'), sheet = document.querySelector('.sheet');
+const bar = document.querySelector('.readbar i'), sheet = document.querySelector('.sheet'), bnav = document.querySelector('.bnav');
 const onScroll = () => {
   tick = false;
   const y = scrollY;
   if (!hdr.classList.contains('open')) hdr.classList.toggle('hide', y > 160 && y > lastY + 4 ? true : y < lastY - 4 ? false : hdr.classList.contains('hide'));
   lastY = y;
+  // the phone's bottom bar steps aside with the header while reading down, and comes back on the way up or at the end of the page
+  if (bnav) bnav.classList.toggle('hide', hdr.classList.contains('hide') && innerHeight + y < document.documentElement.scrollHeight - 8);
   if (bar && sheet) { const r = sheet.getBoundingClientRect(); bar.style.transform = `scaleX(${Math.min(1, Math.max(0, -r.top / (r.height - innerHeight * 0.6)))})`; }
 };
 addEventListener('scroll', () => { if (!tick) { tick = true; requestAnimationFrame(onScroll); } }, { passive: true });

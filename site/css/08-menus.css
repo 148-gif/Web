@@ -29,3 +29,21 @@ body.menu-open{overflow:hidden}
 .top nav .ddp a{min-height:48px;font-size:1rem;padding:0 12px;gap:8px;white-space:normal;line-height:1.2}
 .top nav .ddp .ico{width:20px;height:20px}
 }
+
+/* ===== Bottom bar on phones (layout.mjs bnav): the five main places in reach of the thumb ===== */
+.bnav{display:none}
+@media (max-width:640px){
+  .bnav{position:fixed;inset-inline:0;bottom:0;z-index:24;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:4px 4px max(4px,env(safe-area-inset-bottom));background:linear-gradient(180deg,var(--navy),var(--navy2));border-top:1px solid rgba(230,196,102,.45);box-shadow:0 -8px 24px rgba(4,10,30,.25);transition:transform .25s var(--ease)}
+  .bnav.hide{transform:translateY(110%)}.bnav:focus-within{transform:none}
+  .bnav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:52px;padding:4px 2px;border-radius:var(--r-md);color:var(--on-navy2);text-decoration:none;font:600 .8125rem/1.2 var(--sans);text-align:center}
+  .bnav a .ico{width:24px;height:24px}
+  .bnav a[aria-current]{color:var(--gold2)}
+  .bnav a[aria-current] .ico{background:rgba(230,196,102,.16);border-radius:999px;padding:2px 12px;width:48px;box-sizing:border-box}
+  .bnav a:active{background:rgba(255,255,255,.06)}
+  body:not(:has(.stickcta)) .foot{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  body .totop{bottom:calc(76px + env(safe-area-inset-bottom))}
+  body .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
+  /* pages with their own fixed action bar (campaign, Yavniel) keep that bar only */
+  body:has(.stickcta) .bnav{display:none}
+}
+@media print{.bnav{display:none!important}}
