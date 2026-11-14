@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { BUILD, nik, write, shut, letters, halacha, isHidden, lib } from '../core.mjs';
+import { BUILD, nik, write, read, shut, letters, halacha, isHidden, lib } from '../core.mjs';
 import { icon, phead, layout, sr } from '../layout.mjs';
 import { chips } from '../parts.mjs';
 import { bookChapters } from './library.mjs';
@@ -25,6 +25,17 @@ for (let k = 0; k < SHARDS; k++) write(`idx/t${k}.json`, JSON.stringify(part(k).
 for (let k = 0; k < SHARDS; k++) write(`idx/${k}.json`, JSON.stringify(part(k).map(([, x]) => words((x.title + ' ' + x.q.join(' ') + ' ' + x.a.join(' ')).slice(0, 600), new Set(words(x.title).split(' '))))));
 // The index is not preloaded: it would compete with the styles and fonts that the first paint waits for.
 // search.js fetches the titles after the page loads (at once when there is a query, first part first) and the full text (about 1.2MB) once there is something to search for.
-write('search/index.html', layout('חיפוש', `${sr('תוצאות החיפוש')}<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid" data-parts="${SHARDS}" data-size="${shardSize}" data-version="${searchVersion}"></div><script src="/search.js?v=${BUILD}" defer></script>`, { path: '/search/', index: false, desc: 'חיפוש מהיר בכל אלפי השאלות והתשובות של שו״ת ברסלב ובספרי הצדיק שבספרייה.', head: phead(isHidden('/letters/') ? 'בכל אלפי השאלות' : 'בכל אלפי השאלות והמכתבים', 'חיפוש באתר', '', `<label class="slabel" for="q">מילה או ביטוי לחיפוש</label><div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" autofocus></div><div class="chips">${chips}</div>`) }));
+// Before anything is typed the page is not left empty: places to browse instead of searching, and how the search works.
+// search.js hides this block as soon as there is a query, and brings it back when the field is cleared.
+const moadimN = read('moadim.json').items.length;
+const browse = [
+  ['/shut/', 'chat', 'שו״ת ברסלב', `${shut.length.toLocaleString('he-IL')} שאלות ותשובות של מוהרא״ש`],
+  ['/library/', 'books', 'הספרייה', `${lib.books.length} ספרים של מוהרא״ש, לקריאה ולהורדה`],
+  ['/moadim/', 'calendar', 'זמני השנה', `${moadimN} מועדים: שיחות, ספרים ושאלות לכל חג`],
+  ['/moharash/', 'crown', 'מוהרא״ש', 'הצדיק מיבנאל: תולדות, דרכו ותורתו'],
+].filter(([h]) => !isHidden(h));
+const tips = [['כמה מילים יחד', 'יימצאו רק תוצאות שיש בהן את כל המילים'], ['בלי ניקוד', 'הניקוד שבטקסט לא מפריע לחיפוש'], ['קודם בכותרת', 'אחר כך גם מתוך גוף התשובות והספרים']];
+const startHtml = `<div id="sstart" class="sstart"><section aria-labelledby="sb-h"><h2 id="sb-h" class="sth">או לעיין לפי מדור</h2><ul class="browse">${browse.map(([h, ic, t, d]) => `<li><a href="${h}">${icon(ic, 'ico')}<span><b>${t}</b><small>${d}</small></span>${icon('arrow', 'ico sm arr')}</a></li>`).join('')}</ul></section><section class="stips" aria-labelledby="st-h"><h2 id="st-h" class="sth">איך מחפשים</h2><ul>${tips.map(([b, t]) => `<li>${icon('check', 'ico sm')}<span><b>${b}</b> · ${t}</span></li>`).join('')}</ul></section></div>`;
+write('search/index.html', layout('חיפוש', `${sr('תוצאות החיפוש')}${startHtml}<p id="count" class="small count" aria-live="polite"></p><div id="results" class="grid" data-parts="${SHARDS}" data-size="${shardSize}" data-version="${searchVersion}"></div><script src="/search.js?v=${BUILD}" defer></script>`, { path: '/search/', index: false, desc: 'חיפוש מהיר בכל אלפי השאלות והתשובות של שו״ת ברסלב ובספרי הצדיק שבספרייה.', head: phead(isHidden('/letters/') ? 'בכל אלפי השאלות' : 'בכל אלפי השאלות והמכתבים', 'חיפוש באתר', '', `<label class="slabel" for="q">מילה או ביטוי לחיפוש</label><div class="hsearch">${icon('search', 'ico sm')}<input id="q" type="search" placeholder="הקלידו מילה או ביטוי…" autofocus></div><p class="chiphead">חיפושים נפוצים</p><div class="chips">${chips}</div>`) }));
 
 export { indexed };

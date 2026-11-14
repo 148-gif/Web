@@ -11,6 +11,21 @@ a.tbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min
 /* Search: skeleton cards while the index loads */
 /* Search results: room reserved up front, so the footer does not move while results arrive part by part (CLS) */
 #results{min-height:70vh;align-content:start}
+/* Search before a query (#sstart, search.mjs): places to browse and how the search works, instead of an empty screen; the reserved room above is not needed then */
+.sstart:not([hidden])~#results{min-height:0}
+.sstart[hidden]{display:none}
+.sstart{display:grid;gap:32px;max-width:720px;margin:0 auto}
+.sth{font:700 .8125rem var(--sans);letter-spacing:.02em;color:var(--mute);margin:0 0 12px}
+.browse{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden;box-shadow:var(--shadow)}
+.browse li+li{border-top:1px solid var(--line)}
+.browse a{display:flex;align-items:center;gap:16px;min-height:64px;padding:12px 20px;text-decoration:none;color:var(--ink);transition:background .15s var(--ease)}
+.browse a:hover{background:var(--sunk)}
+.browse a>.ico:first-child{flex:none;width:40px;height:40px;padding:9px;border-radius:12px;color:var(--gold2);background:var(--sunk);border:1px solid var(--line)}
+.browse span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.browse b{font-size:1.0625rem;color:var(--brand)}.browse small{font:.875rem/1.45 var(--sans);color:var(--mute)}
+.browse .arr{flex:none;color:var(--mute);transition:transform .2s var(--ease)}.browse a:hover .arr{transform:translateX(-4px);color:var(--gold2)}
+.stips ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.stips li{display:flex;gap:10px;align-items:flex-start;font:.9375rem/1.55 var(--sans);color:var(--mute)}.stips li .ico{flex:none;margin-top:3px;color:var(--gold2)}.stips b{color:var(--ink)}
+.phead .chiphead{margin:20px 0 0;font:600 .8125rem var(--sans);color:var(--on-navy3);opacity:.85}.phead .chiphead+.chips{margin-top:10px}
 .skel{pointer-events:none}.skel i{display:block;height:1em;border-radius:var(--r-sm);background:linear-gradient(90deg,var(--sunk) 25%,var(--line) 50%,var(--sunk) 75%);background-size:300% 100%;animation:skel 1.4s linear infinite}
 .skel i+i{margin-top:12px;width:70%}
 @keyframes skel{from{background-position:100% 0}to{background-position:-200% 0}}
