@@ -2,7 +2,7 @@
 import { PER_PAGE, esc, gist, write, shut, letters, halacha, linkAudit } from '../core.mjs';
 import { relatedMap } from '../related.mjs';
 import { shutLabels } from '../seasonal.mjs';
-import { icon, orn, phead, layout, sr, card } from '../layout.mjs';
+import { icon, rtTool, orn, phead, layout, sr, card } from '../layout.mjs';
 import { searchForm, pagerHtml, ld, crumbs } from '../parts.mjs';
 
 const para = (ps) => {
@@ -30,7 +30,7 @@ const labels = shutLabels();
 const labelHtml = (x, base) => (base === '/shut/' && labels.has(String(x.id)) ? `<p class="qtags">${labels.get(String(x.id)).map(([t, h]) => `<a class="qtag" href="${h}">${icon('star', 'ico sm')}${esc(t)}</a>`).join('')}</p>` : '');
 const readPages = (list, base, section, [prevL, nextL, navL]) => list.forEach((x, k) => {
   const prev = list[k - 1], next = list[k + 1];
-  write(`${base.slice(1)}${x.id}/index.html`, layout(x.title, `<article class="qa"><div class="tools" role="group" aria-label="כלי קריאה"><span class="small">גודל טקסט</span><button type="button" class="tbtn" data-fs="-1" aria-label="הקטנת טקסט">א־</button><button type="button" class="tbtn big" data-fs="1" aria-label="הגדלת טקסט">א+</button><button type="button" class="tbtn share" data-share>${icon('share', 'ico sm')}שיתוף</button></div><div class="sheet">${x.q.length ? `<section class="q"><h2>השאלה</h2>${x.q.map((p) => `<p>${esc(p)}</p>`).join('')}</section>` : ''}
+  write(`${base.slice(1)}${x.id}/index.html`, layout(x.title, `<article class="qa"><div class="tools" role="group" aria-label="כלי קריאה"><span class="small">גודל טקסט</span><button type="button" class="tbtn" data-fs="-1" aria-label="הקטנת טקסט">א־</button><button type="button" class="tbtn big" data-fs="1" aria-label="הגדלת טקסט">א+</button>${rtTool()}<button type="button" class="tbtn share" data-share>${icon('share', 'ico sm')}<span class="tl">שיתוף</span></button></div><div class="sheet">${x.q.length ? `<section class="q"><h2>השאלה</h2>${x.q.map((p) => `<p>${esc(p)}</p>`).join('')}</section>` : ''}
 <section class="a">${x.q.length ? '<h2>התשובה</h2>' : ''}${para(x.a)}</section>${orn}</div>
 ${relatedHtml(x, base)}
 <nav class="qnav" aria-label="${navL}">${prev ? `<a class="prev" href="${base}${prev.id}/"><small>→ ${prevL}</small>${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="next" href="${base}${next.id}/"><small>${nextL} ←</small>${esc(next.title)}</a>` : '<span></span>'}</nav></article>`,

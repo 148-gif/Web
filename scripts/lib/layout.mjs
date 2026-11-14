@@ -11,8 +11,8 @@ const CSS_URL = `${BASE}/style.css?v=${BUILD}`;
 const HEAD_JS = [
   // Wrapped in a function so none of its variables leak into the page's global scope (where site scripts live too).
   "(function(){var d=document.documentElement,sp=0,ready=function(){d.classList.add('ready')};d.classList.add('js');",
-  // Saved text size, and whether the splash was already shown this visit; storage may be blocked, so both are optional.
-  "try{var rs=parseFloat(localStorage.getItem('rs'));if(rs>=0.85&&rs<=1.5)d.style.setProperty('--rs',rs);if(!sessionStorage.getItem('seen')){sp=1;sessionStorage.setItem('seen',1)}}catch(e){}",
+  // Saved text size and reading background, and whether the splash was already shown this visit; storage may be blocked, so all are optional.
+  "try{var rs=parseFloat(localStorage.getItem('rs')),rt=localStorage.getItem('rt');if(rs>=0.85&&rs<=1.5)d.style.setProperty('--rs',rs);if(rt==='paper'||rt==='night')d.dataset.rt=rt;if(!sessionStorage.getItem('seen')){sp=1;sessionStorage.setItem('seen',1)}}catch(e){}",
   `d.classList.add(sp?'splash':'wait');var l=document.createElement('link'),f=document.fonts;l.rel='stylesheet';l.href='${CSS_URL}';`,
   `l.onload=l.onerror=function(){(sp&&f&&f.load?Promise.all([f.load('1em Assistant','א1'),f.load('900 1em "Frank Ruhl Libre"','א1')]):Promise.resolve()).then(ready,ready)};`,
   // Never leave the page hidden: show it after 6 seconds even if the stylesheet is still on its way.
@@ -84,6 +84,7 @@ const ICON = {
   school: '<path d="M2 21h20M4 21V10l8-6 8 6v11"/><path d="M9 21v-5a3 3 0 0 1 6 0v5"/><path d="M12 7.5v3M10.5 9h3"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  contrast: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
   share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
   crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/><path d="M5 19h14"/>',
   lyre: '<path d="M7 3c-3 3-3 8 0 11M17 3c3 3 3 8 0 11"/><path d="M7 14h10v3a5 5 0 0 1-10 0z"/><path d="M10 6v8M14 6v8"/>',
@@ -116,6 +117,9 @@ const ICON = {
   mountain: '<path d="m2 20 7-12 4 6.5 3-4.5 6 10z"/><circle cx="17" cy="6" r="1.8"/>',
 };
 const icon = (n, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+// Reading background for the reading tools: the choice is kept in this browser (localStorage 'rt') and applied by HEAD_JS before the page shows.
+const RT_OPTS = [['', 'רגיל'], ['paper', 'קלף'], ['night', 'לילה']];
+const rtTool = () => `<span class="rtw"><button type="button" class="tbtn rtb" data-rt-toggle aria-expanded="false" aria-controls="rtp" aria-label="רקע לקריאה">${icon('contrast', 'ico sm')}<span>רקע</span></button><div class="rtp" id="rtp" hidden><p class="rth">רקע לקריאה</p><div class="rtsw" role="group" aria-label="רקע לקריאה">${RT_OPTS.map(([v, t]) => `<button type="button" class="rts" data-rt="${v}" aria-pressed="${v ? 'false' : 'true'}"><i class="rtv${v ? ` rtv-${v}` : ''}" aria-hidden="true">אב</i>${t}</button>`).join('')}</div></div></span>`;
 const orn = `<div class="orn-rule" aria-hidden="true"><i></i>${icon('flame')}<i></i></div>`;
 const phead = (kicker, title, lead = '', extra = '') => `<section class="phead"><div class="wrap">${kicker ? `<p class="kicker2">${kicker}</p>` : ''}<h1>${title.replace(/ ([–—]) /g, '\u00a0$1 ')}</h1>${lead ? `<p class="sub">${lead}</p>` : ''}${extra}</div></section>`;
 const splash = `<div id="splash" aria-hidden="true"><span class="spm">${icon('flame')}</span><span>${SITE}</span><small>חסידות ברסלב</small><i></i></div>`;
@@ -145,4 +149,4 @@ ${splash}<a class="skip" href="#main">דלגו לתוכן</a>
 const sr = (t) => `<h2 class="sr">${t}</h2>`;
 const card = (x, base = '/shut/') => `<a class="card qcard" href="${base}${x.id}/"><h3>${esc(x.title)}</h3><p>${esc(gist(x.a).slice(0, 150))}…</p><span class="go">לקריאת התשובה ←</span></a>`;
 
-export { CSS_URL, HEAD_JS, PRELOAD_FONTS, SPEC, sha, frames, CSP, groups, nav, inGroup, menuLink, mainMenu, org, sc, orgLine, wa, contactList, infoNav, ICON, icon, orn, phead, SPLASH_CSS, splash, DESC, abs, layout, sr, card };
+export { CSS_URL, HEAD_JS, PRELOAD_FONTS, SPEC, sha, frames, CSP, groups, nav, inGroup, menuLink, mainMenu, org, sc, orgLine, wa, contactList, infoNav, ICON, icon, rtTool, orn, phead, SPLASH_CSS, splash, DESC, abs, layout, sr, card };

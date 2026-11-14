@@ -51,6 +51,24 @@ document.querySelectorAll('[data-fs]').forEach((b) => b.addEventListener('click'
   root.style.setProperty('--rs', v);
   store.set('rs', v);
 }));
+// Reading background (רגיל / קלף / לילה): html[data-rt], remembered in this browser only (localStorage 'rt'; HEAD_JS applies it before the page shows).
+const rtBtn = document.querySelector('[data-rt-toggle]');
+const rtp = document.getElementById('rtp');
+if (rtBtn && rtp) {
+  const sync = () => rtp.querySelectorAll('[data-rt]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rt === (root.dataset.rt || ''))));
+  const openRt = (o) => { rtp.hidden = !o; rtBtn.setAttribute('aria-expanded', String(o)); };
+  rtBtn.addEventListener('click', () => openRt(rtp.hidden));
+  rtp.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-rt]');
+    if (!b) return;
+    if (b.dataset.rt) root.dataset.rt = b.dataset.rt; else delete root.dataset.rt;
+    store.set('rt', b.dataset.rt);
+    sync();
+  });
+  document.addEventListener('click', (e) => { if (!rtp.hidden && !e.target.closest('.rtp, [data-rt-toggle]')) openRt(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !rtp.hidden) { openRt(false); rtBtn.focus(); } });
+  sync();
+}
 // Share: the whole text, ready to paste. Phones get the system share sheet (WhatsApp, mail, SMS, Telegram...);
 // elsewhere a small menu offers WhatsApp, email, copying the text, or copying the link.
 const shareText = () => {
