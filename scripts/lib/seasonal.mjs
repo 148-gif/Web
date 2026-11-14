@@ -150,7 +150,14 @@ const seasonHtml = () => {
   if (!runs.length) return '';
   const items = lib.occasions.filter((o) => runs.some((r) => r[0] === o.id)).map((o) => {
     if (o.icon && !ICON[o.icon]) throw new Error(`library.json: occasion "${o.id}" has an unknown icon "${o.icon}"`);
-    return `<section class="band season ac-${o.accent || 'gold'}" data-oc="${o.id}" hidden><div class="wrap">${o.image ? figure(o.image, { size: 'full' }).replace('class="fig fig-full', 'class="fig season-fig') : ''}${o.icon ? `<span class="season-ico">${icon(o.icon, 'ico lg')}</span>` : ''}<h2 class="sh"><span data-b>לקראת ${esc(o.title)}</span><span data-d hidden>${esc(o.title)}</span></h2><p class="shsub"><b data-when></b> · ספרים, שיחות ושאלות ותשובות לקריאה</p>${o.books.length || (o.kuntresim || []).length ? `<div class="grid featured">${o.books.map((slug) => bookCard(lib.books.find((b) => b.slug === slug), ' feat')).join('')}${(o.kuntresim || []).map((k) => kuntresCard(o, k)).join('')}</div>` : ''}${readings(o)}${qa(o)}${more(o)}</div></section>`;
+    // The top of the band, bento style: the title and the days left laid over the holiday's photo (its caption and credit stay under it),
+    // or over a velvet panel when it has none; beside it, the books as a compact list.
+    const head = `<div class="season-tt">${o.icon ? `<span class="season-ico">${icon(o.icon, 'ico lg')}</span>` : ''}<h2 class="sh"><span data-b>לקראת ${esc(o.title)}</span><span data-d hidden>${esc(o.title)}</span></h2><p class="shsub"><b data-when></b><span>ספרים, שיחות ושאלות ותשובות לקריאה</span></p></div>`;
+    const hero = o.image
+      ? figure(o.image, { size: 'full' }).replace('class="fig fig-full', 'class="fig season-fig').replace(/<img[^>]*>/, (img) => `<div class="season-shot">${img}${head}</div>`)
+      : `<div class="season-plain">${head}</div>`;
+    const books = o.books.length || (o.kuntresim || []).length ? `<div class="season-books"><h3 class="subh qh">${icon('books', 'ico')}ספרים לקראת ${esc(o.title)}</h3><div class="grid featured">${o.books.map((slug) => bookCard(lib.books.find((b) => b.slug === slug), ' feat')).join('')}${(o.kuntresim || []).map((k) => kuntresCard(o, k)).join('')}</div></div>` : '';
+    return `<section class="band season ac-${o.accent || 'gold'}" data-oc="${o.id}" hidden><div class="wrap"><div class="season-top${books ? '' : ' solo'}"><div class="season-hero">${hero}</div>${books}</div>${readings(o)}${qa(o)}${more(o)}</div></section>`;
   });
   return `<div id="season" data-season="${esc(JSON.stringify(runs))}" data-unfiltered hidden>${items.join('')}</div>`;
 };

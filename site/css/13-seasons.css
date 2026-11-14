@@ -22,3 +22,38 @@
 /* holiday labels of a question: under its title on its page (links to the hub), and on a search result */
 .qtags{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:14px 0 0}.qtag{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:999px;font:600 .875rem var(--sans);text-decoration:none;color:var(--gold3);border:1px solid rgba(230,196,102,.55);background:rgba(230,196,102,.14)}a.qtag{min-height:44px}a.qtag:hover{background:rgba(230,196,102,.26)}.qtag .ico{color:var(--gold2)}
 #results .qtag{align-self:flex-start;margin-top:8px;color:var(--gold);border-color:var(--gold2);background:var(--sunk)}
+
+/* ===== Bento top of the band: title and days left over the photo, the books beside it ===== */
+.season .wrap{max-width:1120px}
+.season-top{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:24px;align-items:start;text-align:start}
+.season-top.solo{grid-template-columns:minmax(0,1fr);max-width:760px;margin-inline:auto}
+.season-hero .season-fig{margin:0;max-width:none}
+.season-hero .season-fig figcaption{text-align:start}
+.season-shot{display:grid;border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow);background:var(--navy2)}
+.season-shot>img,.season-hero .season-fig .season-shot>img{grid-area:1/1;width:100%;height:100%;aspect-ratio:16/10;object-fit:cover;border-radius:0;box-shadow:none}
+.season-tt{grid-area:1/1;align-self:end;padding:96px 28px 24px;background:linear-gradient(180deg,rgba(5,10,30,0),rgba(5,10,30,.62) 40%,rgba(5,10,30,.9));color:#fff;text-align:start}
+.season-plain{display:grid;min-height:280px;border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow);background-color:var(--navy);background-image:var(--velvet),radial-gradient(120% 90% at 50% -10%,var(--royal) 0,var(--navy) 55%,var(--navy2) 100%)}
+.season-plain .season-tt{background:none;padding-top:40px}
+.season-tt .season-ico{width:52px;height:52px;margin:0 0 10px;background:rgba(255,255,255,.1);color:var(--gold2);border-color:rgba(230,196,102,.6);box-shadow:none}
+.season-tt .season-ico .ico{width:28px;height:28px}
+.season .season-tt .sh{margin:0;color:#fff;font-size:2.25rem;line-height:1.15;text-shadow:0 2px 12px rgba(0,0,0,.35)}
+.season .season-tt .shsub{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:12px 0 0;color:var(--on-navy);font:600 1rem var(--sans)}
+.season-tt .shsub b{display:inline-flex;align-items:center;min-height:34px;padding:0 16px;border-radius:999px;background:var(--gold2);color:var(--on-gold);font:800 1.0625rem var(--sans)}
+.season-books .subh.qh{justify-content:flex-start;margin:0 0 12px}
+.season-books .grid.featured{max-width:none;grid-template-columns:minmax(0,1fr);gap:12px}
+.season .season-books .grid.featured .card.book{border-top:1px solid var(--line)}
+.season-books .card.book{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:14px;align-items:start;padding:16px 18px;border-top:0;border-inline-start:4px solid var(--acc)}
+.season-books .card.book>.ico{grid-row:span 3;width:30px;height:30px;margin:2px 0 0}
+.season-books .card.book h3{margin:0;font-size:1.125rem}.season-books .card.book p{margin:2px 0 0;font-size:.9375rem}
+.season-books .card.book .btags{margin-top:8px}.season-books .card.book .go{display:none}
+.season .grid.qreads{max-width:none}
+.season .subh.qh{margin-top:40px}
+@media (max-width:860px){.season-top{grid-template-columns:minmax(0,1fr)}.season-books{max-width:620px}}
+@media (max-width:640px){
+  .season-shot>img,.season-hero .season-fig .season-shot>img{aspect-ratio:4/3}
+  .season .subh.qh{margin-top:32px}.season-books .card.book{padding:14px 16px}
+  .season-tt{padding:72px 18px 18px}.season .season-tt .sh{font-size:1.75rem}.season .season-tt .shsub{font-size:.9375rem}
+  /* the reading cards in one row that scrolls sideways, the next card peeking in, so the band is far shorter */
+  .season .grid.qreads{display:grid;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:84%;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;margin-inline:-16px;padding:4px 16px 12px;scroll-padding-inline:16px;scrollbar-width:thin}
+  .season .grid.qreads>*{scroll-snap-align:start}
+}
