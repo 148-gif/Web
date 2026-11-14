@@ -4,6 +4,7 @@
 {
 const me = new URL(document.currentScript.src), root = me.pathname.replace(/[^/]*$/, ''), v = '?v='+encodeURIComponent(document.getElementById('results').dataset.version || me.search);
 const input = document.getElementById('q'), out = document.getElementById('results'), count = document.getElementById('count');
+const start = document.getElementById('sstart'); // what the page offers before anything is typed
 const N = Number(out.dataset.parts), SIZE = Number(out.dataset.size);
 const strip = (s) => s.replace(/[֑-ׇ]/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ');
 const get = (f, priority = 'auto') => fetch(`${root}idx/${f}.json${v}`, { priority }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
@@ -31,6 +32,7 @@ const render = (list) => {
 };
 const run = () => {
   const terms = strip(input.value).trim().split(/\s+/).filter(Boolean);
+  if (start) start.hidden = terms.length > 0;
   if (!terms.length) { out.textContent = ''; count.textContent = ''; return; }
   const parts = readyParts();
   if (!parts) { count.textContent = 'טוען…'; out.innerHTML = '<div class="card skel" aria-hidden="true"><i></i><i></i></div>'.repeat(6); return; }

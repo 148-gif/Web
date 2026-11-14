@@ -38,5 +38,16 @@
 @media (max-width:640px){.libcat .card.book.series .go{display:inline-flex}.libcat .card.book>.svols,.libcat .card.book>.go,.libcat .card.book>.btags{grid-column:2}}
 /* Library: by-holiday chips, the series' folded list in groups (the seasonal suggestion is in 13-seasons.css) */
 .stepaside{display:none}
-.lchips.moadim{align-items:center}.chiplabel{font:700 .875rem var(--sans);color:var(--mute);align-self:center}
+.lchips.moadim{align-items:center}.lchips.moadim a{gap:6px}.lchips.moadim a .ico{color:var(--gold)}.chiplabel{font:700 .875rem var(--sans);color:var(--mute);align-self:center}
+/* Library filter: one search field with its icon, the kind as one segmented control, the categories as one row (a scrolling strip on phones) */
+.cfbox{position:relative}.cfbox>.ico{position:absolute;inset-inline-start:16px;top:50%;transform:translateY(-50%);color:var(--mute);pointer-events:none}
+.cfilter .cfbox input{padding-inline-start:44px;min-height:52px;box-shadow:0 1px 2px rgba(20,30,60,.05)}.cfilter .cfbox input:focus-visible{outline:0;border-color:var(--gold2);box-shadow:0 0 0 3px rgba(230,196,102,.35)}
+.cfilter .kfilter{display:flex;flex-wrap:nowrap;gap:0;width:max-content;max-width:100%;margin:12px auto 0;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--sunk)}
+.cfilter .kfilter button{min-height:44px;padding:0 18px;border:0;border-radius:999px;background:none;box-shadow:none;color:var(--mute);white-space:nowrap}.cfilter .kfilter button:hover{background:none;color:var(--brand)}
+.cfilter .kfilter button[aria-pressed="true"]{background:linear-gradient(180deg,var(--gold3),var(--gold2));color:var(--on-gold);box-shadow:0 1px 3px rgba(20,30,60,.18)}
+.lchips.cats{margin:4px 0 24px}
+@media (max-width:640px){
+.lchips.cats{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;margin-inline:-16px;padding:2px 16px;scroll-padding-inline:16px;-webkit-mask-image:linear-gradient(to left,transparent 0,#000 24px);mask-image:linear-gradient(to left,transparent 0,#000 24px)}
+.lchips.cats::-webkit-scrollbar{display:none}.lchips.cats a{flex:none;white-space:nowrap}
+}
 .sgh{margin:10px 0 2px;font:700 .8125rem var(--sans);color:var(--mute)}.svols .sgh+ul{margin-top:2px}
