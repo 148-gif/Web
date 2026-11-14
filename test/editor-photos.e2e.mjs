@@ -80,7 +80,9 @@ const pick = (n) => p.locator('dialog .mcard').nth(n).click();
 let before = puts.length;
 await add('תמונה'); t = await save(); ok(/בחרו תמונה/.test(t) && puts.length === before, `an image block with no photo: blocked (${t})`);
 await p.getByRole('button', { name: 'בחירת תמונה' }).click(); await p.waitForSelector('dialog .mcard');
-ok(await p.locator('dialog .mcard').count() === 26 && await p.locator('dialog .mcard:disabled').count() === 0, 'the chooser lists every photo; all are approved');
+// the chooser lists the whole registry (counted here, not fixed, so adding a photo does not break the test)
+const PHOTOS = JSON.parse(readFileSync(join(ROOT, 'data/images.json'), 'utf8'));
+ok(await p.locator('dialog .mcard').count() === PHOTOS.length && PHOTOS.every((x) => x.rights === 'approved') && await p.locator('dialog .mcard:disabled').count() === 0, 'the chooser lists every photo; all are approved');
 await pick(2); await p.waitForTimeout(300); await save();
 const img = puts.at(-1).data.blocks?.find((b) => b.type === 'image');
 ok(puts.length === before + 1 && img && Object.keys(img).sort().join() === 'id,size,type', `the saved image block has only the photo's id (${JSON.stringify(img)})`);
