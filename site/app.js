@@ -34,11 +34,16 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && hdr.clas
 document.addEventListener('click', (e) => { if (hdr.classList.contains('open') && !hdr.contains(e.target)) setMenu(false); });
 
 let lastY = scrollY, tick = false;
+// a scroll the page makes itself (the library filter keeping its place) is not the reader going down: it leaves the bars in view
+// (that code is outside this block, so it says so with a 'steadyscroll' event just before it scrolls)
+let steady = false;
+document.addEventListener('steadyscroll', () => { steady = true; });
 const bar = document.querySelector('.readbar i'), sheet = document.querySelector('.sheet'), bnav = document.querySelector('.bnav');
 const onScroll = () => {
   tick = false;
   const y = scrollY;
-  if (!hdr.classList.contains('open')) hdr.classList.toggle('hide', y > 160 && y > lastY + 4 ? true : y < lastY - 4 ? false : hdr.classList.contains('hide'));
+  if (steady) { steady = false; hdr.classList.remove('hide'); }
+  else if (!hdr.classList.contains('open')) hdr.classList.toggle('hide', y > 160 && y > lastY + 4 ? true : y < lastY - 4 ? false : hdr.classList.contains('hide'));
   lastY = y;
   // the phone's bottom bar steps aside with the header while reading down, and comes back on the way up or at the end of the page
   if (bnav) bnav.classList.toggle('hide', hdr.classList.contains('hide') && innerHeight + y < document.documentElement.scrollHeight - 8);
@@ -363,7 +368,13 @@ document.querySelectorAll('[data-cfilter]').forEach((box) => {
   let kind = '';
   // Hiding or bringing back the parts above the filter ("start here", the seasonal band) changes the page's height above it:
   // the page is scrolled by the same amount, so the filter stays where it was on the screen instead of the reader landing at the top.
-  const keep = (fn) => { const y0 = box.getBoundingClientRect().top; fn(); const d = box.getBoundingClientRect().top - y0; if (Math.abs(d) > 1) scrollBy({ top: d, behavior: 'instant' }); };
+  const scrollSteady = (opts) => { document.dispatchEvent(new Event('steadyscroll')); scrollBy(opts); };
+  const keep = (fn) => {
+    const y0 = box.getBoundingClientRect().top; fn(); const d = box.getBoundingClientRect().top - y0;
+    if (Math.abs(d) > 1) scrollSteady({ top: d, behavior: 'instant' });
+    // left a few pixels short of the top (the page got shorter than the jump): go to the top, so the page head is not cut under the header
+    if (scrollY > 0 && scrollY < 120) scrollSteady({ top: -scrollY, behavior: 'instant' });
+  };
   const run = () => keep(filter);
   const filter = () => {
     const words = normWords(box.value.trim()).split(/\s+/).filter(Boolean);
@@ -374,7 +385,15 @@ document.querySelectorAll('[data-cfilter]').forEach((box) => {
       const lis = [...card.querySelectorAll('.svols li')], hit = lis.filter((li) => words.every((w) => hay.get(li).includes(w)) && (!kind || (li.dataset.k || '').split(' ').includes(kind)));
       const some = (words.length || kind) && !card.hidden && hit.length > 0;
       lis.forEach((li) => { li.hidden = some && !hit.includes(li); });
-      card.querySelector('.svols').open = !!(some && words.length); // a kind alone trims the list without unfolding every series
+      // the list opens for a search, and for a kind when only a few volumes are left (a kind that keeps them all leaves it folded)
+      const few = some && hit.length < lis.length;
+      card.querySelector('.svols').open = !!(some && (words.length || (few && hit.length <= 8)));
+      // a group heading inside the list goes with its last visible volume
+      card.querySelectorAll('.sgh').forEach((h) => { const ul = h.nextElementSibling; h.hidden = !!ul && !ul.querySelector('li:not([hidden])'); });
+      // the volume count says how many are left ("1 מתוך 15"), and the kind tags step aside while it does, so the card never claims what the filter excluded
+      const cnt = card.querySelector('.btag.cnt');
+      if (cnt) { cnt.dataset.all ??= cnt.textContent; cnt.textContent = few ? `${hit.length} מתוך ${cnt.dataset.all}` : cnt.dataset.all; }
+      card.querySelectorAll('.btags .btag:not(.cnt)').forEach((t) => { t.hidden = few && !!kind; });
     });
     document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden]):not(.svols li)'); if (words.length && s.tagName === 'DETAILS') s.open = true; });
     document.querySelectorAll('[data-unfiltered]').forEach((s) => s.classList.toggle('stepaside', !!(words.length || kind)));
