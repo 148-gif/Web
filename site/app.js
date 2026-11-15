@@ -235,10 +235,14 @@ if (anchorNav && 'IntersectionObserver' in window) {
   document.body.append(secbar);
   const links = [...secbar.querySelectorAll('a')], secs = links.map((a) => document.getElementById(a.hash.slice(1))).filter(Boolean);
   new IntersectionObserver(([e]) => secbar.classList.toggle('show', !e.isIntersecting && e.boundingClientRect.top < 0)).observe(anchorNav);
+  // The current chip is brought into view by scrolling the bar's own strip only. scrollIntoView could also scroll the page
+  // (on phones, while the bar is still sliding in from above the screen), which threw the reader back up the page.
+  const strip = secbar.firstChild;
+  let last = null;
   const mark = () => {
     let cur = null;
     for (const s of secs) if (s.getBoundingClientRect().top < innerHeight * 0.35) cur = s;
-    links.forEach((a) => { const on = cur && a.hash === `#${cur.id}`; a.classList.toggle('on', on); if (on && secbar.classList.contains('show')) a.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
+    links.forEach((a) => { const on = !!cur && a.hash === `#${cur.id}`; a.classList.toggle('on', on); if (on && a !== last) { last = a; const r = a.getBoundingClientRect(), c = strip.getBoundingClientRect(); if (r.left < c.left || r.right > c.right) strip.scrollLeft += r.left - c.left - (c.width - r.width) / 2; } });
   };
   addEventListener('scroll', () => requestAnimationFrame(mark), { passive: true });
 }
@@ -353,7 +357,7 @@ document.querySelectorAll('[data-season]').forEach((box) => {
 // ignored on both sides, so "לג בעומר" finds "ל״ג בעומר".
 const normWords = (t) => t.toLowerCase().replace(/["'\u05F3\u05F4]/g, '').replace(/[\u0591-\u05C7]/g, '');
 document.querySelectorAll('[data-cfilter]').forEach((box) => {
-  const cards = [...document.querySelectorAll('.libcat [data-t]:not(.svols li)')], vols = [...document.querySelectorAll('.card.series')], none = document.querySelector('.cnone'), kbtns = [...box.parentElement.querySelectorAll('[data-kf]')];
+  const cards = [...document.querySelectorAll('.libcat [data-t]:not(.svols li)')], vols = [...document.querySelectorAll('.card.series')], none = document.querySelector('.cnone'), kbtns = [...(box.closest('.cfilter') || box.parentElement).querySelectorAll('[data-kf]')];
   const hay = new Map([...cards, ...document.querySelectorAll('.svols li')].map((c) => [c, normWords(c.dataset.t)]));
   let kind = '';
   const run = () => {
