@@ -55,8 +55,8 @@ for (const s of series) {
 const kt = read('kuntresim.json');
 // A kuntres that is also a book of the library ("book": its slug) leads to the book's page, which offers the kuntres too.
 const kuntresCard = (k) => (k.book
-  ? `<a class="card book" href="/library/${k.book}/">${icon('book', 'ico lg')}<h3>${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">לקריאה באתר ולהורדה ←</span></a>`
-  : `<a class="card book" href="/books/kuntresim/${k.slug}.pdf">${icon('book', 'ico lg')}<h3>${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">קריאה והורדה · PDF ←</span></a>`);
+  ? `<a class="card book" href="/library/${k.book}/">${icon('book', 'ico lg')}<h3 dir="auto">${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">לקריאה באתר ולהורדה ←</span></a>`
+  : `<a class="card book" href="/books/kuntresim/${k.slug}.pdf">${icon('book', 'ico lg')}<h3 dir="auto">${esc(k.title)}</h3><p>${k.pages} עמודים · ${esc(k.size)}</p><span class="go">קריאה והורדה · PDF ←</span></a>`);
 for (const k of kt.items) if (k.book && !lib.books.some((b) => b.slug === k.book)) throw new Error(`kuntresim.json: "${k.slug}" names an unknown book "${k.book}"`);
 // A topic with many items gets its own numbered pages (/library/kuntresim/<topic>/, .../page/<n>/); the small ones stay on the main page.
 const KPER = 60, KBIG = 18;
