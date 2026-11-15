@@ -358,6 +358,7 @@ document.querySelectorAll('[data-season]').forEach((box) => {
 const normWords = (t) => t.toLowerCase().replace(/["'\u05F3\u05F4]/g, '').replace(/[\u0591-\u05C7]/g, '');
 document.querySelectorAll('[data-cfilter]').forEach((box) => {
   const cards = [...document.querySelectorAll('.libcat [data-t]:not(.svols li)')], vols = [...document.querySelectorAll('.card.series')], none = document.querySelector('.cnone'), kbtns = [...(box.closest('.cfilter') || box.parentElement).querySelectorAll('[data-kf]')];
+  const count = box.closest('.cfilter')?.nextElementSibling?.classList.contains('ccount') ? box.closest('.cfilter').nextElementSibling : null;
   const hay = new Map([...cards, ...document.querySelectorAll('.svols li')].map((c) => [c, normWords(c.dataset.t)]));
   let kind = '';
   // Hiding or bringing back the parts above the filter ("start here", the seasonal band) changes the page's height above it:
@@ -368,15 +369,24 @@ document.querySelectorAll('[data-cfilter]').forEach((box) => {
     const words = normWords(box.value.trim()).split(/\s+/).filter(Boolean);
     cards.forEach((c) => { c.hidden = !words.every((w) => hay.get(c).includes(w)) || (kind && !(c.dataset.k || '').split(' ').includes(kind)); });
     // a series card that matches because of one of its volumes opens its list at those volumes
+    // (or because of the chosen kind: under "PDF", a series shows only its volumes that have one)
     vols.forEach((card) => {
-      const lis = [...card.querySelectorAll('.svols li')], hit = lis.filter((li) => words.every((w) => hay.get(li).includes(w)));
-      const some = words.length && !card.hidden && hit.length > 0;
+      const lis = [...card.querySelectorAll('.svols li')], hit = lis.filter((li) => words.every((w) => hay.get(li).includes(w)) && (!kind || (li.dataset.k || '').split(' ').includes(kind)));
+      const some = (words.length || kind) && !card.hidden && hit.length > 0;
       lis.forEach((li) => { li.hidden = some && !hit.includes(li); });
-      card.querySelector('.svols').open = !!some;
+      card.querySelector('.svols').open = !!(some && words.length); // a kind alone trims the list without unfolding every series
     });
     document.querySelectorAll('.libcat').forEach((s) => { s.hidden = !s.querySelector('[data-t]:not([hidden]):not(.svols li)'); if (words.length && s.tagName === 'DETAILS') s.open = true; });
     document.querySelectorAll('[data-unfiltered]').forEach((s) => s.classList.toggle('stepaside', !!(words.length || kind)));
     if (none) none.hidden = cards.some((c) => !c.hidden);
+    // a category left empty also loses its chip (in the page and in the sticky section bar), so no chip leads to nothing
+    document.querySelectorAll('nav.cats a, .secbar a').forEach((a) => { const sec = a.hash.length > 1 && document.getElementById(a.hash.slice(1)); if (sec && sec.classList.contains('libcat')) a.hidden = sec.hidden; });
+    // how many books are left (a series counts its volumes that match), so a filter's effect can be seen at once
+    if (count) {
+      const n = cards.filter((c) => !c.hidden).reduce((a, c) => a + (c.classList.contains('series') ? c.querySelectorAll('.svols li:not([hidden])').length : 1), 0);
+      count.hidden = !(words.length || kind);
+      count.textContent = n ? `${n === 1 ? 'ספר אחד' : `${n} ספרים`}${kind ? (kind === 'pdf' ? ' להורדה כ־PDF' : ' לקריאה באתר') : ''}` : '';
+    }
   };
   box.addEventListener('input', run);
   if (kbtns.length) {

@@ -21,7 +21,10 @@
 .soonlist{justify-content:center}.soonlist small{color:var(--mute);font-weight:400;margin-inline-start:4px}
 .cfilter{max-width:520px;margin:0 auto 20px}.cfilter .slabel{display:block;font-weight:600;margin-bottom:6px}.cfilter input{width:100%;min-height:48px;padding:10px 16px;border:1px solid var(--line);border-radius:999px;font:1rem var(--sans);background:var(--surface);color:var(--ink)}
 .cnone{text-align:center;color:var(--mute);padding:24px 0}
-[hidden].libcat,[hidden].card{display:none}
+/* a filtered-out card or section stays hidden whatever layout a card has (the phone layout gives .libcat .card.book display:grid) */
+.libcat[hidden],.card[hidden],.svols li[hidden]{display:none!important}
+.lchips a[hidden],.secbar a[hidden]{display:none}
+.ccount{text-align:center;margin:-8px 0 16px;font:600 .875rem var(--sans);color:var(--mute)}.ccount[hidden]{display:none}
 /* Library: kind tags on a card, series cards, "start here", the kind filter, a series' list of volumes */
 .btags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.btag,.bpg{font:600 .8125rem/1 var(--sans);padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mute);background:var(--sunk)}.btag.web{color:var(--brand);border-color:var(--gold2)}.btag.cnt{color:var(--on-gold);background:linear-gradient(180deg,var(--gold3),var(--gold2));border-color:transparent}.bpg{background:none;border-color:transparent;padding-inline:4px}
 .card.book.series{box-shadow:var(--shadow),-6px 6px 0 -1px var(--surface),-6px 6px 0 0 var(--line),-12px 12px 0 -1px var(--surface),-12px 12px 0 0 var(--line);margin-inline-end:12px;margin-bottom:12px}.card.book.series>.ico{color:var(--gold)}
