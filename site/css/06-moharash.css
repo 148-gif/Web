@@ -22,7 +22,7 @@
 .cfilter{max-width:520px;margin:0 auto 20px}.cfilter .slabel{display:block;font-weight:600;margin-bottom:6px}.cfilter input{width:100%;min-height:48px;padding:10px 16px;border:1px solid var(--line);border-radius:999px;font:1rem var(--sans);background:var(--surface);color:var(--ink)}
 .cnone{text-align:center;color:var(--mute);padding:24px 0}
 /* a filtered-out card or section stays hidden whatever layout a card has (the phone layout gives .libcat .card.book display:grid) */
-.libcat[hidden],.card[hidden],.svols li[hidden]{display:none!important}
+.libcat[hidden],.card[hidden],.svols li[hidden],.svols .sgh[hidden],.btags .btag[hidden]{display:none!important}
 .lchips a[hidden],.secbar a[hidden]{display:none}
 .ccount{text-align:center;margin:-8px 0 16px;font:600 .875rem var(--sans);color:var(--mute)}.ccount[hidden]{display:none}
 /* Library: kind tags on a card, series cards, "start here", the kind filter, a series' list of volumes */
