@@ -4,6 +4,7 @@ import { icon, rtTool, orn, phead, layout } from '../layout.mjs';
 import { seasonHtml, seasonPools } from '../seasonal.mjs';
 import { ps, ld, absu, crumbs, facts, person, pagerHtml, bookText, kinds, btags, bookCard } from '../parts.mjs';
 import { moedOfChapter, moedOfBook } from '../moadim.mjs';
+import { tochIndex, TOCH_BOOKS, TOCH_LANGS } from '../toch.mjs';
 
 // Library index: books first by "featured", then one section per category; the books of a series are one card there, leading to the
 // series page (/library/<id>/) with a compact list of its volumes. A filter (words, and "read on the site" / "PDF") narrows the cards.
@@ -15,7 +16,10 @@ const seriesCard = (s) => {
   return `<div class="card book series" data-t="${esc([s.title, s.sub, ...(s.keywords || []), ...bs.map(bookText)].join(' '))}" data-k="${kinds(bs)}">${icon('books', 'ico lg')}<h3><a href="/library/${s.id}/">${esc(s.title)}</a></h3><p>${esc(s.sub)}</p><span class="btags"><span class="btag cnt">${bs.length} ${unit}</span>${bs.every((b) => b.text) ? '<span class="btag web">קריאה באתר</span>' : ''}${bs.every((b) => b.pdf) ? '<span class="btag">PDF</span>' : ''}</span><details class="svols"><summary>רשימת ה${unit}</summary>${(s.groups || [{ books: bs.map((b) => b.slug) }]).map((g) => `${g.title ? `<p class="sgh">${esc(g.title)}</p>` : ''}<ul>${g.books.map((slug) => bs.find((b) => b.slug === slug)).map((b) => `<li data-t="${esc(bookText(b))}" data-k="${kinds([b])}"><a href="/library/${b.slug}/">${esc(shortTitle(s, b))}</a></li>`).join('')}</ul>`).join('')}</details><a class="go" href="/library/${s.id}/">לדף ${esc(s.title)} ←</a></div>`;
 };
 const shortTitle = (s, b) => b.title.replace(new RegExp(`^${s.title}[,:]?\\s*`), '') || b.title;
-const onlineCard = ([, t, h, x]) => `<a class="card book" href="${url(h)}" data-t="${esc(`${t} ${x}`)}" data-k="web">${icon('letter', 'ico lg')}<h3>${esc(t)}</h3><p>${esc(x)}</p><span class="btags"><span class="btag web">קריאה באתר</span></span><span class="go">לקריאה באתר ←</span></a>`;
+// a fifth field "pdf" marks a list of PDFs (תוך הנחל) rather than pages to read on the site
+const onlineCard = ([, t, h, x, kind]) => (kind === 'pdf'
+  ? `<a class="card book" href="${url(h)}" data-t="${esc(`${t} ${x}`)}" data-k="pdf">${icon('books', 'ico lg')}<h3>${esc(t)}</h3><p>${esc(x)}</p><span class="btags"><span class="btag">PDF</span></span><span class="go">לרשימה ←</span></a>`
+  : `<a class="card book" href="${url(h)}" data-t="${esc(`${t} ${x}`)}" data-k="web">${icon('letter', 'ico lg')}<h3>${esc(t)}</h3><p>${esc(x)}</p><span class="btags"><span class="btag web">קריאה באתר</span></span><span class="go">לקריאה באתר ←</span></a>`);
 // a category lists its books in data order, a series in the place of its first book
 const catItems = (c) => lib.books.filter((b) => b.category === c && (!b.series || seriesBooks(seriesOf(b))[0] === b)).map((b) => (b.series ? seriesCard(seriesOf(b)) : bookCard(b)));
 const libCats = lib.categories.filter(([c]) => lib.books.some((b) => b.category === c) || lib.online.some(([oc]) => oc === c));
@@ -57,13 +61,21 @@ for (const k of kt.items) if (k.book && !lib.books.some((b) => b.slug === k.book
 // A topic with many items gets its own numbered pages (/library/kuntresim/<topic>/, .../page/<n>/); the small ones stay on the main page.
 const KPER = 60, KBIG = 18;
 const kItems = (g) => kt.items.filter((k) => k.group === g);
-const kBig = new Set(kt.groups.filter(([g]) => kItems(g).length > KBIG).map(([g]) => g));
+const kGroups = kt.groups.filter(([g]) => !g.startsWith('tn-'));
+const kBig = new Set(kGroups.filter(([g]) => kItems(g).length > KBIG).map(([g]) => g));
 const kHref = (g) => (kBig.has(g) ? `/library/kuntresim/${g}/` : `/library/kuntresim/#${g}`);
-const kChips = (cur) => `<nav class="chips lchips" aria-label="נושאים">${kt.groups.map(([g, n]) => `<a href="${kHref(g)}"${g === cur ? ' aria-current="page"' : ''}>${esc(n)}</a>`).join('')}</nav>`;
+const kChips = (cur) => `<nav class="chips lchips" aria-label="נושאים">${kGroups.map(([g, n]) => `<a href="${kHref(g)}"${g === cur ? ' aria-current="page"' : ''}>${esc(n)}</a>`).join('')}</nav>`;
+// "תוך הנחל" (the leaflets of kuntresim.json in the groups "tn-…", sorted by scripts/lib/toch.mjs): a section of its own,
+// /library/toch-hanachal/ with a page per parasha or holiday (/<place>/, the years oldest first, then the translations)
+// and a page per year (/shana/<5765>/, in the order of that year).
+const toch = { title: 'תוך הנחל', ...(kt.toch || {}) }, TB = '/library/toch-hanachal/';
+const tIdx = tochIndex(kt.items);
+const tochFeature = tIdx.all.length ? `<a class="feature" href="${TB}"><span class="fic">${icon('books', 'ico lg')}</span><span class="ftxt"><em>${tIdx.all.length} קונטרסים, לפי פרשות השבוע והשנים</em><b>${esc(toch.title)}</b><span>שיחות מוהרא״ש בשבתות קודש, על פרשות השבוע והמועדים.</span></span><span class="btn">לפרשות ←</span></a>` : '';
 write('library/kuntresim/index.html', layout('קונטרסים', `<section class="band"><div class="wrap">${kChips('')}
-${kt.groups.filter(([g]) => !kBig.has(g)).map(([g, n]) => `<section class="libcat" id="${g}"><h2 class="subh">${icon('book', 'ico')}${esc(n)}</h2><div class="grid">${kItems(g).map(kuntresCard).join('')}</div></section>`).join('')}
-${kBig.size ? `<section class="libcat" id="more"><h2 class="subh">${icon('book', 'ico')}עוד נושאים</h2><div class="grid">${kt.groups.filter(([g]) => kBig.has(g)).map(([g, n]) => `<a class="card book" href="${kHref(g)}">${icon('book', 'ico lg')}<h3>${esc(n)}</h3><p>${kItems(g).length} קונטרסים</p><span class="go">לרשימה ←</span></a>`).join('')}</div></section>` : ''}</div></section>`,
-  { desc: `קונטרסים של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה בחינם: ${kt.groups.map(([, n]) => n).join(', ')}.`, path: '/library/', self: '/library/kuntresim/', full: true, head: phead('מוהרא״ש · הצדיק מיבנאל', 'קונטרסים', esc(kt.intro)),
+${tochFeature}
+${kGroups.filter(([g]) => !kBig.has(g)).map(([g, n]) => `<section class="libcat" id="${g}"><h2 class="subh">${icon('book', 'ico')}${esc(n)}</h2><div class="grid">${kItems(g).map(kuntresCard).join('')}</div></section>`).join('')}
+${kBig.size ? `<section class="libcat" id="more"><h2 class="subh">${icon('book', 'ico')}עוד נושאים</h2><div class="grid">${kGroups.filter(([g]) => kBig.has(g)).map(([g, n]) => `<a class="card book" href="${kHref(g)}">${icon('book', 'ico lg')}<h3>${esc(n)}</h3><p>${kItems(g).length} קונטרסים</p><span class="go">לרשימה ←</span></a>`).join('')}</div></section>` : ''}</div></section>`,
+  { desc: `קונטרסים של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה בחינם: ${[...kGroups, ['', toch.title]].map(([, n]) => n).join(', ')}.`, path: '/library/', self: '/library/kuntresim/', full: true, head: phead('מוהרא״ש · הצדיק מיבנאל', 'קונטרסים', esc(kt.intro)),
     head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: 'קונטרסים', description: kt.intro }, crumbs([['בית', '/'], ['ספרייה', '/library/'], ['קונטרסים', '/library/kuntresim/']])] }) }));
 for (const g of kBig) {
   const name = kt.groups.find(([x]) => x === g)[1], all = kItems(g), total = Math.ceil(all.length / KPER), base = `/library/kuntresim/${g}/`;
@@ -73,6 +85,56 @@ for (const g of kBig) {
       { desc: (n === 1 ? `${name}: ${all.length} קונטרסים לקריאה ולהורדה בחינם.` : `${name}, עמוד ${n} מתוך ${total}: ${items.slice(0, 3).map((k) => k.title).join(' · ')}`).slice(0, 155), path: '/library/', self, full: true, head: phead('ספרייה · קונטרסים', esc(name), `${all.length} קונטרסים, עמוד ${n} מתוך ${total}.`),
         head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name, description: `${all.length} קונטרסים`, inLanguage: 'he' }, crumbs([['בית', '/'], ['ספרייה', '/library/'], ['קונטרסים', '/library/kuntresim/'], [name, base]])] }) }));
   }
+}
+
+const tLang = new Map(TOCH_LANGS), tBook = new Map(TOCH_BOOKS);
+const tName = (x) => x.name.replace(/-/g, ', ').replace(' / פרשת ', ', ');
+const tFull = (x) => (/^(ראש השנה|מעוז צור|חנוכה|פסח|שבת חול|שביעי של|אחרון של|הילולת)/.test(x.name) ? tName(x) : `פרשת ${tName(x)}`);
+const tPart = (x) => (x.part > 1 ? ' · קונטרס שני' : '');
+const tMeta = (x) => `${x.pages} עמודים · ${esc(x.size)}`;
+const tCard = (h, p, x) => `<a class="card book" href="/books/kuntresim/${x.slug}.pdf">${icon('book', 'ico lg')}<h3>${h}</h3><p>${p}</p><span class="go">קריאה והורדה · PDF ←</span></a>`;
+const tSpan = (xs) => { const ys = xs.filter((x) => x.year); return ys.length ? (ys[0].year === ys.at(-1).year ? ys[0].yearHe : `${ys[0].yearHe}–${ys.at(-1).yearHe}`) : ''; };
+const tCount = (n, one, many) => (n === 1 ? one : `${n} ${many}`);
+// translations: a heading per language, in the order of TOCH_LANGS
+const tTrans = (xs, card) => (xs.length ? `<section class="libcat" id="tr"><h2 class="subh">${icon('chat', 'ico')}תרגומים</h2>${TOCH_LANGS.filter(([l]) => xs.some((x) => x.lang === l)).map(([l, n]) => `<h3 class="sgh tlang">${esc(n)}</h3><div class="grid">${xs.filter((x) => x.lang === l).map(card).join('')}</div>`).join('')}</section>` : '');
+const tYearChips = (cur) => `<nav class="chips lchips" aria-label="לפי שנים">${tIdx.years.map((y) => `<a href="${TB}shana/${y.year}/"${y.year === cur ? ' aria-current="page"' : ''}>${esc(y.label)}</a>`).join('')}</nav>`;
+const tCrumbs = (...more) => crumbs([['בית', '/'], ['ספרייה', '/library/'], [toch.title, TB], ...more]);
+const tochUrls = [];
+if (tIdx.all.length) {
+  const placeCard = (p) => `<a class="card book" href="${TB}${p.id}/" data-t="${esc([p.title, ...p.names, tBook.get(p.book)].join(' '))}">${icon('book', 'ico lg')}<h3>${esc(p.book === 'moadim' ? p.title : `פרשת ${p.title}`)}</h3><p>${p.he.length ? `${tCount(p.he.length, 'קונטרס אחד', 'קונטרסים')}${tSpan(p.he) ? ` · ${tSpan(p.he)}` : ''}` : ''}${p.tr.length ? `${p.he.length ? ' · ' : ''}${tCount(p.tr.length, 'תרגום אחד', 'תרגומים')}` : ''}</p><span class="go">לפרשה ←</span></a>`;
+  const books = TOCH_BOOKS.filter(([b]) => tIdx.places.some((p) => p.book === b));
+  write('library/toch-hanachal/index.html', layout(toch.title, `<section class="band"><div class="wrap">${cfilter('חיפוש פרשה', false, 'שם הפרשה או החג…')}<nav class="chips lchips anchors cats" aria-label="חלוקה">${books.map(([b, n]) => `<a href="#${b}">${esc(n)}</a>`).join('')}<a href="#years">לפי שנים</a></nav>
+${books.map(([b, n]) => `<section class="libcat" id="${b}"><h2 class="subh">${icon('books', 'ico')}${esc(n)}</h2><div class="grid">${tIdx.places.filter((p) => p.book === b).map(placeCard).join('')}</div></section>`).join('')}<p class="cnone" hidden>לא נמצאה פרשה כזאת. נסו מילה אחרת.</p></div></section>
+<section class="band soft" id="years"><div class="wrap"><h2 class="sh">לפי שנים</h2><p class="shsub">כל הקונטרסים של שנה אחת, מראש השנה ועד סוף אלול</p>${tYearChips(0)}</div></section>
+<section class="band"><div class="wrap"><p class="small"><a href="/library/kuntresim/">← לשאר הקונטרסים</a> · <a href="/library/#parasha">ספרים על פרשת השבוע</a></p></div></section>`,
+    { desc: `${toch.title}: ${toch.intro || ''}`.slice(0, 155), path: '/library/', self: TB, full: true, head: phead(`<a href="/library/">ספרייה</a> · פרשת השבוע`, esc(toch.title), esc(toch.intro || '')),
+      head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: toch.title, description: toch.intro, author: person, inLanguage: 'he', ...(absu(TB) ? { url: absu(TB) } : {}) }, tCrumbs()] }) }));
+  tochUrls.push(TB);
+  tIdx.places.forEach((p, i) => {
+    const self = `${TB}${p.id}/`, prev = tIdx.places[i - 1], next = tIdx.places[i + 1], name = p.book === 'moadim' ? p.title : `פרשת ${p.title}`;
+    const many = p.names.length > 1;
+    const heCard = (x) => tCard(`${esc(x.yearHe || tName(x))}${tPart(x)}`, `${many && x.yearHe ? `${esc(tFull(x))} · ` : ''}${tMeta(x)}`, x);
+    const trCard = (x) => tCard(`${esc(x.yearHe || tName(x))}${tPart(x)}`, `${esc(tLang.get(x.lang))}${many ? ` · ${esc(tFull(x))}` : ''} · ${tMeta(x)}`, x);
+    const lead = [p.he.length ? `${tCount(p.he.length, 'קונטרס אחד', 'קונטרסים')}${tSpan(p.he) ? `, ${tSpan(p.he)}` : ''}` : '', p.tr.length ? tCount(p.tr.length, 'תרגום אחד', 'תרגומים') : ''].filter(Boolean).join(' · ');
+    const pnav = (x, cls, arrow) => (x ? `<a class="${cls}" href="${TB}${x.id}/"><small>${arrow}</small>${esc(x.book === 'moadim' ? x.title : `פרשת ${x.title}`)}</a>` : '<span></span>');
+    write(`${self.slice(1)}index.html`, layout(`${name} | ${toch.title}`, `<section class="band"><div class="wrap">${p.he.length ? `<section class="libcat" id="he"><h2 class="subh">${icon('book', 'ico')}לפי השנים</h2><div class="grid">${p.he.map(heCard).join('')}</div></section>` : ''}${tTrans(p.tr, trCard)}
+<nav class="qnav" aria-label="פרשות">${pnav(prev, 'prev', '→ הקודמת')}${pnav(next, 'next', 'הבאה ←')}</nav><p class="small"><a href="${TB}#${p.book}">← לכל הפרשות של ${esc(toch.title)}</a></p></div></section>`,
+      { desc: `${toch.title}, ${name}: שיחות מוהרא״ש בשבת ${name}, ${lead}. לקריאה ולהורדה בחינם.`.slice(0, 155), path: '/library/', self, full: true, head: phead(`<a href="/library/">ספרייה</a> · <a href="${TB}">${esc(toch.title)}</a> · ${esc(tBook.get(p.book))}`, esc(name), esc(lead)),
+        head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: `${toch.title}, ${name}`, author: person, inLanguage: 'he', ...(absu(self) ? { url: absu(self) } : {}) }, tCrumbs([name, self])] }) }));
+    tochUrls.push(self);
+  });
+  tIdx.years.forEach((y, i) => {
+    const self = `${TB}shana/${y.year}/`, prev = tIdx.years[i - 1], next = tIdx.years[i + 1], name = `שנת ${y.label}`;
+    const heCard = (x) => tCard(`${esc(tFull(x))}${tPart(x)}`, tMeta(x), x);
+    const trCard = (x) => tCard(`${esc(tFull(x))}${tPart(x)}`, `${esc(tLang.get(x.lang))} · ${tMeta(x)}`, x);
+    const lead = [y.he.length ? tCount(y.he.length, 'קונטרס אחד', 'קונטרסים') : '', y.tr.length ? tCount(y.tr.length, 'תרגום אחד', 'תרגומים') : ''].filter(Boolean).join(' · ');
+    const ynav = (x, cls, arrow) => (x ? `<a class="${cls}" href="${TB}shana/${x.year}/"><small>${arrow}</small>שנת ${esc(x.label)}</a>` : '<span></span>');
+    write(`${self.slice(1)}index.html`, layout(`${name} | ${toch.title}`, `<section class="band"><div class="wrap">${tYearChips(y.year)}${y.he.length ? `<section class="libcat" id="he"><h2 class="subh">${icon('calendar', 'ico')}לפי סדר השנה</h2><div class="grid">${y.he.map(heCard).join('')}</div></section>` : ''}${tTrans(y.tr, trCard)}
+<nav class="qnav" aria-label="שנים">${ynav(prev, 'prev', '→ השנה הקודמת')}${ynav(next, 'next', 'השנה הבאה ←')}</nav><p class="small"><a href="${TB}">← ל${esc(toch.title)} לפי פרשות</a></p></div></section>`,
+      { desc: `${toch.title}, ${name}: שיחות מוהרא״ש בשבתות ${name} לפי סדר הפרשות, ${lead}.`.slice(0, 155), path: '/library/', self, full: true, head: phead(`<a href="/library/">ספרייה</a> · <a href="${TB}">${esc(toch.title)}</a> · לפי שנים`, esc(name), esc(lead)),
+        head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: `${toch.title}, ${name}`, author: person, inLanguage: 'he', ...(absu(self) ? { url: absu(self) } : {}) }, tCrumbs([name, self])] }) }));
+    tochUrls.push(self);
+  });
 }
 
 const bookTexts = lib.books.filter((b) => b.text).map((b) => [b, read(b.text)]);
@@ -205,4 +267,4 @@ ${bk.noCopyright ? `<section class="band quoteband"><div class="wrap"><p class="
       head_extra: ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'Book', name: bk.title, author: person, inLanguage: 'he', description: bk.lead, genre: catName[bk.category], bookFormat: 'https://schema.org/EBook', ...(bk.pages ? { numberOfPages: bk.pages } : {}), isAccessibleForFree: true, ...(absu(bookUrl) ? { url: absu(bookUrl), ...(bk.pdf ? { workExample: { '@type': 'Book', bookFormat: 'https://schema.org/EBook', encodingFormat: 'application/pdf', url: absu(bk.pdf) } } : {}) } : {}) }, crumbs([['בית', '/'], ['ספרייה', '/library/'], ...sCrumb, [bk.title, bookUrl]])] }) }));
 }
 
-export { bookChapters };
+export { bookChapters, tochUrls };
