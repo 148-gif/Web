@@ -15,7 +15,7 @@ body{line-height:1.75}
 .tiles{gap:12px}.tile{padding:16px 16px}.tile>.ico{width:28px;height:28px;margin-bottom:8px}.tile b{font-size:1.125rem}.tile span{font-size:.875rem}.tile .arr{display:none}
 .feature{flex-direction:column;text-align:center;padding:24px 16px;gap:12px}.feature .btn{width:100%}.ftxt b{font-size:1.25rem}
 .grid{grid-template-columns:1fr;gap:12px}.card{padding:16px 16px}
-.sheet{padding:24px 24px 16px;font-size:calc(1.125rem * var(--rs,1));line-height:1.9;border-radius:var(--r-md);margin-inline:-8px}.tools{padding:12px 0}.sheet:before{inset:4px}
+.sheet{padding:24px 24px 16px;font-size:calc(1.125rem * var(--rs,1));line-height:1.9;border-radius:var(--r-md);margin-inline:-8px}.tools{padding:12px 0}
 .qnav{grid-template-columns:1fr}.qnav .next{text-align:start}
 .pager{font-size:.875rem}.pager .btn{padding:12px 16px}
 .statrow .wrap{gap:4px;padding-block:16px}.statrow b{font-size:1.25rem}.statrow span{font-size:.875rem}

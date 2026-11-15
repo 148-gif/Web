@@ -1,0 +1,44 @@
+/* היכל של אור: the velvet stays where the site opens and closes (the top bar, the home hero, the yeshiva emblem, the print campaign, the footer);
+   inner page heads, the Q&A head and the site tiles are light. The blue comes back inside the page in three small places:
+   a navy bookmark beside each page title, the pressed filter button, and the footer. */
+:root{--bm1:var(--royal);--bm2:var(--navy2);--act-bg:var(--navy);--act-fg:var(--gold3)}
+@media (prefers-color-scheme:dark){:root{--bm1:var(--gold2);--bm2:var(--gold-deep);--act-bg:var(--gold2);--act-fg:var(--on-gold)}}
+:root[data-rt="night"]:has(article.qa){--bm1:var(--gold2);--bm2:var(--gold-deep)}
+
+/* Inner page heads (phead without hero/yhero, and the Q&A head) */
+.phead:not(.hero):not(.yhero){background:var(--bg);color:var(--ink);text-align:start;padding:40px 0 28px;border-bottom:1px solid var(--line)}
+.phead:not(.hero):not(.yhero):after{inset:auto 0 -1px;height:1px;background:linear-gradient(90deg,transparent,var(--gold2),transparent)}
+.phead:not(.hero):not(.yhero) h1{display:flex;gap:14px;align-items:flex-start;color:var(--brand);text-shadow:none}
+.phead:not(.hero):not(.yhero) h1:before{content:"";flex:none;width:14px;height:.85em;margin-top:.18em;background:linear-gradient(var(--bm1),var(--bm2));clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%)}
+.phead:not(.hero):not(.yhero) .wrap>*,.phead:not(.hero):not(.yhero) .wrap>p{margin-inline:0}
+.phead:not(.hero):not(.yhero) .sub{color:var(--mute);margin:8px 0 0}
+.phead:not(.hero):not(.yhero) .kicker2{color:var(--gold)}
+.phead:not(.hero):not(.yhero) .kicker2 a{color:var(--gold)}
+.phead:not(.hero):not(.yhero) .kicker2 a:hover{color:var(--brand)}
+.phead:not(.hero):not(.yhero) .chips{justify-content:flex-start}
+.phead:not(.hero):not(.yhero) .chips a{color:var(--ink);background:var(--surface);border-color:var(--line)}
+.phead:not(.hero):not(.yhero) .chips a:hover{background:var(--sunk);color:var(--brand)}
+.phead:not(.hero):not(.yhero) .chiphead{color:var(--mute);opacity:1}
+.phead:not(.hero):not(.yhero) .navbtns{justify-content:flex-start}
+.phead:not(.hero):not(.yhero) .btn.ghost{color:var(--brand);border-color:var(--line)}
+.phead:not(.hero):not(.yhero) .btn.ghost:hover{background:var(--sunk)}
+.qhead{padding:32px 0 24px}
+.qhead .wrap{max-width:828px}
+.qhead .crumb{color:var(--mute)}
+.qhead .crumb a{color:var(--gold)}
+.qhead .csum{color:var(--ink)}
+@media (max-width:640px){.phead:not(.hero):not(.yhero){padding:24px 0 20px}.phead:not(.hero):not(.yhero) h1{gap:10px}.phead:not(.hero):not(.yhero) h1:before{width:11px}.qhead{padding:20px 0 16px}}
+
+/* Site tiles: light cards with a gold icon disc instead of navy velvet */
+.tile{background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:none;transition:transform .2s var(--ease),border-color .2s var(--ease),box-shadow .2s var(--ease)}
+.tile:hover{transform:translateY(-2px);border-color:var(--gold2);box-shadow:var(--shadow)}
+.tile>.ico{width:44px;height:44px;padding:10px;border-radius:50%;color:var(--gold);background:color-mix(in srgb,var(--gold2) 24%,transparent)}
+.tile b{color:var(--brand)}
+.tile span{color:var(--mute)}
+.tile .arr{color:var(--gold)}
+.tile:hover .arr{color:var(--brand)}
+@media (max-width:640px){.tile>.ico{width:36px;height:36px;padding:8px}}
+
+/* The pressed filter button is navy with gold letters (gold in dark mode, where navy would vanish) */
+.kfilter button[aria-pressed="true"],.cfilter .kfilter button[aria-pressed="true"]{background:var(--act-bg);color:var(--act-fg);border-color:transparent}
+.phead:not(.hero):not(.yhero) .chips a[aria-current]{background:var(--act-bg);color:var(--act-fg);border-color:transparent;font-weight:700}
