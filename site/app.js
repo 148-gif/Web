@@ -1,4 +1,44 @@
 // Mobile menu, hide-on-scroll header, reading tools, campaign sticky CTA, search warm-up.
+// Back button (Android's above all), as on the leading sites:
+// - an open layer (the phone menu, a photo, a footnote, the reading background panel) takes one step of history, so back closes it
+//   and stays on the page;
+// - in-page links (section chips, contents, "skip to content") and stepping through a sequence (previous/next in a book or a list,
+//   the pager's numbers) replace the current step instead of adding one, so back leaves the book or the list at once, to where the
+//   reader came from, instead of walking back through every section or anchor seen.
+const hkLayer = {
+  stack: [], pending: null,
+  open(close) { if (this.stack.includes(close)) return; this.stack.push(close); history.pushState({ hk: this.stack.length }, ''); },
+  // a layer closed by its own button, Escape or a tap outside gives back its step (only if that step is still the current one)
+  done(close) { const i = this.stack.indexOf(close); if (i < 0) return; this.stack.splice(i, 1); if (!this.pending && history.state && history.state.hk) history.back(); },
+  // leaving while layers are open: first take back their steps, then go, so no dead step is left behind in history
+  leave(go) { if (!this.stack.length) return go(); this.pending = go; history.go(-this.stack.length); },
+};
+addEventListener('popstate', () => {
+  const go = hkLayer.pending; hkLayer.pending = null;
+  if (go) { while (hkLayer.stack.length) hkLayer.stack.pop()(); go(); return; }
+  const close = hkLayer.stack.pop();
+  if (close) close();
+});
+document.addEventListener('click', (e) => {
+  if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const a = e.target.closest('a[href]');
+  if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+  const u = new URL(a.href, location.href);
+  if (u.origin !== location.origin) return;
+  const here = u.pathname === location.pathname && u.search === location.search;
+  const inPage = here && !!u.hash, step = !here && !!a.closest('nav.qnav, nav.pager');
+  if (!inPage && !step && !hkLayer.stack.length) return;
+  e.preventDefault();
+  hkLayer.leave(() => (inPage || step ? location.replace(u.href) : location.assign(u.href)));
+});
+// a search sent from inside an open layer (the phone menu) also takes back the layer's step first
+document.addEventListener('submit', (e) => {
+  const f = e.target;
+  if (e.defaultPrevented || !hkLayer.stack.length || (f.method || 'get').toLowerCase() !== 'get' || (f.target && f.target !== '_self')) return;
+  e.preventDefault();
+  const u = new URL(f.action || location.href); u.search = new URLSearchParams(new FormData(f)).toString();
+  hkLayer.leave(() => location.assign(u.href));
+});
 {
 const me = new URL(document.currentScript.src);
 // Saved preferences (text size, vowel marks, place in each book). Storage can be blocked (private browsing,
@@ -28,7 +68,8 @@ dds.forEach((d) => d.querySelector('.ddb').addEventListener('click', () => { con
 document.addEventListener('click', (e) => { if (!e.target.closest('.dd')) closeDd(); });
 document.addEventListener('keydown', (e) => { const d = document.querySelector('.dd.open'); if (e.key === 'Escape' && d) { closeDd(); d.querySelector('.ddb').focus(); } });
 document.addEventListener('focusin', (e) => { if (!e.target.closest('.dd')) closeDd(); });
-const setMenu = (open) => { hdr.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); document.body.classList.toggle('menu-open', open); };
+const closeMenu = () => setMenu(false);
+const setMenu = (open) => { hdr.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); document.body.classList.toggle('menu-open', open); if (open) hkLayer.open(closeMenu); else hkLayer.done(closeMenu); };
 btn.addEventListener('click', () => setMenu(!hdr.classList.contains('open')));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && hdr.classList.contains('open')) { setMenu(false); btn.focus(); } });
 document.addEventListener('click', (e) => { if (hdr.classList.contains('open') && !hdr.contains(e.target)) setMenu(false); });
@@ -63,7 +104,8 @@ const rtBtn = document.querySelector('[data-rt-toggle]');
 const rtp = document.getElementById('rtp');
 if (rtBtn && rtp) {
   const sync = () => rtp.querySelectorAll('[data-rt]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rt === (root.dataset.rt || ''))));
-  const openRt = (o) => { rtp.hidden = !o; rtBtn.setAttribute('aria-expanded', String(o)); };
+  const closeRt = () => openRt(false);
+  const openRt = (o) => { rtp.hidden = !o; rtBtn.setAttribute('aria-expanded', String(o)); if (o) hkLayer.open(closeRt); else hkLayer.done(closeRt); };
   rtBtn.addEventListener('click', () => openRt(rtp.hidden));
   rtp.addEventListener('click', (e) => {
     const b = e.target.closest('[data-rt]');
@@ -284,7 +326,9 @@ document.querySelectorAll('[data-reload]').forEach((b) => b.addEventListener('cl
 
 // Book footnotes: tapping a marker opens the note under its line instead of jumping to the list at the end.
 let fnOpen = null;
-const closeFn = (refocus) => { if (!fnOpen) return; const { pop, a } = fnOpen; pop.remove(); a.setAttribute('aria-expanded', 'false'); fnOpen = null; if (refocus) a.focus(); };
+// one step of history for the open note; moving straight to another note keeps that step (keep), so back still closes it
+const fnLayer = () => closeFn(false);
+const closeFn = (refocus, keep) => { if (!fnOpen) return; const { pop, a } = fnOpen; pop.remove(); a.setAttribute('aria-expanded', 'false'); fnOpen = null; if (refocus) a.focus(); if (!keep) hkLayer.done(fnLayer); };
 document.querySelectorAll('sup.fn a').forEach((a) => {
   const li = document.getElementById(decodeURIComponent(a.hash.slice(1)));
   if (!li) return;
@@ -292,7 +336,7 @@ document.querySelectorAll('sup.fn a').forEach((a) => {
   a.addEventListener('click', (e) => {
     e.preventDefault();
     const same = fnOpen && fnOpen.a === a;
-    closeFn(false);
+    closeFn(false, !same);
     if (same) return;
     const pop = document.createElement('div');
     pop.className = 'fnpop'; pop.tabIndex = -1; pop.setAttribute('role', 'note');
@@ -305,6 +349,7 @@ document.querySelectorAll('sup.fn a').forEach((a) => {
     host.append(pop);
     a.setAttribute('aria-expanded', 'true');
     fnOpen = { pop, a };
+    hkLayer.open(fnLayer);
     pop.querySelector('.fnx').addEventListener('click', () => closeFn(true));
     pop.focus({ preventScroll: true });
     const r = pop.getBoundingClientRect();
@@ -420,6 +465,7 @@ document.querySelectorAll('[data-cfilter]').forEach((box) => {
 if (typeof HTMLDialogElement === 'function') document.querySelectorAll('[data-gallery]').forEach((gal) => {
   const links = [...gal.querySelectorAll('a')];
   let dlg, img, cap, cnt, at = 0, opener, x0 = null;
+  const closeLbx = () => dlg.close();
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
   const btn = (cls, label, text) => { const b = el('button', cls, text); b.type = 'button'; b.setAttribute('aria-label', label); return b; };
   const show = (i) => {
@@ -448,7 +494,7 @@ if (typeof HTMLDialogElement === 'function') document.querySelectorAll('[data-ga
     dlg.addEventListener('pointerdown', (e) => { x0 = e.pointerType === 'touch' ? e.clientX : null; });
     dlg.addEventListener('pointerup', (e) => { if (x0 !== null && Math.abs(e.clientX - x0) > 50) step(e.clientX > x0 ? -1 : 1); x0 = null; });
     // Closing returns focus to the thumbnail that was opened, so a keyboard user is where they left off.
-    dlg.addEventListener('close', () => { document.documentElement.classList.remove('lbx-open'); if (opener) opener.focus(); });
+    dlg.addEventListener('close', () => { document.documentElement.classList.remove('lbx-open'); hkLayer.done(closeLbx); if (opener) opener.focus(); });
   };
   gal.addEventListener('click', (e) => {
     const a = e.target.closest('a');
@@ -456,6 +502,6 @@ if (typeof HTMLDialogElement === 'function') document.querySelectorAll('[data-ga
     e.preventDefault();
     if (!dlg) build();
     opener = a; show(links.indexOf(a));
-    document.documentElement.classList.add('lbx-open'); dlg.showModal();
+    document.documentElement.classList.add('lbx-open'); dlg.showModal(); hkLayer.open(closeLbx);
   });
 });
