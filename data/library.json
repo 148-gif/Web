@@ -244,6 +244,94 @@
         "מכתבים",
         "הדרכה",
         "עצות"
+      ],
+      "groups": [
+        {
+          "id": "chalakim-a",
+          "title": "חלקים א׳–כ״ה",
+          "books": [
+            "asher-banachal-1",
+            "asher-banachal-2",
+            "asher-banachal-3",
+            "asher-banachal-4",
+            "asher-banachal-5",
+            "asher-banachal-6",
+            "asher-banachal-8",
+            "asher-banachal-9",
+            "asher-banachal-10",
+            "asher-banachal-11",
+            "asher-banachal-12",
+            "asher-banachal-14",
+            "asher-banachal-17",
+            "asher-banachal-19",
+            "asher-banachal-22",
+            "asher-banachal-24",
+            "asher-banachal-25"
+          ]
+        },
+        {
+          "id": "chalakim-b",
+          "title": "חלקים מ׳–פ״ה",
+          "books": [
+            "asher-banachal-40",
+            "asher-banachal-43",
+            "asher-banachal-45",
+            "asher-banachal-46",
+            "asher-banachal-68",
+            "asher-banachal-69",
+            "asher-banachal-75",
+            "asher-banachal-79",
+            "asher-banachal-80",
+            "asher-banachal-81",
+            "asher-banachal-82",
+            "asher-banachal-83",
+            "asher-banachal-84",
+            "asher-banachal-85"
+          ]
+        },
+        {
+          "id": "chalakim-c",
+          "title": "חלקים פ״ח–קט״ז",
+          "books": [
+            "asher-banachal-88",
+            "asher-banachal-92",
+            "asher-banachal-93",
+            "asher-banachal-96",
+            "asher-banachal-97",
+            "asher-banachal-100",
+            "asher-banachal-101",
+            "asher-banachal-104",
+            "asher-banachal-105",
+            "asher-banachal-106",
+            "asher-banachal-107",
+            "asher-banachal-109",
+            "asher-banachal-110",
+            "asher-banachal-112",
+            "asher-banachal-113",
+            "asher-banachal-114",
+            "asher-banachal-115",
+            "asher-banachal-116"
+          ]
+        },
+        {
+          "id": "chalakim-d",
+          "title": "חלקים קל״ח–קס״ד",
+          "books": [
+            "asher-banachal-138",
+            "asher-banachal-147",
+            "asher-banachal-148",
+            "asher-banachal-149",
+            "asher-banachal-150",
+            "asher-banachal-152",
+            "asher-banachal-153",
+            "asher-banachal-154",
+            "asher-banachal-159",
+            "asher-banachal-160",
+            "asher-banachal-162",
+            "asher-banachal-163",
+            "asher-banachal-164"
+          ]
+        }
       ]
     },
     {
