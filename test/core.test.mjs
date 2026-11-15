@@ -93,6 +93,8 @@ test('validateLibrary() checks series, categories and featured books', () => {
   assert.throws(w((c) => { delete c.books[2].series; delete c.books[3].series; }), /at least two/);
   assert.throws(w((c) => { c.series[0].id = 'a'; }), /already used/); // would share a URL with a book
   assert.throws(w((c) => { c.series[0].id = 'kuntresim'; }), /already used/);
+  assert.throws(w((c) => { c.series[0].id = 'toch-hanachal'; }), /already used/);
+  assert.throws(w((c) => { c.books[0].slug = 'toch-hanachal'; }), /library itself/);
   assert.throws(w((c) => { c.series[0].category = 'x'; }), /unknown category/);
   assert.throws(w((c) => { c.featured = ['zz']; }), /featured/);
   assert.throws(w((c) => { c.books[1].slug = 'a'; }), /duplicate/);

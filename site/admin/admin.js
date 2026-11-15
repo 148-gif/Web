@@ -75,7 +75,7 @@
     title: 'כותרת', lead: 'פתיח', short: 'תקציר קצר (לחיפוש)', desc: 'תיאור', text: 'טקסט', paragraphs: 'פסקאות', items: 'פריטים', q: 'שאלה', a: 'תשובה', by: 'מקור', url: 'קישור', name: 'שם',
     slug: 'מזהה בכתובת', topic: 'נושא', blocks: 'תוכן הדף', icon: 'סמל', phone: 'טלפון', email: 'דוא״ל', address: 'כתובת', hours: 'שעות', intro: 'פתיח', summary: 'תקציר', faq: 'שאלות נפוצות',
     sources: 'מקורות', path: 'נתיב', why: 'סיבה', hidden: 'חלקים מוסתרים מהגולשים', contact: 'פרטי קשר', whatsapp: 'וואטסאפ', subtitle: 'כותרת משנה', about: 'אודות', sub: 'כותרת משנה',
-    goal: 'יעד', link: 'קישור', groups: 'קבוצות', group: 'קבוצה', pages: 'עמודים', size: 'גודל', categories: 'קטגוריות', books: 'ספרים', noCopyright: 'הצהרת ״אין זכויות יוצרים״', noCopyrightBy: 'מקור ההצהרה',
+    goal: 'יעד', link: 'קישור', groups: 'קבוצות', toch: 'תוך הנחל', group: 'קבוצה', pages: 'עמודים', size: 'גודל', categories: 'קטגוריות', books: 'ספרים', noCopyright: 'הצהרת ״אין זכויות יוצרים״', noCopyrightBy: 'מקור ההצהרה',
     parts: 'חלקים', facts: 'פרטים עיקריים', pdf: 'קובץ PDF', pdfSize: 'גודל הקובץ', category: 'קטגוריה', online: 'זמין באתר', soon: 'בקרוב', series: 'סדרה', hub: 'דף החג (מזהה ב־moadim.json)', accent: 'צבע החג',  terms: 'מילים לחיפוש שאלות ותשובות', keywords: 'מילות חיפוש נוספות (לא מוצגות)', occasions: 'מועדים (הצעת ספר חודש לפני)', day: 'יום בחודש העברי', month: 'חודש עברי', length: 'מספר ימי החג', parasha: 'פרשות (התחלה וסיום)', featured: 'ספרים ב״להתחיל כאן״', unit: 'כינוי לחלקי הסדרה (כרכים / חלקים)', storyTitle: 'כותרת הסיפור', story: 'הסיפור',
     promiseTitle: 'כותרת ההבטחה', promise: 'ההבטחה', hoursTitle: 'כותרת השעות', phoneNote: 'הערה לטלפון', attendants: 'בלניות', attendantsTitle: 'כותרת הבלניות', navQuery: 'יעד לניווט (Waze)',
     hoursNote: 'הערה לשעות', features: 'מאפיינים', testimonials: 'המלצות', promiseAfter: 'אחרי ההבטחה', fromShutTitle: 'כותרת ״מתוך השו״ת״', fromShutLead: 'פתיח ״מתוך השו״ת״', fromShut: 'שאלות מתוך השו״ת',
@@ -104,7 +104,7 @@
   };
   // Lists of fixed-length rows (e.g. a question and its answer): a name for each position. "סמל" positions get an icon picker.
   var TUPLES = {
-    groups: ['מזהה', 'שם'], categories: ['מזהה', 'שם'], facts: ['פרט', 'ערך'], online: ['מזהה', 'שם', 'קישור', 'תיאור'], soon: ['מזהה', 'תיאור'], hours: ['ימים', 'שעות'],
+    groups: ['מזהה', 'שם'], categories: ['מזהה', 'שם'], facts: ['פרט', 'ערך'], online: ['מזהה', 'שם', 'קישור', 'תיאור', 'סוג (pdf: רשימת קבצים)'], soon: ['מזהה', 'תיאור'], hours: ['ימים', 'שעות'],
     mikvehMen: ['ימים', 'שעות'], mikvehWomen: ['ימים', 'שעות'], features: ['סמל', 'כותרת', 'טקסט'], chesed: ['סמל', 'כותרת', 'טקסט'], quick: ['סמל', 'כותרת', 'טקסט'],
     life: ['תאריך', 'אירוע'], history: ['תאריך', 'אירוע'], timeline: ['תאריך', 'אירוע'], teachings: ['נושא', 'תוכן', 'מקור'], books: ['שם הספר', 'תיאור'], works: ['שם הספר', 'תיאור'],
     faq: ['שאלה', 'תשובה'], items: ['כותרת', 'טקסט'], sources: ['שם המקור', 'קישור'], promises: ['ציטוט', 'מקור', 'קישור למקור'], quotes: ['ציטוט', 'מקור'], routes: ['מאיפה', 'הוראות'], needs: ['נושא', 'תיאור'],

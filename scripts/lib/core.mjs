@@ -211,12 +211,15 @@ validateCms(topics, cmsPages);
 // data/library.json: a series groups books of one category on its own page (/library/<id>/), and "featured" names the books shown first.
 // The colours an occasion may take (the classes ac-<name> in site/css/13-seasons.css): a fixed set, tuned to the site's navy and gold
 const ACCENTS = ['gold', 'blue', 'indigo', 'green', 'plum', 'teal', 'ember'];
+// /library/<x>/ addresses that are pages of the library itself, not books or series
+const RESERVED_LIB = new Set(['kuntresim', 'toch-hanachal']);
 const validateLibrary = (l) => {
   const bad = (m) => { throw new Error(`library.json: ${m}`); };
   const cats = new Set(l.categories.map(([c]) => c)), slugs = new Set(), ids = new Set();
   for (const b of l.books) {
     if (!/^[a-z0-9-]+$/.test(b.slug || '')) bad(`bad book slug "${b.slug}"`);
     if (slugs.has(b.slug)) bad(`duplicate book slug "${b.slug}"`);
+    if (RESERVED_LIB.has(b.slug)) bad(`book slug "${b.slug}" is a page of the library itself`);
     if (!cats.has(b.category)) bad(`${b.slug}: unknown category "${b.category}"`);
     // ways to read a book: each a page on the site (read) or a PDF of ours, with a title and a line about it
     if (b.ways !== undefined) {
@@ -231,7 +234,7 @@ const validateLibrary = (l) => {
   }
   for (const s of l.series || []) {
     if (!/^[a-z0-9-]+$/.test(s.id || '')) bad(`bad series id "${s.id}"`);
-    if (ids.has(s.id) || slugs.has(s.id) || s.id === 'kuntresim') bad(`series id "${s.id}" is already used`);
+    if (ids.has(s.id) || slugs.has(s.id) || RESERVED_LIB.has(s.id)) bad(`series id "${s.id}" is already used`);
     if (!s.title) bad(`series "${s.id}" has no title`);
     if (!cats.has(s.category)) bad(`series "${s.id}": unknown category "${s.category}"`);
     ids.add(s.id);

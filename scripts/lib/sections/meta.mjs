@@ -2,7 +2,7 @@
 import { SITE, BASE, ORIGIN, esc, nik, write, shut, institutions, yv, mk, mo, lib, rn, um, tk } from '../core.mjs';
 import { frames, CSP, DESC } from '../layout.mjs';
 import { pages } from './qa.mjs';
-import { bookChapters } from './library.mjs';
+import { bookChapters, tochUrls } from './library.mjs';
 import { indexed } from './search.mjs';
 import { cmsUrls } from './pages.mjs';
 import { moadim } from '../moadim.mjs';
@@ -40,7 +40,7 @@ ${moadim.items.map((m) => `- [${m.title}](${ORIGIN + BASE}/moadim/${m.id}/): ${m
 - [ישיבת בית מנחם](${ORIGIN + BASE}/yeshiva/)
 - [אודות](${ORIGIN + BASE}/about/)
 `);
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/library/kuntresim/', '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/rabbi-nachman/', '/uman/', '/tikkun-haklali/', '/moharash/', '/moharash/tziyun/', '/moharash/photos/', '/library/', '/moadim/', ...moadim.items.map((m) => `/moadim/${m.id}/`), ...(lib.series || []).map((s) => `/library/${s.id}/`), ...lib.books.map((b) => `/library/${b.slug}/`), ...Object.entries(bookChapters).flatMap(([slug, chs]) => chs.map((c) => `/library/${slug}/${c.id}/`)), '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...cmsUrls, ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/library/kuntresim/', ...tochUrls, '/print/', '/print/promise/', '/print/donate/', '/yeshiva/', '/shut/', '/letters/', '/halacha/', '/rabbi-nachman/', '/uman/', '/tikkun-haklali/', '/moharash/', '/moharash/tziyun/', '/moharash/photos/', '/library/', '/moadim/', ...moadim.items.map((m) => `/moadim/${m.id}/`), ...(lib.series || []).map((s) => `/library/${s.id}/`), ...lib.books.map((b) => `/library/${b.slug}/`), ...Object.entries(bookChapters).flatMap(([slug, chs]) => chs.map((c) => `/library/${slug}/${c.id}/`)), '/yavniel/', '/mikveh-malka/', ...(institutions.length ? ['/institutions/'] : []), '/about/', '/contact/', '/accessibility/', '/privacy/', ...cmsUrls, ...Array.from({ length: pages - 1 }, (_, i) => `/shut/page/${i + 2}/`), ...indexed.map(([b, x]) => `/${b}/${x.id}/`)].map((u) => `<url><loc>${esc(ORIGIN + BASE + u)}</loc></url>`).join('')}</urlset>`);
 write('robots.txt', `User-agent: *\nAllow: /\n${ORIGIN ? `Sitemap: ${ORIGIN}${BASE}/sitemap.xml\n` : ''}`);
 // HTTP security headers (honoured by Netlify; GitHub Pages ignores this file and relies on the meta CSP).
 write('_headers', `/*
