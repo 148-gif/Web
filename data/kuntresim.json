@@ -1,5 +1,5 @@
 {
-  "intro": "קונטרסים ועלונים של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה בחינם: קונטרסים קצרים בנושאי שלום בית, התחזקות וחגים, שאלות ותשובות לפי נושאים, ועלוני ״תוך הנחל״ על פרשות השבוע והמועדים. כל פריט הוא קובץ PDF אחד.",
+  "intro": "קונטרסים ועלונים של מוהרא״ש, הצדיק מיבנאל, לקריאה ולהורדה בחינם: קונטרסים קצרים בנושאי שלום בית, התחזקות וחגים, שאלות ותשובות לפי נושאים, עלוני ״תוך הנחל״ על פרשות השבוע והמועדים, ותרגומים ליידיש, לאנגלית, לספרדית, לרוסית ולצרפתית. כל פריט הוא קובץ PDF אחד.",
   "toch": {
     "title": "תוך הנחל",
     "intro": "דיבורים שמוהרא״ש, הצדיק מיבנאל, אמר בשבתות קודש, רובם בסעודות השבת, ונכתבו אחר כך. בראש כל קונטרס כתוב באיזו שבת ובאיזו סעודה נאמרו הדברים. כאן הם מסודרים לפי פרשות השבוע והמועדים, ובכל פרשה לפי השנים; יש גם רשימה לפי שנה, ותרגומים לאנגלית, לספרדית ולאידיש."
@@ -48,6 +48,22 @@
     [
       "tn-moadim",
       "תוך הנחל: מועדים"
+    ],
+    [
+      "yidish",
+      "ביידיש: קונטרסים"
+    ],
+    [
+      "yidish-sfarim",
+      "ביידיש: ספרים"
+    ],
+    [
+      "english",
+      "באנגלית"
+    ],
+    [
+      "other-lang",
+      "בספרדית, ברוסית ובצרפתית"
     ]
   ],
   "items": [
@@ -5154,6 +5170,1210 @@
       "group": "tn-moadim",
       "pages": 14,
       "size": "1.1MB"
+    },
+    {
+      "slug": "yi-000",
+      "title": "הדלקת נר חנוכה",
+      "group": "yidish",
+      "pages": 107,
+      "size": "2.6MB"
+    },
+    {
+      "slug": "yi-001",
+      "title": "גן עדן",
+      "group": "yidish",
+      "pages": 65,
+      "size": "1.1MB"
+    },
+    {
+      "slug": "yi-002",
+      "title": "אנערקענען דאס גוטס",
+      "group": "yidish",
+      "pages": 43,
+      "size": "803KB"
+    },
+    {
+      "slug": "yi-003",
+      "title": "אויף שמחות",
+      "group": "yidish",
+      "pages": 46,
+      "size": "932KB"
+    },
+    {
+      "slug": "yi-004",
+      "title": "ס'לוינט זיך צו לעבן‎",
+      "group": "yidish",
+      "pages": 50,
+      "size": "1.2MB"
+    },
+    {
+      "slug": "yi-005",
+      "title": "א אידישע שטוב",
+      "group": "yidish",
+      "pages": 17,
+      "size": "1.0MB"
+    },
+    {
+      "slug": "yi-006",
+      "title": "א ברסלבר חסיד",
+      "group": "yidish",
+      "pages": 33,
+      "size": "224KB"
+    },
+    {
+      "slug": "yi-007",
+      "title": "א גאנצע אמונה",
+      "group": "yidish",
+      "pages": 30,
+      "size": "482KB"
+    },
+    {
+      "slug": "yi-008",
+      "title": "א גוטע וואך",
+      "group": "yidish",
+      "pages": 38,
+      "size": "752KB"
+    },
+    {
+      "slug": "yi-009",
+      "title": "א גוטע חינוך",
+      "group": "yidish",
+      "pages": 54,
+      "size": "5.5MB"
+    },
+    {
+      "slug": "yi-010",
+      "title": "א גליקליכער לעבן",
+      "group": "yidish",
+      "pages": 34,
+      "size": "533KB"
+    },
+    {
+      "slug": "yi-011",
+      "title": "א געשמאקער לעבן",
+      "group": "yidish",
+      "pages": 26,
+      "size": "2.6MB"
+    },
+    {
+      "slug": "yi-012",
+      "title": "א וועג צו לערנען",
+      "group": "yidish",
+      "pages": 58,
+      "size": "1.1MB"
+    },
+    {
+      "slug": "yi-013",
+      "title": "א כשר'ן פסח",
+      "group": "yidish",
+      "pages": 55,
+      "size": "4.5MB"
+    },
+    {
+      "slug": "yi-014",
+      "title": "א מתנה פון רבין",
+      "group": "yidish",
+      "pages": 29,
+      "size": "509KB"
+    },
+    {
+      "slug": "yi-015",
+      "title": "א נייע וועלט",
+      "group": "yidish",
+      "pages": 51,
+      "size": "5.8MB"
+    },
+    {
+      "slug": "yi-016",
+      "title": "א סוף צו מחלוקת",
+      "group": "yidish",
+      "pages": 29,
+      "size": "205KB"
+    },
+    {
+      "slug": "yi-017",
+      "title": "א פרייליכן פורים",
+      "group": "yidish",
+      "pages": 65,
+      "size": "9.8MB"
+    },
+    {
+      "slug": "yi-018",
+      "title": "א פרייליכער איד",
+      "group": "yidish",
+      "pages": 34,
+      "size": "535KB"
+    },
+    {
+      "slug": "yi-019",
+      "title": "א פרייליכער לעבן",
+      "group": "yidish",
+      "pages": 54,
+      "size": "354KB"
+    },
+    {
+      "slug": "yi-020",
+      "title": "א צופרידן לעבן",
+      "group": "yidish",
+      "pages": 42,
+      "size": "956KB"
+    },
+    {
+      "slug": "yi-021",
+      "title": "א רבי וואס קען מיך העלפן",
+      "group": "yidish",
+      "pages": 54,
+      "size": "3.5MB"
+    },
+    {
+      "slug": "yi-022",
+      "title": "א רואיגע לעבן",
+      "group": "yidish",
+      "pages": 31,
+      "size": "4.0MB"
+    },
+    {
+      "slug": "yi-023",
+      "title": "א ריכטיגע שלום בית",
+      "group": "yidish",
+      "pages": 33,
+      "size": "2.9MB"
+    },
+    {
+      "slug": "yi-024",
+      "title": "א שיינע חתונה",
+      "group": "yidish",
+      "pages": 46,
+      "size": "4.0MB"
+    },
+    {
+      "slug": "yi-025",
+      "title": "אויך זיך אויך יענעם",
+      "group": "yidish",
+      "pages": 26,
+      "size": "492KB"
+    },
+    {
+      "slug": "yi-026",
+      "title": "אידיש נחת",
+      "group": "yidish",
+      "pages": 37,
+      "size": "3.2MB"
+    },
+    {
+      "slug": "yi-027",
+      "title": "איינער פארשטייט מיך",
+      "group": "yidish",
+      "pages": 62,
+      "size": "5.0MB"
+    },
+    {
+      "slug": "yi-028",
+      "title": "אין שאטן פון די סוכה",
+      "group": "yidish",
+      "pages": 27,
+      "size": "2.3MB"
+    },
+    {
+      "slug": "yi-029",
+      "title": "אן אנגענעם לעבן",
+      "group": "yidish",
+      "pages": 54,
+      "size": "606KB"
+    },
+    {
+      "slug": "yi-030",
+      "title": "גוט שבת",
+      "group": "yidish",
+      "pages": 44,
+      "size": "3.6MB"
+    },
+    {
+      "slug": "yi-031",
+      "title": "גלייב אין דיר",
+      "group": "yidish",
+      "pages": 66,
+      "size": "6.4MB"
+    },
+    {
+      "slug": "yi-032",
+      "title": "גלייב אין דעם צדיק בתמימות",
+      "group": "yidish",
+      "pages": 25,
+      "size": "484KB"
+    },
+    {
+      "slug": "yi-033",
+      "title": "געב זיך אכטונג",
+      "group": "yidish",
+      "pages": 47,
+      "size": "765KB"
+    },
+    {
+      "slug": "yi-034",
+      "title": "געב נישט אויף",
+      "group": "yidish",
+      "pages": 47,
+      "size": "5.1MB"
+    },
+    {
+      "slug": "yi-035",
+      "title": "געדולד צו קינדער",
+      "group": "yidish",
+      "pages": 42,
+      "size": "3.7MB"
+    },
+    {
+      "slug": "yi-036",
+      "title": "געזונטע אויגן",
+      "group": "yidish",
+      "pages": 34,
+      "size": "3.4MB"
+    },
+    {
+      "slug": "yi-037",
+      "title": "דו ביזט א חידוש",
+      "group": "yidish",
+      "pages": 43,
+      "size": "295KB"
+    },
+    {
+      "slug": "yi-038",
+      "title": "דו ביסט נישט פארלוירן",
+      "group": "yidish",
+      "pages": 57,
+      "size": "6.5MB"
+    },
+    {
+      "slug": "yi-039",
+      "title": "דו האסט אויך א עצה",
+      "group": "yidish",
+      "pages": 49,
+      "size": "1.1MB"
+    },
+    {
+      "slug": "yi-040",
+      "title": "די הייליגע שובבים טעג",
+      "group": "yidish",
+      "pages": 43,
+      "size": "3.9MB"
+    },
+    {
+      "slug": "yi-041",
+      "title": "די וועג ארויס",
+      "group": "yidish",
+      "pages": 42,
+      "size": "436KB"
+    },
+    {
+      "slug": "yi-042",
+      "title": "די זיסקייט פון תמימות",
+      "group": "yidish",
+      "pages": 39,
+      "size": "1.5MB"
+    },
+    {
+      "slug": "yi-043",
+      "title": "די טעג פון בין הזמנים",
+      "group": "yidish",
+      "pages": 63,
+      "size": "5.4MB"
+    },
+    {
+      "slug": "yi-044",
+      "title": "דיין שידוך וועט אנקומען",
+      "group": "yidish",
+      "pages": 54,
+      "size": "5.5MB"
+    },
+    {
+      "slug": "yi-045",
+      "title": "דער אוצר איז ביי דיר",
+      "group": "yidish",
+      "pages": 41,
+      "size": "270KB"
+    },
+    {
+      "slug": "yi-046",
+      "title": "דער באשעפער איז מיט דיר",
+      "group": "yidish",
+      "pages": 41,
+      "size": "4.4MB"
+    },
+    {
+      "slug": "yi-047",
+      "title": "דער באשעפער דארף דיך יא",
+      "group": "yidish",
+      "pages": 34,
+      "size": "533KB"
+    },
+    {
+      "slug": "yi-048",
+      "title": "דער הייליגער רבי נתן",
+      "group": "yidish",
+      "pages": 71,
+      "size": "6.2MB"
+    },
+    {
+      "slug": "yi-049",
+      "title": "דער טיר איז אפען",
+      "group": "yidish",
+      "pages": 37,
+      "size": "535KB"
+    },
+    {
+      "slug": "yi-050",
+      "title": "דער ריכטיגער שלום",
+      "group": "yidish",
+      "pages": 31,
+      "size": "472KB"
+    },
+    {
+      "slug": "yi-051",
+      "title": "דערהאלט זיך ברודער",
+      "group": "yidish",
+      "pages": 63,
+      "size": "4.6MB"
+    },
+    {
+      "slug": "yi-052",
+      "title": "דערלעבט ברוך השם",
+      "group": "yidish",
+      "pages": 50,
+      "size": "4.5MB"
+    },
+    {
+      "slug": "yi-053",
+      "title": "דערשרעק זיך נישט",
+      "group": "yidish",
+      "pages": 69,
+      "size": "3.9MB"
+    },
+    {
+      "slug": "yi-054",
+      "title": "האב רחמנות אויף דיין קינד",
+      "group": "yidish",
+      "pages": 53,
+      "size": "4.4MB"
+    },
+    {
+      "slug": "yi-055",
+      "title": "האלט זיך שטארק",
+      "group": "yidish",
+      "pages": 50,
+      "size": "577KB"
+    },
+    {
+      "slug": "yi-056",
+      "title": "היט דיינע אויגן",
+      "group": "yidish",
+      "pages": 30,
+      "size": "2.8MB"
+    },
+    {
+      "slug": "yi-057",
+      "title": "הייבט אייך אידעלעך",
+      "group": "yidish",
+      "pages": 38,
+      "size": "3.4MB"
+    },
+    {
+      "slug": "yi-058",
+      "title": "הייליגע אויגן",
+      "group": "yidish",
+      "pages": 43,
+      "size": "3.9MB"
+    },
+    {
+      "slug": "yi-059",
+      "title": "הכרת הטוב",
+      "group": "yidish",
+      "pages": 30,
+      "size": "450KB"
+    },
+    {
+      "slug": "yi-060",
+      "title": "התחזקות צום יום הדין",
+      "group": "yidish",
+      "pages": 70,
+      "size": "3.9MB"
+    },
+    {
+      "slug": "yi-061",
+      "title": "וואו לויפסטו",
+      "group": "yidish",
+      "pages": 58,
+      "size": "3.7MB"
+    },
+    {
+      "slug": "yi-062",
+      "title": "וואס איז נייעס",
+      "group": "yidish",
+      "pages": 35,
+      "size": "233KB"
+    },
+    {
+      "slug": "yi-063",
+      "title": "ווער איז דער חסיד",
+      "group": "yidish",
+      "pages": 34,
+      "size": "752KB"
+    },
+    {
+      "slug": "yi-064",
+      "title": "זארג זיך נישט",
+      "group": "yidish",
+      "pages": 47,
+      "size": "4.5MB"
+    },
+    {
+      "slug": "yi-065",
+      "title": "זויבערע אויגן",
+      "group": "yidish",
+      "pages": 30,
+      "size": "2.6MB"
+    },
+    {
+      "slug": "yi-066",
+      "title": "זיי קלוג נישט גערעכט",
+      "group": "yidish",
+      "pages": 46,
+      "size": "1.2MB"
+    },
+    {
+      "slug": "yi-067",
+      "title": "טוה איך גוט",
+      "group": "yidish",
+      "pages": 26,
+      "size": "199KB"
+    },
+    {
+      "slug": "yi-068",
+      "title": "יום טוב סוכות",
+      "group": "yidish",
+      "pages": 55,
+      "size": "3.8MB"
+    },
+    {
+      "slug": "yi-069",
+      "title": "לאז נישט נאך",
+      "group": "yidish",
+      "pages": 50,
+      "size": "4.5MB"
+    },
+    {
+      "slug": "yi-070",
+      "title": "לויטערע אויגן",
+      "group": "yidish",
+      "pages": 34,
+      "size": "3.0MB"
+    },
+    {
+      "slug": "yi-071",
+      "title": "ליכטיגע אויגן",
+      "group": "yidish",
+      "pages": 27,
+      "size": "2.4MB"
+    },
+    {
+      "slug": "yi-072",
+      "title": "מיין קינד איך האב דיך ליב",
+      "group": "yidish",
+      "pages": 46,
+      "size": "1.3MB"
+    },
+    {
+      "slug": "yi-073",
+      "title": "מיך וועסטו נישט צוברעכן",
+      "group": "yidish",
+      "pages": 54,
+      "size": "586KB"
+    },
+    {
+      "slug": "yi-074",
+      "title": "מיר אידן אינאיינעם",
+      "group": "yidish",
+      "pages": 26,
+      "size": "766KB"
+    },
+    {
+      "slug": "yi-075",
+      "title": "מכבד זיין די ווייב",
+      "group": "yidish",
+      "pages": 35,
+      "size": "2.9MB"
+    },
+    {
+      "slug": "yi-076",
+      "title": "מכבד זיין דעם מאן",
+      "group": "yidish",
+      "pages": 30,
+      "size": "2.9MB"
+    },
+    {
+      "slug": "yi-077",
+      "title": "נאר אמונה",
+      "group": "yidish",
+      "pages": 23,
+      "size": "188KB"
+    },
+    {
+      "slug": "yi-078",
+      "title": "ס'איז גוט",
+      "group": "yidish",
+      "pages": 59,
+      "size": "4.9MB"
+    },
+    {
+      "slug": "yi-079",
+      "title": "סדר הישיבה",
+      "group": "yidish",
+      "pages": 51,
+      "size": "4.4MB"
+    },
+    {
+      "slug": "yi-080",
+      "title": "עס וועט דיר נאך לעכטיג ווערן",
+      "group": "yidish",
+      "pages": 35,
+      "size": "597KB"
+    },
+    {
+      "slug": "yi-081",
+      "title": "עס וועט זיין גוט",
+      "group": "yidish",
+      "pages": 27,
+      "size": "194KB"
+    },
+    {
+      "slug": "yi-082",
+      "title": "צושנייד מיך נישט",
+      "group": "yidish",
+      "pages": 67,
+      "size": "910KB"
+    },
+    {
+      "slug": "yi-083",
+      "title": "קלאפ זיך נישט אראפ",
+      "group": "yidish",
+      "pages": 53,
+      "size": "5.0MB"
+    },
+    {
+      "slug": "yi-084",
+      "title": "קריאת שמע שעל המטה מיט תיקון חצות",
+      "group": "yidish",
+      "pages": 75,
+      "size": "2.0MB"
+    },
+    {
+      "slug": "yi-085",
+      "title": "קריך ארויס פון שמוץ",
+      "group": "yidish",
+      "pages": 56,
+      "size": "4.6MB"
+    },
+    {
+      "slug": "yi-086",
+      "title": "ראטעוועט מיין לעבן",
+      "group": "yidish",
+      "pages": 58,
+      "size": "935KB"
+    },
+    {
+      "slug": "yi-087",
+      "title": "ראש השנה ביי צדיקים",
+      "group": "yidish",
+      "pages": 23,
+      "size": "433KB"
+    },
+    {
+      "slug": "yi-088",
+      "title": "ריינע אויגן",
+      "group": "yidish",
+      "pages": 30,
+      "size": "2.7MB"
+    },
+    {
+      "slug": "yi-089",
+      "title": "רעדן צום באשעפער",
+      "group": "yidish",
+      "pages": 30,
+      "size": "484KB"
+    },
+    {
+      "slug": "yi-090",
+      "title": "שאקלען לולב",
+      "group": "yidish",
+      "pages": 31,
+      "size": "2.7MB"
+    },
+    {
+      "slug": "yi-091",
+      "title": "שיינע אויגן",
+      "group": "yidish",
+      "pages": 47,
+      "size": "4.1MB"
+    },
+    {
+      "slug": "yi-092",
+      "title": "שלום אין שטוב",
+      "group": "yidish",
+      "pages": 30,
+      "size": "2.5MB"
+    },
+    {
+      "slug": "yi-093",
+      "title": "שמחה איז די גרעסטע זאך",
+      "group": "yidish",
+      "pages": 47,
+      "size": "723KB"
+    },
+    {
+      "slug": "yi-094",
+      "title": "שמחת תורה",
+      "group": "yidish",
+      "pages": 62,
+      "size": "378KB"
+    },
+    {
+      "slug": "yi-095",
+      "title": "פארליר דיך נישט",
+      "group": "yidish",
+      "pages": 31,
+      "size": "1.4MB"
+    },
+    {
+      "slug": "yi-096",
+      "title": "צוואת מוהרא״ש",
+      "group": "yidish",
+      "pages": 83,
+      "size": "6.7MB"
+    },
+    {
+      "slug": "yi-097",
+      "title": "זיך גט'ן איז נישט די עצה",
+      "group": "yidish",
+      "pages": 40,
+      "size": "3.5MB"
+    },
+    {
+      "slug": "yi-098",
+      "title": "אשר בנחל ביידיש, חלק א׳",
+      "group": "yidish-sfarim",
+      "pages": 473,
+      "size": "7.9MB"
+    },
+    {
+      "slug": "yi-099",
+      "title": "אשר בנחל ביידיש, חלק ב׳",
+      "group": "yidish-sfarim",
+      "pages": 471,
+      "size": "7.2MB"
+    },
+    {
+      "slug": "yi-100",
+      "title": "אשר בנחל ביידיש, חלק ג׳",
+      "group": "yidish-sfarim",
+      "pages": 467,
+      "size": "7.7MB"
+    },
+    {
+      "slug": "yi-101",
+      "title": "אשר בנחל ביידיש, חלק ד׳",
+      "group": "yidish-sfarim",
+      "pages": 461,
+      "size": "7.1MB"
+    },
+    {
+      "slug": "yi-102",
+      "title": "אשר בנחל ביידיש, חלק ה׳",
+      "group": "yidish-sfarim",
+      "pages": 459,
+      "size": "7.9MB"
+    },
+    {
+      "slug": "yi-103",
+      "title": "אשר בנחל ביידיש, חלק ו׳",
+      "group": "yidish-sfarim",
+      "pages": 463,
+      "size": "7.3MB"
+    },
+    {
+      "slug": "yi-104",
+      "title": "דער קוואל פון תורה",
+      "group": "yidish-sfarim",
+      "pages": 183,
+      "size": "3.9MB"
+    },
+    {
+      "slug": "yi-105",
+      "title": "דער קוואל פון אמונה – סדר דברים",
+      "group": "yidish-sfarim",
+      "pages": 249,
+      "size": "3.9MB"
+    },
+    {
+      "slug": "yi-106",
+      "title": "דער קוואל פון אמונה – סדר במדבר",
+      "group": "yidish-sfarim",
+      "pages": 228,
+      "size": "3.3MB"
+    },
+    {
+      "slug": "yi-107",
+      "title": "דער קוואל פון אמונה – סדר שמות",
+      "group": "yidish-sfarim",
+      "pages": 255,
+      "size": "3.7MB"
+    },
+    {
+      "slug": "yi-108",
+      "title": "דער קוואל פון אמונה – סדר בראשית",
+      "group": "yidish-sfarim",
+      "pages": 475,
+      "size": "5.4MB"
+    },
+    {
+      "slug": "yi-109",
+      "title": "דער קוואל פונעם רבין",
+      "group": "yidish-sfarim",
+      "pages": 263,
+      "size": "3.1MB"
+    },
+    {
+      "slug": "yi-110",
+      "title": "ארך אפים אידיש",
+      "group": "yidish-sfarim",
+      "pages": 201,
+      "size": "1.1MB"
+    },
+    {
+      "slug": "en-the-tzadiks-accomplishment",
+      "title": "The Tzadiks Accomplishment – פעולת הצדיק",
+      "group": "english",
+      "pages": 171,
+      "size": "2.3MB"
+    },
+    {
+      "slug": "en-where-are-you",
+      "title": "Where Are You?",
+      "group": "english",
+      "pages": 31,
+      "size": "339KB"
+    },
+    {
+      "slug": "en-from-bitter-to-sweet",
+      "title": "From Bitter To Sweet",
+      "group": "english",
+      "pages": 22,
+      "size": "188KB"
+    },
+    {
+      "slug": "en-illusions",
+      "title": "Illusions",
+      "group": "english",
+      "pages": 25,
+      "size": "621KB"
+    },
+    {
+      "slug": "en-make-your-marriage-work",
+      "title": "Make Your Marriage Work",
+      "group": "english",
+      "pages": 19,
+      "size": "213KB"
+    },
+    {
+      "slug": "en-parenting-with-pride",
+      "title": "Parenting With Pride",
+      "group": "english",
+      "pages": 19,
+      "size": "522KB"
+    },
+    {
+      "slug": "en-striking-it-rich",
+      "title": "Striking It Rich",
+      "group": "english",
+      "pages": 53,
+      "size": "549KB"
+    },
+    {
+      "slug": "en-the-sky-s-the-limit",
+      "title": "The Sky's The Limit",
+      "group": "english",
+      "pages": 19,
+      "size": "164KB"
+    },
+    {
+      "slug": "en-when-darkness-falls",
+      "title": "When Darkness Falls",
+      "group": "english",
+      "pages": 34,
+      "size": "549KB"
+    },
+    {
+      "slug": "en-a-peaceful-home",
+      "title": "A Peaceful Home",
+      "group": "english",
+      "pages": 63,
+      "size": "4.3MB"
+    },
+    {
+      "slug": "en-a-simple-faith",
+      "title": "A Simple Faith",
+      "group": "english",
+      "pages": 95,
+      "size": "739KB"
+    },
+    {
+      "slug": "en-all-will-be-well",
+      "title": "All Will Be Well",
+      "group": "english",
+      "pages": 30,
+      "size": "760KB"
+    },
+    {
+      "slug": "en-don-t-complain",
+      "title": "Don't Complain",
+      "group": "english",
+      "pages": 39,
+      "size": "288KB"
+    },
+    {
+      "slug": "en-get-going",
+      "title": "Get Going",
+      "group": "english",
+      "pages": 31,
+      "size": "360KB"
+    },
+    {
+      "slug": "en-get-well-soon",
+      "title": "Get Well Soon",
+      "group": "english",
+      "pages": 39,
+      "size": "573KB"
+    },
+    {
+      "slug": "en-getting-along",
+      "title": "Getting Along",
+      "group": "english",
+      "pages": 30,
+      "size": "1.4MB"
+    },
+    {
+      "slug": "en-guard-your-eyes",
+      "title": "Guard Your Eyes",
+      "group": "english",
+      "pages": 26,
+      "size": "718KB"
+    },
+    {
+      "slug": "en-have-no-fear",
+      "title": "Have No Fear",
+      "group": "english",
+      "pages": 31,
+      "size": "390KB"
+    },
+    {
+      "slug": "en-hope-for-the-best",
+      "title": "Hope For The Best",
+      "group": "english",
+      "pages": 35,
+      "size": "299KB"
+    },
+    {
+      "slug": "en-liberated",
+      "title": "Liberated",
+      "group": "english",
+      "pages": 42,
+      "size": "761KB"
+    },
+    {
+      "slug": "en-match-made-in-heaven",
+      "title": "Match Made In Heaven",
+      "group": "english",
+      "pages": 30,
+      "size": "2.1MB"
+    },
+    {
+      "slug": "en-score-big",
+      "title": "Score Big",
+      "group": "english",
+      "pages": 35,
+      "size": "301KB"
+    },
+    {
+      "slug": "en-self-confidence",
+      "title": "Self Confidence",
+      "group": "english",
+      "pages": 31,
+      "size": "239KB"
+    },
+    {
+      "slug": "en-successful-parenting",
+      "title": "Successful Parenting",
+      "group": "english",
+      "pages": 42,
+      "size": "259KB"
+    },
+    {
+      "slug": "en-talk-to-me",
+      "title": "Talk To Me",
+      "group": "english",
+      "pages": 31,
+      "size": "411KB"
+    },
+    {
+      "slug": "en-the-secret-of-success",
+      "title": "The Secret Of Success",
+      "group": "english",
+      "pages": 42,
+      "size": "646KB"
+    },
+    {
+      "slug": "en-this-too-shall-pass",
+      "title": "This Too Shall Pass",
+      "group": "english",
+      "pages": 31,
+      "size": "235KB"
+    },
+    {
+      "slug": "en-to-love-to-cherish",
+      "title": "To Love & To Cherish",
+      "group": "english",
+      "pages": 63,
+      "size": "586KB"
+    },
+    {
+      "slug": "en-unity-among-jews",
+      "title": "Unity Among Jews",
+      "group": "english",
+      "pages": 34,
+      "size": "695KB"
+    },
+    {
+      "slug": "en-wait-a-second",
+      "title": "Wait A Second",
+      "group": "english",
+      "pages": 30,
+      "size": "803KB"
+    },
+    {
+      "slug": "en-what-do-you-do",
+      "title": "What Do You Do",
+      "group": "english",
+      "pages": 41,
+      "size": "2.7MB"
+    },
+    {
+      "slug": "en-youre-not-a-failure",
+      "title": "You’re Not a Failure",
+      "group": "english",
+      "pages": 75,
+      "size": "755KB"
+    },
+    {
+      "slug": "en-no-longer-alone",
+      "title": "No Longer Alone",
+      "group": "english",
+      "pages": 93,
+      "size": "6.4MB"
+    },
+    {
+      "slug": "en-no-pressure",
+      "title": "No Pressure",
+      "group": "english",
+      "pages": 31,
+      "size": "318KB"
+    },
+    {
+      "slug": "en-a-voice-calls-out-to-g-d",
+      "title": "A Voice Calls Out To G-D",
+      "group": "english",
+      "pages": 127,
+      "size": "2.5MB"
+    },
+    {
+      "slug": "en-forget-about-it",
+      "title": "Forget About It",
+      "group": "english",
+      "pages": 43,
+      "size": "469KB"
+    },
+    {
+      "slug": "en-don-t-take-it-personally",
+      "title": "Don't take it personally",
+      "group": "english",
+      "pages": 31,
+      "size": "251KB"
+    },
+    {
+      "slug": "en-don-t-be-disappointed",
+      "title": "Don't Be Disappointed",
+      "group": "english",
+      "pages": 31,
+      "size": "432KB"
+    },
+    {
+      "slug": "en-change-for-the-better",
+      "title": "Change For The Better",
+      "group": "english",
+      "pages": 31,
+      "size": "377KB"
+    },
+    {
+      "slug": "en-be-satisfied",
+      "title": "Be Satisfied",
+      "group": "english",
+      "pages": 31,
+      "size": "328KB"
+    },
+    {
+      "slug": "en-be-happy",
+      "title": "Be Happy",
+      "group": "english",
+      "pages": 30,
+      "size": "1.4MB"
+    },
+    {
+      "slug": "en-an-excellent-day",
+      "title": "An Excellent Day",
+      "group": "english",
+      "pages": 31,
+      "size": "383KB"
+    },
+    {
+      "slug": "en-a-soft-answer",
+      "title": "A Soft Answer",
+      "group": "english",
+      "pages": 42,
+      "size": "656KB"
+    },
+    {
+      "slug": "en-happily-married",
+      "title": "Happily Married",
+      "group": "english",
+      "pages": 51,
+      "size": "571KB"
+    },
+    {
+      "slug": "en-don-t-worry",
+      "title": "Don't Worry",
+      "group": "english",
+      "pages": 39,
+      "size": "423KB"
+    },
+    {
+      "slug": "en-a-system-of-learning",
+      "title": "A System of Learning",
+      "group": "english",
+      "pages": 75,
+      "size": "1.6MB"
+    },
+    {
+      "slug": "en-everything-is-possible",
+      "title": "Everything Is Possible",
+      "group": "english",
+      "pages": 31,
+      "size": "388KB"
+    },
+    {
+      "slug": "en-easy-money",
+      "title": "Easy Money",
+      "group": "english",
+      "pages": 30,
+      "size": "2.0MB"
+    },
+    {
+      "slug": "en-that-s-me",
+      "title": "That's Me",
+      "group": "english",
+      "pages": 31,
+      "size": "255KB"
+    },
+    {
+      "slug": "en-last-will-from-mohorosh",
+      "title": "Last will From Mohorosh",
+      "group": "english",
+      "pages": 43,
+      "size": "303KB"
+    },
+    {
+      "slug": "es-paz-en-el-hogar",
+      "title": "Paz En El Hogar",
+      "group": "other-lang",
+      "pages": 29,
+      "size": "856KB"
+    },
+    {
+      "slug": "es-no-te-sientas-decepcionado",
+      "title": "No te sientas Decepcionado",
+      "group": "other-lang",
+      "pages": 31,
+      "size": "1.6MB"
+    },
+    {
+      "slug": "es-solo-hoy",
+      "title": "Solo Hoy",
+      "group": "other-lang",
+      "pages": 34,
+      "size": "1.0MB"
+    },
+    {
+      "slug": "es-confianza-en-uno-mismo",
+      "title": "Confianza en Uno Mismo",
+      "group": "other-lang",
+      "pages": 51,
+      "size": "784KB"
+    },
+    {
+      "slug": "es-ponte-en-marcha",
+      "title": "¡Ponte en Marcha!",
+      "group": "other-lang",
+      "pages": 49,
+      "size": "1.1MB"
+    },
+    {
+      "slug": "es-todo-es-posible",
+      "title": "Todo es Posible",
+      "group": "other-lang",
+      "pages": 39,
+      "size": "875KB"
+    },
+    {
+      "slug": "fr-les-cieux-sont-ouverts",
+      "title": "Les Cieux sont ouverts – השמים פתוחים",
+      "group": "other-lang",
+      "pages": 31,
+      "size": "1.3MB"
+    },
+    {
+      "slug": "ru-171",
+      "title": "будет хорошо – יהיה טוב – עס וועט זיין גוט",
+      "group": "other-lang",
+      "pages": 31,
+      "size": "1.4MB"
+    },
+    {
+      "slug": "ru-172",
+      "title": "все к лучшему – הכל לטובה – אלעס איז צום גוטן",
+      "group": "other-lang",
+      "pages": 31,
+      "size": "1.6MB"
+    },
+    {
+      "slug": "ru-173",
+      "title": "не унижай меня – אל תשפיל אותי – דערנידער מיך נישט",
+      "group": "other-lang",
+      "pages": 31,
+      "size": "1.6MB"
+    },
+    {
+      "slug": "ru-174",
+      "title": "твоя доля – лучшая – דיין איז די בעסטע",
+      "group": "other-lang",
+      "pages": 31,
+      "size": "1.6MB"
     }
   ]
 }
