@@ -360,7 +360,11 @@ document.querySelectorAll('[data-cfilter]').forEach((box) => {
   const cards = [...document.querySelectorAll('.libcat [data-t]:not(.svols li)')], vols = [...document.querySelectorAll('.card.series')], none = document.querySelector('.cnone'), kbtns = [...(box.closest('.cfilter') || box.parentElement).querySelectorAll('[data-kf]')];
   const hay = new Map([...cards, ...document.querySelectorAll('.svols li')].map((c) => [c, normWords(c.dataset.t)]));
   let kind = '';
-  const run = () => {
+  // Hiding or bringing back the parts above the filter ("start here", the seasonal band) changes the page's height above it:
+  // the page is scrolled by the same amount, so the filter stays where it was on the screen instead of the reader landing at the top.
+  const keep = (fn) => { const y0 = box.getBoundingClientRect().top; fn(); const d = box.getBoundingClientRect().top - y0; if (Math.abs(d) > 1) scrollBy({ top: d, behavior: 'instant' }); };
+  const run = () => keep(filter);
+  const filter = () => {
     const words = normWords(box.value.trim()).split(/\s+/).filter(Boolean);
     cards.forEach((c) => { c.hidden = !words.every((w) => hay.get(c).includes(w)) || (kind && !(c.dataset.k || '').split(' ').includes(kind)); });
     // a series card that matches because of one of its volumes opens its list at those volumes
