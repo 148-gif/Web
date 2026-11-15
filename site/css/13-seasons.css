@@ -1,7 +1,7 @@
 /* Seasonal suggestion (scripts/lib/seasonal.mjs): a band a month before a holiday, in the holiday's colour.
    --acc is one of a fixed set tuned to the site's navy and gold (ACCENTS in core.mjs), a lighter one in dark mode; the band, its top line,
    the featured cards and the reading cards take it. No style attribute: the colour is a class, ac-<name>. */
-.season{--acc:#a67a1f;background:var(--sunk);background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 12%,var(--bg)),var(--bg) 85%);border-top:3px solid var(--acc);border-bottom:1px solid var(--line)}
+.season{--acc:#a67a1f;background:var(--sunk);background:linear-gradient(180deg,var(--sunk),var(--bg) 85%);border-top:3px solid var(--acc);border-bottom:1px solid var(--line)}
 .season.ac-gold{--acc:#a67a1f}.season.ac-blue{--acc:#2f5fb3}.season.ac-indigo{--acc:#5a52a8}.season.ac-green{--acc:#4f7f3a}.season.ac-plum{--acc:#8a3f86}.season.ac-teal{--acc:#2c7f7a}.season.ac-ember{--acc:#bf5619}
 @media (prefers-color-scheme:dark){.season.ac-gold{--acc:#e0b552}.season.ac-blue{--acc:#7fa3ea}.season.ac-indigo{--acc:#a49df0}.season.ac-green{--acc:#8fc27a}.season.ac-plum{--acc:#d093cc}.season.ac-teal{--acc:#6fc7c0}.season.ac-ember{--acc:#f0925a}}
 .season[hidden],.season [hidden]{display:none}
