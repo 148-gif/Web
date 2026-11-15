@@ -45,7 +45,7 @@
 .cfilter .kfilter{display:flex;flex-wrap:nowrap;gap:0;width:max-content;max-width:100%;margin:12px auto 0;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--sunk)}
 .cfilter .kfilter button{min-height:44px;padding:0 18px;border:0;border-radius:999px;background:none;box-shadow:none;color:var(--mute);white-space:nowrap}.cfilter .kfilter button:hover{background:none;color:var(--brand)}
 .cfilter .kfilter button[aria-pressed="true"]{background:linear-gradient(180deg,var(--gold3),var(--gold2));color:var(--on-gold);box-shadow:0 1px 3px rgba(20,30,60,.18)}
-.lchips.cats{margin:4px 0 24px}
+.cfilter .kfilter[hidden]{display:none}.lchips.cats{margin:4px 0 24px}
 @media (max-width:640px){
 .lchips.cats{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;margin-inline:-16px;padding:2px 16px;scroll-padding-inline:16px;-webkit-mask-image:linear-gradient(to left,transparent 0,#000 24px);mask-image:linear-gradient(to left,transparent 0,#000 24px)}
 .lchips.cats::-webkit-scrollbar{display:none}.lchips.cats a{flex:none;white-space:nowrap}
