@@ -49,17 +49,17 @@ const store = {
 };
 const lastRead = (book) => { try { return JSON.parse(store.get(`book:${book}`)); } catch { return null; } };
 
-// Start fetching the search index once someone shows intent to search, so results are instant:
-// the titles when they head for the search page, the full text too when they focus a search box.
+// Start fetching the search titles once someone shows intent to search (heads for the search page or focuses a search
+// box), so results are instant. The full text is never fetched whole: a search fetches only its words' files (search.js).
 let warm = 0;
-const warmSearch = (full) => {
-  if (warm >= (full ? 2 : 1)) return; warm = full ? 2 : 1;
+const warmSearch = () => {
+  if (warm) return; warm = 1;
   const base = me.pathname.replace(/[^/]*$/, '');
   const idx = (f,v) => fetch(`${base}idx/${f}.json${v ? '?v='+encodeURIComponent(v) : ''}`, {cache: v ? 'default' : 'no-cache'});
-  idx('meta').then((r) => r.json()).then((d) => { for (let k = 0; k < d.n; k++) { idx(`t${k}`,d.version); if (full) idx(k,d.version); } }).catch(() => {});
+  idx('meta').then((r) => r.json()).then((d) => { for (let k = 0; k < d.n; k++) idx(`t${k}`,d.version); }).catch(() => {});
 };
-document.querySelectorAll('input[name=q]').forEach((el) => el.addEventListener('focus', () => warmSearch(true), { once: true }));
-document.querySelectorAll('a[href*="/search/"]').forEach((el) => ['pointerenter', 'touchstart', 'focus'].forEach((ev) => el.addEventListener(ev, () => warmSearch(false), { once: true, passive: true })));
+document.querySelectorAll('input[name=q]').forEach((el) => el.addEventListener('focus', () => warmSearch(), { once: true }));
+document.querySelectorAll('a[href*="/search/"]').forEach((el) => ['pointerenter', 'touchstart', 'focus'].forEach((ev) => el.addEventListener(ev, () => warmSearch(), { once: true, passive: true })));
 const hdr = document.querySelector('.top'), btn = document.querySelector('.mbtn');
 // Header dropdowns (desktop): click/Enter toggles, Escape or a click elsewhere closes.
 const dds = [...document.querySelectorAll('.dd')];
