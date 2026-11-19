@@ -11,6 +11,10 @@ a.tbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min
 /* Search: skeleton cards while the index loads */
 /* Search results: room reserved up front, so the footer does not move while results arrive part by part (CLS) */
 #results{min-height:70vh;align-content:start}
+/* The words that matched, in each result title (search.js); "עוד תוצאות" under the list */
+#results mark{background:rgba(230,196,102,.32);color:inherit;border-radius:3px;padding:0 2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.ssnip{margin:6px 0 0;font-size:.9375rem;line-height:1.6;color:var(--mute)}
+.smore{display:flex;margin:20px auto 0}.smore[hidden]{display:none}
 /* Search before a query (#sstart, search.mjs): places to browse and how the search works, instead of an empty screen; the reserved room above is not needed then */
 .sstart:not([hidden])~#results{min-height:0}
 .sstart[hidden]{display:none}
